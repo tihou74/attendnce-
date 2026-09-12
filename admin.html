@@ -350,6 +350,9 @@
         <button class="nav-tab-btn" data-tab="tab-sales">
             <span class="ic-slot" data-icon="dollar"></span> Daily Report
         </button>
+        <button class="nav-tab-btn" data-tab="tab-finance">
+            <span class="ic-slot" data-icon="dollar"></span> Monthly Financial
+        </button>
         <button class="nav-tab-btn" data-tab="tab-settings"><span class="ic-slot" data-icon="settings"></span> Settings</button>
     </div>
 
@@ -857,6 +860,153 @@
                     <tfoot id="salesReportsTableFoot"></tfoot>
                 </table>
             </div>
+        </div>
+    </div>
+
+    <!-- التقرير المالي الشهري -->
+    <div id="tab-finance" class="tab-content">
+        <div class="filter-section">
+            <h3><span data-icon="dollar"></span> Monthly Financial Report</h3>
+            <div class="date-group">
+                <div><label for="finMonth">Month</label><input type="month" id="finMonth" onchange="renderFinancialReport()"></div>
+                <div style="flex: 1; min-width: 210px;"><label for="finBranch">Branch</label>
+                    <select id="finBranch" onchange="renderFinancialReport()">
+                        <option value="">All Branches (combined)</option>
+                        <option value="GAIMER W KAHI WEST WALK">GAIMER W KAHI - WEST WALK</option>
+                        <option value="GAIMER W KAHI OLD MINA PORT">GAIMER W KAHI - OLD MINA PORT</option>
+                        <option value="SHAI BU HAMAD WEST WALK">SHAI BU HAMAD - WEST WALK</option>
+                        <option value="SHAI BU HAMAD GULF MALL">SHAI BU HAMAD - GULF MALL</option>
+                    </select>
+                </div>
+                <div style="width: 150px;"><label for="finDeliveryRate">Delivery %</label><input type="number" id="finDeliveryRate" step="0.1" min="0" max="100" onchange="saveFinancialRates()"></div>
+                <div style="width: 150px;"><label for="finCardRate">Card / Bank %</label><input type="number" id="finCardRate" step="0.1" min="0" max="100" onchange="saveFinancialRates()"></div>
+                <button class="btn-ghost" onclick="loadFinancialReportData()"><span data-icon="refresh"></span> Refresh</button>
+                <button class="btn-success" onclick="exportFinancialReportExcel()"><span data-icon="download"></span> Export Excel</button>
+            </div>
+            <p class="card-sub" style="margin: 10px 0 0;" id="finRatesNote"></p>
+        </div>
+
+        <!-- 1) المبيعات مقسّمة على ثلاث بطاقات -->
+        <div class="card">
+            <h3><span data-icon="fileText"></span> 1. Sales &amp; Deductions</h3>
+            <p class="card-sub">Pulled automatically from the daily sales reports submitted by the branch managers for the selected month.</p>
+            <div class="stats" style="margin-bottom: 0;">
+                <div class="stat-box money-only" style="flex-direction: column; align-items: stretch;">
+                    <h3 style="margin: 0 0 8px;">CASH</h3>
+                    <p id="finCashGross" style="margin: 0;">0</p>
+                    <div style="font-size: 12px; color: var(--text-dim); margin-top: 8px; line-height: 1.9;">
+                        <div>Deduction: <b id="finCashFee">0.00</b></div>
+                        <div style="color: var(--success); font-weight: 700;">Net: <b id="finCashNet">0.00</b></div>
+                    </div>
+                </div>
+                <div class="stat-box money-only" style="flex-direction: column; align-items: stretch;">
+                    <h3 style="margin: 0 0 8px;">CARD</h3>
+                    <p id="finCardGross" style="margin: 0;">0</p>
+                    <div style="font-size: 12px; color: var(--text-dim); margin-top: 8px; line-height: 1.9;">
+                        <div>Bank fee (<span id="finCardRateLabel">1.5</span>%): <b id="finCardFee" style="color: var(--danger);">0.00</b></div>
+                        <div style="color: var(--success); font-weight: 700;">Net: <b id="finCardNet">0.00</b></div>
+                    </div>
+                </div>
+                <div class="stat-box money-only" style="flex-direction: column; align-items: stretch;">
+                    <h3 style="margin: 0 0 8px;">DELIVERY</h3>
+                    <p id="finDeliveryGross" style="margin: 0;">0</p>
+                    <div style="font-size: 12px; color: var(--text-dim); margin-top: 8px; line-height: 1.9;">
+                        <div id="finDeliveryBreakdown" style="color: var(--text-faint);"></div>
+                        <div>Commission (<span id="finDeliveryRateLabel">21.5</span>%): <b id="finDeliveryFee" style="color: var(--danger);">0.00</b></div>
+                        <div style="color: var(--success); font-weight: 700;">Net: <b id="finDeliveryNet">0.00</b></div>
+                    </div>
+                </div>
+            </div>
+            <div class="table-container" style="margin-top: 18px;">
+                <table>
+                    <thead>
+                        <tr><th>Channel</th><th class="money-col">Gross Sales</th><th class="money-col">Deduction %</th><th class="money-col">Deduction</th><th class="money-col">Net</th></tr>
+                    </thead>
+                    <tbody id="finSalesTableBody"></tbody>
+                    <tfoot id="finSalesTableFoot"></tfoot>
+                </table>
+            </div>
+            <p class="card-sub" style="margin: 12px 0 0;" id="finSalesSource"></p>
+        </div>
+
+        <!-- مقارنة الفروع — تظهر فقط عند اختيار «كل الفروع» -->
+        <div class="card" id="finPerBranchCard" style="display: none;">
+            <h3><span data-icon="users"></span> Branch by Branch</h3>
+            <p class="card-sub">Each branch on its own line, so you can compare them side by side while still seeing the combined total above.</p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Branch</th>
+                            <th class="money-col">Cash</th>
+                            <th class="money-col">Card (net)</th>
+                            <th class="money-col">Delivery (net)</th>
+                            <th class="money-col">Net Revenue</th>
+                            <th class="money-col">Payments</th>
+                            <th class="money-col">Net Profit</th>
+                            <th>Labour %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="finPerBranchBody"></tbody>
+                    <tfoot id="finPerBranchFoot"></tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- 2) المدفوعات -->
+        <div class="card">
+            <h3><span data-icon="inbox"></span> 2. Payments</h3>
+            <p class="card-sub">Salaries are pulled automatically from the payroll engine for this month and branch. Add your other fixed and variable payments below.</p>
+
+            <div class="controls" style="flex-wrap: wrap; align-items: flex-end; gap: 10px; background: var(--surface-2); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-bottom: 18px;">
+                <div style="flex: 1; min-width: 180px;"><label>Payment name</label><input type="text" id="finPayName" placeholder="e.g. Rent, Electricity, Meat purchases"></div>
+                <div style="width: 150px;"><label>Type</label>
+                    <select id="finPayType">
+                        <option value="fixed">Fixed</option>
+                        <option value="variable">Variable</option>
+                    </select>
+                </div>
+                <div style="width: 150px;"><label>Amount (QAR)</label><input type="number" id="finPayAmount" step="0.01" min="0" placeholder="0.00"></div>
+                <div style="flex: 1; min-width: 150px;"><label>Note (optional)</label><input type="text" id="finPayNote" placeholder="—"></div>
+                <button class="btn-accent" onclick="addFinancialPayment()"><span data-icon="check"></span> Add Payment</button>
+                <button class="btn-ghost" onclick="copyFixedPaymentsFromPreviousMonth()" title="Bring last month's fixed payments into this month so you don't retype them"><span data-icon="sync"></span> Copy fixed from previous month</button>
+            </div>
+            <div class="status" id="finPayStatus" style="min-height: 18px; font-size: 13px; font-weight: 700; margin-bottom: 10px;"></div>
+
+            <h3 style="font-size: 14px; margin: 8px 0 8px;">Fixed Payments</h3>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Payment</th><th>Branch</th><th class="money-col">Amount</th><th>Note</th><th></th></tr></thead>
+                    <tbody id="finFixedTableBody"></tbody>
+                    <tfoot id="finFixedTableFoot"></tfoot>
+                </table>
+            </div>
+
+            <h3 style="font-size: 14px; margin: 22px 0 8px;">Variable Payments</h3>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Payment</th><th>Branch</th><th class="money-col">Amount</th><th>Note</th><th></th></tr></thead>
+                    <tbody id="finVariableTableBody"></tbody>
+                    <tfoot id="finVariableTableFoot"></tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- 3) النتيجة -->
+        <div class="card">
+            <h3><span data-icon="listChecks"></span> 3. Bottom Line</h3>
+            <div class="table-container">
+                <table>
+                    <tbody id="finBottomLineBody"></tbody>
+                </table>
+            </div>
+            <div class="stats" style="margin-top: 18px;">
+                <div class="stat-box money-only"><div class="stat-icon" data-icon="dollar"></div><div><h3>Net Revenue (after deductions)</h3><p id="finNetRevenue">0</p></div></div>
+                <div class="stat-box money-only"><div class="stat-icon" data-icon="inbox"></div><div><h3>Total Payments</h3><p id="finTotalPayments">0</p></div></div>
+                <div class="stat-box money-only"><div class="stat-icon" data-icon="listChecks"></div><div><h3>Net Profit</h3><p id="finNetProfit">0</p></div></div>
+                <div class="stat-box"><div class="stat-icon" data-icon="users"></div><div><h3>Labour Cost % of Sales</h3><p id="finLabourPct">0%</p></div></div>
+            </div>
+            <p class="card-sub" style="margin: 14px 0 0;" id="finLabourNote"></p>
         </div>
     </div>
 
@@ -1526,6 +1676,7 @@
         if (tabId === 'tab-training') { loadTrainingContentForAdmin(); loadTrainingRecords(); }
         if (tabId === 'tab-audit') loadAuditLog();
         if (tabId === 'tab-sales') loadSalesReports();
+        if (tabId === 'tab-finance') loadFinancialReportData();
     };
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -1538,6 +1689,13 @@
         ["payrollEndDate", "endDate", "attReportEnd", "salesEndDate"].forEach(id => { const el = document.getElementById(id); if (el) el.value = end; });
         const dd = document.getElementById('newDeductionDate');
         if (dd) dd.value = todayISO();
+        // التقرير المالي يعمل بالشهر لا بمدى تواريخ.
+        const finMonthEl = document.getElementById('finMonth');
+        if (finMonthEl) finMonthEl.value = todayISO().slice(0, 7);
+        const finDeliveryEl = document.getElementById('finDeliveryRate');
+        if (finDeliveryEl) finDeliveryEl.value = DEFAULT_DELIVERY_COMMISSION_PCT;
+        const finCardEl = document.getElementById('finCardRate');
+        if (finCardEl) finCardEl.value = DEFAULT_CARD_FEE_PCT;
         applySavedTheme();
     });
 
@@ -3023,6 +3181,496 @@
         const end = document.getElementById("salesEndDate")?.value || 'all';
         XLSX.writeFile(wb, `Daily_Sales_Report_${start}_to_${end}.xlsx`);
         logAudit("Daily Sales Reports Exported", `${rows.length} report(s), period ${start} to ${end}`);
+    };
+
+    /* =========================================================================
+       Monthly Financial Report tab
+       -------------------------------------------------------------------------
+       يجمع ثلاثة مصادر موجودة أصلًا في النظام ولا يُدخل شيئًا يدويًا إلا
+       المدفوعات:
+         1) المبيعات   ← تقارير المبيعات اليومية التي يرسلها مديرو الفروع
+         2) الرواتب    ← محرك الرواتب نفسه (computePayroll) للشهر والفرع المحددين
+         3) المدفوعات  ← مجموعة financial_payments (ثابتة ومتغيرة، لكل شهر وفرع)
+
+       الخصومات (سياسة الإدارة): 21.5% عمولة على التوصيل بالتساوي لكل المنصات
+       (سنونو/طلبات/كيتا)، و1.5% رسوم بنك على الكارد، والكاش بلا خصم. النسبتان
+       قابلتان للتعديل من التبويب ومحفوظتان في settings/financial_rates لأن
+       العمولات تتغيّر بالتعاقد.
+       ========================================================================= */
+
+    const FINANCE_DELIVERY_FIELDS = ['snoonu', 'talabat', 'keeta'];
+    const FINANCE_BRANCHES = [
+        'GAIMER W KAHI WEST WALK',
+        'GAIMER W KAHI OLD MINA PORT',
+        'SHAI BU HAMAD WEST WALK',
+        'SHAI BU HAMAD GULF MALL'
+    ];
+    const DEFAULT_DELIVERY_COMMISSION_PCT = 21.5;
+    const DEFAULT_CARD_FEE_PCT = 1.5;
+
+    let allFinancialPayments = [];
+    let financialRates = {
+        deliveryCommissionPercent: DEFAULT_DELIVERY_COMMISSION_PCT,
+        cardFeePercent: DEFAULT_CARD_FEE_PCT
+    };
+
+    function currentFinMonth() {
+        const el = document.getElementById('finMonth');
+        return (el && el.value) || todayISO().slice(0, 7); // YYYY-MM
+    }
+    function currentFinBranch() {
+        const el = document.getElementById('finBranch');
+        return (el && el.value) || ''; // '' = كل الفروع
+    }
+    /** YYYY-MM ← إلى { start: 'YYYY-MM-01', end: 'YYYY-MM-<آخر يوم>' } */
+    function financeMonthRange(month) {
+        const [y, m] = month.split('-').map(Number);
+        const last = new Date(y, m, 0).getDate();
+        return { start: `${month}-01`, end: `${month}-${String(last).padStart(2, '0')}` };
+    }
+    function previousMonth(month) {
+        const [y, m] = month.split('-').map(Number);
+        const d = new Date(y, m - 2, 1); // m-1 هو الشهر الحالي بفهرسة JS
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+    function money(n) {
+        return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    window.loadFinancialRates = async function() {
+        try {
+            const snap = await getDoc(doc(db, "settings", "financial_rates"));
+            if (snap.exists()) {
+                const d = snap.data();
+                financialRates = {
+                    deliveryCommissionPercent: Number(d.deliveryCommissionPercent),
+                    cardFeePercent: Number(d.cardFeePercent)
+                };
+            }
+        } catch (e) {
+            console.error("Error loading financial rates, using defaults:", e);
+        }
+        // أي قيمة غير رقمية تعود للافتراضي بدل أن تُفسد كل الحسابات بصمت.
+        if (!isFinite(financialRates.deliveryCommissionPercent)) financialRates.deliveryCommissionPercent = DEFAULT_DELIVERY_COMMISSION_PCT;
+        if (!isFinite(financialRates.cardFeePercent)) financialRates.cardFeePercent = DEFAULT_CARD_FEE_PCT;
+        const dEl = document.getElementById('finDeliveryRate');
+        const cEl = document.getElementById('finCardRate');
+        if (dEl) dEl.value = financialRates.deliveryCommissionPercent;
+        if (cEl) cEl.value = financialRates.cardFeePercent;
+    };
+
+    window.saveFinancialRates = async function() {
+        const delivery = Number(document.getElementById('finDeliveryRate').value);
+        const card = Number(document.getElementById('finCardRate').value);
+        const note = document.getElementById('finRatesNote');
+        if (!isFinite(delivery) || delivery < 0 || delivery > 100 || !isFinite(card) || card < 0 || card > 100) {
+            if (note) { note.innerText = "Percentages must be between 0 and 100."; note.style.color = "var(--danger)"; }
+            return;
+        }
+        financialRates = { deliveryCommissionPercent: delivery, cardFeePercent: card };
+        renderFinancialReport();
+        try {
+            await setDoc(doc(db, "settings", "financial_rates"), {
+                deliveryCommissionPercent: delivery, cardFeePercent: card, updatedAt: serverTimestamp()
+            }, { merge: true });
+            logAudit("Financial Rates Updated", `Delivery ${delivery}%, Card ${card}%`);
+            if (note) { note.innerText = `Saved — delivery ${delivery}% and card ${card}% now apply to every month.`; note.style.color = "var(--success)"; }
+        } catch (e) {
+            if (note) { note.innerText = "Error saving rates: " + e.message; note.style.color = "var(--danger)"; }
+        }
+    };
+
+    window.loadFinancialPayments = async function() {
+        try {
+            const snap = await getDocs(collection(db, "financial_payments"));
+            allFinancialPayments = [];
+            snap.forEach(d => allFinancialPayments.push({ id: d.id, ...d.data() }));
+        } catch (e) {
+            console.error("Error loading financial payments:", e);
+            allFinancialPayments = [];
+        }
+    };
+
+    window.loadFinancialReportData = async function() {
+        // التقرير يحتاج المبيعات اليومية؛ نحمّلها إن لم تكن محمّلة (قد يُفتح هذا
+        // التبويب قبل تبويب Daily Report).
+        if (!allSalesReports.length) await loadSalesReports();
+        await loadFinancialRates();
+        await loadFinancialPayments();
+        renderFinancialReport();
+    };
+
+    /** مجموع قنوات المبيعات لشهر وفرع (فرع فارغ = كل الفروع). */
+    function financeSalesFor(month, branch) {
+        const { start, end } = financeMonthRange(month);
+        const rows = allSalesReports.filter(r =>
+            (r.date || '') >= start && (r.date || '') <= end &&
+            (!branch || r.branch === branch)
+        );
+        const t = { cash: 0, card: 0, snoonu: 0, talabat: 0, keeta: 0, reports: rows.length };
+        rows.forEach(r => {
+            t.cash += Number(r.cash) || 0;
+            t.card += Number(r.card) || 0;
+            t.snoonu += Number(r.snoonu) || 0;
+            t.talabat += Number(r.talabat) || 0;
+            t.keeta += Number(r.keeta) || 0;
+        });
+        t.deliveryGross = t.snoonu + t.talabat + t.keeta;
+        t.grossTotal = t.cash + t.card + t.deliveryGross;
+
+        const dPct = financialRates.deliveryCommissionPercent;
+        const cPct = financialRates.cardFeePercent;
+        t.cardFee = t.card * cPct / 100;
+        t.deliveryFee = t.deliveryGross * dPct / 100;
+        t.cashNet = t.cash;
+        t.cardNet = t.card - t.cardFee;
+        t.deliveryNet = t.deliveryGross - t.deliveryFee;
+        t.totalFees = t.cardFee + t.deliveryFee;
+        t.netRevenue = t.cashNet + t.cardNet + t.deliveryNet;
+        return t;
+    }
+
+    /** إجمالي الرواتب لشهر وفرع، محسوبًا بمحرك الرواتب نفسه لا بإدخال يدوي. */
+    function financePayrollTotal(month, branch) {
+        const { start, end } = financeMonthRange(month);
+        let total = 0, count = 0;
+        allEmployees.forEach(emp => {
+            // فرع فارغ = الشركة كلها، فتُحتسب رواتب المكتب الرئيسي أيضًا.
+            if (branch && emp.branch !== branch) return;
+            total += computePayroll(emp, start, end).netSalary;
+            count++;
+        });
+        return { total, count };
+    }
+
+    function financePaymentsFor(month, branch) {
+        return allFinancialPayments.filter(p =>
+            p.month === month && (!branch || p.branch === branch)
+        );
+    }
+
+    /** كل أرقام التقرير لشهر وفرع — يُعاد استخدامها للعرض وللتصدير ولمقارنة الفروع. */
+    function financeSummary(month, branch) {
+        const sales = financeSalesFor(month, branch);
+        const payroll = financePayrollTotal(month, branch);
+        const manual = financePaymentsFor(month, branch);
+        const fixedManual = manual.filter(p => p.type === 'fixed');
+        const variableManual = manual.filter(p => p.type !== 'fixed');
+        const fixedManualTotal = fixedManual.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+        const variableTotal = variableManual.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+        // الرواتب بند ثابت يُحتسب تلقائيًا ولا يُخزَّن في financial_payments.
+        const fixedTotal = fixedManualTotal + payroll.total;
+        const totalPayments = fixedTotal + variableTotal;
+        return {
+            sales, payroll, fixedManual, variableManual,
+            fixedManualTotal, variableTotal, fixedTotal, totalPayments,
+            netProfit: sales.netRevenue - totalPayments,
+            labourPct: sales.grossTotal > 0 ? (payroll.total / sales.grossTotal * 100) : 0
+        };
+    }
+
+    window.renderFinancialReport = function() {
+        const month = currentFinMonth();
+        const branch = currentFinBranch();
+        const s = financeSummary(month, branch);
+        const dPct = financialRates.deliveryCommissionPercent;
+        const cPct = financialRates.cardFeePercent;
+        const set = (id, text) => { const el = document.getElementById(id); if (el) el.innerText = text; };
+
+        // ---- البطاقات الثلاث
+        set('finCashGross', `${money(s.sales.cash)} QAR`);
+        set('finCashFee', 'none');
+        set('finCashNet', `${money(s.sales.cashNet)} QAR`);
+        set('finCardGross', `${money(s.sales.card)} QAR`);
+        set('finCardRateLabel', dPct === null ? '' : String(cPct));
+        set('finCardFee', `-${money(s.sales.cardFee)} QAR`);
+        set('finCardNet', `${money(s.sales.cardNet)} QAR`);
+        set('finDeliveryGross', `${money(s.sales.deliveryGross)} QAR`);
+        set('finDeliveryRateLabel', String(dPct));
+        set('finDeliveryFee', `-${money(s.sales.deliveryFee)} QAR`);
+        set('finDeliveryNet', `${money(s.sales.deliveryNet)} QAR`);
+        set('finDeliveryBreakdown',
+            `Snoonu ${money(s.sales.snoonu)} · Talabat ${money(s.sales.talabat)} · Keeta ${money(s.sales.keeta)}`);
+
+        // ---- جدول المبيعات
+        const salesRows = [
+            ['Cash', s.sales.cash, 0, 0, s.sales.cashNet],
+            ['Card', s.sales.card, cPct, s.sales.cardFee, s.sales.cardNet],
+            ['Delivery (Snoonu + Talabat + Keeta)', s.sales.deliveryGross, dPct, s.sales.deliveryFee, s.sales.deliveryNet]
+        ];
+        document.getElementById('finSalesTableBody').innerHTML = salesRows.map(([label, gross, pct, fee, net]) => `
+            <tr>
+                <td><b>${escapeHtml(label)}</b></td>
+                <td class="money-col">${money(gross)}</td>
+                <td class="money-col">${pct ? pct + '%' : '—'}</td>
+                <td class="money-col" style="color: var(--danger);">${fee ? '-' + money(fee) : '—'}</td>
+                <td class="money-col"><b>${money(net)}</b></td>
+            </tr>`).join('');
+        document.getElementById('finSalesTableFoot').innerHTML = `
+            <tr style="background: var(--surface-2); font-weight: 800;">
+                <td>TOTAL</td>
+                <td class="money-col">${money(s.sales.grossTotal)}</td>
+                <td class="money-col">—</td>
+                <td class="money-col" style="color: var(--danger);">-${money(s.sales.totalFees)}</td>
+                <td class="money-col"><strong style="color: var(--accent); font-size: 15px;">${money(s.sales.netRevenue)}</strong></td>
+            </tr>`;
+        const monthLabel = `${month}`;
+        set('finSalesSource', s.sales.reports
+            ? `Based on ${s.sales.reports} daily report(s) for ${monthLabel}${branch ? ' — ' + branch : ' — all branches'}.`
+            : `No daily sales reports found for ${monthLabel}${branch ? ' — ' + branch : ''}. Ask the branch managers to submit them.`);
+
+        // ---- المدفوعات
+        const payRow = (p) => `
+            <tr>
+                <td><b>${escapeHtml(p.name || '-')}</b></td>
+                <td>${escapeHtml(p.branch || 'All')}</td>
+                <td class="money-col">${money(p.amount)}</td>
+                <td style="color: var(--text-dim); font-size: 12.5px;">${escapeHtml(p.note || '—')}</td>
+                <td><button class="btn-danger btn-sm" onclick="deleteFinancialPayment('${escapeJsAttr(p.id)}')">${iconSvg('trash','ic-sm')}</button></td>
+            </tr>`;
+
+        // الرواتب سطر تلقائي غير قابل للحذف — مصدره محرك الرواتب.
+        const payrollRow = `
+            <tr style="background: var(--accent-soft);">
+                <td><b>Salaries</b><br><small style="color: var(--text-dim);">Automatic — from payroll, ${s.payroll.count} employee(s)</small></td>
+                <td>${escapeHtml(branch || 'All branches')}</td>
+                <td class="money-col"><b>${money(s.payroll.total)}</b></td>
+                <td style="color: var(--text-dim); font-size: 12.5px;">Pulled from the payroll engine</td>
+                <td><span style="color: var(--text-faint); font-size: 11px;">auto</span></td>
+            </tr>`;
+
+        document.getElementById('finFixedTableBody').innerHTML =
+            payrollRow + (s.fixedManual.length ? s.fixedManual.map(payRow).join('')
+                : `<tr><td colspan="5" style="text-align:center; color: var(--text-faint);">No other fixed payments added for this month.</td></tr>`);
+        document.getElementById('finFixedTableFoot').innerHTML = `
+            <tr style="background: var(--surface-2); font-weight: 800;">
+                <td colspan="2">TOTAL FIXED</td>
+                <td class="money-col">${money(s.fixedTotal)}</td>
+                <td colspan="2"></td>
+            </tr>`;
+
+        document.getElementById('finVariableTableBody').innerHTML = s.variableManual.length
+            ? s.variableManual.map(payRow).join('')
+            : `<tr><td colspan="5" style="text-align:center; color: var(--text-faint);">No variable payments added for this month.</td></tr>`;
+        document.getElementById('finVariableTableFoot').innerHTML = `
+            <tr style="background: var(--surface-2); font-weight: 800;">
+                <td colspan="2">TOTAL VARIABLE</td>
+                <td class="money-col">${money(s.variableTotal)}</td>
+                <td colspan="2"></td>
+            </tr>`;
+
+        // ---- النتيجة
+        document.getElementById('finBottomLineBody').innerHTML = `
+            <tr><td>Gross sales</td><td class="money-col">${money(s.sales.grossTotal)}</td></tr>
+            <tr><td>Card bank fee (${cPct}%)</td><td class="money-col" style="color: var(--danger);">-${money(s.sales.cardFee)}</td></tr>
+            <tr><td>Delivery commission (${dPct}%)</td><td class="money-col" style="color: var(--danger);">-${money(s.sales.deliveryFee)}</td></tr>
+            <tr style="font-weight: 800;"><td>Net revenue</td><td class="money-col">${money(s.sales.netRevenue)}</td></tr>
+            <tr><td>Fixed payments (incl. salaries)</td><td class="money-col" style="color: var(--danger);">-${money(s.fixedTotal)}</td></tr>
+            <tr><td>Variable payments</td><td class="money-col" style="color: var(--danger);">-${money(s.variableTotal)}</td></tr>
+            <tr style="background: var(--surface-2); font-weight: 800; font-size: 15px;">
+                <td>NET PROFIT</td>
+                <td class="money-col" style="color: ${s.netProfit >= 0 ? 'var(--success)' : 'var(--danger)'};">${money(s.netProfit)} QAR</td>
+            </tr>`;
+        set('finNetRevenue', `${money(s.sales.netRevenue)} QAR`);
+        set('finTotalPayments', `${money(s.totalPayments)} QAR`);
+        set('finNetProfit', `${money(s.netProfit)} QAR`);
+        set('finLabourPct', `${s.labourPct.toFixed(1)}%`);
+        set('finLabourNote', s.sales.grossTotal > 0
+            ? `Labour cost is ${s.labourPct.toFixed(1)}% of gross sales. In restaurants under 30% is generally healthy and above 35% needs attention.`
+                + (branch ? '' : ' In the combined view this includes Head Office staff, who carry no sales of their own.')
+            : 'Labour cost % needs sales figures for this month before it can be calculated.');
+
+        renderFinancePerBranch(month, branch);
+    };
+
+    /** جدول مقارنة الفروع — يظهر فقط في وضع «كل الفروع». */
+    function renderFinancePerBranch(month, branch) {
+        const card = document.getElementById('finPerBranchCard');
+        if (!card) return;
+        if (branch) { card.style.display = 'none'; return; }
+        card.style.display = 'block';
+
+        const rows = FINANCE_BRANCHES.map(b => ({ branch: b, s: financeSummary(month, b) }));
+        document.getElementById('finPerBranchBody').innerHTML = rows.map(({ branch: b, s }) => `
+            <tr>
+                <td><b>${escapeHtml(b)}</b></td>
+                <td class="money-col">${money(s.sales.cash)}</td>
+                <td class="money-col">${money(s.sales.cardNet)}</td>
+                <td class="money-col">${money(s.sales.deliveryNet)}</td>
+                <td class="money-col"><b>${money(s.sales.netRevenue)}</b></td>
+                <td class="money-col" style="color: var(--danger);">-${money(s.totalPayments)}</td>
+                <td class="money-col"><strong style="color: ${s.netProfit >= 0 ? 'var(--success)' : 'var(--danger)'};">${money(s.netProfit)}</strong></td>
+                <td>${s.sales.grossTotal > 0 ? s.labourPct.toFixed(1) + '%' : '—'}</td>
+            </tr>`).join('');
+
+        // المجموع هنا هو مجموع الفروع الأربعة فقط، وقد يختلف عن الإجمالي أعلاه
+        // الذي يشمل المكتب الرئيسي — نوضّح ذلك بصراحة في السطر.
+        const sum = (f) => rows.reduce((t, r) => t + f(r.s), 0);
+        document.getElementById('finPerBranchFoot').innerHTML = `
+            <tr style="background: var(--surface-2); font-weight: 800;">
+                <td>TOTAL (4 branches only)</td>
+                <td class="money-col">${money(sum(s => s.sales.cash))}</td>
+                <td class="money-col">${money(sum(s => s.sales.cardNet))}</td>
+                <td class="money-col">${money(sum(s => s.sales.deliveryNet))}</td>
+                <td class="money-col">${money(sum(s => s.sales.netRevenue))}</td>
+                <td class="money-col" style="color: var(--danger);">-${money(sum(s => s.totalPayments))}</td>
+                <td class="money-col">${money(sum(s => s.netProfit))}</td>
+                <td>—</td>
+            </tr>`;
+    }
+
+    window.addFinancialPayment = async function() {
+        const month = currentFinMonth();
+        const branch = currentFinBranch();
+        const name = document.getElementById('finPayName').value.trim();
+        const type = document.getElementById('finPayType').value;
+        const amount = Number(document.getElementById('finPayAmount').value);
+        const note = document.getElementById('finPayNote').value.trim();
+        const status = document.getElementById('finPayStatus');
+        const show = (msg, color) => { if (status) { status.innerText = msg; status.style.color = color; } };
+
+        if (!name) { show('Please enter the payment name.', 'var(--danger)'); return; }
+        if (!isFinite(amount) || amount <= 0) { show('Please enter a valid amount.', 'var(--danger)'); return; }
+        if (!branch) {
+            show('Select a specific branch before adding a payment — payments belong to one branch.', 'var(--danger)');
+            return;
+        }
+
+        show('Saving...', 'var(--warning)');
+        try {
+            await addDoc(collection(db, "financial_payments"), {
+                month, branch, name, type, amount, note, createdAt: serverTimestamp()
+            });
+            logAudit("Financial Payment Added", `${name} — ${amount} QAR (${type}), ${branch}, ${month}`);
+            document.getElementById('finPayName').value = '';
+            document.getElementById('finPayAmount').value = '';
+            document.getElementById('finPayNote').value = '';
+            await loadFinancialPayments();
+            renderFinancialReport();
+            show(`Added "${name}" — ${money(amount)} QAR.`, 'var(--success)');
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    window.deleteFinancialPayment = async function(paymentId) {
+        const p = allFinancialPayments.find(x => x.id === paymentId);
+        if (!confirm(`Delete this payment?\n${p ? p.name + ' — ' + money(p.amount) + ' QAR' : ''}`)) return;
+        try {
+            await deleteDoc(doc(db, "financial_payments", paymentId));
+            logAudit("Financial Payment Deleted", p ? `${p.name} — ${p.amount} QAR, ${p.branch}, ${p.month}` : paymentId);
+            await loadFinancialPayments();
+            renderFinancialReport();
+        } catch (e) {
+            alert('Error deleting payment: ' + e.message);
+        }
+    };
+
+    // البنود الثابتة تتكرر كل شهر، فبدل إعادة كتابتها 12 مرة نستوردها من الشهر
+    // السابق. كل بند يبقى مخزَّنًا بشهره الخاص، فتاريخ الشهور الماضية لا يتغيّر
+    // أبدًا عند تعديل مبلغ هذا الشهر.
+    window.copyFixedPaymentsFromPreviousMonth = async function() {
+        const month = currentFinMonth();
+        const branch = currentFinBranch();
+        const status = document.getElementById('finPayStatus');
+        const show = (msg, color) => { if (status) { status.innerText = msg; status.style.color = color; } };
+
+        if (!branch) { show('Select a specific branch first.', 'var(--danger)'); return; }
+        const prev = previousMonth(month);
+        const source = allFinancialPayments.filter(p => p.month === prev && p.branch === branch && p.type === 'fixed');
+        if (!source.length) { show(`No fixed payments found for ${prev} in this branch.`, 'var(--warning)'); return; }
+
+        const existing = new Set(
+            allFinancialPayments
+                .filter(p => p.month === month && p.branch === branch && p.type === 'fixed')
+                .map(p => (p.name || '').trim().toLowerCase())
+        );
+        const toCopy = source.filter(p => !existing.has((p.name || '').trim().toLowerCase()));
+        if (!toCopy.length) { show(`All fixed payments from ${prev} are already in ${month}.`, 'var(--warning)'); return; }
+        if (!confirm(`Copy ${toCopy.length} fixed payment(s) from ${prev} into ${month}?`)) return;
+
+        show('Copying...', 'var(--warning)');
+        try {
+            for (const p of toCopy) {
+                await addDoc(collection(db, "financial_payments"), {
+                    month, branch, name: p.name, type: 'fixed',
+                    amount: Number(p.amount) || 0, note: p.note || '',
+                    createdAt: serverTimestamp()
+                });
+            }
+            logAudit("Fixed Payments Copied", `${toCopy.length} item(s) from ${prev} to ${month}, ${branch}`);
+            await loadFinancialPayments();
+            renderFinancialReport();
+            show(`Copied ${toCopy.length} fixed payment(s) from ${prev}. Adjust any amount that changed.`, 'var(--success)');
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    window.exportFinancialReportExcel = function() {
+        const month = currentFinMonth();
+        const branch = currentFinBranch();
+        const s = financeSummary(month, branch);
+        const dPct = financialRates.deliveryCommissionPercent;
+        const cPct = financialRates.cardFeePercent;
+        const r = (item, gross, pct, ded, net) => ({
+            "Item": item,
+            "Gross (QAR)": gross === '' ? '' : Number(Number(gross).toFixed(2)),
+            "Rate %": pct === '' ? '' : pct,
+            "Deduction (QAR)": ded === '' ? '' : Number(Number(ded).toFixed(2)),
+            "Net (QAR)": net === '' ? '' : Number(Number(net).toFixed(2))
+        });
+
+        const rows = [
+            r('SALES', '', '', '', ''),
+            r('Cash', s.sales.cash, '', 0, s.sales.cashNet),
+            r('Card', s.sales.card, cPct, s.sales.cardFee, s.sales.cardNet),
+            r('Snoonu', s.sales.snoonu, '', '', ''),
+            r('Talabat', s.sales.talabat, '', '', ''),
+            r('Keeta', s.sales.keeta, '', '', ''),
+            r('Delivery total', s.sales.deliveryGross, dPct, s.sales.deliveryFee, s.sales.deliveryNet),
+            r('NET REVENUE', s.sales.grossTotal, '', s.sales.totalFees, s.sales.netRevenue),
+            r('', '', '', '', ''),
+            r('FIXED PAYMENTS', '', '', '', ''),
+            r(`Salaries (${s.payroll.count} employees, automatic)`, '', '', s.payroll.total, ''),
+            ...s.fixedManual.map(p => r(p.name || '-', '', '', Number(p.amount) || 0, '')),
+            r('Total fixed', '', '', s.fixedTotal, ''),
+            r('', '', '', '', ''),
+            r('VARIABLE PAYMENTS', '', '', '', ''),
+            ...s.variableManual.map(p => r(p.name || '-', '', '', Number(p.amount) || 0, '')),
+            r('Total variable', '', '', s.variableTotal, ''),
+            r('', '', '', '', ''),
+            r('NET PROFIT', '', '', s.totalPayments, s.netProfit),
+            r('Labour cost % of sales', '', Number(s.labourPct.toFixed(1)), '', '')
+        ];
+
+        const ws = XLSX.utils.json_to_sheet(rows);
+        ws['!cols'] = [{ wch: 42 }, { wch: 15 }, { wch: 9 }, { wch: 17 }, { wch: 15 }];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Financial");
+
+        // ورقة ثانية بمقارنة الفروع عند تصدير الوضع المجمّع.
+        if (!branch) {
+            const perBranch = FINANCE_BRANCHES.map(b => {
+                const bs = financeSummary(month, b);
+                return {
+                    "Branch": b,
+                    "Cash (QAR)": Number(bs.sales.cash.toFixed(2)),
+                    "Card net (QAR)": Number(bs.sales.cardNet.toFixed(2)),
+                    "Delivery net (QAR)": Number(bs.sales.deliveryNet.toFixed(2)),
+                    "Net revenue (QAR)": Number(bs.sales.netRevenue.toFixed(2)),
+                    "Payments (QAR)": Number(bs.totalPayments.toFixed(2)),
+                    "Net profit (QAR)": Number(bs.netProfit.toFixed(2)),
+                    "Labour %": Number(bs.labourPct.toFixed(1))
+                };
+            });
+            const ws2 = XLSX.utils.json_to_sheet(perBranch);
+            ws2['!cols'] = [{ wch: 30 }, { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 10 }];
+            XLSX.utils.book_append_sheet(wb, ws2, "By Branch");
+        }
+
+        XLSX.writeFile(wb, `Financial_Report_${month}${branch ? '_' + branch.replace(/[^A-Z0-9]+/gi, '_') : '_All_Branches'}.xlsx`);
+        logAudit("Financial Report Exported", `${month}${branch ? ' — ' + branch : ' — all branches'}, net profit ${s.netProfit.toFixed(2)} QAR`);
     };
 
     window.exportToExcel = function() {

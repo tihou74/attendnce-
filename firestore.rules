@@ -153,6 +153,15 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ---- financial_payments (the fixed/variable payment lines that feed the
+    // Monthly Financial Report tab in the admin dashboard) -------------------
+    // Admin-only in BOTH directions. Unlike sales_reports the kiosk has no
+    // reason to even create these: rent, salaries and purchase figures are
+    // entered by management on the dashboard, never from the employee page.
+    match /financial_payments/{paymentId} {
+      allow read, write: if isAdmin();
+    }
+
     // ---- sales_reports (the Daily Sales Report a branch manager submits from
     // the managers-only #report screen in index.html) ------------------------
     // The kiosk page may CREATE a report but can NEVER read one back. Sales
