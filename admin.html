@@ -1942,9 +1942,11 @@
     function isoFromDate(d) {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
-    function getWorkedDateSet(empLogs) {
+    // يستقبل الجلسات مبنيةً مسبقًا (لا سجلات خام) حتى يكون «يوم العمل» هو
+    // تاريخ بداية الوردية دائمًا، ولا تُبنى الجلسات مرتين بلا داعٍ.
+    function getWorkedDateSet(sessions) {
         const set = new Set();
-        buildSessions(empLogs).forEach(s => { if (s.date) set.add(s.date); });
+        sessions.forEach(s => { if (s.date) set.add(s.date); });
         return set;
     }
     function getManuallyDeductedDateSet(empId) {
@@ -1990,13 +1992,15 @@
     // selected period, exactly like the deduction/allowance/overtime
     // calculations elsewhere in computePayroll. A period with zero
     // attendance must always net out to (near) zero salary, in every month.
-    function computeMonthlyAttendanceAdjustment(emp, empLogs, startDate, endDate) {
+    // `sessions` هي جلسات هذا الموظف التي *بدأت* داخل الفترة (انظر
+    // sessionsInRange) — لا سجلات خام، حتى تُنسب كل وردية ليوم بدايتها.
+    function computeMonthlyAttendanceAdjustment(emp, sessions, startDate, endDate) {
         if (!startDate || !endDate) return { absentDays: 0, extraWorkedDays: 0 };
         const startD = new Date(`${startDate}T00:00:00`);
         const endD = new Date(`${endDate}T00:00:00`);
         if (isNaN(startD.getTime()) || isNaN(endD.getTime()) || endD < startD) return { absentDays: 0, extraWorkedDays: 0 };
 
-        const workedSet = getWorkedDateSet(empLogs);
+        const workedSet = getWorkedDateSet(sessions);
         const deductedSet = getManuallyDeductedDateSet(emp.id);
         const leaveSet = getLeaveCoveredDateSet(emp.id);
         const createdISO = getEmployeeCreatedDateISO(emp);
@@ -2049,21 +2053,37 @@
     // A day with e.g. 11.5 worked hours (1.5h over standard, within the
     // 2h grace) is paid as a completely normal day with zero overtime.
     function computePayroll(emp, startDate, endDate) {
-        let empLogs = allAttendance.filter(l => {
-            let idMatch = l.employeeId === emp.id;
-            let dateMatch = (!startDate || l.date >= startDate) && (!endDate || l.date <= endDate);
-            return idMatch && dateMatch;
-        });
+        // MANAGEMENT POLICY: a shift belongs entirely to the month it STARTED
+        // in. A shift clocking in on 31 October at 10 PM and out on 1 November
+        // at 6 AM counts fully in OCTOBER.
+        //
+        // This is why the raw logs are NOT date-filtered here. `workMinutes` is
+        // stored on the CHECK-OUT document, so filtering raw logs to the period
+        // used to drop the check-out of a shift that started on the last day of
+        // the period — silently moving those hours into the next month's
+        // payroll. We now pair sessions from the employee's complete history and
+        // then filter by the session's START date via sessionsInRange().
+        const allEmpLogs = allAttendance.filter(l => l.employeeId === emp.id);
+        const sessions = sessionsInRange(allEmpLogs, startDate, endDate);
 
+        // Worked hours = the minutes of every session that STARTED in the
+        // period, regardless of which calendar day it ended on.
         let totalMins = 0;
-        empLogs.forEach(l => { if (l.workMinutes) totalMins += Number(l.workMinutes); });
+        sessions.forEach(s => { totalMins += Number(s.workMinutes) || 0; });
         let totalHours = totalMins / 60;
+
+        // The raw docs behind those sessions, kept for the attendance table in
+        // the employee profile modal.
+        const empLogs = [];
+        sessions.forEach(s => {
+            if (s.checkIn) empLogs.push(s.checkIn);
+            if (s.checkOut) empLogs.push(s.checkOut);
+        });
 
         // Group this employee's paired sessions by calendar day, then apply
         // the daily 10h/2h-grace overtime rule to EACH day independently,
         // splitting each day's overtime minutes into day/night portions
         // using the actual check-in/check-out times of that day's sessions.
-        const sessions = buildSessions(empLogs);
         const byDate = new Map(); // date -> { workMins, sessions: [] }
         sessions.forEach(s => {
             if (!byDate.has(s.date)) byDate.set(s.date, { workMins: 0, sessions: [] });
@@ -2136,7 +2156,7 @@
         // Conversely, working MORE days than the earned-rest balance implied
         // were needed pays a bonus for each such extra worked day, at the
         // overtime-day rate.
-        const auto = computeMonthlyAttendanceAdjustment(emp, empLogs, startDate, endDate);
+        const auto = computeMonthlyAttendanceAdjustment(emp, sessions, startDate, endDate);
         let autoAbsenceDays = auto.absentDays;
         let autoAbsenceAmount = autoAbsenceDays * dailyRate;
         let extraWorkedDays = auto.extraWorkedDays;
@@ -2176,7 +2196,7 @@
             deductionDays, deductionAmountDirect, totalDeductionAmount,
             autoAbsenceDays, autoAbsenceAmount, extraWorkedDays, extraWorkedAmount,
             housingDeductionAmount, otherAmountDeducted,
-            allowancesPaidThisPeriod, netSalary, empLogs
+            allowancesPaidThisPeriod, netSalary, empLogs, sessions
         };
     }
 
@@ -2329,6 +2349,20 @@
         return sessions;
     }
 
+    // ---- ترشيح الجلسات بتاريخ *بداية* الوردية -------------------------------
+    // سياسة الإدارة: الوردية تُحتسب بالكامل في الشهر الذي بدأت فيه. وردية تبدأ
+    // 31 أكتوبر 10 مساءً وتنتهي 1 نوفمبر 6 صباحًا تُحتسب كلها في أكتوبر.
+    //
+    // لهذا يجب أن تُمرَّر هنا سجلات الموظف *كاملة* بلا ترشيح تاريخ مسبق: دقائق
+    // العمل مخزَّنة على مستند الانصراف، فترشيح السجلات الخام أولاً كان يقطع
+    // انصراف وردية بدأت آخر يوم في الفترة، فتنتقل ساعاتها إلى الشهر التالي.
+    // نبني الجلسات من التاريخ الكامل ثم نرشّحها بـ s.date وهو تاريخ الدخول.
+    function sessionsInRange(logs, startDate, endDate) {
+        return buildSessions(logs).filter(s =>
+            (!startDate || s.date >= startDate) && (!endDate || s.date <= endDate)
+        );
+    }
+
     window.loadAttendanceLogs = async function() {
         try {
             const q = query(collection(db, "attendance"), orderBy("timestamp", "desc"));
@@ -2357,15 +2391,12 @@
         const searchInput = document.getElementById("searchInput").value.toLowerCase();
         const filterType = document.getElementById("filterType").value;
 
-        let filteredLogs = allAttendance.filter(l => {
-            let date = l.date || "";
-            let branch = l.branch || "";
-            let matchDate = (!startDate || date >= startDate) && (!endDate || date <= endDate);
-            let matchBranch = !filterBranch || branch === filterBranch;
-            return matchDate && matchBranch;
-        });
+        // الفرع فقط يُرشَّح على السجلات الخام؛ التاريخ يُرشَّح على *الجلسات*
+        // بتاريخ بدايتها (sessionsInRange) حتى لا تُقطع وردية عابرة لمنتصف
+        // الليل عند حدّ الفترة فتظهر كأنها بلا انصراف.
+        let branchLogs = allAttendance.filter(l => !filterBranch || (l.branch || "") === filterBranch);
 
-        let sessions = buildSessions(filteredLogs);
+        let sessions = sessionsInRange(branchLogs, startDate, endDate);
         sessions = sessions.filter(s => {
             let name = (s.employeeName || "").toLowerCase();
             let matchName = !searchInput || name.includes(searchInput);
@@ -2721,8 +2752,8 @@
     window.exportToExcel = function() {
         const startDate = document.getElementById("startDate").value;
         const endDate = document.getElementById("endDate").value;
-        const filtered = allAttendance.filter(l => (!startDate || l.date >= startDate) && (!endDate || l.date <= endDate));
-        const sessions = buildSessions(filtered);
+        // نفس سياسة «الوردية تتبع يوم بدايتها» المطبَّقة في الجدول والرواتب.
+        const sessions = sessionsInRange(allAttendance, startDate, endDate);
         const ws = XLSX.utils.json_to_sheet(sessionsToRows(sessions));
         ws['!cols'] = [{ wch: 26 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 26 }];
         const wb = XLSX.utils.book_new();
@@ -2820,8 +2851,9 @@
         if (!attReportEmpId) return;
         const start = document.getElementById("attReportStart").value;
         const end = document.getElementById("attReportEnd").value;
-        const logs = allAttendance.filter(l => l.employeeId === attReportEmpId && (!start || l.date >= start) && (!end || l.date <= end));
-        const sessions = buildSessions(logs);
+        // سجلات الموظف كاملة ثم ترشيح بتاريخ بداية الوردية — نفس سياسة الرواتب.
+        const logs = allAttendance.filter(l => l.employeeId === attReportEmpId);
+        const sessions = sessionsInRange(logs, start, end);
 
         let html = "";
         let totalMins = 0;
@@ -3145,7 +3177,8 @@
         document.getElementById("repNetSalary").innerText = `${p.netSalary.toFixed(2)} QAR`;
 
         let profHtml = "";
-        buildSessions(p.empLogs).forEach(s => {
+        // p.sessions مرشَّحة أصلًا بتاريخ بداية الوردية — لا نعيد بناءها.
+        p.sessions.forEach(s => {
             profHtml += `<tr>
                 <td>${escapeHtml(s.date)}</td>
                 <td>${s.checkIn ? escapeHtml(s.checkIn.time) : '-'}</td>
