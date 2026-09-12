@@ -23,10 +23,11 @@
 
 'use strict';
 
-// v3: أُزيل التحويل التلقائي من report.html (كان يُبطل تثبيت تطبيق المديرين على
+// v4: أُلزم جلب HTML بالتحقق من الخادم (no-cache) لأن كاش المتصفح كان يُخفي
+// تبويبًا جديدًا بعد نشره. v3: أُزيل التحويل التلقائي من report.html (كان يُبطل تثبيت تطبيق المديرين على
 // iOS)، ويجب إبطال
 // الكاش القديم حتى لا يبقى من ثبّت التطبيق سابقًا على النسخة القديمة.
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const SHELL_CACHE = `alsheikha-shell-${CACHE_VERSION}`;
 const ASSET_CACHE = `alsheikha-assets-${CACHE_VERSION}`;
 
@@ -100,7 +101,25 @@ self.addEventListener('activate', (event) => {
 async function networkFirst(request) {
     const cache = await caches.open(SHELL_CACHE);
     try {
-        const response = await fetch(request);
+        // ⚠️ cache: 'no-cache' ضرورية ولا تُحذف.
+        // GitHub Pages يُرسل `cache-control: max-age=600`، أي يأمر المتصفح بحفظ
+        // الصفحة عشر دقائق. و«الشبكة أولًا» وحدها لا تكفي: طلب fetch العادي يمرّ
+        // على كاش HTTP في المتصفح فيُعيد النسخة القديمة بلا أن يسأل الخادم —
+        // وهذا ما جعل تبويبًا جديدًا لا يظهر للمالك بعد نشره فعلًا.
+        //
+        // 'no-cache' لا تعني تعطيل الكاش، بل تُلزم المتصفح بالتحقق من الخادم في
+        // كل مرة: إن لم يتغيّر الملف يردّ الخادم 304 بلا تنزيل (رخيص جدًا)، وإن
+        // تغيّر يُنزّل الجديد. فنحصل على أحدث نسخة دائمًا بلا هدر.
+        //
+        // نُمرّر request.url نصًا لا كائن Request، لأن إنشاء Request جديد من طلب
+        // تنقّل (mode: 'navigate') يرفضه المتصفح.
+        let response;
+        try {
+            response = await fetch(request.url, { cache: 'no-cache', credentials: 'same-origin' });
+        } catch (inner) {
+            // متصفح لا يدعم الخيار أو حالة خاصة — لا نفقد الطلب.
+            response = await fetch(request);
+        }
         if (response && response.ok) {
             cache.put(request, response.clone()).catch(() => {});
         }
