@@ -2040,9 +2040,19 @@
         sessions.forEach(s => { if (s.date) set.add(s.date); });
         return set;
     }
+    // ⚠️ `!d.isOtherAmount` ضرورية — كانت غائبة وهذا كان خطأً حقيقيًا:
+    // خانة «Other Amounts Deducted» تُخزَّن كسجل خصم مؤرَّخ بأول يوم من فترة
+    // الرواتب. وبما أن محرّك الغياب يستثني أي يوم عليه خصم يدوي (منعًا للخصم
+    // مرتين)، كان استخدام تلك الخانة يجعل **أول يوم من الشهر يختفي** من حساب
+    // الغياب وأيام الراحة المستحقة — فلو غاب الموظف في ذلك اليوم لم يُخصم منه،
+    // بصمت وبلا أن يدري أحد.
+    // «المبالغ الأخرى» مبلغ مالي متفرّق لا علاقة له بيوم غياب، ولها حسابها
+    // المستقل في otherAmountDeductedInRange()، فيجب استثناؤها هنا.
     function getManuallyDeductedDateSet(empId) {
         const set = new Set();
-        allDeductions.filter(d => d.employeeId === empId && d.date).forEach(d => set.add(d.date));
+        allDeductions
+            .filter(d => d.employeeId === empId && d.date && !d.isOtherAmount)
+            .forEach(d => set.add(d.date));
         return set;
     }
     function getLeaveCoveredDateSet(empId) {
@@ -2077,19 +2087,31 @@
     // Applies identically to EVERY month (28, 29, 30, or 31 days) — there is
     // no month-length-based proration at all here; the earned-rest-day
     // balance is derived purely from how many days were actually worked.
-    // Days before the employee was hired are excluded. This deliberately
-    // does NOT skip days after "today" — the calculation is driven purely by
-    // whatever attendance/leave/deduction data actually exists for the
-    // selected period, exactly like the deduction/allowance/overtime
-    // calculations elsewhere in computePayroll. A period with zero
-    // attendance must always net out to (near) zero salary, in every month.
+    // Days before the employee was hired are excluded.
+    //
+    // ⚠️ الحساب يتوقف عند تاريخ اليوم (قرار المالك):
+    // شاشة الرواتب تفتح افتراضيًا على 1 إلى آخر الشهر الحالي. وكان الحساب يمتد
+    // إلى آخر الشهر بلا توقف، فالأيام التي **لم تأتِ بعد** تُحتسب غيابًا: فتح
+    // رواتب 1–30 سبتمبر في يوم 12 كان يُظهر نحو 19 يوم غياب وينهار الصافي من
+    // 3,000 إلى 1,100 لموظف لم يتأخر يومًا واحدًا — رقم مرعب وبلا معنى.
+    //
+    // القصّ عند اليوم لا يغيّر رواتب نهاية الشهر إطلاقًا: عند إغلاق الشهر يكون
+    // «اليوم» قد تجاوز آخر الفترة فلا يُقصّ شيء. الفرق يظهر فقط في المراجعة
+    // أثناء الشهر، وهناك يصبح الرقم واقعيًا بدل أن يكون مفزعًا.
+    //
     // `sessions` هي جلسات هذا الموظف التي *بدأت* داخل الفترة (انظر
     // sessionsInRange) — لا سجلات خام، حتى تُنسب كل وردية ليوم بدايتها.
     function computeMonthlyAttendanceAdjustment(emp, sessions, startDate, endDate) {
         if (!startDate || !endDate) return { absentDays: 0, extraWorkedDays: 0 };
         const startD = new Date(`${startDate}T00:00:00`);
-        const endD = new Date(`${endDate}T00:00:00`);
+        let endD = new Date(`${endDate}T00:00:00`);
         if (isNaN(startD.getTime()) || isNaN(endD.getTime()) || endD < startD) return { absentDays: 0, extraWorkedDays: 0 };
+
+        // لا يُحتسب أي يوم لم يأتِ بعد.
+        const todayD = new Date(`${todayISO()}T00:00:00`);
+        if (endD > todayD) endD = todayD;
+        // الفترة كلها في المستقبل (مثل فتح رواتب الشهر القادم) — لا غياب ولا مكافأة.
+        if (endD < startD) return { absentDays: 0, extraWorkedDays: 0 };
 
         const workedSet = getWorkedDateSet(sessions);
         const deductedSet = getManuallyDeductedDateSet(emp.id);
