@@ -1,0 +1,161 @@
+rules_version = '2';
+
+// =============================================================================
+// Al Sheikha Group — Attendance & Payroll — Firestore Security Rules (v4)
+// -----------------------------------------------------------------------------
+// How to deploy:
+//   1) Firebase Console -> Firestore Database -> Rules tab
+//   2) Paste this ENTIRE file, replacing whatever is there now
+//   3) Click "Publish"
+//
+// Role system (Admin/Accountant/Secretary) has been REMOVED per request.
+// Any user who can sign in with a valid email/password Firebase Auth
+// account (i.e. any account you create in Firebase Console > Authentication
+// > Users) gets full read/write access to every collection below — there is
+// no more admin_users/{uid} lookup, no more field-level salary/otRate
+// restriction. The only gatekeeping left is:
+//   1) Firebase Authentication itself — only accounts you create can log in.
+//   2) These rules require request.auth != null (and non-anonymous for the
+//      admin dashboard) for every read/write, so unauthenticated internet
+//      traffic still gets nothing.
+// "Kiosk" = the index.html check-in/leave-request page, signed in
+// ANONYMOUSLY. It keeps the same narrow, write-mostly access as before
+// (create attendance/leave_requests, read employees/pins/geofences to
+// populate its dropdowns and verify PINs, but no update/delete).
+// =============================================================================
+
+function isSignedIn() {
+  return request.auth != null;
+}
+
+// Any real admin-dashboard login (email/password), NOT the kiosk's
+// anonymous session. Every such user now gets full access — no roles.
+function isAdmin() {
+  return isSignedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+}
+
+function isKiosk() {
+  return isSignedIn() && request.auth.token.firebase.sign_in_provider == 'anonymous';
+}
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- employees --------------------------------------------------------
+    match /employees/{empId} {
+      allow read: if isAdmin() || isKiosk();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ---- employee_pins ------------------------------------------------------
+    match /employee_pins/{empId} {
+      allow read: if isAdmin() || isKiosk();
+      allow write: if isAdmin();
+    }
+
+    // ---- deductions (dated deduction-day entries) ----------------------------
+    match /deductions/{deductionId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ---- attendance ---------------------------------------------------------
+    match /attendance/{logId} {
+      allow read: if isAdmin() || isKiosk();
+      allow create: if isAdmin() || isKiosk();
+      allow update, delete: if isAdmin();
+    }
+
+    // ---- leave_requests -------------------------------------------------------
+    match /leave_requests/{reqId} {
+      allow read: if isAdmin();
+      allow create: if isKiosk() || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    // ---- employee_applications (self-registration by new hires from the
+    // index.html kiosk page) ---------------------------------------------------
+    // Kiosk (any visitor) can submit a new application, but can never read
+    // the list back (so one applicant can't browse everyone else's QID
+    // photos/phone numbers) and can never update/delete once submitted.
+    // Only the admin dashboard can review, approve, or reject.
+    match /employee_applications/{appId} {
+      allow read: if isAdmin();
+      allow create: if isKiosk() || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    // ---- branch_geofences ---------------------------------------------------
+    match /branch_geofences/{branchId} {
+      allow read: if isAdmin() || isKiosk();
+      allow write: if isAdmin();
+    }
+
+    // ---- settings (legacy single geofence doc, if still present) ------------
+    match /settings/{docId} {
+      allow read: if isAdmin() || isKiosk();
+      allow write: if isAdmin();
+    }
+
+    // ---- employee_warnings (Warning Letters tab — admin-only; kiosk has no
+    // access at all, since only the admin dashboard creates/reviews these) ---
+    match /employee_warnings/{warnId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ---- annual_leaves (Annual Leaves tab — admin-only) ---------------------
+    match /annual_leaves/{leaveId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ---- allowance_payments (linked leave/ticket allowance payouts created
+    // automatically when an Annual Leave is saved — admin-only, same as the
+    // deductions/annual_leaves collections it is tied to) --------------------
+    match /allowance_payments/{paymentId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ---- admin_users (legacy collection from the old role system — no
+    // longer used by the app, kept locked down in case old docs linger) -----
+    match /admin_users/{uid} {
+      allow read, write: if isAdmin();
+    }
+
+    // ---- audit_log (read-only trail of key mutating actions — admin-only
+    // read/create, NO update/delete allowed for anyone, keeping the log
+    // immutable/tamper-resistant once written) -------------------------------
+    match /audit_log/{entryId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // ---- training_content (the daily work guide/protocol text+images per
+    // restaurant+department, doc id = {RESTAURANT}__{DEPARTMENT}) -----------
+    // The kiosk (Employee Training tab) only ever needs to READ this to show
+    // it to the employee; only the admin dashboard's Training Content editor
+    // ever writes it.
+    match /training_content/{docId} {
+      allow read: if isAdmin() || isKiosk();
+      allow write: if isAdmin();
+    }
+
+    // ---- training_acknowledgments (permanent proof an employee confirmed
+    // reading the training guide) --------------------------------------------
+    // The kiosk creates one on each confirmation (and re-reads its own
+    // history to show the "already confirmed" banner isn't strictly needed
+    // server-side, but allowing isKiosk() read here keeps that banner
+    // working without a separate admin-only round trip). Only the admin
+    // dashboard's Training Records view otherwise reads these. NO update/
+    // delete for anyone — this must stay a permanent, tamper-resistant audit
+    // trail, exactly like audit_log above.
+    match /training_acknowledgments/{ackId} {
+      allow read: if isAdmin() || isKiosk();
+      allow create: if isKiosk() || isAdmin();
+      allow update, delete: if false;
+    }
+
+    // ---- Default deny for anything not explicitly listed above ---------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

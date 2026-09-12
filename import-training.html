@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>استيراد محتوى التدريب — Training Content Importer</title>
+<!-- =============================================================================
+     أداة استيراد محتوى التدريب إلى Firestore (تُستخدم لمرة واحدة عند كل تحديث)
+     -----------------------------------------------------------------------------
+     كيف تعمل:
+       1) كل ملف في مجلد training-content/ يسجّل نفسه على
+          window.TRAINING_CONTENT_REGISTRY عبر وسم script عادي بالأسفل — لا
+          نستخدم fetch لملفات JSON محلية حتى تعمل هذه الصفحة حتى لو فُتحت
+          مباشرة من القرص (file://) بدون أي سيرفر، ودون مشاكل CORS / MIME.
+       2) تسجّل الدخول بنفس حساب لوحة الإدارة (Email/Password) — قواعد
+          firestore.rules تسمح بالكتابة على training_content لأي مستخدم مسجّل
+          غير مجهول فقط.
+       3) الصفحة تحسب معرّف المستند بنفس معادلة index.html و admin.html
+          (RESTAURANT__DEPARTMENT بعد استبدال المسافات بـ _) وتتحقق من حجم
+          المستند مقابل حد Firestore (1 ميغابايت) قبل الرفع.
+       4) الرفع يستخدم setDoc — أي أنه يستبدل مصفوفة sections بالكامل، وهذا هو
+          السلوك الصحيح لمحرر محتوى (وليس دمجًا تدريجيًا).
+
+     لإضافة قسم/مطعم جديد: أضف ملف .js جديد في training-content/ ثم أضف له
+     وسم script بمسار الملف في قائمة السكربتات بالأسفل. لا شيء آخر مطلوب.
+     ============================================================================= -->
+<style>
+    :root {
+        --bg: #f5f1e8; --surface: #fffdf8; --surface-2: #f3ede0;
+        --border: #ddd2b8; --text: #3a3226; --text-dim: #7a6f5a;
+        --primary: #6366f1; --success: #16a34a; --warning: #b45309; --danger: #dc2626;
+        --radius: 14px; --radius-sm: 10px;
+    }
+    * { box-sizing: border-box; }
+    body {
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        background: var(--bg); color: var(--text);
+        margin: 0; padding: 24px 16px;
+    }
+    .wrap { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 21px; margin: 0 0 6px; }
+    .sub { color: var(--text-dim); font-size: 13.5px; margin: 0 0 22px; line-height: 1.7; }
+    .card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 20px; margin-bottom: 18px;
+        box-shadow: 0 6px 18px -10px rgba(58,50,38,0.25);
+    }
+    label { display: block; font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+    input[type="email"], input[type="password"] {
+        width: 100%; padding: 12px 14px; font-size: 15px; border-radius: var(--radius-sm);
+        border: 1px solid var(--border); background: #fff; font-family: inherit;
+        margin-bottom: 14px;
+    }
+    button {
+        font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+        border: none; border-radius: var(--radius-sm); padding: 12px 20px; color: #fff;
+        transition: 0.15s;
+    }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); }
+    .btn-success { background: var(--success); }
+    .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+    .btn-sm { padding: 8px 14px; font-size: 12.5px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td {
+        text-align: start; padding: 11px 10px; font-size: 13px;
+        border-bottom: 1px solid var(--border);
+    }
+    th { background: var(--surface-2); font-size: 12px; color: var(--text-dim); }
+    code {
+        background: var(--surface-2); padding: 2px 6px; border-radius: 5px;
+        font-size: 12px; direction: ltr; display: inline-block;
+    }
+    .status { margin-top: 14px; font-size: 13.5px; font-weight: 700; min-height: 20px; }
+    .pill { font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 20px; display: inline-block; }
+    .pill-ok { background: rgba(22,163,74,0.14); color: var(--success); }
+    .pill-warn { background: rgba(180,83,9,0.14); color: var(--warning); }
+    .pill-bad { background: rgba(220,38,38,0.12); color: var(--danger); }
+    .hidden { display: none !important; }
+    details { margin-top: 12px; }
+    summary { cursor: pointer; font-size: 13px; font-weight: 700; color: var(--primary); }
+    .preview {
+        margin-top: 12px; max-height: 420px; overflow-y: auto; background: var(--surface-2);
+        border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px;
+    }
+    .preview h4 { margin: 14px 0 6px; font-size: 14px; }
+    .preview h4:first-child { margin-top: 0; }
+    .preview p {
+        white-space: pre-wrap; margin: 6px 0; font-size: 13px; line-height: 1.75;
+        text-align: start;
+    }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+    <h1>استيراد محتوى التدريب إلى Firestore</h1>
+    <p class="sub">
+        هذه الأداة ترفع محتوى التدريب المحفوظ في مجلد <code>training-content/</code> إلى مجموعة
+        <code>training_content</code> في Firestore، ليظهر مباشرة لموظفي الفروع في تبويب
+        «Training» بصفحة <code>index.html</code>، ويصبح قابلاً للتعديل من تبويب «Employee Training»
+        في لوحة الإدارة.
+        <br>
+        سجّل الدخول بنفس حساب لوحة الإدارة، ثم راجع المحتوى، ثم اضغط «رفع».
+    </p>
+
+    <!-- تسجيل الدخول -->
+    <div class="card" id="loginCard">
+        <label for="email">البريد الإلكتروني (نفس حساب لوحة الإدارة)</label>
+        <input type="email" id="email" placeholder="admin@example.com" autocomplete="username">
+        <label for="password">كلمة المرور</label>
+        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+        <button class="btn-primary" id="btnLogin">تسجيل الدخول</button>
+        <div class="status" id="loginStatus"></div>
+    </div>
+
+    <!-- قائمة المحتوى المكتشف -->
+    <div class="card hidden" id="contentCard">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div>
+                <b id="signedInAs" style="font-size:13.5px;"></b>
+                <div style="font-size:12.5px; color:var(--text-dim); margin-top:3px;">
+                    حد Firestore لكل مستند هو 1 ميغابايت — الحجم المحسوب أدناه يشمل النصوص والصور معًا.
+                </div>
+            </div>
+            <button class="btn-ghost btn-sm" id="btnLogout">خروج</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>المطعم / القسم</th>
+                    <th>معرّف المستند</th>
+                    <th>الأقسام</th>
+                    <th>الحجم</th>
+                    <th>الحالة</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="registryBody"></tbody>
+        </table>
+
+        <div style="margin-top:18px; display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn-success" id="btnImportAll">رفع كل المحتوى</button>
+        </div>
+        <div class="status" id="importStatus"></div>
+    </div>
+
+    <!-- معاينة -->
+    <div class="card hidden" id="previewCard">
+        <b style="font-size:14px;" id="previewTitle"></b>
+        <div class="preview" id="previewBody"></div>
+        <button class="btn-ghost btn-sm" style="margin-top:12px;" id="btnClosePreview">إغلاق المعاينة</button>
+    </div>
+
+</div>
+
+<!-- =========================================================================
+     ملفات المحتوى — أضف سطرًا لكل ملف جديد تنشئه في training-content/
+     ========================================================================= -->
+<script src="training-content/gaimer-w-kahi-hospitality.js"></script>
+<!-- دليل الكاشير مشترك بين البراندين، فالملف الواحد يسجّل مستندين:
+     GAIMER_W_KAHI__CASHIER و SHAI_BU_HAMAD__CASHIER -->
+<script src="training-content/cashier-shared.js"></script>
+<!-- دليل الباريستا خاص بقيمر وكاهي فقط: GAIMER_W_KAHI__BARISTA -->
+<script src="training-content/gaimer-w-kahi-barista.js"></script>
+<!-- دليل النظافة مشترك بين البراندين: GAIMER_W_KAHI__CLEANER و SHAI_BU_HAMAD__CLEANER -->
+<script src="training-content/gaimer-w-kahi-cleaner.js"></script>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import {
+        getFirestore, collection, doc, setDoc, getDoc, addDoc, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import {
+        getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    // نفس مشروع Firebase المستخدم في index.html و admin.html.
+    const firebaseConfig = {
+      apiKey: "AIzaSyCWZb0GwAeMgLtJIfq3kuRfmEQ1POBNSp0",
+      authDomain: "attendance-system-f32d6.firebaseapp.com",
+      projectId: "attendance-system-f32d6",
+      storageBucket: "attendance-system-f32d6.firebasestorage.app",
+      messagingSenderId: "302261734220",
+      appId: "1:302261734220:web:50cb9e10965ed3ddcf1de9",
+      measurementId: "G-W88XGV8E1Q"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    let currentUser = null;
+
+    // حد Firestore الفعلي لكل مستند هو 1,048,576 بايت. نتوقف عند 900KB لنترك
+    // هامشًا لحقول الميتاداتا (restaurant/department/updatedAt) وترميز Firestore
+    // الداخلي، حتى لا يفشل الرفع في اللحظة الأخيرة.
+    const FIRESTORE_DOC_LIMIT = 1048576;
+    const SAFE_DOC_LIMIT = 900 * 1024;
+
+    function escapeHtml(str) {
+        return String(str ?? "").replace(/[&<>"']/g, (ch) => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        }[ch]));
+    }
+
+    // يجب أن تبقى مطابقة تمامًا للنسخة الموجودة في index.html و admin.html —
+    // أي اختلاف يعني أن الكيوسك سيقرأ مستندًا مختلفًا عن الذي نكتبه هنا.
+    function trainingContentDocId(restaurant, department) {
+        return `${restaurant}__${department}`.replace(/\s+/g, '_');
+    }
+
+    function byteSize(obj) {
+        return new TextEncoder().encode(JSON.stringify(obj)).length;
+    }
+
+    function formatBytes(n) {
+        if (n < 1024) return `${n} B`;
+        if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+        return `${(n / (1024 * 1024)).toFixed(2)} MB`;
+    }
+
+    const registry = (window.TRAINING_CONTENT_REGISTRY || []).map(entry => {
+        const sections = (entry.sections || []).map(s => ({
+            heading: (s.heading || '').trim(),
+            text: (s.text || '').trim(),
+            imageBase64: s.imageBase64 || ''
+        })).filter(s => s.heading || s.text || s.imageBase64);
+        return {
+            restaurant: entry.restaurant,
+            department: entry.department,
+            sourceFile: entry.sourceFile || '-',
+            docId: trainingContentDocId(entry.restaurant, entry.department),
+            sections,
+            size: byteSize({ restaurant: entry.restaurant, department: entry.department, sections })
+        };
+    });
+
+    function sizePill(size) {
+        if (size > FIRESTORE_DOC_LIMIT) return `<span class="pill pill-bad">تجاوز الحد</span>`;
+        if (size > SAFE_DOC_LIMIT) return `<span class="pill pill-warn">قريب من الحد</span>`;
+        return `<span class="pill pill-ok">آمن</span>`;
+    }
+
+    function renderRegistry() {
+        const body = document.getElementById('registryBody');
+        if (!registry.length) {
+            body.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger);">
+                لم يُعثر على أي ملف محتوى. تأكد من وجود ملفات training-content/*.js ومن إضافة وسم script لها.
+            </td></tr>`;
+            document.getElementById('btnImportAll').disabled = true;
+            return;
+        }
+        body.innerHTML = registry.map((e, i) => `
+            <tr>
+                <td><b>${escapeHtml(e.restaurant)}</b><br>
+                    <span style="color:var(--text-dim); font-size:12px;">${escapeHtml(e.department)}</span></td>
+                <td><code>${escapeHtml(e.docId)}</code></td>
+                <td>${e.sections.length}</td>
+                <td>${formatBytes(e.size)}</td>
+                <td>${sizePill(e.size)}<div id="rowStatus${i}" style="font-size:11.5px; margin-top:4px; color:var(--text-dim);"></div></td>
+                <td style="white-space:nowrap;">
+                    <button class="btn-ghost btn-sm" data-preview="${i}">معاينة</button>
+                    <button class="btn-primary btn-sm" data-import="${i}">رفع</button>
+                </td>
+            </tr>
+        `).join('');
+
+        body.querySelectorAll('[data-preview]').forEach(btn => {
+            btn.addEventListener('click', () => showPreview(Number(btn.dataset.preview)));
+        });
+        body.querySelectorAll('[data-import]').forEach(btn => {
+            btn.addEventListener('click', () => importOne(Number(btn.dataset.import), btn));
+        });
+    }
+
+    // معاينة تحاكي طريقة عرض الكيوسك: كل فقرة منفصلة بسطر فارغ تأخذ اتجاهها
+    // تلقائيًا عبر dir="auto" (فالفقرة العربية تصبح RTL والإنجليزية LTR).
+    function showPreview(index) {
+        const e = registry[index];
+        document.getElementById('previewTitle').innerText =
+            `معاينة: ${e.restaurant} — ${e.department} (${e.sections.length} قسمًا)`;
+        let html = '';
+        e.sections.forEach(sec => {
+            if (sec.heading) html += `<h4 dir="auto">${escapeHtml(sec.heading)}</h4>`;
+            if (sec.imageBase64) html += `<img src="${sec.imageBase64}" style="max-width:100%; border-radius:8px; margin:8px 0; display:block;">`;
+            if (sec.text) {
+                sec.text.split(/\n{2,}/).forEach(block => {
+                    if (block.trim()) html += `<p dir="auto">${escapeHtml(block)}</p>`;
+                });
+            }
+        });
+        document.getElementById('previewBody').innerHTML = html;
+        document.getElementById('previewCard').classList.remove('hidden');
+        document.getElementById('previewCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    document.getElementById('btnClosePreview').addEventListener('click', () => {
+        document.getElementById('previewCard').classList.add('hidden');
+    });
+
+    async function importOne(index, btn) {
+        const e = registry[index];
+        const rowStatus = document.getElementById(`rowStatus${index}`);
+        if (e.size > FIRESTORE_DOC_LIMIT) {
+            rowStatus.innerHTML = `<span style="color:var(--danger);">لم يُرفع — الحجم يتجاوز حد المستند (1MB). قلّل عدد الصور أو اضغطها.</span>`;
+            return false;
+        }
+        if (btn) btn.disabled = true;
+        rowStatus.innerHTML = 'جارٍ الرفع...';
+        try {
+            // نتحقق إن كان هناك محتوى موجود مسبقًا لنُبلغ المستخدم بأنه سيُستبدل.
+            const ref = doc(db, "training_content", e.docId);
+            const existing = await getDoc(ref);
+            const wasExisting = existing.exists() && Array.isArray(existing.data().sections)
+                ? existing.data().sections.length : 0;
+
+            await setDoc(ref, {
+                restaurant: e.restaurant,
+                department: e.department,
+                sections: e.sections,
+                updatedAt: serverTimestamp()
+            });
+
+            // تسجيل في سجل التدقيق بنفس نمط admin.html (لا يوقف العملية إن فشل).
+            addDoc(collection(db, "audit_log"), {
+                action: "Training Content Imported",
+                details: `${e.restaurant} / ${e.department} — ${e.sections.length} section(s) from ${e.sourceFile}` +
+                         (wasExisting ? ` (replaced ${wasExisting} existing section(s))` : ' (new document)'),
+                actor: (currentUser && currentUser.email) || 'unknown',
+                createdAt: serverTimestamp()
+            }).catch(err => console.error("Audit log write failed (non-blocking):", err));
+
+            rowStatus.innerHTML = `<span style="color:var(--success);">تم الرفع ✓ (${e.sections.length} قسمًا` +
+                (wasExisting ? `، استُبدل ${wasExisting} قسمًا سابقًا` : '، مستند جديد') + `)</span>`;
+            return true;
+        } catch (error) {
+            console.error("Import failed:", error);
+            rowStatus.innerHTML = `<span style="color:var(--danger);">فشل: ${escapeHtml(error.message)}</span>`;
+            return false;
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    document.getElementById('btnImportAll').addEventListener('click', async () => {
+        const btn = document.getElementById('btnImportAll');
+        const statusEl = document.getElementById('importStatus');
+        btn.disabled = true;
+        statusEl.innerText = 'جارٍ رفع كل المحتوى...';
+        statusEl.style.color = 'var(--warning)';
+        let ok = 0, fail = 0;
+        for (let i = 0; i < registry.length; i++) {
+            const success = await importOne(i, null);
+            if (success) ok++; else fail++;
+        }
+        statusEl.innerText = `انتهى: ${ok} مستند تم رفعه بنجاح${fail ? `، ${fail} فشل` : ''}.`;
+        statusEl.style.color = fail ? 'var(--danger)' : 'var(--success)';
+        btn.disabled = false;
+    });
+
+    document.getElementById('btnLogin').addEventListener('click', async () => {
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const statusEl = document.getElementById('loginStatus');
+        statusEl.innerText = 'جارٍ تسجيل الدخول...';
+        statusEl.style.color = 'var(--warning)';
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+        } catch (error) {
+            statusEl.innerText = 'فشل تسجيل الدخول: تأكد من البريد وكلمة المرور.';
+            statusEl.style.color = 'var(--danger)';
+        }
+    });
+
+    document.getElementById('password').addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') document.getElementById('btnLogin').click();
+    });
+
+    document.getElementById('btnLogout').addEventListener('click', () => signOut(auth));
+
+    onAuthStateChanged(auth, (user) => {
+        currentUser = user;
+        const loginCard = document.getElementById('loginCard');
+        const contentCard = document.getElementById('contentCard');
+        if (user) {
+            loginCard.classList.add('hidden');
+            contentCard.classList.remove('hidden');
+            document.getElementById('signedInAs').innerText = `مسجّل الدخول كـ: ${user.email || 'مستخدم'}`;
+            renderRegistry();
+        } else {
+            loginCard.classList.remove('hidden');
+            contentCard.classList.add('hidden');
+            document.getElementById('previewCard').classList.add('hidden');
+            document.getElementById('loginStatus').innerText = '';
+        }
+    });
+</script>
+
+</body>
+</html>
