@@ -2260,57 +2260,69 @@
     };
 
     // ---- Attendance: paired Check-In/Check-Out "sessions" ------------------
-    // Requirement: when e.g. ACHREF checks in and later checks out the same
-    // day, both events must appear on ONE row (in-time, out-time, duration),
-    // not as two separate rows. buildSessions() pairs raw attendance docs
-    // per employee+day into session objects; a Check-In with no matching
-    // Check-Out yet is shown as an "Open" session.
+    // Pairs raw attendance docs into session objects so that a check-in and its
+    // matching check-out appear on ONE row (in-time, out-time, duration)
+    // instead of two separate rows.
+    //
+    // BUG FIXED — night shifts crossing midnight:
+    // This used to bucket logs by `employeeId|date`. A shift that started at
+    // 4:00 PM on the 11th and ended at 1:12 AM on the 12th therefore had its
+    // check-in in one day's bucket and its check-out in the NEXT day's bucket,
+    // so neither bucket could ever pair them. One real shift produced TWO
+    // broken rows: an "Open" row with no check-out on the 11th, and a row
+    // showing "missing" check-in on the 12th. That is exactly why the same
+    // employee kept appearing twice and why so many rows read "missing".
+    // These restaurants close after midnight, so this corrupted the display of
+    // almost every single night shift.
+    //
+    // Now logs are grouped per EMPLOYEE ONLY and walked in chronological order,
+    // so a check-out pairs with the last still-open check-in regardless of the
+    // calendar date. The session is attributed to the date the employee CLOCKED
+    // IN, because that is the workday the shift belongs to.
     function buildSessions(logs) {
-        const byKey = new Map(); // employeeId|date -> { checkIns: [], checkOuts: [] }
+        function makeSession(ci, co) {
+            const anchor = ci || co;
+            return {
+                employeeId: anchor.employeeId,
+                employeeName: anchor.employeeName,
+                branch: anchor.branch,
+                date: anchor.date,
+                checkIn: ci || null,
+                checkOut: co || null,
+                durationLabel: co ? (co.duration || '-') : 'Open',
+                workMinutes: co ? Number(co.workMinutes) || 0 : 0,
+                // true when the shift ran past midnight, so the table can label
+                // the check-out time as belonging to the following day.
+                crossesMidnight: !!(ci && co && ci.date && co.date && ci.date !== co.date)
+            };
+        }
+
+        const byEmployee = new Map(); // employeeId -> raw logs[]
         logs.forEach(l => {
-            const key = `${l.employeeId || l.employeeName}|${l.date}`;
-            if (!byKey.has(key)) byKey.set(key, { checkIns: [], checkOuts: [] });
-            const bucket = byKey.get(key);
-            if (l.type === 'Check-In') bucket.checkIns.push(l);
-            else if (l.type === 'Check-Out') bucket.checkOuts.push(l);
+            const key = l.employeeId || l.employeeName;
+            if (!byEmployee.has(key)) byEmployee.set(key, []);
+            byEmployee.get(key).push(l);
         });
 
         const sessions = [];
-        byKey.forEach((bucket, key) => {
-            bucket.checkIns.sort((a, b) => tsToMillis(a) - tsToMillis(b));
-            bucket.checkOuts.sort((a, b) => tsToMillis(a) - tsToMillis(b));
-            const outs = [...bucket.checkOuts];
-            bucket.checkIns.forEach(ci => {
-                // Pair each check-in with the earliest still-unused check-out
-                // that happened AFTER it (handles multiple in/out pairs the
-                // same day, e.g. a lunch break check-out/check-in cycle).
-                const outIdx = outs.findIndex(co => tsToMillis(co) >= tsToMillis(ci));
-                const co = outIdx >= 0 ? outs.splice(outIdx, 1)[0] : null;
-                sessions.push({
-                    employeeId: ci.employeeId,
-                    employeeName: ci.employeeName,
-                    branch: ci.branch,
-                    date: ci.date,
-                    checkIn: ci,
-                    checkOut: co,
-                    durationLabel: co ? (co.duration || '-') : 'Open',
-                    workMinutes: co ? Number(co.workMinutes) || 0 : 0
-                });
+        byEmployee.forEach((empLogs) => {
+            const ordered = empLogs.slice().sort((a, b) => tsToMillis(a) - tsToMillis(b));
+            let openIn = null;
+            ordered.forEach(l => {
+                if (l.type === 'Check-In') {
+                    // Two check-ins in a row means the earlier one never got a
+                    // check-out, so it stays an Open session on its own row.
+                    if (openIn) sessions.push(makeSession(openIn, null));
+                    openIn = l;
+                } else if (l.type === 'Check-Out') {
+                    // Pairs with the open check-in even when that check-in was
+                    // on the previous calendar day. A check-out with no open
+                    // check-in at all still gets its own row (legacy data).
+                    sessions.push(makeSession(openIn, l));
+                    openIn = null;
+                }
             });
-            // Any leftover check-outs with no matching check-in (e.g. old data,
-            // or the very first check-out ever recorded) still get their own row.
-            outs.forEach(co => {
-                sessions.push({
-                    employeeId: co.employeeId,
-                    employeeName: co.employeeName,
-                    branch: co.branch,
-                    date: co.date,
-                    checkIn: null,
-                    checkOut: co,
-                    durationLabel: co.duration || '-',
-                    workMinutes: Number(co.workMinutes) || 0
-                });
-            });
+            if (openIn) sessions.push(makeSession(openIn, null));
         });
 
         sessions.sort((a, b) => tsToMillis(b.checkIn || b.checkOut) - tsToMillis(a.checkIn || a.checkOut));
@@ -2367,10 +2379,27 @@
     window.renderAttendanceTable = function(sessions) {
         let html = "";
         sessions.forEach((s) => {
-            const inTime = s.checkIn ? (s.checkIn.time || '-') : '<span style="color:var(--text-faint);">missing</span>';
-            const outTime = s.checkOut ? (s.checkOut.time || '-') : '<span style="color:var(--text-faint);">—</span>';
+            const inTime = s.checkIn
+                ? escapeHtml(s.checkIn.time || '-')
+                : '<span style="color:var(--text-faint);" title="لا يوجد تسجيل دخول مقابل لهذا الانصراف — بيانات ناقصة فعلًا / no matching check-in record exists">missing</span>';
+            // "+1d" يوضّح أن الانصراف حدث بعد منتصف الليل في اليوم التالي، حتى
+            // لا يبدو وقت الخروج (1:12 AM) كأنه قبل وقت الدخول (4:00 PM).
+            let outTime;
+            if (s.checkOut) {
+                outTime = escapeHtml(s.checkOut.time || '-');
+                if (s.crossesMidnight) {
+                    outTime += ` <span title="الوردية انتهت بعد منتصف الليل في اليوم التالي / shift ended after midnight, on the next day" style="color: var(--accent); font-size: 11px; font-weight: 700;">+1d</span>`;
+                }
+            } else {
+                outTime = '<span style="color:var(--text-faint);">—</span>';
+            }
+            // جلسة أقصر من دقيقتين مع انصراف مكتمل = ضغط مزدوج بالخطأ على شاشة
+            // اللمس، لا وردية حقيقية. نعلّمها ليراجعها المشرف ويحذفها.
+            const shortWarn = (s.checkOut && s.workMinutes < 2)
+                ? `<br><span title="جلسة قصيرة جدًا — الأرجح ضغط مزدوج بالخطأ، راجعها واحذفها / suspiciously short, likely an accidental double tap" style="color: var(--warning); font-size: 11px; font-weight: 700;">&#9888; قصيرة</span>`
+                : '';
             const durationHtml = s.checkOut
-                ? `<span class="duration-pill">${escapeHtml(s.durationLabel)}</span>`
+                ? `<span class="duration-pill">${escapeHtml(s.durationLabel)}</span>${shortWarn}`
                 : `<span class="duration-pill open">Open</span>`;
             const lat = s.checkIn?.location?.latitude || s.checkOut?.location?.latitude;
             const lng = s.checkIn?.location?.longitude || s.checkOut?.location?.longitude;
