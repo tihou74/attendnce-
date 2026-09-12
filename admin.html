@@ -959,18 +959,37 @@
             <p class="card-sub">Salaries are pulled automatically from the payroll engine for this month and branch. Add your other fixed and variable payments below.</p>
 
             <div class="controls" style="flex-wrap: wrap; align-items: flex-end; gap: 10px; background: var(--surface-2); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-bottom: 18px;">
-                <div style="flex: 1; min-width: 180px;"><label>Payment name</label><input type="text" id="finPayName" placeholder="e.g. Rent, Electricity, Meat purchases"></div>
-                <div style="width: 150px;"><label>Type</label>
+                <div style="flex: 1; min-width: 190px;"><label for="finPayName">Payment name</label>
+                    <input type="text" id="finPayName" list="finPayNameSuggestions" placeholder="e.g. Electricity, Packaging, Repairs">
+                    <datalist id="finPayNameSuggestions"></datalist>
+                </div>
+                <div style="width: 190px;"><label for="finPayBranch">Belongs to</label>
+                    <select id="finPayBranch">
+                        <option value="GAIMER W KAHI WEST WALK">GAIMER W KAHI - WEST WALK</option>
+                        <option value="GAIMER W KAHI OLD MINA PORT">GAIMER W KAHI - OLD MINA PORT</option>
+                        <option value="SHAI BU HAMAD WEST WALK">SHAI BU HAMAD - WEST WALK</option>
+                        <option value="SHAI BU HAMAD GULF MALL">SHAI BU HAMAD - GULF MALL</option>
+                        <option value="COMPANY (shared)">COMPANY (shared — not one branch)</option>
+                    </select>
+                </div>
+                <div style="width: 130px;"><label for="finPayType">Type</label>
                     <select id="finPayType">
                         <option value="fixed">Fixed</option>
                         <option value="variable">Variable</option>
                     </select>
                 </div>
-                <div style="width: 150px;"><label>Amount (QAR)</label><input type="number" id="finPayAmount" step="0.01" min="0" placeholder="0.00"></div>
-                <div style="flex: 1; min-width: 150px;"><label>Note (optional)</label><input type="text" id="finPayNote" placeholder="—"></div>
+                <div style="width: 140px;"><label for="finPayAmount">Amount (QAR)</label><input type="number" id="finPayAmount" step="0.01" min="0" placeholder="0.00"></div>
+                <div style="width: 110px;"><label for="finPayDay">Pay on day</label><input type="number" id="finPayDay" min="1" max="31" placeholder="—"></div>
+                <div style="width: 120px;"><label for="finPaySalesPct" title="Extra rent calculated as a percentage of this branch's monthly sales">% of sales</label><input type="number" id="finPaySalesPct" step="0.1" min="0" max="100" placeholder="—"></div>
+                <div style="width: 150px;"><label for="finPayThreshold" title="Only the part of the percentage above this figure is paid">% paid above</label><input type="number" id="finPayThreshold" step="0.01" min="0" placeholder="0"></div>
+                <div style="flex: 1; min-width: 150px;"><label for="finPayNote">Note (optional)</label><input type="text" id="finPayNote" placeholder="—"></div>
                 <button class="btn-accent" onclick="addFinancialPayment()"><span data-icon="check"></span> Add Payment</button>
+                <button class="btn-warning" onclick="seedStandardFixedPayments()" title="Insert the agreed rent cheques, staff housing, office, company representative and Visa settlement for this month"><span data-icon="sync"></span> Add standard fixed payments</button>
                 <button class="btn-ghost" onclick="copyFixedPaymentsFromPreviousMonth()" title="Bring last month's fixed payments into this month so you don't retype them"><span data-icon="sync"></span> Copy fixed from previous month</button>
             </div>
+            <p class="card-sub" style="margin: -8px 0 14px;">
+                <b>% of sales</b> is for the two rent contracts linked to turnover: West Walk pays 12% but only the part above 48,000, and Old Mina Port pays a flat 8% on top of its cheque. Leave both percentage fields empty for every other payment.
+            </p>
             <div class="status" id="finPayStatus" style="min-height: 18px; font-size: 13px; font-weight: 700; margin-bottom: 10px;"></div>
 
             <h3 style="font-size: 14px; margin: 8px 0 8px;">Fixed Payments</h3>
@@ -1696,6 +1715,12 @@
         if (finDeliveryEl) finDeliveryEl.value = DEFAULT_DELIVERY_COMMISSION_PCT;
         const finCardEl = document.getElementById('finCardRate');
         if (finCardEl) finCardEl.value = DEFAULT_CARD_FEE_PCT;
+        // اقتراحات أسماء البنود المتغيرة المتكررة.
+        const suggest = document.getElementById('finPayNameSuggestions');
+        if (suggest) {
+            suggest.innerHTML = VARIABLE_PAYMENT_SUGGESTIONS
+                .map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
+        }
         applySavedTheme();
     });
 
@@ -3207,6 +3232,49 @@
     ];
     const DEFAULT_DELIVERY_COMMISSION_PCT = 21.5;
     const DEFAULT_CARD_FEE_PCT = 1.5;
+    // مصروفات مشتركة لا تتبع فرعًا واحدًا (سكن الموظفين، المكتب، مندوب الشركة).
+    // تظهر في الوضع المجمّع فقط، وتُستثنى من تقرير أي فرع منفرد — فتحميل فرع
+    // واحد بمصروف الشركة كله يشوّه ربحية ذلك الفرع.
+    const FINANCE_COMPANY = 'COMPANY (shared)';
+
+    // البنود الثابتة المعتمدة من الإدارة، تُضاف بضغطة زر بدل كتابتها كل شهر.
+    // salesPercent           = نسبة من إجمالي مبيعات الفرع تُضاف على الإيجار.
+    // salesPercentThreshold  = لا يُدفع من النسبة إلا ما زاد عن هذا المبلغ.
+    const STANDARD_FIXED_PAYMENTS = {
+        'GAIMER W KAHI WEST WALK': [
+            { name: 'Rent — cheque', amount: 58622, dayOfMonth: 14, salesPercent: 12, salesPercentThreshold: 48000,
+              note: 'Cheque 58,622 + 12% of sales, paying only the excess above 48,000' }
+        ],
+        'GAIMER W KAHI OLD MINA PORT': [
+            { name: 'Rent — cheque', amount: 9800, dayOfMonth: 1, salesPercent: 8, salesPercentThreshold: 0,
+              note: 'Cheque 9,800 + 8% of monthly sales' }
+        ],
+        'SHAI BU HAMAD WEST WALK': [
+            { name: 'Rent — cheque', amount: 39000, dayOfMonth: 1, note: 'Cheque' }
+        ],
+        'SHAI BU HAMAD GULF MALL': [
+            { name: 'Rent — cheque', amount: 20000, dayOfMonth: 3, note: 'Cheque' }
+        ],
+        [FINANCE_COMPANY]: [
+            { name: 'Staff housing rent — cheque', amount: 19500, dayOfMonth: 9, note: 'Cheque' },
+            { name: 'Office rent — cheque', amount: 7600, dayOfMonth: 23, note: 'Cheque' },
+            { name: 'Company representative salary', amount: 4000, dayOfMonth: 1,
+              note: 'Paid separately — make sure he is NOT also on the payroll, or it counts twice' },
+            { name: 'Visa cards settlement', amount: 9000, dayOfMonth: 9, note: 'Cheque' }
+        ]
+    };
+
+    // أسماء البنود المتغيرة المتكررة — تظهر كاقتراحات في خانة الاسم.
+    const VARIABLE_PAYMENT_SUGGESTIONS = [
+        'Chilled water & gas',
+        'Electricity',
+        'Internet & phone',
+        'Administrative payments',
+        'Petty cash — daily goods purchases',
+        'Advertising & social media',
+        'Packaging',
+        'Repairs & maintenance'
+    ];
 
     let allFinancialPayments = [];
     let financialRates = {
@@ -3349,6 +3417,29 @@
         );
     }
 
+    /**
+     * المبلغ الفعلي لبند مدفوع، بعد إضافة الجزء المرتبط بنسبة المبيعات إن وُجد.
+     *
+     * حالتان حقيقيتان من عقود الإدارة:
+     *  • قيمر وكاهي وست ووك : 58,622 + 12% من المبيعات، ولا يُدفع من النسبة إلا
+     *    ما زاد عن 48,000 (فإن كانت 12% أقل من 48,000 فلا إضافة).
+     *  • قيمر وكاهي ميناء الدوحة: 9,800 + 8% من المبيعات بلا حدّ أدنى.
+     *
+     * النسبة تُحسب على **إجمالي مبيعات الفرع نفسه** لا على مبيعات الشركة.
+     */
+    function paymentEffectiveAmount(p, month) {
+        const base = Number(p.amount) || 0;
+        const pct = Number(p.salesPercent) || 0;
+        if (!pct) return { base, percentAmount: 0, total: base, gross: 0, raw: 0, threshold: 0 };
+        // بند الشركة المشترك لا يتبع فرعًا، فنحسب النسبة على مبيعات الفروع كلها.
+        const scope = (p.branch === FINANCE_COMPANY) ? '' : p.branch;
+        const gross = financeSalesFor(month, scope).grossTotal;
+        const threshold = Number(p.salesPercentThreshold) || 0;
+        const raw = gross * pct / 100;
+        const percentAmount = Math.max(0, raw - threshold);
+        return { base, percentAmount, total: base + percentAmount, gross, raw, threshold };
+    }
+
     /** كل أرقام التقرير لشهر وفرع — يُعاد استخدامها للعرض وللتصدير ولمقارنة الفروع. */
     function financeSummary(month, branch) {
         const sales = financeSalesFor(month, branch);
@@ -3356,8 +3447,10 @@
         const manual = financePaymentsFor(month, branch);
         const fixedManual = manual.filter(p => p.type === 'fixed');
         const variableManual = manual.filter(p => p.type !== 'fixed');
-        const fixedManualTotal = fixedManual.reduce((s, p) => s + (Number(p.amount) || 0), 0);
-        const variableTotal = variableManual.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+        // المبلغ الفعلي لا المُدخَل: بنود الإيجار المرتبطة بنسبة مبيعات يزيد
+        // مبلغها بحسب مبيعات الشهر (انظر paymentEffectiveAmount).
+        const fixedManualTotal = fixedManual.reduce((s, p) => s + paymentEffectiveAmount(p, month).total, 0);
+        const variableTotal = variableManual.reduce((s, p) => s + paymentEffectiveAmount(p, month).total, 0);
         // الرواتب بند ثابت يُحتسب تلقائيًا ولا يُخزَّن في financial_payments.
         const fixedTotal = fixedManualTotal + payroll.total;
         const totalPayments = fixedTotal + variableTotal;
@@ -3420,14 +3513,25 @@
             : `No daily sales reports found for ${monthLabel}${branch ? ' — ' + branch : ''}. Ask the branch managers to submit them.`);
 
         // ---- المدفوعات
-        const payRow = (p) => `
+        const payRow = (p) => {
+            const eff = paymentEffectiveAmount(p, month);
+            // نُظهر تفصيل النسبة صريحًا حتى يستطيع المالك مراجعة الرقم بنفسه
+            // بدل أن يرى مبلغًا واحدًا لا يعرف كيف تكوّن.
+            const pctDetail = eff.percentAmount > 0 || Number(p.salesPercent)
+                ? `<div style="font-size: 11.5px; color: var(--text-dim); margin-top: 3px;">`
+                  + `${money(eff.base)} + ${p.salesPercent}% of ${money(eff.gross)} = ${money(eff.raw)}`
+                  + (eff.threshold ? ` − ${money(eff.threshold)} threshold` : '')
+                  + ` → +${money(eff.percentAmount)}</div>`
+                : '';
+            return `
             <tr>
-                <td><b>${escapeHtml(p.name || '-')}</b></td>
-                <td>${escapeHtml(p.branch || 'All')}</td>
-                <td class="money-col">${money(p.amount)}</td>
+                <td><b>${escapeHtml(p.name || '-')}</b>${pctDetail}</td>
+                <td>${escapeHtml(p.branch || 'All')}${p.dayOfMonth ? `<br><small style="color: var(--text-dim);">day ${escapeHtml(p.dayOfMonth)}</small>` : ''}</td>
+                <td class="money-col"><b>${money(eff.total)}</b></td>
                 <td style="color: var(--text-dim); font-size: 12.5px;">${escapeHtml(p.note || '—')}</td>
                 <td><button class="btn-danger btn-sm" onclick="deleteFinancialPayment('${escapeJsAttr(p.id)}')">${iconSvg('trash','ic-sm')}</button></td>
             </tr>`;
+        };
 
         // الرواتب سطر تلقائي غير قابل للحذف — مصدره محرك الرواتب.
         const payrollRow = `
@@ -3521,33 +3625,99 @@
 
     window.addFinancialPayment = async function() {
         const month = currentFinMonth();
-        const branch = currentFinBranch();
+        // الفرع يأتي من خانة النموذج لا من مُرشِّح التقرير، حتى يمكن إضافة بند
+        // مشترك للشركة أو بند لفرع آخر بلا تغيير شاشة العرض.
+        const branch = document.getElementById('finPayBranch').value;
         const name = document.getElementById('finPayName').value.trim();
         const type = document.getElementById('finPayType').value;
         const amount = Number(document.getElementById('finPayAmount').value);
         const note = document.getElementById('finPayNote').value.trim();
+        const dayRaw = document.getElementById('finPayDay').value;
+        const pctRaw = document.getElementById('finPaySalesPct').value;
+        const thrRaw = document.getElementById('finPayThreshold').value;
         const status = document.getElementById('finPayStatus');
         const show = (msg, color) => { if (status) { status.innerText = msg; status.style.color = color; } };
 
         if (!name) { show('Please enter the payment name.', 'var(--danger)'); return; }
-        if (!isFinite(amount) || amount <= 0) { show('Please enter a valid amount.', 'var(--danger)'); return; }
-        if (!branch) {
-            show('Select a specific branch before adding a payment — payments belong to one branch.', 'var(--danger)');
-            return;
+        if (!isFinite(amount) || amount < 0) { show('Please enter a valid amount.', 'var(--danger)'); return; }
+
+        const dayOfMonth = dayRaw === '' ? null : Number(dayRaw);
+        if (dayOfMonth !== null && (!Number.isInteger(dayOfMonth) || dayOfMonth < 1 || dayOfMonth > 31)) {
+            show('Pay-on day must be between 1 and 31.', 'var(--danger)'); return;
         }
+        const salesPercent = pctRaw === '' ? 0 : Number(pctRaw);
+        if (!isFinite(salesPercent) || salesPercent < 0 || salesPercent > 100) {
+            show('% of sales must be between 0 and 100.', 'var(--danger)'); return;
+        }
+        const salesPercentThreshold = thrRaw === '' ? 0 : Number(thrRaw);
+        if (!isFinite(salesPercentThreshold) || salesPercentThreshold < 0) {
+            show('The threshold must be zero or more.', 'var(--danger)'); return;
+        }
+        // مبلغ صفر بلا نسبة يعني بندًا فارغًا لا معنى له.
+        if (amount === 0 && !salesPercent) { show('Enter an amount, a % of sales, or both.', 'var(--danger)'); return; }
 
         show('Saving...', 'var(--warning)');
         try {
             await addDoc(collection(db, "financial_payments"), {
-                month, branch, name, type, amount, note, createdAt: serverTimestamp()
+                month, branch, name, type, amount, note,
+                dayOfMonth, salesPercent, salesPercentThreshold,
+                createdAt: serverTimestamp()
             });
-            logAudit("Financial Payment Added", `${name} — ${amount} QAR (${type}), ${branch}, ${month}`);
-            document.getElementById('finPayName').value = '';
-            document.getElementById('finPayAmount').value = '';
-            document.getElementById('finPayNote').value = '';
+            logAudit("Financial Payment Added",
+                `${name} — ${amount} QAR${salesPercent ? ` + ${salesPercent}% of sales` : ''} (${type}), ${branch}, ${month}`);
+            ['finPayName', 'finPayAmount', 'finPayNote', 'finPayDay', 'finPaySalesPct', 'finPayThreshold']
+                .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
             await loadFinancialPayments();
             renderFinancialReport();
-            show(`Added "${name}" — ${money(amount)} QAR.`, 'var(--success)');
+            show(`Added "${name}" for ${escapeHtml(branch)}.`, 'var(--success)');
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    // يضيف البنود الثابتة المعتمدة (إيجارات الفروع الأربعة + سكن الموظفين +
+    // المكتب + مندوب الشركة + سيتلمنت الفيزا) للشهر المحدد بضغطة واحدة، ويتخطى
+    // أي بند مُضاف مسبقًا فلا يتكرر لو ضُغط الزر مرتين.
+    window.seedStandardFixedPayments = async function() {
+        const month = currentFinMonth();
+        const status = document.getElementById('finPayStatus');
+        const show = (msg, color) => { if (status) { status.innerText = msg; status.style.color = color; } };
+
+        const existing = new Set(
+            allFinancialPayments
+                .filter(p => p.month === month && p.type === 'fixed')
+                .map(p => `${p.branch}|${(p.name || '').trim().toLowerCase()}`)
+        );
+
+        const queue = [];
+        Object.entries(STANDARD_FIXED_PAYMENTS).forEach(([branch, items]) => {
+            items.forEach(item => {
+                if (existing.has(`${branch}|${item.name.trim().toLowerCase()}`)) return;
+                queue.push({ branch, item });
+            });
+        });
+
+        if (!queue.length) { show(`All standard fixed payments are already present for ${month}.`, 'var(--warning)'); return; }
+        if (!confirm(`Add ${queue.length} standard fixed payment(s) to ${month}?\n\nThis inserts the agreed rent cheques, staff housing, office rent, company representative salary and Visa settlement.`)) return;
+
+        show('Adding...', 'var(--warning)');
+        try {
+            for (const { branch, item } of queue) {
+                await addDoc(collection(db, "financial_payments"), {
+                    month, branch, type: 'fixed',
+                    name: item.name,
+                    amount: Number(item.amount) || 0,
+                    note: item.note || '',
+                    dayOfMonth: item.dayOfMonth || null,
+                    salesPercent: Number(item.salesPercent) || 0,
+                    salesPercentThreshold: Number(item.salesPercentThreshold) || 0,
+                    createdAt: serverTimestamp()
+                });
+            }
+            logAudit("Standard Fixed Payments Added", `${queue.length} item(s) for ${month}`);
+            await loadFinancialPayments();
+            renderFinancialReport();
+            show(`Added ${queue.length} standard fixed payment(s) for ${month}.`, 'var(--success)');
         } catch (e) {
             show('Error: ' + e.message, 'var(--danger)');
         }
@@ -3575,17 +3745,18 @@
         const status = document.getElementById('finPayStatus');
         const show = (msg, color) => { if (status) { status.innerText = msg; status.style.color = color; } };
 
-        if (!branch) { show('Select a specific branch first.', 'var(--danger)'); return; }
         const prev = previousMonth(month);
-        const source = allFinancialPayments.filter(p => p.month === prev && p.branch === branch && p.type === 'fixed');
-        if (!source.length) { show(`No fixed payments found for ${prev} in this branch.`, 'var(--warning)'); return; }
+        // ينسخ كل الفروع ما لم يكن مُرشِّح التقرير على فرع محدد.
+        const source = allFinancialPayments.filter(p =>
+            p.month === prev && p.type === 'fixed' && (!branch || p.branch === branch));
+        if (!source.length) { show(`No fixed payments found for ${prev}.`, 'var(--warning)'); return; }
 
         const existing = new Set(
             allFinancialPayments
-                .filter(p => p.month === month && p.branch === branch && p.type === 'fixed')
-                .map(p => (p.name || '').trim().toLowerCase())
+                .filter(p => p.month === month && p.type === 'fixed')
+                .map(p => `${p.branch}|${(p.name || '').trim().toLowerCase()}`)
         );
-        const toCopy = source.filter(p => !existing.has((p.name || '').trim().toLowerCase()));
+        const toCopy = source.filter(p => !existing.has(`${p.branch}|${(p.name || '').trim().toLowerCase()}`));
         if (!toCopy.length) { show(`All fixed payments from ${prev} are already in ${month}.`, 'var(--warning)'); return; }
         if (!confirm(`Copy ${toCopy.length} fixed payment(s) from ${prev} into ${month}?`)) return;
 
@@ -3593,8 +3764,11 @@
         try {
             for (const p of toCopy) {
                 await addDoc(collection(db, "financial_payments"), {
-                    month, branch, name: p.name, type: 'fixed',
+                    month, branch: p.branch, name: p.name, type: 'fixed',
                     amount: Number(p.amount) || 0, note: p.note || '',
+                    dayOfMonth: p.dayOfMonth || null,
+                    salesPercent: Number(p.salesPercent) || 0,
+                    salesPercentThreshold: Number(p.salesPercentThreshold) || 0,
                     createdAt: serverTimestamp()
                 });
             }
