@@ -84,12 +84,15 @@
 <div class="spinner" role="status" aria-label="Loading"></div>
 <!-- احتياطي إن كان الجافاسكربت معطّلًا أو تأخر التحويل -->
 <noscript><p>JavaScript is required. Please open the link below.</p></noscript>
-<a href="./index.html#report">Open manually</a>
+<a href="./index.html?report=1">Open manually</a>
 
 <script>
+    // ?report=1 لا #report — التطبيقات المثبَّتة على الشاشة الرئيسية (وiOS
+    // خاصةً) تُسقط الـ fragment عند إعادة الفتح فتُفتح شاشة الموظفين بالخطأ،
+    // أما query string فيبقى محفوظًا.
     // location.replace لا يضيف مدخلًا في سجل التنقّل، فزر الرجوع لا يعيد المدير
     // إلى هذه الصفحة الوسيطة في حلقة.
-    location.replace('./index.html#report');
+    location.replace('./index.html?report=1');
 </script>
 
 <script>

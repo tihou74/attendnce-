@@ -23,7 +23,9 @@
 
 'use strict';
 
-const CACHE_VERSION = 'v1';
+// v2: تغيّر start_url لتطبيق المديرين من #report إلى ?report=1، فيجب إبطال
+// الكاش القديم حتى لا يبقى من ثبّت التطبيق سابقًا على النسخة القديمة.
+const CACHE_VERSION = 'v2';
 const SHELL_CACHE = `alsheikha-shell-${CACHE_VERSION}`;
 const ASSET_CACHE = `alsheikha-assets-${CACHE_VERSION}`;
 

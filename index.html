@@ -1759,8 +1759,22 @@
     // آخر تقرير حُفظ فعلًا — منه يُبنى الملخص ونص الواتساب.
     let lastSubmittedReport = null;
 
+    // نقبل صيغتين للدخول إلى شاشة التقرير:
+    //   ?report=1  ← الصيغة المعتمدة في تطبيق المديرين المثبَّت
+    //   #report    ← الصيغة القديمة، نُبقيها لأن روابط وُزّعت بها فعلًا
+    //
+    // لماذا صار الاعتماد على ?report=1 بدل #report؟ لأن التطبيقات المثبَّتة على
+    // الشاشة الرئيسية — وiOS خاصةً — تُسقط الـ fragment (#) عند إعادة الفتح،
+    // فيُفتح التطبيق على شاشة الموظفين بدل شاشة التقرير. أما query string فيبقى
+    // محفوظًا في كل المنصّات.
     function isReportMode() {
-        return (location.hash || '').toLowerCase() === '#report';
+        const hash = (location.hash || '').toLowerCase();
+        if (hash === '#report') return true;
+        try {
+            return new URLSearchParams(location.search).has('report');
+        } catch (e) {
+            return /[?&]report(=|&|$)/i.test(location.search || '');
+        }
     }
 
     // يخفي شريط التبويبات وكل أقسام الموظفين تمامًا، فلا يمكن التنقل منها.
@@ -1773,6 +1787,14 @@
         });
         const reportSection = document.getElementById('reportSection');
         if (reportSection) reportSection.style.display = 'block';
+        // تُستبدل بقائمة المديرين حين تنتهي loadData؛ حتى ذلك الحين نوضّح أنها
+        // تُحمّل بدل أن تبدو قائمةً فارغة.
+        const select = document.getElementById('reportManagerSelect');
+        if (select && !select.options.length) {
+            select.innerHTML = '<option value="">-- Loading... --</option>';
+        } else if (select) {
+            select.options[0].text = '-- Loading... --';
+        }
         resetReportFlow();
     }
 
@@ -2022,10 +2044,13 @@
         console.error("Anonymous sign-in failed:", err);
         showStatus("Could not connect securely. Please check your internet connection and refresh.", "error");
     });
-    // شاشة التقرير تُفتح بعد loadData لأنها تحتاج قائمة المديرين مبنيةً.
-    authReady
-        .then(() => loadData())
-        .then(() => { if (isReportMode()) enterReportMode(); });
+    // ⚠️ شاشة التقرير تُفتح فورًا — قبل تسجيل الدخول وقبل loadData.
+    // كانت تُفتح بعد انتهاء loadData، فيرى المدير شاشة الموظفين لحظاتٍ (أو تبقى
+    // ظاهرة كليًا إن كانت الشبكة بطيئة أو تعذّر تحميل البيانات). إخفاء أقسام
+    // الموظفين لا يحتاج أي بيانات، فلا سبب لتأجيله.
+    if (isReportMode()) enterReportMode();
+
+    authReady.then(() => loadData());
 
     // ---- Rotating background photo slideshow --------------------------------
     // Cross-fades between the 3 background layers automatically. Respects
