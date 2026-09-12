@@ -1371,6 +1371,19 @@
     // earned) pays a bonus for each such extra worked day, at the overtime
     // day rate.
     const WORK_DAYS_PER_EARNED_OFF_DAY = 6;
+    // ---- معدّل اليوم الواحد ثابت في كل الشهور --------------------------------
+    // MANAGEMENT POLICY: the total salary is IDENTICAL in every month, whether
+    // that month has 28, 30 or 31 days — only allowances/overtime/deductions
+    // vary. The value of ONE day must therefore be a fixed figure too, derived
+    // from a 30-day reference month rather than the real calendar length.
+    //
+    // Previously dailyRate was `totalSalary / daysInMonth(period)`, which made
+    // the SAME single absence day cost a different amount depending on the
+    // month: for a 3,000 QAR salary it was 107.14 in February (28 days) but
+    // 96.77 in October (31 days) — a ~10% swing for identical behaviour, which
+    // contradicts the fixed-salary policy. This mirrors STANDARD_MONTHLY_HOURS
+    // above, which is already deliberately fixed at a 30-day reference.
+    const PAYROLL_DAYS_PER_MONTH = REFERENCE_MONTH_DAYS; // 30
 
     let allEmployees = [];
     let allAttendance = [];
@@ -2140,8 +2153,9 @@
         const ded = deductionsInRange(emp.id, startDate, endDate);
         let deductionDays = ded.days;
         let deductionAmountDirect = ded.directAmount;
-        let refDate = startDate || todayISO();
-        let dailyRate = totalSalary / daysInMonth(refDate);
+        // ثابت في كل الشهور — لا يُقسَم على طول الشهر الفعلي (انظر
+        // PAYROLL_DAYS_PER_MONTH أعلاه).
+        let dailyRate = totalSalary / PAYROLL_DAYS_PER_MONTH;
         let totalDeductionAmount = (deductionDays * dailyRate) + deductionAmountDirect;
 
         let allowancesPaidThisPeriod = allowancePaymentsInRange(emp.id, startDate, endDate);
@@ -3892,7 +3906,9 @@
 
         const totalSalary = emp ? (Number(emp.salary) || 0) : 0;
         const refDate = startDate || todayISO();
-        const dailyRate = totalSalary / daysInMonth(refDate);
+        // نفس المعدّل الثابت المستخدم في computePayroll حتى تتطابق المعاينة مع
+        // ما سيُخصم فعلًا.
+        const dailyRate = totalSalary / PAYROLL_DAYS_PER_MONTH;
         const deductionAmount = days * dailyRate;
 
         document.getElementById("leavePreviewDeduction").innerText = `-${deductionAmount.toFixed(1)} QAR`;
@@ -3944,7 +3960,7 @@
         try {
             const emp = allEmployees.find(e => e.id === empId);
             const totalSalary = emp ? (Number(emp.salary) || 0) : 0;
-            const dailyRate = totalSalary / daysInMonth(startDate);
+            const dailyRate = totalSalary / PAYROLL_DAYS_PER_MONTH;
             const deductionAmount = days * dailyRate;
 
             // 1) Leave allowance payout (750 QAR)
