@@ -1,0 +1,2469 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>استيراد محتوى التدريب (نسخة مستقلة) — Standalone Training Importer</title>
+<!-- =============================================================================
+     أداة استيراد محتوى التدريب إلى Firestore (تُستخدم لمرة واحدة عند كل تحديث)
+     -----------------------------------------------------------------------------
+     كيف تعمل:
+       1) كل ملف في مجلد training-content/ يسجّل نفسه على
+          window.TRAINING_CONTENT_REGISTRY. في هذه النسخة المستقلة كل المحتوى
+          مضمّن داخل هذا الملف نفسه، فلا يستدعي أي ملف خارجي إطلاقًا — لذلك
+          يعمل بالنقر المزدوج مباشرة من القرص (file://) بدون أي خادم.
+       2) تسجّل الدخول بنفس حساب لوحة الإدارة (Email/Password) — قواعد
+          firestore.rules تسمح بالكتابة على training_content لأي مستخدم مسجّل
+          غير مجهول فقط.
+       3) الصفحة تحسب معرّف المستند بنفس معادلة index.html و admin.html
+          (RESTAURANT__DEPARTMENT بعد استبدال المسافات بـ _) وتتحقق من حجم
+          المستند مقابل حد Firestore (1 ميغابايت) قبل الرفع.
+       4) الرفع يستخدم setDoc — أي أنه يستبدل مصفوفة sections بالكامل، وهذا هو
+          السلوك الصحيح لمحرر محتوى (وليس دمجًا تدريجيًا).
+
+     تنبيه: هذه نسخة مستقلة مُولَّدة تلقائيًا. لا تعدّلها يدويًا — عدّل ملفات
+     training-content/*.js ثم أعد توليد هذه النسخة، وإلا ضاع تعديلك.
+     ============================================================================= -->
+<style>
+    :root {
+        --bg: #f5f1e8; --surface: #fffdf8; --surface-2: #f3ede0;
+        --border: #ddd2b8; --text: #3a3226; --text-dim: #7a6f5a;
+        --primary: #6366f1; --success: #16a34a; --warning: #b45309; --danger: #dc2626;
+        --radius: 14px; --radius-sm: 10px;
+    }
+    * { box-sizing: border-box; }
+    body {
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        background: var(--bg); color: var(--text);
+        margin: 0; padding: 24px 16px;
+    }
+    .wrap { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 21px; margin: 0 0 6px; }
+    .sub { color: var(--text-dim); font-size: 13.5px; margin: 0 0 22px; line-height: 1.7; }
+    .card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 20px; margin-bottom: 18px;
+        box-shadow: 0 6px 18px -10px rgba(58,50,38,0.25);
+    }
+    label { display: block; font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+    input[type="email"], input[type="password"] {
+        width: 100%; padding: 12px 14px; font-size: 15px; border-radius: var(--radius-sm);
+        border: 1px solid var(--border); background: #fff; font-family: inherit;
+        margin-bottom: 14px;
+    }
+    button {
+        font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+        border: none; border-radius: var(--radius-sm); padding: 12px 20px; color: #fff;
+        transition: 0.15s;
+    }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); }
+    .btn-success { background: var(--success); }
+    .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+    .btn-sm { padding: 8px 14px; font-size: 12.5px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td {
+        text-align: start; padding: 11px 10px; font-size: 13px;
+        border-bottom: 1px solid var(--border);
+    }
+    th { background: var(--surface-2); font-size: 12px; color: var(--text-dim); }
+    code {
+        background: var(--surface-2); padding: 2px 6px; border-radius: 5px;
+        font-size: 12px; direction: ltr; display: inline-block;
+    }
+    .status { margin-top: 14px; font-size: 13.5px; font-weight: 700; min-height: 20px; }
+    .pill { font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 20px; display: inline-block; }
+    .pill-ok { background: rgba(22,163,74,0.14); color: var(--success); }
+    .pill-warn { background: rgba(180,83,9,0.14); color: var(--warning); }
+    .pill-bad { background: rgba(220,38,38,0.12); color: var(--danger); }
+    .hidden { display: none !important; }
+    details { margin-top: 12px; }
+    summary { cursor: pointer; font-size: 13px; font-weight: 700; color: var(--primary); }
+    .preview {
+        margin-top: 12px; max-height: 420px; overflow-y: auto; background: var(--surface-2);
+        border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px;
+    }
+    .preview h4 { margin: 14px 0 6px; font-size: 14px; }
+    .preview h4:first-child { margin-top: 0; }
+    .preview p {
+        white-space: pre-wrap; margin: 6px 0; font-size: 13px; line-height: 1.75;
+        text-align: start;
+    }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+    <h1>استيراد محتوى التدريب إلى Firestore</h1>
+    <p class="sub">
+        هذه الأداة ترفع محتوى التدريب المحفوظ في مجلد <code>training-content/</code> إلى مجموعة
+        <code>training_content</code> في Firestore، ليظهر مباشرة لموظفي الفروع في تبويب
+        «Training» بصفحة <code>index.html</code>، ويصبح قابلاً للتعديل من تبويب «Employee Training»
+        في لوحة الإدارة.
+        <br>
+        هذه نسخة <b>مستقلة</b>: كل المحتوى مضمّن داخل هذا الملف، فتعمل بالنقر المزدوج بدون أي خادم.<br>سجّل الدخول بنفس حساب لوحة الإدارة، ثم راجع المحتوى، ثم اضغط «رفع».
+    </p>
+
+    <!-- تسجيل الدخول -->
+    <div class="card" id="loginCard">
+        <label for="email">البريد الإلكتروني (نفس حساب لوحة الإدارة)</label>
+        <input type="email" id="email" placeholder="admin@example.com" autocomplete="username">
+        <label for="password">كلمة المرور</label>
+        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+        <button class="btn-primary" id="btnLogin">تسجيل الدخول</button>
+        <div class="status" id="loginStatus"></div>
+    </div>
+
+    <!-- قائمة المحتوى المكتشف -->
+    <div class="card hidden" id="contentCard">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div>
+                <b id="signedInAs" style="font-size:13.5px;"></b>
+                <div style="font-size:12.5px; color:var(--text-dim); margin-top:3px;">
+                    حد Firestore لكل مستند هو 1 ميغابايت — الحجم المحسوب أدناه يشمل النصوص والصور معًا.
+                </div>
+            </div>
+            <button class="btn-ghost btn-sm" id="btnLogout">خروج</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>المطعم / القسم</th>
+                    <th>معرّف المستند</th>
+                    <th>الأقسام</th>
+                    <th>الحجم</th>
+                    <th>الحالة</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="registryBody"></tbody>
+        </table>
+
+        <div style="margin-top:18px; display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn-success" id="btnImportAll">رفع كل المحتوى</button>
+        </div>
+        <div class="status" id="importStatus"></div>
+    </div>
+
+    <!-- معاينة -->
+    <div class="card hidden" id="previewCard">
+        <b style="font-size:14px;" id="previewTitle"></b>
+        <div class="preview" id="previewBody"></div>
+        <button class="btn-ghost btn-sm" style="margin-top:12px;" id="btnClosePreview">إغلاق المعاينة</button>
+    </div>
+
+</div>
+
+<!-- =========================================================================
+     ملفات المحتوى — أضف سطرًا لكل ملف جديد تنشئه في training-content/
+     ========================================================================= -->
+<!-- ==== محتوى مضمّن من training-content/gaimer-w-kahi-hospitality.js ==== -->
+<script>
+/* =============================================================================
+   محتوى التدريب — قيمر وكاهي / قسم الضيافة والاستقبال
+   Training Content — Gaimer W Kahi / Hospitality & Reception
+   -----------------------------------------------------------------------------
+   الفروع: ووك ست وميناء الدوحة القديم — قطر
+   إعداد وتطوير: إدارة التشغيل والجودة
+
+   ملاحظات تقنية (اقرأها قبل التعديل):
+   - هذا الملف هو المصدر الدائم للمحتوى في المستودع. يُرفع إلى Firestore عبر
+     صفحة import-training.html (زر Import) إلى المجموعة training_content
+     بمعرّف مستند = GAIMER_W_KAHI__HOSPITALITY.
+   - كل عنصر في sections يقابل "قسمًا" واحدًا في محرر لوحة الإدارة، وله:
+       heading      : العنوان (عربي — English)
+       text         : النص، العربية أولاً ثم خط فاصل ثم الإنجليزية
+       imageBase64  : صورة اختيارية (تُضاف لاحقًا من محرر لوحة الإدارة)
+   - النص يُعرض كنص خام آمن (escapeHtml) في كيوسك الموظفين — لا تضع وسوم HTML.
+     الأسطر الفارغة هي ما يفصل الفقرات ويحدد اتجاه كل فقرة تلقائيًا (dir="auto").
+   - يُسجّل نفسه على window حتى يعمل الاستيراد من file:// بدون مشاكل CORS/MIME
+     (لا نستخدم fetch لملفات JSON محلية).
+   ============================================================================= */
+
+(function () {
+    "use strict";
+
+    window.TRAINING_CONTENT_REGISTRY = window.TRAINING_CONTENT_REGISTRY || [];
+
+    var SEP = "———————————————";
+
+    window.TRAINING_CONTENT_REGISTRY.push({
+        restaurant: "GAIMER W KAHI",
+        department: "HOSPITALITY",
+        sourceFile: "training-content/gaimer-w-kahi-hospitality.js",
+        sections: [
+
+            /* ---------------------------------------------------------------
+               مقدمة الدليل
+               --------------------------------------------------------------- */
+            {
+                heading: "مقدمة الدليل التدريبي — Introduction to the Training Guide",
+                text: `البرنامج التدريبي الشامل لمعايير الخدمة والتقديم الاحترافي
+
+إعداد وتطوير: إدارة التشغيل والجودة
+الفروع: فرع ووك ست وميناء الدوحة القديم — قطر
+
+يسر إدارة التشغيل والجودة لفرع «ووك ست» و«قِيمر وكاهي» أن تضع بين أيديكم هذا الدليل التدريبي الشامل، والذي أُعد ليكون المرجع الأساسي لكافة كوادر الخدمة والضيافة، بهدف ضمان أعلى معايير الخدمة الخليجية الأصيلة.
+
+يهدف هذا الدليل إلى توحيد إجراءات التعامل مع الضيوف، بدءًا من لحظة الاستقبال والترحيب، مرورًا بتقديم المشروبات والأطباق وتدوين الطلبات بدقة، وصولًا إلى المحافظة على أعلى مستويات النظافة والانضباط التشغيلي.
+
+إن التزامنا بتطبيق هذه المعايير يعكس هوية «قِيمر وكاهي»، ويضمن تقديم تجربة استثنائية لضيوفنا تعتمد على الجودة والسرعة والكفاءة والاحترافية.
+
+ولضمان متابعة وتنفيذ هذه البروتوكولات، يتولى مشرفو الصالة مسؤولية تدريب وتطوير فريق العمل في مجالات اختصاصهم، بما يضمن رفع كفاءة الأداء وتعزيز روح الفريق الواحد.
+
+${SEP}
+
+Comprehensive Training Program for Service Standards and Professional Presentation
+
+Prepared and developed by: Operations and Quality Management
+Branches: West Walk and Old Doha Port — Qatar
+
+The Operations and Quality Management of the "West Walk" branch and "Gaimer W Kahi" is pleased to present this comprehensive training guide, prepared to serve as the primary reference for all service and hospitality staff, with the aim of guaranteeing the highest standards of authentic Gulf service.
+
+This guide aims to standardize all guest-handling procedures — from the moment of reception and welcome, through serving beverages and dishes and recording orders accurately, all the way to maintaining the highest levels of cleanliness and operational discipline.
+
+Our commitment to applying these standards reflects the identity of "Gaimer W Kahi" and ensures an exceptional guest experience built on quality, speed, efficiency and professionalism.
+
+To ensure these protocols are followed and implemented, the floor supervisors are responsible for training and developing the team within their areas of specialization, so as to raise performance standards and strengthen the spirit of one team.`
+            },
+
+            /* ---------------------------------------------------------------
+               المحور الأول: بروتوكول استقبال الضيوف وإدارة الخدمة
+               --------------------------------------------------------------- */
+            {
+                heading: "المحور الأول (1) — الاستقبال والترحيب وإجلاس الضيف / Reception, Welcoming and Seating the Guest",
+                text: `الترحيب الدافئ بالزبون فور وصوله، مع الابتسامة المباشرة واستخدام عبارات راقية وموحدة.
+
+توجيه الزبون إلى الطاولة المناسبة ومساعدته على الجلوس.
+
+تقديم قائمة الطعام للزبون فور جلوسه.
+
+${SEP}
+
+Give the guest a warm welcome the moment they arrive, with a direct smile and refined, standardized greeting phrases.
+
+Guide the guest to the appropriate table and assist them in taking their seat.
+
+Present the menu to the guest as soon as they are seated.`
+            },
+
+            {
+                heading: "المحور الأول (2) — تدوين الطلب وأصول التعامل / Taking the Order and Proper Conduct",
+                text: `عند أخذ الطلب من الزبون، يجب الالتزام بالخطوات التالية:
+
+كتابة الطلب كاملًا على ورقة الطلبات.
+
+تدوين رقم الطاولة وعدد الأشخاص واسم الموظف.
+
+تسجيل كل صنف يطلبه الزبون بوضوح، مع تدوين جميع تفضيلاته وملاحظاته الخاصة.
+
+توضيح الوقت المتوقع لتحضير الأطباق وإيصال الطلب إلى الزبون.
+
+إبلاغ الزبون بأن بعض الأطباق تحتاج إلى وقت محدد للتحضير، مثل:
+• المشروبات: من 3 إلى 5 دقائق.
+• الأطباق الخفيفة والفطور: من 10 إلى 15 دقيقة.
+• الأطباق الرئيسية والمشاوي: من 15 إلى 20 دقيقة.
+
+${SEP}
+
+When taking an order from a guest, the following steps must be followed:
+
+Write the full order on the order pad.
+
+Record the table number, the number of guests, and the staff member's name.
+
+Record every item the guest orders clearly, together with all of their preferences and special notes.
+
+Explain the expected preparation time for the dishes and when the order will reach the guest.
+
+Inform the guest that some dishes require a specific preparation time, for example:
+• Beverages: 3 to 5 minutes.
+• Light dishes and breakfast: 10 to 15 minutes.
+• Main dishes and grills: 15 to 20 minutes.`
+            },
+
+            {
+                heading: "المحور الأول (3) — سؤال الزبون عن توقيت تقديم المشروب / Asking the Guest When to Serve the Beverage",
+                text: `يجب سؤال الزبون بوضوح:
+
+هل تفضل تقديم المشروب، مثل الماء أو العصائر أو الكرك أو الشاي، قبل الأكل مباشرة، أم مع وجبة الطعام، أم بعد الانتهاء من الأكل؟
+
+يجب تسجيل ملاحظة واضحة على ورقة الطلب وفي النظام، مثل:
+• تقديم المشروب قبل الأكل.
+• تقديم المشروب مع الأكل.
+• تقديم المشروب بعد الأكل.
+
+${SEP}
+
+The guest must be asked clearly:
+
+Would you prefer your beverage — such as water, juice, karak or tea — to be served immediately before the meal, together with the meal, or after finishing the meal?
+
+A clear note must be recorded on the order pad and in the system, for example:
+• Serve the beverage before the meal.
+• Serve the beverage with the meal.
+• Serve the beverage after the meal.`
+            },
+
+            {
+                heading: "المحور الأول (4) — إعادة قراءة الطلب للزبون / Reading the Order Back to the Guest",
+                text: `بعد الانتهاء من تدوين الطلب، يقوم الموظف بإعادة قراءة الطلب كاملًا على الزبون بصوت واضح وهادئ، مع التأكد من:
+• الأطباق المطلوبة.
+• المشروبات المطلوبة.
+• الإضافات والتعديلات.
+• الملاحظات الخاصة.
+
+ويهدف ذلك إلى منع الأخطاء في الطلبات، والتأكد من رضا الزبون، وتقليل الهدر في المطبخ والبار.
+
+${SEP}
+
+After finishing writing the order, the staff member reads the entire order back to the guest in a clear, calm voice, confirming:
+• The dishes ordered.
+• The beverages ordered.
+• Any add-ons and modifications.
+• Any special notes.
+
+The purpose of this is to prevent order errors, confirm guest satisfaction, and reduce waste in the kitchen and the bar.`
+            },
+
+            {
+                heading: "المحور الأول (5) — إدخال الطلب وتنفيذه / Entering and Executing the Order",
+                text: `إدخال الطلب فورًا في نظام نقاط البيع (POS).
+
+متابعة خروج المشروبات والأطباق حسب التوقيت المحدد في الطلب.
+
+التأكد من تقديم المشروب أو الطبق في الوقت الذي حدده الزبون.
+
+${SEP}
+
+Enter the order into the Point of Sale (POS) system immediately.
+
+Follow up on the release of beverages and dishes according to the timing specified in the order.
+
+Make sure the beverage or dish is served at exactly the time the guest requested.`
+            },
+
+            /* ---------------------------------------------------------------
+               المحور الثاني: الإتيكيت العام
+               --------------------------------------------------------------- */
+            {
+                heading: "المحور الثاني — الإتيكيت العام لتقديم الأطعمة والمشروبات / General Etiquette for Serving Food and Beverages",
+                text: `قواعد تقديم الأطباق:
+
+تقديم الأطباق الرئيسية والمقبلات من الجهة اليسرى للضيف، باستخدام اليد اليسرى.
+
+رفع الأطباق والمعدات المستخدمة من الجهة اليمنى، باستخدام اليد اليمنى.
+
+تقديم المشروبات والماء من الجهة اليمنى للضيف.
+
+التأكد من أن شعار العلامة التجارية الموجود على الكوب أو الزجاجة يواجه الضيف مباشرة.
+
+عدم لمس الحواف العلوية للكؤوس أو الأكواب.
+
+حمل الأطباق من الأطراف وعدم إدخال اليد داخل إطار الصحن.
+
+المحافظة على مسافة مناسبة أثناء التقديم، مع الابتسامة والتواصل البصري.
+
+شرح مكونات الطبق للضيف عند الحاجة بطريقة واضحة ولطيفة.
+
+${SEP}
+
+Rules for serving dishes:
+
+Serve main dishes and appetizers from the guest's left side, using the left hand.
+
+Clear used plates and equipment from the guest's right side, using the right hand.
+
+Serve beverages and water from the guest's right side.
+
+Make sure the brand logo on the cup or bottle faces the guest directly.
+
+Never touch the upper rims of glasses or cups.
+
+Carry plates by their edges; never place your hand inside the rim of the plate.
+
+Maintain an appropriate distance while serving, with a smile and eye contact.
+
+Explain the components of the dish to the guest when needed, in a clear and courteous manner.`
+            },
+
+            /* ---------------------------------------------------------------
+               المحور الثالث: المقبلات والسلطات
+               --------------------------------------------------------------- */
+            {
+                heading: "المحور الثالث (1) — المقبلات المشكلة / Mixed Appetizers (Mezze Platter)",
+                text: `تُقدّم كطبق مشاركة في منتصف الطاولة، وتكفي من شخصين إلى ثلاثة أشخاص، وتشمل:
+• تبولة.
+• حمص.
+• سلطة مشوية.
+• متبل باذنجان.
+• ذرة.
+• جرجير.
+• زيتون حار.
+• سلطة خاصة.
+
+يجب مراجعة مكونات المقبلات وشرحها للضيف بصوت واضح.
+
+${SEP}
+
+Served as a sharing platter in the center of the table, sufficient for two to three people, and includes:
+• Tabbouleh.
+• Hummus.
+• Grilled salad.
+• Eggplant mutabbal.
+• Corn.
+• Rocket (arugula).
+• Spicy olives.
+• House special salad.
+
+The components of the platter must be reviewed and explained to the guest in a clear voice.`
+            },
+
+            {
+                heading: "المحور الثالث (2) — السلطات / Salads",
+                text: `سلطة الحديقة العراقية:
+تُقدّم طازجة مع توضيح مكوناتها المميزة، مثل: الصلصة الخاصة، الطماطم، البصل، الذرة، الصنوبر، الريحان، الفلفل.
+
+سلطة التبولة:
+تُقدّم باردة جدًا، مع إبراز الخضار المقطعة وشرائح الليمون والبقدونس.
+
+سلطة الجرجير:
+تُقدّم لشخص واحد، مع البصل والطماطم الكرزية والسماق وشرائح الليمون، ويُقدّم معها صوص الليمون.
+
+سلطة الشمندر:
+تُقدّم باردة، مع وضع الشوكة والسكين للضيف.
+
+${SEP}
+
+Iraqi Garden Salad:
+Served fresh, with its distinctive components explained: house dressing, tomato, onion, corn, pine nuts, basil and pepper.
+
+Tabbouleh Salad:
+Served very cold, highlighting the finely chopped vegetables, lemon slices and parsley.
+
+Rocket (Arugula) Salad:
+Served as a single portion, with onion, cherry tomatoes, sumac and lemon slices, accompanied by lemon dressing.
+
+Beetroot Salad:
+Served cold, with a fork and knife set for the guest.`
+            },
+
+            {
+                heading: "المحور الثالث (3) — الحمص والمتبل والمخللات / Hummus, Mutabbal and Pickles",
+                text: `حمص بطحينة:
+يُقدّم لشخص أو شخصين، ويُزيّن بزيت الزيتون والنعناع.
+
+متبل عراقي خاص:
+يتم شرح طبيعة الطبق ومكوناته للضيف، مثل البصل والطماطم والسمكة الحارة والطحينية.
+
+متبل باذنجان:
+يُقدّم بقوام متجانس ومزيّن بطريقة جذابة، ويكفي لشخص أو شخصين.
+
+طرشي عراقي:
+يُقدّم كمخللات باردة وطبق جانبي افتتاحي للوجبة.
+
+${SEP}
+
+Hummus with Tahini:
+Served for one to two people, garnished with olive oil and mint.
+
+Special Iraqi Mutabbal:
+The nature of the dish and its components are explained to the guest — onion, tomato, spicy fish and tahini.
+
+Eggplant Mutabbal:
+Served with a smooth, even texture and an attractive garnish; sufficient for one to two people.
+
+Iraqi Torshi (Pickles):
+Served cold as a pickled side dish to open the meal.`
+            },
+
+            {
+                heading: "المحور الثالث (4) — المقبلات الساخنة / Hot Appetizers",
+                text: `شوربة العدس:
+تُقدّم ساخنة جدًا في وعاء عميق، مع ملعقة وشريحة ليمون وخبز محمص على الجانب.
+
+عروق طاوة:
+تُقدّم ساخنة فور خروجها من القلي، مع توضيح مكوناتها من اللحم المفروم والتوابل والأعشاب، وتكفي لشخص أو شخصين.
+
+تسالي لبلي:
+تُقدّم ساخنة في وعاء عميق مع البهارات العراقية والفواكه المجففة، وتكفي لشخص واحد.
+
+تسالي قلاية:
+يُقدّم الفول المسلوق المتبل ساخنًا مع البهارات العراقية، ويكفي لشخص واحد.
+
+سبيرنق رول عراقي:
+يُقدّم ساخنًا ومقرمشًا، ويتكون من أربع قطع، مع التأكد من نوع الحشوة المختارة، مثل: السبانخ، الجبن، اللحم.
+
+سمبوسة مشكلة:
+تُقدّم خمس حبات ساخنة ومرتبة بشكل جذاب، مع إمكانية اختيار الحشوة، مثل: اللحم، الجبن، السبانخ، الكيري.
+
+${SEP}
+
+Lentil Soup:
+Served very hot in a deep bowl, with a spoon, a lemon slice and toasted bread on the side.
+
+Uruq Tawa:
+Served hot straight out of the fryer, explaining its components of minced meat, spices and herbs; sufficient for one to two people.
+
+Tasali Lablabi:
+Served hot in a deep bowl with Iraqi spices and dried fruit; a single portion.
+
+Tasali Qalaya:
+Seasoned boiled fava beans served hot with Iraqi spices; a single portion.
+
+Iraqi Spring Rolls:
+Served hot and crispy, four pieces, after confirming the chosen filling: spinach, cheese or meat.
+
+Mixed Sambousa:
+Five pieces served hot and arranged attractively, with a choice of filling: meat, cheese, spinach or Kiri cheese.`
+            },
+
+            {
+                heading: "المحور الثالث (5) — أطباق الكبة / Kubba Dishes",
+                text: `طبق كبة برغل:
+تُقدّم ساخنة مع حشوة اللحم البقري المفروم والبهارات.
+
+طبق كبة حلب:
+تُقدّم كرات ذهبية محشوة باللحم والمكسرات واللوز والبهارات العراقية.
+
+طبق كبة البطاطا:
+تُقدّم مع البطاطا المهروسة المقرمشة من الخارج والمحشوة باللحم المفروم.
+
+${SEP}
+
+Bulgur Kubba:
+Served hot with a filling of minced beef and spices.
+
+Kubba Halab:
+Served as golden balls stuffed with meat, nuts, almonds and Iraqi spices.
+
+Potato Kubba:
+Served as mashed potato, crispy on the outside and stuffed with minced meat.`
+            },
+
+            {
+                heading: "المحور الثالث (6) — المقليات / Fried Dishes",
+                text: `بطاطا مقلية مع جبن:
+تُقدّم البطاطا ساخنة فور القلي، مع توزيع الجبن الساخن عليها، وتكفي لشخص أو شخصين.
+
+طبق بطاطا مقلية أو باذنجان مقلي:
+يجب تقديم الأطباق المقلية بشكل مقرمش والتأكد من خلوها من الزيوت الزائدة.
+
+${SEP}
+
+French Fries with Cheese:
+The fries are served hot immediately after frying, with hot cheese distributed over them; sufficient for one to two people.
+
+French Fries or Fried Eggplant:
+Fried dishes must be served crispy, and must be checked to ensure they are free of excess oil.`
+            },
+
+            /* ---------------------------------------------------------------
+               المحور الثالث: الأطباق الرئيسية
+               --------------------------------------------------------------- */
+            {
+                heading: "المحور الثالث (7) — قوزي لحم خروف وقص عراقي / Quzi Lamb and Iraqi Gus",
+                text: `قوزي لحم خروف:
+يُقدّم بأسلوب فاخر مع شرح الطبق للضيف، ويتكون من كتف خروف مطهو بعناية لمدة خمس ساعات، ويُقدّم مع:
+• الأرز الأبيض المنثور.
+• الصلصة الخاصة.
+• التوابل والنكهات الخاصة بالمطعم.
+
+قص عراقي:
+يُقدّم بشكل استعراضي جذاب مع نوعين من الأرز والبطاطا المقلية والسلطة الحارة والصلصة المرافقة.
+
+${SEP}
+
+Quzi (Lamb Shoulder):
+Served in a luxurious style with the dish explained to the guest. It consists of a lamb shoulder carefully slow-cooked for five hours, served with:
+• Fluffy white rice.
+• The house special sauce.
+• The restaurant's signature spices and flavors.
+
+Iraqi Gus:
+Presented in an attractive, showpiece style with two kinds of rice, french fries, spicy salad and the accompanying sauce.`
+            },
+
+            {
+                heading: "المحور الثالث (8) — بدوي دجاج وبدوي لحم / Badawi Chicken and Badawi Lamb",
+                text: `بدوي دجاج:
+يجب إبلاغ الضيف مسبقًا بأن وقت التحضير يتراوح من 20 إلى 30 دقيقة. يُقدّم الطبق ساخنًا مع:
+• الأرز الأبيض.
+• ربع الدجاجة.
+• البهارات الخاصة.
+• الروب.
+• الصوص الأحمر الخاص.
+
+بدوي لحم:
+يُقدّم الأرز الأبيض الساخن مع قطعة من لحم الخروف الطري والروب والصوص الأحمر الخاص.
+
+${SEP}
+
+Badawi Chicken:
+The guest must be informed in advance that preparation takes 20 to 30 minutes. The dish is served hot with:
+• White rice.
+• A quarter chicken.
+• The special spice blend.
+• Rawb (Iraqi yogurt).
+• The special red sauce.
+
+Badawi Lamb:
+Hot white rice served with a piece of tender lamb, rawb (Iraqi yogurt) and the special red sauce.`
+            },
+
+            {
+                heading: "المحور الثالث (9) — الدولمة العراقية / Iraqi Dolma",
+                text: `دولمة عراقية:
+تُقدّم ساخنة مع الخضار واللحم والأرز، وتُزيّن بحبتين من الريش، وتكفي من شخصين إلى ثلاثة أشخاص.
+
+دولمة عراقية بالدجاج:
+تُقدّم مع نصف دجاجة محمرة، والأرز والخضار المحشوة، وتكفي من شخصين إلى ثلاثة أشخاص.
+
+${SEP}
+
+Iraqi Dolma:
+Served hot with vegetables, meat and rice, garnished with two lamb chops; sufficient for two to three people.
+
+Iraqi Dolma with Chicken:
+Served with half a roasted chicken, rice and stuffed vegetables; sufficient for two to three people.`
+            },
+
+            {
+                heading: "المحور الثالث (10) — الصينية البغدادية / The Baghdadi Platter",
+                text: `تُقدّم في صينية كبيرة في وسط الطاولة، مع شرح المكونات المتنوعة، وتشمل:
+• كبة بطاطا: قطعتان.
+• كبة برغل: قطعتان.
+• كبة حلب: قطعتان.
+• عروق طاوة: خمس قطع.
+• كباب لحم: ثلاث قطع.
+• خبز عراقي.
+• طرشي.
+• لبن عراقي طازج يُصب من الجار المرفق.
+
+${SEP}
+
+Served on a large tray in the center of the table, with all of its varied components explained. It includes:
+• Potato kubba: 2 pieces.
+• Bulgur kubba: 2 pieces.
+• Kubba Halab: 2 pieces.
+• Uruq Tawa: 5 pieces.
+• Lamb kebab: 3 pieces.
+• Iraqi bread.
+• Torshi (pickles).
+• Fresh Iraqi laban, poured from the accompanying jar.`
+            },
+
+            {
+                heading: "المحور الثالث (11) — الحمسة على الفخارة / Hamsa in the Clay Pot (Fakhara)",
+                text: `حمسة دجاج على الفخارة:
+تُقدّم في الفخارة الساخنة جدًا، مع رفع الغطاء أمام الضيف بحذر للسماح بخروج البخار والروائح. وتشمل أنواع الأرز المرافقة:
+• أرز أبيض.
+• أرز أحمر.
+• أرز قلي.
+• أرز شبت.
+
+حمسة دجاج مشروم بالفخارة:
+تُرفع عجينة الكاهي المغطاة عن الفخارة بأسلوب احترافي لإبراز رائحة الطبخ، ويُقدّم الطبق مع الدجاج والمشروم وزيت الترافل، ويكفي لشخص أو شخصين.
+
+${SEP}
+
+Chicken Hamsa in the Clay Pot:
+Served in a very hot clay pot, lifting the lid carefully in front of the guest to release the steam and aromas. The accompanying rice options include:
+• White rice.
+• Red rice.
+• Qali rice.
+• Dill rice.
+
+Chicken and Mushroom Hamsa in the Clay Pot:
+The kahi dough covering the clay pot is lifted professionally to release the cooking aroma. The dish is served with chicken, mushroom and truffle oil; sufficient for one to two people.`
+            },
+
+            {
+                heading: "المحور الثالث (12) — المقلوبة ومعكرونة أهلنا / Maqluba and Ahalna Pasta",
+                text: `مقلوبة دجاج:
+يتم شرح مكونات الطبق، مثل: الدجاج، الأرز، الباذنجان، البطاطا، الطماطم، الفلفل. وتُقدّم مع اللبن الزبادي على الجانب، وتكفي لشخص أو شخصين.
+
+معكرونة أهلنا:
+يجب الإشارة إلى توفر الطبق بعد الساعة 12 ظهرًا، ويُقدّم في وعاء واسع مع اللحم المفروم والصلصة الحمراء، ويكفي لشخص أو شخصين.
+
+${SEP}
+
+Chicken Maqluba:
+The components of the dish are explained: chicken, rice, eggplant, potato, tomato and pepper. Served with yogurt on the side; sufficient for one to two people.
+
+Ahalna Pasta:
+The guest must be told that this dish is available after 12:00 noon. Served in a wide bowl with minced meat and red sauce; sufficient for one to two people.`
+            },
+
+            {
+                heading: "المحور الثالث (13) — صينية تيبسي والنواشف العراقية / Tepsi Tray and Iraqi Nawashef",
+                text: `صينية تيبسي بكبة اللحم:
+تُقدّم ساخنة في الصينية، وتتكون من الباذنجان والكبة واللحم المتبل، وتكفي لشخص أو شخصين.
+
+صينية تيبسي مع الدجاج:
+تُقدّم مع الدجاج المخبوز في الفرن والباذنجان المطبوخ، وتكفي لشخص أو شخصين.
+
+نواشف عراقية:
+تُقدّم تشكيلة من المقبلات المقرمشة والساخنة، مثل: البطاطا، الباذنجان، الكبة، كبة البطاطا، عروق الطاوة، كباب اللحم، الأرز. وتكفي من شخصين إلى ثلاثة أشخاص.
+
+${SEP}
+
+Tepsi Tray with Meat Kubba:
+Served hot in the tray, consisting of eggplant, kubba and seasoned meat; sufficient for one to two people.
+
+Tepsi Tray with Chicken:
+Served with oven-baked chicken and cooked eggplant; sufficient for one to two people.
+
+Iraqi Nawashef:
+An assortment of hot, crispy appetizers served together: potato, eggplant, kubba, potato kubba, Uruq Tawa, lamb kebab and rice. Sufficient for two to three people.`
+            },
+
+            {
+                heading: "المحور الثالث (14) — أطباق الأرز / Rice Dishes",
+                text: `يمكن تقديم أنواع مختلفة من الأرز، مثل:
+• تمن جله.
+• تمن أحمر.
+• تمن كبسة.
+• تمن أبيض.
+• تمن قلي.
+
+يجب تعريف الضيف بنوع الأرز المقدم.
+
+${SEP}
+
+Several different types of rice may be served, such as:
+• Timman Jalla.
+• Red timman.
+• Kabsa timman.
+• White timman.
+• Qali timman.
+
+The guest must always be told which type of rice is being served.`
+            },
+
+            {
+                heading: "المحور الثالث (15) — البرجر والبيتزا والصفيحة / Burger, Pizza and Sfeeha",
+                text: `برجر عراقي:
+يُقدّم طازجًا بعد الساعة 12 ظهرًا، مع:
+• اللحم أو الدجاج.
+• الطماطم.
+• الخس.
+• الطرشي.
+• الصلصة الخاصة بالطبق.
+
+بيتزا كاهي:
+تُقدّم على قطعة الكاهي، وتكون ساخنة ومرفوعة على حامل دافئ. ويمكن اختيارها مع: الدجاج، الخضار، الجبن.
+
+صفيحة الكاهي الضخمة:
+تُقدّم دافئة ومقرمشة، مع إمكانية اختيار الحشوة، مثل: الجبن، الزعتر.
+
+${SEP}
+
+Iraqi Burger:
+Served fresh after 12:00 noon, with:
+• Beef or chicken.
+• Tomato.
+• Lettuce.
+• Torshi (pickles).
+• The dish's special sauce.
+
+Kahi Pizza:
+Served on a piece of kahi, hot and raised on a warm stand. Available with a choice of: chicken, vegetables or cheese.
+
+Giant Kahi Sfeeha:
+Served warm and crispy, with a choice of filling: cheese or zaatar.`
+            },
+
+            {
+                heading: "المحور الثالث (16) — المشاوي العراقية / Iraqi Grills",
+                text: `تُقدّم المشاوي العراقية ابتداءً من الساعة 12 ظهرًا، وتشمل:
+
+ريش مشوية:
+تُقدّم أربع قطع ساخنة على الفحم، مع البطاطا المقلية والسلطة الطازجة.
+
+كبسة قيمر وكاهي الخاصة مع الدجاج المشوي:
+يُقدّم الدجاج المشوي فوق الأرز المتبل بالخلطة الخاصة، مع تقديم الروب الخاص على الجانب.
+
+كباب عراقي:
+تُقدّم أربعة أسياخ من كباب الدجاج أو اللحم على الفحم مباشرة، مع الخبز العراقي والبطاطا والسلطة.
+
+تكة لحم أو دجاج:
+تُقدّم أربعة أسياخ دجاج أو ثلاثة أسياخ لحم طازجة، مع السلطة والبطاطا المقلية.
+
+${SEP}
+
+Iraqi grills are served starting from 12:00 noon, and include:
+
+Grilled Lamb Chops:
+Four pieces served hot off the charcoal, with french fries and fresh salad.
+
+Gaimer W Kahi Special Kabsa with Grilled Chicken:
+Grilled chicken served over rice seasoned with the house special blend, with the special rawb (yogurt) on the side.
+
+Iraqi Kebab:
+Four skewers of chicken or lamb kebab served straight off the charcoal, with Iraqi bread, potatoes and salad.
+
+Lamb or Chicken Tikka:
+Four fresh chicken skewers or three lamb skewers, served with salad and french fries.`
+            },
+
+            {
+                heading: "المحور الثالث (17) — المشاوي العراقية المشكلة / Iraqi Mixed Grill",
+                text: `تتوفر بأحجام مختلفة:
+• صغير.
+• وسط.
+• كامل.
+
+ويجب شرح المكونات للضيف، مثل:
+• 3 أسياخ كباب لحم.
+• 3 أسياخ كباب دجاج.
+• 2 أسياخ تكة لحم.
+• 3 قطع تكة دجاج.
+• قطع ريش.
+• بطاطا.
+
+كما يجب سؤال الضيف عن نوع الأرز المفضل، مثل:
+• الأرز الأحمر.
+• أرز الكبسة.
+• أرز القلي.
+• الأرز الأبيض.
+• الأرز الخاص.
+
+ويُقدّم المشكل العراقي مع اللبن العراقي والروب الخاص حسب الاختيار، مع التأكد من توفير نوع الأرز المفضل على الطاولة فورًا.
+
+${SEP}
+
+Available in different sizes:
+• Small.
+• Medium.
+• Full.
+
+The components must be explained to the guest, for example:
+• 3 lamb kebab skewers.
+• 3 chicken kebab skewers.
+• 2 lamb tikka skewers.
+• 3 pieces of chicken tikka.
+• Lamb chop pieces.
+• Potatoes.
+
+The guest must also be asked which rice they prefer, such as:
+• Red rice.
+• Kabsa rice.
+• Qali rice.
+• White rice.
+• House special rice.
+
+The Iraqi mixed grill is served with Iraqi laban and the special rawb according to the guest's choice, making sure the preferred type of rice is brought to the table immediately.`
+            },
+
+            {
+                heading: "المحور الثالث (18) — البوكسات وصواني العزائم / Boxes and Banquet Trays",
+                text: `بوكس فطاير كاهي:
+يتكون من 10 قطع مشكلة، مع توضيح الأنواع للضيف، مثل:
+• كاهي سبانخ.
+• كاهي زعتر.
+• كاهي لحم.
+• كاهي أجبان مشكلة.
+• كاهي موزاريلا.
+• كاهي عكاوي.
+ويكفي من ثلاثة إلى أربعة أشخاص.
+
+بوكس كنافة مشكلة:
+يتكون من 15 قطعة، مع تشكيلة متنوعة من النكهات، مثل:
+• قيمر.
+• مكسرات.
+• لوز.
+• فستق.
+• كاجو.
+• نوتيلا.
+• صوص كيري.
+ويجب سؤال الضيف عن الصوص المفضل، مثل العسل أو الشيرة، ويكفي من ثلاثة إلى أربعة أشخاص.
+
+صواني العزائم:
+تُقدّم الصواني الكبيرة في وسط الطاولة أو الصالة بأسلوب استعراضي، مع إبراز ألوان الأرز الأربعة:
+• الأرز الأبيض.
+• الأرز الأحمر.
+• أرز الكبسة.
+• أرز القلي.
+وتشمل الصواني المشاوي والدجاج والمقبلات والأطباق المرافقة، بما يعكس أعلى درجات الضيافة والكرم العراقي.
+
+${SEP}
+
+Kahi Pastry Box:
+Contains 10 mixed pieces, with the varieties explained to the guest:
+• Spinach kahi.
+• Zaatar kahi.
+• Meat kahi.
+• Mixed cheese kahi.
+• Mozzarella kahi.
+• Akkawi cheese kahi.
+Sufficient for three to four people.
+
+Mixed Kunafa Box:
+Contains 15 pieces with a varied selection of flavors:
+• Gaimer (clotted cream).
+• Mixed nuts.
+• Almond.
+• Pistachio.
+• Cashew.
+• Nutella.
+• Kiri cheese sauce.
+The guest must be asked which sauce they prefer, such as honey or sugar syrup. Sufficient for three to four people.
+
+Banquet Trays:
+The large trays are presented in the center of the table or the hall in a showpiece style, highlighting the four rice colors:
+• White rice.
+• Red rice.
+• Kabsa rice.
+• Qali rice.
+The trays include grills, chicken, appetizers and accompanying dishes, reflecting the highest degree of Iraqi hospitality and generosity.`
+            },
+
+            /* ---------------------------------------------------------------
+               المحور الرابع: المشروبات
+               --------------------------------------------------------------- */
+            {
+                heading: "المحور الرابع (1) — المشروبات الغازية والعصائر / Soft Drinks and Juices",
+                text: `تقديم كوب مملوء بالثلج لشخص واحد أولًا.
+
+صب المشروب أمام الضيف ببطء حتى لا يفقد الفوران.
+
+وضع الكأس بجانب الزجاجة أو العلبة.
+
+توجيه شعار العلامة التجارية نحو الضيف.
+
+تجنب ملء الكأس بشكل زائد.
+
+${SEP}
+
+First present a glass filled with ice for one person.
+
+Pour the drink slowly in front of the guest so that it does not lose its fizz.
+
+Place the glass next to the bottle or can.
+
+Turn the brand logo to face the guest.
+
+Avoid overfilling the glass.`
+            },
+
+            {
+                heading: "المحور الرابع (2) — تقديم الماء / Serving Water",
+                text: `تقديم كاسات ماء نظيفة وجافة.
+
+سكب الماء من الجهة اليمنى للضيف.
+
+ملء الكأس حتى ثلثيه.
+
+عدم ملامسة فوهة الزجاجة لحافة الكأس.
+
+سؤال الزبون فور جلوسه عما إذا كان يحتاج إلى الماء.
+
+${SEP}
+
+Present clean, dry water glasses.
+
+Pour the water from the guest's right side.
+
+Fill the glass to two thirds.
+
+Never let the mouth of the bottle touch the rim of the glass.
+
+Ask the guest as soon as they are seated whether they would like water.`
+            },
+
+            {
+                heading: "المحور الرابع (3) — تقديم استكانة الشاي العراقي / Serving the Iraqi Tea Istikana",
+                text: `تقديم الشاي ساخنًا جدًا وبطريقة نظيفة.
+
+وضع الاستكانة على صحن صغير نظيف.
+
+وضع ملعقة الشاي الصغيرة إلى جانب الاستكانة.
+
+تقديم السكر على الجانب.
+
+التأكد من عدم وجود أي انسكاب خارجي.
+
+${SEP}
+
+Serve the tea very hot and in a clean manner.
+
+Place the istikana (traditional tea glass) on a clean small saucer.
+
+Place the small teaspoon beside the istikana.
+
+Serve the sugar on the side.
+
+Make sure there are no spills on the outside of the glass or saucer.`
+            },
+
+            /* ---------------------------------------------------------------
+               المحور الخامس: فريق التدريب
+               --------------------------------------------------------------- */
+            {
+                heading: "المحور الخامس — فريق التدريب وتوزيع المسؤوليات التشغيلية / Training Team and Distribution of Operational Responsibilities",
+                text: `السيد حمزة زريب — مسؤول صالة:
+يتولى الإشراف الكامل على تدريب فريق العمل في كل ما يتعلق بـ:
+• خدمة الطاولات.
+• قواعد الإتيكيت.
+• تقديم الوجبات والمشروبات.
+• ضمان الدقة والسرعة والاحترافية المطلوبة.
+
+السيد رضوان برقوقي — مسؤول صالة:
+يتولى الإشراف والمتابعة المباشرة لتدريب الموظفين على معايير النظافة، ويشمل ذلك:
+• النظافة الشخصية.
+• نظافة الصالة والمكان.
+• تطبيق جميع الاشتراطات الصحية والبيئية في صالة الخدمة.
+
+السيد محمد الورداني — مسؤول صالة:
+يتولى الإشراف على تدريب الموظفين في بروتوكول استقبال الزبائن، ويشمل ذلك:
+• الترحيب الدافئ.
+• إجلاس الضيوف.
+• إدارة التجربة الأولى للزبون فور دخوله المطعم.
+
+${SEP}
+
+Mr. Hamza Zrib — Floor Supervisor:
+Holds full responsibility for supervising the training of the team in everything related to:
+• Table service.
+• Etiquette rules.
+• Serving meals and beverages.
+• Ensuring the required accuracy, speed and professionalism.
+
+Mr. Radhouene Bargougi — Floor Supervisor:
+Holds direct responsibility for supervising and following up on staff training in cleanliness standards, including:
+• Personal hygiene.
+• Cleanliness of the hall and the premises.
+• Applying all health and environmental requirements in the service hall.
+
+Mr. Mohamed Al Ouerdani — Floor Supervisor:
+Holds responsibility for supervising staff training in the guest reception protocol, including:
+• The warm welcome.
+• Seating the guests.
+• Managing the guest's first experience the moment they enter the restaurant.`
+            }
+        ]
+    });
+})();
+
+</script>
+<!-- دليل الكاشير مشترك بين البراندين، فالملف الواحد يسجّل مستندين:
+     GAIMER_W_KAHI__CASHIER و SHAI_BU_HAMAD__CASHIER -->
+<!-- ==== محتوى مضمّن من training-content/cashier-shared.js ==== -->
+<script>
+/* =============================================================================
+   محتوى التدريب — قسم الكاشير (دليل مشترك للبراندين)
+   Training Content — Cashier Department (shared guide for both brands)
+   -----------------------------------------------------------------------------
+   المصدر: «دليل المعايير والبروتوكول التشغيلي الموحد لقسم الكاشير» — الإصدار V1
+   دولة قطر — إدارة المطعم
+
+   لماذا ملف واحد لمطعمين؟
+   ------------------------
+   رأس المستند الأصلي المُرسل من الإدارة يقول «مطعم شاي بوحمد، وقيمر وكاهي» —
+   أي أن هذا الدليل مشترك بين البراندين، والاختلاف الوحيد بينهما هو اسم البراند
+   الذي يُنطق في العبارات الترحيبية وعبارات الوداع والهاتف. لذلك يُكتب المحتوى
+   مرة واحدة في buildSections() ويُولَّد مستندان منه:
+       GAIMER_W_KAHI__CASHIER
+       SHAI_BU_HAMAD__CASHIER
+   وهذا يمنع انحراف النسختين عن بعضهما مستقبلاً عند أي تعديل.
+
+   ملاحظتان على المستند الأصلي (تحتاج قرار الإدارة):
+   1) ترقيم المحاور في الأصل يقفز: 1 ثم 4 ثم 5 ثم 6 ثم 7 — المحوران 2 و 3
+      غير موجودين في النص المُرسل. تم الحفاظ على العناوين كما هي بدون اختراع
+      محتوى للمحورين الناقصين.
+   2) في موضعين كان اسم البراند فارغًا في الأصل («بك في ، معك...» و«تواصلك
+      معنا في ، ونتمنى...») — تم إدراج اسم البراند الصحيح تلقائيًا هنا.
+
+   ملاحظات تقنية: انظر تعليقات gaimer-w-kahi-hospitality.js — نفس البنية،
+   ونفس قاعدة الأسطر الفارغة التي تحدد اتجاه كل فقرة تلقائيًا في الكيوسك.
+   ============================================================================= */
+
+(function () {
+    "use strict";
+
+    window.TRAINING_CONTENT_REGISTRY = window.TRAINING_CONTENT_REGISTRY || [];
+
+    var SEP = "———————————————";
+
+    /**
+     * يبني أقسام دليل الكاشير لبراند معيّن.
+     * @param {string} brandAr اسم البراند بالعربية كما يُنطق للضيف
+     * @param {string} brandEn اسم البراند بالإنجليزية
+     */
+    function buildSections(brandAr, brandEn) {
+        return [
+
+            /* ---------------------------------------------------------------
+               المقدمة
+               --------------------------------------------------------------- */
+            {
+                heading: "مقدمة الدليل ونطاقه — Guide Introduction and Scope",
+                text: `دليل المعايير والبروتوكول التشغيلي الموحد لقسم الكاشير
+مطعم ${brandAr} — دولة قطر
+رقم الإصدار: V1
+
+هذا الإصدار مُحدّث بالمعايير الشاملة والدقيقة لإدارة الصندوق والإجراءات المالية والبروتوكول الاحترافي.
+
+يهدف هذا الدليل إلى توحيد أسلوب تعامل موظفي الكاشير مع الضيوف والنقدية، وضبط الإجراءات المالية على نظام نقاط البيع، وتحديد قائمة التفقد اليومية الواجب تنفيذها في كل شفت، بما يضمن دقة الحسابات وسرعة الخدمة وحماية أموال المطعم.
+
+مع تحيات إدارة المطعم.
+
+${SEP}
+
+Unified Standards and Operational Protocol Guide for the Cashier Department
+${brandEn} Restaurant — State of Qatar
+Version: V1
+
+This version has been updated with comprehensive and precise standards for cash-drawer management, financial procedures and professional protocol.
+
+The purpose of this guide is to standardize how cashiers deal with guests and with cash, to control financial procedures on the Point of Sale system, and to define the daily checklist that must be completed on every shift — ensuring accurate accounts, fast service and the protection of the restaurant's money.
+
+With the compliments of the Restaurant Management.`
+            },
+
+            /* ---------------------------------------------------------------
+               1. بروتوكول التعامل مع الضيوف والنقدية
+               --------------------------------------------------------------- */
+            {
+                heading: "1.1 — الاستقبال والترحيب في منطقة الكاشير / The Cashier Greeting Rule",
+                text: `قاعدة التواصل الفوري:
+الابتسامة الدافئة والتواصل البصري المباشر خلال 3 ثوانٍ من اقتراب الضيف من منطقة الكاشير.
+
+العبارة الترحيبية المعتمدة:
+«يا مرحباً ومسهلا بكم في ${brandAr}، أتمنى أن تكون التجربة قد حازت على رضاكم اليوم».
+
+مراجعة الفاتورة والملاحظات:
+التأكد من رقم الطاولة أو رقم الطلب، وسؤال الضيف بلطف عن جودة الطعام والخدمة قبل إتمام الماليّة.
+
+${SEP}
+
+The immediate-contact rule:
+A warm smile and direct eye contact within 3 seconds of the guest approaching the cashier area.
+
+The approved welcome phrase:
+"You are most welcome to ${brandEn}. I hope your experience today has been to your full satisfaction."
+
+Reviewing the bill and any notes:
+Confirm the table number or the order number, and politely ask the guest about the quality of the food and the service before completing the financial transaction.`
+            },
+
+            {
+                heading: "1.2 — معايير تحصيل الأموال وإتيكيت الدفع / Payment Processing Standards",
+                text: `تقديم الفاتورة:
+تقديم الفاتورة مطبوعة بوضوح وداخل حافظة الفواتير المخصصة للبراند بشكل غير مكشوف.
+
+خيارات الدفع:
+الاستفسار عن طريقة الدفع المفضلة (نقداً، بطاقة ائتمانية/مصرفية، أو تطبيق المحفظة الإلكترونية).
+
+التعامل مع النقود:
+• عد النقد المستلم أمام الضيف لتأكيد المبلغ: «المستلم 200 ريال قطري».
+• إرجاع الباقي بدقة مع الفاتورة والوصل باليد اليمنى مع قول: «تفضل الباقي والفاتورة، شاكرين لك».
+
+الدفع بالبطاقات:
+التأكد من إدخال المبلغ الصحيح على جهاز نقاط البيع، وتناول البطاقة وتسليمها بحرص مع إيصال عملية الدفع.
+
+${SEP}
+
+Presenting the bill:
+Present the bill clearly printed and inside the brand's dedicated bill folder, never exposed openly.
+
+Payment options:
+Ask about the guest's preferred payment method (cash, credit/debit card, or e-wallet application).
+
+Cash handling:
+• Count the cash received in front of the guest to confirm the amount: "Two hundred Qatari Riyals received."
+• Return the change accurately, together with the bill and the receipt, using the right hand, while saying: "Here is your change and your bill. Thank you."
+
+Card transactions:
+Make sure the correct amount is entered on the POS terminal, and take and return the card carefully together with the payment receipt.`
+            },
+
+            {
+                heading: "1.3 — إنهاء المعاملة والوداع / Closing the Transaction and Farewell",
+                text: `عبارة المغادرة المعتمدة:
+«أسعدتونا بحضوركم، ونشوفكم على خير قريب إن شاء الله».
+
+تقديم بطاقات الولاء / الاستبيان:
+دعوة الضيف بلطف للمشاركة في تقييم الخدمة أو استخدام برامج الولاء إن وجدت.
+
+${SEP}
+
+The approved farewell phrase:
+"Your presence has been a pleasure for us. We hope to see you again soon."
+
+Loyalty cards and surveys:
+Politely invite the guest to take part in the service evaluation, or to use the loyalty programs where these are available.`
+            },
+
+            /* ---------------------------------------------------------------
+               4. الإجراءات المالية والتشغيلية على نظام الكاشير
+               --------------------------------------------------------------- */
+            {
+                heading: "4.1 — افتتاح الصندوق / Opening Float",
+                text: `الإجراء المعتمد:
+استلام عهدة الصندوق النقدي (Float) في بداية الشفت، عد المبالغ وتدقيق الفئات المختلفة، وتسجيلها في النظام مع توقيع الاستلام.
+
+المسؤول والاعتماد:
+الكاشير ومسؤول الصالة المباشر.
+
+${SEP}
+
+The approved procedure:
+Receive the cash float at the start of the shift, count the amounts, verify each denomination, and record them in the system together with a signature of receipt.
+
+Responsible and approving parties:
+The cashier and the direct floor supervisor.`
+            },
+
+            {
+                heading: "4.2 — إدخال وتعديل الطلبات / Order Entry and Void",
+                text: `الإجراء المعتمد:
+إدخال الطلبات بدقة متناهية حسب الأقسام (صواني، أطباق رز، جباتي، مشروبات). يُمنع إلغاء أي طبق بعد الطباعة إلا بإذن وإلغاء معتمد.
+
+المسؤول والاعتماد:
+الكاشير ومشرف الشفت.
+
+${SEP}
+
+The approved procedure:
+Enter orders with absolute accuracy according to their categories (trays, rice dishes, chapati, beverages). Voiding any dish after it has been printed is forbidden except with authorization and an approved void.
+
+Responsible and approving parties:
+The cashier and the shift supervisor.`
+            },
+
+            {
+                heading: "4.3 — الإلغاء والخصومات / Voids and Discounts",
+                text: `الإجراء المعتمد:
+لا يتم إجراء أي خصم أو إلغاء فاتورة إلا بطلب رسمي مبرر وبحضور المشرف واعتماد كود الإلغاء أو الخصم في نظام نقاط البيع.
+
+المسؤول والاعتماد:
+مشرف الصالة أو مدير الفرع.
+
+${SEP}
+
+The approved procedure:
+No discount or bill cancellation may be carried out except upon a formal, justified request, in the presence of the supervisor, and with the void or discount code authorized in the POS system.
+
+Responsible and approving parties:
+The floor supervisor or the branch manager.`
+            },
+
+            {
+                heading: "4.4 — إغلاق الشفت والمطابقة / Shift Closing and X/Z Reports",
+                text: `الإجراء المعتمد:
+طباعة التقرير النهائي (Z Report)، فرز المبيعات النقدية والبطاقات وتطابقها مع المقبوضات الفعلية، وتسليم العهدة والمقبوضات في الظرف المعتمد.
+
+المسؤول والاعتماد:
+الكاشير ومسؤول الصالة.
+
+${SEP}
+
+The approved procedure:
+Print the final report (Z Report), separate cash sales from card sales and reconcile them against the actual receipts, then hand over the float and the takings in the approved envelope.
+
+Responsible and approving parties:
+The cashier and the floor supervisor.`
+            },
+
+            {
+                heading: "4.5 — إدارة الفروقات النقدية / Cash Variance Management",
+                text: `الإجراء المعتمد:
+في حال وجود أي زيادة أو نقص في الصندوق، يتم إبلاغ مسؤول الصالة فوراً وتدوين ذلك في محضر الإغلاق اليومي للتحقيق والمطابقة.
+
+المسؤول والاعتماد:
+الكاشير ومدير الفرع.
+
+${SEP}
+
+The approved procedure:
+If there is any surplus or shortage in the cash drawer, the floor supervisor must be informed immediately and the discrepancy recorded in the daily closing report for investigation and reconciliation.
+
+Responsible and approving parties:
+The cashier and the branch manager.`
+            },
+
+            /* ---------------------------------------------------------------
+               5. قائمة التفقد اليومية
+               --------------------------------------------------------------- */
+            {
+                heading: "5.1 — قائمة التفقد اليومية: الجاهزية التشغيلية والمخزون / Daily Checklist: Operational Readiness and Stock",
+                text: `تطبيقات التوصيل:
+الالتزام بالوقت المحدد لفتح استقبال الطلبات على التطبيقات، ومراجعة المنيو الإلكتروني للتأكد من إظهار جميع الأطباق المتاحة وتطابقها مع المتوفر فعلياً بالمطبخ.
+التوقيت والمسؤولية: بداية الشفت — الكاشير ومسؤول الصالة.
+
+توفر الأطباق والمشاوي:
+التأكد من توفر جميع عناصر المنيو داخل المطعم قبل الافتتاح، والتأكد المباشر من إتاحة وفتح أطباق المشاوي في الموعد المعتمد المخصص لها دون تأخير.
+التوقيت والمسؤولية: قبل الافتتاح وقبل فترات الذروة.
+
+مستلزمات التعبئة:
+مراجعة وتفقّد مخزون علب التغليف والتيك أواي بكافة أحجامها (علب الأرز، الأكياس، الملاعق، الصوصات) والتحقق من كفايتها الكاملة للشفت.
+التوقيت والمسؤولية: بداية كل شفت تشغيلي.
+
+ثلاجات قسم الكاشير:
+فحص ثلاجات الكاشير والتأكد من نظافتها، تبريدها الصحيح، وترتيب العصائر والمشروبات والحلويات بأسلوب أنيق ومنظم للخدمة السريعة.
+التوقيت والمسؤولية: فحص دوري صباحي ومسائي.
+
+${SEP}
+
+Delivery applications:
+Adhere to the exact time set for opening order intake on the delivery apps, and review the electronic menu to confirm that every available dish is displayed and matches what is actually available in the kitchen.
+Timing and responsibility: Start of shift — the cashier and the floor supervisor.
+
+Availability of dishes and grills:
+Confirm that all menu items are available inside the restaurant before opening, and directly confirm that the grill dishes are enabled and opened at their designated approved time without delay.
+Timing and responsibility: Before opening and before peak periods.
+
+Packaging supplies:
+Review and check the stock of packaging and takeaway boxes in all sizes (rice boxes, bags, spoons, sauces) and verify that they are fully sufficient for the shift.
+Timing and responsibility: Start of every operational shift.
+
+Cashier area refrigerators:
+Inspect the cashier refrigerators and confirm their cleanliness, correct cooling, and the neat, organized arrangement of juices, beverages and desserts for fast service.
+Timing and responsibility: Routine morning and evening inspection.`
+            },
+
+            {
+                heading: "5.2 — قائمة التفقد اليومية: الأجهزة والهوية والأجواء الصوتية / Daily Checklist: Devices, Branding and Audio Ambience",
+                text: `هواتف المبيعات والتواصل:
+التأكد من شحن هواتف الكاشير والتوصيل بنسبة 100%، وفحص جاهزية الشواحن والاتصال بالشبكة لضمان عدم تفويت أي اتصال.
+التوقيت والمسؤولية: بداية الشفت وطوال اليوم.
+
+الملصقات والمطبوعات:
+مراجعة جرد واستكمال جميع الملصقات الخاصة بالبراند (ملصقات الإغلاق، ستيكرات الهوية، ولاصق التغليف).
+التوقيت والمسؤولية: بداية كل شفت تشغيلي.
+
+الأجواء الصوتية والقرآن الكريم:
+تشغيل القرآن الكريم في أرجاء المطعم صباحاً، والالتزام بتشغيل الموسيقى المعتمدة في تمام الساعة 10:00 صباحاً.
+التوقيت والمسؤولية: عند الفتح والساعة 10:00 صباحاً.
+
+إيقاف الموسيقى أثناء الأذان:
+الالتزام التام والتعظيم لإيقاف تشغيل الموسيقى فوراً عند كل أذان، وإعادة تشغيلها بعد انتهاء الأذان.
+التوقيت والمسؤولية: مواعيد الصلوات الخمس.
+
+${SEP}
+
+Sales and contact phones:
+Ensure the cashier and delivery phones are charged to 100%, and check that the chargers and the network connection are ready so that no call is ever missed.
+Timing and responsibility: Start of shift and throughout the day.
+
+Stickers and printed branding:
+Review, count and replenish all brand stickers (sealing stickers, identity stickers, and packaging tape).
+Timing and responsibility: Start of every operational shift.
+
+Audio ambience and the Holy Quran:
+Play the Holy Quran throughout the restaurant in the morning, and switch to the approved music playlist at exactly 10:00 AM.
+Timing and responsibility: At opening and at 10:00 AM.
+
+Stopping the music during the Adhan:
+Full and respectful compliance with stopping the music immediately at every call to prayer (Adhan), and resuming it once the Adhan has ended.
+Timing and responsibility: The five prayer times.`
+            },
+
+            /* ---------------------------------------------------------------
+               6. بروتوكول الهاتف
+               --------------------------------------------------------------- */
+            {
+                heading: "6 — بروتوكول الرد الرسمي المعتمد على الهاتف / Official Phone Protocol",
+                text: `سرعة الرد:
+الإجابة على الهاتف خلال 3 رنات كحد أقصى بأسلوب محترف ونبرة صوت واضحة وودودة.
+
+العبارة الترحيبية المعتمدة:
+«يا مرحباً ومسهلا بك في ${brandAr}، معك [اسم الموظف] لخدمتك، كيف أقدر أساعدك اليوم؟».
+
+أخذ الاستفسارات والطلبات:
+• الاستماع باهتمام للضيف وتدوين جميع التفاصيل بدقة (الاسم، رقم الهاتف، تفاصيل الطلب، عنوان التوصيل أو وقت الاستلام).
+• تأكيد الطلب عبر إعادة قراءته على الضيف للحد من أي خطأ.
+
+إنهاء المكالمة والوداع:
+«نشكر تواصلك معنا في ${brandAr}، ونتمنى لك يوماً سعيداً. حياك الله».
+
+${SEP}
+
+Speed of answering:
+Answer the phone within a maximum of 3 rings, in a professional manner and with a clear, friendly tone of voice.
+
+The approved welcome phrase:
+"You are most welcome to ${brandEn}. This is [employee name] at your service. How may I help you today?"
+
+Taking enquiries and orders:
+• Listen attentively to the guest and record every detail accurately (name, phone number, order details, delivery address or collection time).
+• Confirm the order by reading it back to the guest, to eliminate any error.
+
+Ending the call and farewell:
+"Thank you for contacting ${brandEn}. We wish you a pleasant day."`
+            },
+
+            /* ---------------------------------------------------------------
+               7. مسؤوليات الإشراف والتدريب
+               --------------------------------------------------------------- */
+            {
+                heading: "7 — مسؤوليات الإشراف والتدريب التشغيلي لقسم الكاشير / Supervision and Operational Training Responsibilities",
+                text: `السيد عبد المالك — مسؤول صالة:
+الإشراف الكامل على تدريب موظفي الكاشير في الربط التشغيلي، والتأكد من فتح الأطباق والمشاوي وتطبيقات التوصيل في أوقاتها المحددة بدقة، وعلى معايير نظافة ثلاجات الكاشير، وتوفر علب التيك أواي والملصقات، وتطبيق الاشتراطات الصحية.
+
+السيد محمد الورداني — مسؤول صالة:
+الإشراف على تدريب موظفي الكاشير في بروتوكول الرد الرسمي على الهاتف، والالتزام بالأجواء الصوتية (القرآن والموسيقى وأوقات الأذان)، وإدارة انطباع الزبون.
+
+السيد بلال عبد الصمد:
+الدعم الفني والتقني.
+
+${SEP}
+
+Mr. Abdelmalek — Floor Supervisor:
+Full responsibility for training cashier staff in operational coordination; confirming that dishes, grills and delivery applications are opened precisely at their designated times; the cleanliness standards of the cashier refrigerators; the availability of takeaway boxes and stickers; and the application of health requirements.
+
+Mr. Mohamed Al Ouerdani — Floor Supervisor:
+Responsible for training cashier staff in the official phone protocol, compliance with the audio ambience rules (Quran, music and Adhan times), and managing the guest's overall impression.
+
+Mr. Billel Abdessamad:
+Technical and IT support.`
+            }
+        ];
+    }
+
+    // البراندان يشتركان في نفس الدليل — نفس الأقسام مع استبدال اسم البراند فقط.
+    window.TRAINING_CONTENT_REGISTRY.push({
+        restaurant: "GAIMER W KAHI",
+        department: "CASHIER",
+        sourceFile: "training-content/cashier-shared.js",
+        sections: buildSections("قيمر وكاهي", "Gaimer W Kahi")
+    });
+
+    window.TRAINING_CONTENT_REGISTRY.push({
+        restaurant: "SHAI BU HAMAD",
+        department: "CASHIER",
+        sourceFile: "training-content/cashier-shared.js",
+        sections: buildSections("شاي بوحمد", "Shai Bu Hamad")
+    });
+})();
+
+</script>
+<!-- دليل الباريستا خاص بقيمر وكاهي فقط: GAIMER_W_KAHI__BARISTA -->
+<!-- ==== محتوى مضمّن من training-content/gaimer-w-kahi-barista.js ==== -->
+<script>
+/* =============================================================================
+   محتوى التدريب — قيمر وكاهي / قسم الباريستا والمشروبات
+   Training Content — Gaimer W Kahi / Barista & Beverages
+   -----------------------------------------------------------------------------
+   المصدر: «البرنامج التدريبي الشامل والمدقق لكادر الباريستا والمشروبات» —
+   دليل التدريب التشغيلي والسجل الفني للمشروبات — إدارة قيمر وكاهي.
+
+   ملاحظة على السجل الفني:
+   ------------------------
+   خانتا «المكونات والمقادير» و«طريقة التحضير والملاحظات» تركهما المستند
+   الأصلي فارغتين عمدًا ليُدوّنهما الباريستا/المشرف لاحقًا ويعتمدهما. لذلك
+   عُرضت هنا كسطر لكل مشروب: الاسم (عربي/إنجليزي) + السعر، مع علامة (…) تشير
+   إلى أن المكونات وطريقة التحضير تُستكمل لاحقًا. حين تُرسل الإدارة الوصفات
+   الفعلية، تُضاف تحت كل مشروب دون تغيير البنية.
+
+   ملاحظات تقنية: انظر تعليقات gaimer-w-kahi-hospitality.js — نفس البنية،
+   ونفس قاعدة الأسطر الفارغة التي تحدد اتجاه كل فقرة تلقائيًا في الكيوسك.
+   ============================================================================= */
+
+(function () {
+    "use strict";
+
+    window.TRAINING_CONTENT_REGISTRY = window.TRAINING_CONTENT_REGISTRY || [];
+
+    var SEP = "———————————————";
+
+    window.TRAINING_CONTENT_REGISTRY.push({
+        restaurant: "GAIMER W KAHI",
+        department: "BARISTA",
+        sourceFile: "training-content/gaimer-w-kahi-barista.js",
+        sections: [
+
+            /* ---------------------------------------------------------------
+               المقدمة والأهداف
+               --------------------------------------------------------------- */
+            {
+                heading: "مقدمة الدليل والأهداف التشغيلية — Introduction and Operational Objectives",
+                text: `البرنامج التدريبي الشامل والمدقق لكادر الباريستا والمشروبات
+مطعم قيمر وكاهي — دليل التدريب التشغيلي والسجل الفني للمشروبات
+
+يهدف هذا البرنامج التدريبي والتأهيلي الشامل إلى تدريب وتأهيل جميع موظفي الباريستا ومحضّري المشروبات في «قيمر وكاهي» على أعلى المعايير التشغيلية الاحترافية.
+
+يغطي البرنامج كافة تفاصيل إعداد المشروبات الساخنة والباردة، والعصائر الطازجة، والخلطات الخاصة، للالتزام التام بالمعايير والدقة في التقديم وسلامة الغذاء.
+
+${SEP}
+
+Comprehensive and Audited Training Program for Barista and Beverage Staff
+Gaimer W Kahi Restaurant — Operational Training Guide and Technical Beverage Log
+
+This comprehensive training and qualification program aims to train and qualify all baristas and beverage preparers at "Gaimer W Kahi" to the highest professional operational standards.
+
+The program covers every detail of preparing hot and cold drinks, fresh juices and signature blends, ensuring full commitment to standards, precision in presentation, and food safety.`
+            },
+
+            /* ---------------------------------------------------------------
+               المحاور التدريبية الأساسية
+               --------------------------------------------------------------- */
+            {
+                heading: "المحور 1 — الالتزام بالوصفات المعيارية والعيارات / Standard Recipe & Measurement Control",
+                text: `الالتزام ببطاقة الوصفة (Recipe Card):
+الالتزام بالمعايير والعيارات المحددة لكل مشروب لضمان ثبات النكهة والجودة في كل كوب.
+
+الوزن والقياس الدقيق:
+استخدام الموازين الرقمية وأكواب المعايرة لجرعات القهوة والشاي والصوصات دون تقدير عشوائي.
+
+اختبار المعايرة والحرارة:
+فحص استخلاص الإسبريسو ودرجة حرارة تبخير الحليب وتذوق العصائر لضمان ضبط الجودة.
+
+التحكم في الهدر (Wastage Control):
+التقيّد بالكميات المحددة للحليب والقهوة والفواكه للحد من الهدر الحاصل أثناء الإعداد.
+
+${SEP}
+
+Adherence to the Recipe Card:
+Follow the defined standards and measurements for each drink to guarantee consistent flavor and quality in every cup.
+
+Accurate weighing and measuring:
+Use digital scales and measuring cups for coffee, tea and sauce doses — never estimate by guesswork.
+
+Calibration and temperature testing:
+Check espresso extraction, milk-steaming temperature, and taste the juices to keep quality under control.
+
+Wastage control:
+Keep to the defined quantities of milk, coffee and fruit to reduce the waste that occurs during preparation.`
+            },
+
+            {
+                heading: "المحور 2 — التجهيز والتحضير المسبق / Mise en Place & Prep Protocol",
+                text: `تجهيز المحطة:
+تنظيف وتعبئة مطاحن القهوة، صوصات المشروبات، المقطّرات، والشرابات قبل انطلاق الشفت.
+
+نظام FIFO للتدوير:
+تطبيق نظام التدوير (الأقدم أولاً) على الحليب، الفواكه الطازجة، والسيروبات، والتأكد من تاريخ الصلاحية.
+
+صيانة وتنظيف الأدوات:
+تنظيف بورتافلتر القهوة، بتشرات التبخير، الخلاطات، وعصّارات الفواكه وتعقيمها بانتظام.
+
+${SEP}
+
+Station setup:
+Clean and refill the coffee grinders, drink sauces, drippers and syrups before the shift begins.
+
+FIFO rotation system:
+Apply first-in-first-out rotation to milk, fresh fruit and syrups, and always check the expiry date.
+
+Equipment maintenance and cleaning:
+Clean and sanitize the coffee portafilter, steaming pitchers, blenders and juicers regularly.`
+            },
+
+            {
+                heading: "المحور 3 — سلامة الغذاء والنظافة والتعقيم / Hygiene & Safety Standards",
+                text: `غسل وتعقيم اليدين:
+غسل اليدين بانتظام واستخدام القفازات عند التعامل المباشر مع الفواكه والتزيين.
+
+درجات الحرارة الحرجة:
+• حفظ الحليب والمواد الباردة: أقل من 4 درجات مئوية.
+• درجة حرارة تبخير الحليب المثالية: بين 60°C و 65°C (عدم تجاوز 70°C لتجنب احتراق الحليب).
+• حرارة تقديم الشاي والمشروبات الساخنة: تُقدّم فور إعدادها في أوانيها المخصصة.
+
+التعقيم المستمر (Clean-as-you-go):
+مسح عصا التبخير (Steam Wand) فوراً بعد كل عملية تبخير، وتعقيم أسطح العمل باستمرار.
+
+${SEP}
+
+Hand washing and sanitizing:
+Wash hands regularly and wear gloves when handling fruit and garnishes directly.
+
+Critical temperatures:
+• Storing milk and cold items: below 4°C.
+• Ideal milk-steaming temperature: between 60°C and 65°C (never exceed 70°C, to avoid scorching the milk).
+• Serving temperature for tea and hot drinks: serve immediately after preparation in their designated vessels.
+
+Clean-as-you-go sanitizing:
+Wipe the steam wand immediately after every steaming, and continuously sanitize the work surfaces.`
+            },
+
+            /* ---------------------------------------------------------------
+               المحور 4: السجل الفني للمشروبات
+               --------------------------------------------------------------- */
+            {
+                heading: "المحور 4 — كيفية استخدام السجل الفني للمشروبات / How to Use the Technical Beverage Log",
+                text: `الأقسام التالية هي سجل فني بأسعار كل مشروب في المنيو.
+
+خانتا «المكونات والمقادير» و«طريقة التحضير والملاحظات» متروكتان للتدوين والاعتماد المباشر من الباريستا والمشرف. حين تُعتمد الوصفة الرسمية لكل مشروب، تُضاف مكوناته وطريقة تحضيره تحت اسمه.
+
+علامة (…) بعد كل مشروب تعني أن الوصفة لم تُدوَّن بعد.
+
+${SEP}
+
+The following sections are a technical log of every menu drink and its price.
+
+The "Ingredients & Measurements" and "Preparation Method & Notes" fields are left for the barista and supervisor to record and approve directly. Once the official recipe for each drink is approved, its ingredients and preparation method are added beneath its name.
+
+An ellipsis (…) after a drink means its recipe has not yet been recorded.`
+            },
+
+            {
+                heading: "المحور 4 — المشروبات الساخنة: الشاي والحليب والكرك / Hot Drinks: Tea, Milk & Karak",
+                text: `76 — قوري شاي مخدر صغير / Tea Kettle Small — QAR 32.00 (…)
+
+77 — قوري چاي مخدر كبير مع سخان / Big Mukadar Tea Pot with Heater — QAR 75.00 (…)
+
+78 — حليب ساخن / Hot Milk — QAR 12.00 (…)
+
+79 — قوري كرك صغير / Karak Kettle Small — QAR 32.00 (…)
+
+80 — قوري كرك كبير / Big Karak Kettle — QAR 75.00 (…)
+
+${SEP}
+
+76 — Tea Kettle Small — QAR 32.00 (recipe to be recorded)
+
+77 — Big Mukadar Tea Pot with Heater — QAR 75.00 (recipe to be recorded)
+
+78 — Hot Milk — QAR 12.00 (recipe to be recorded)
+
+79 — Karak Kettle Small — QAR 32.00 (recipe to be recorded)
+
+80 — Big Karak Kettle — QAR 75.00 (recipe to be recorded)`
+            },
+
+            {
+                heading: "المحور 4 — المشروبات الساخنة: القهوة العربية والتركية / Hot Drinks: Arabic & Turkish Coffee",
+                text: `81 — قهوة عربية حجم متوسط / Arabic Coffee Medium — QAR 55.00 (…)
+
+82 — قهوة عربية حجم كبير / Arabic Coffee Big — QAR 75.00 (…)
+
+93 — قهوة تركية / Turkish Coffee — QAR 15.00 (…)
+
+${SEP}
+
+81 — Arabic Coffee, Medium Size — QAR 55.00 (recipe to be recorded)
+
+82 — Arabic Coffee, Big Size — QAR 75.00 (recipe to be recorded)
+
+93 — Turkish Coffee — QAR 15.00 (recipe to be recorded)`
+            },
+
+            {
+                heading: "المحور 4 — مشروبات الإسبريسو والحليب / Espresso & Milk-Based Coffee",
+                text: `83 — اسبريسو / Espresso — QAR 12.00 (…)
+
+84 — دبل اسبريسو / Double Espresso — QAR 14.00 (…)
+
+85 — كورتادو / Cortado — QAR 25.00 (…)
+
+86 — أمريكانو / Americano — QAR 25.00 (…)
+
+87 — كابوتشينو / Cappuccino — QAR 25.00 (…)
+
+88 — فلات وايت / Flat White — QAR 25.00 (…)
+
+89 — كافيه لاتيه / Café Latte — QAR 25.00 (…)
+
+90 — سبانيش لاتيه / Spanish Latte — QAR 25.00 (…)
+
+${SEP}
+
+83 — Espresso — QAR 12.00 (recipe to be recorded)
+
+84 — Double Espresso — QAR 14.00 (recipe to be recorded)
+
+85 — Cortado — QAR 25.00 (recipe to be recorded)
+
+86 — Americano — QAR 25.00 (recipe to be recorded)
+
+87 — Cappuccino — QAR 25.00 (recipe to be recorded)
+
+88 — Flat White — QAR 25.00 (recipe to be recorded)
+
+89 — Café Latte — QAR 25.00 (recipe to be recorded)
+
+90 — Spanish Latte — QAR 25.00 (recipe to be recorded)`
+            },
+
+            {
+                heading: "المحور 4 — مشروبات القهوة الباردة / Iced Coffee Drinks",
+                text: `94 — آيس كوفي / Ice Coffee — QAR 25.00 (…)
+
+95 — آيس سبانيش لاتيه / Iced Spanish Latte — QAR 25.00 (…)
+
+${SEP}
+
+94 — Ice Coffee — QAR 25.00 (recipe to be recorded)
+
+95 — Iced Spanish Latte — QAR 25.00 (recipe to be recorded)`
+            },
+
+            {
+                heading: "المحور 4 — العصائر الطازجة والموهيتو / Fresh Juices & Mojitos",
+                text: `97 — موهيتو الأزرق / Blue Mojito — QAR 30.00 (…)
+
+98 — موهيتو التوت البري / Raspberry Mojito — QAR 30.00 (…)
+
+99 — عصير كركديه / Rosella (Hibiscus) Juice — QAR 20.00 (…)
+
+100 — إناء لبن عراقي / Iraqi Laben Jug — QAR 20.00 (…)
+
+101 — عصير رمان طازج / Fresh Pomegranate Juice — QAR 25.00 (…)
+
+102 — عصير برتقال طازج / Fresh Orange Juice — QAR 20.00 (…)
+
+103 — عصير تفاح طازج / Fresh Apple Juice — QAR 25.00 (…)
+
+105 — عصير أناناس طازج / Fresh Pineapple Juice — QAR 25.00 (…)
+
+106 — عصير ليمونادة / Lemonade — QAR 20.00 (…)
+
+107 — عصير ليمونادة بالنعناع / Lemonade with Mint — QAR 25.00 (…)
+
+${SEP}
+
+97 — Blue Mojito — QAR 30.00 (recipe to be recorded)
+
+98 — Raspberry Mojito — QAR 30.00 (recipe to be recorded)
+
+99 — Rosella (Hibiscus) Plant Juice — QAR 20.00 (recipe to be recorded)
+
+100 — Iraqi Laben Jug — QAR 20.00 (recipe to be recorded)
+
+101 — Fresh Pomegranate Juice — QAR 25.00 (recipe to be recorded)
+
+102 — Fresh Orange Juice — QAR 20.00 (recipe to be recorded)
+
+103 — Fresh Apple Juice — QAR 25.00 (recipe to be recorded)
+
+105 — Fresh Pineapple Juice — QAR 25.00 (recipe to be recorded)
+
+106 — Lemonade Juice — QAR 20.00 (recipe to be recorded)
+
+107 — Lemonade with Mint — QAR 25.00 (recipe to be recorded)`
+            },
+
+            {
+                heading: "المحور 4 — المشروبات الغازية والمياه / Soft Drinks & Water",
+                text: `108 — ماء صغير / Small Water — QAR 7.00 (…)
+
+109 — ماء كبير / Big Water — QAR 16.00 (…)
+
+110 — كوكا كولا عادي / Coca-Cola — QAR 12.00 (…)
+
+111 — كوكا كولا زيرو / Coca-Cola Zero — QAR 12.00 (…)
+
+117 — كوكا كولا دايت / Coca-Cola Diet — QAR 12.00 (…)
+
+112 — فانتا / Fanta — QAR 12.00 (…)
+
+113 — سبرايت / Sprite — QAR 12.00 (…)
+
+114 — كينزي / Kenzi — QAR 12.00 (…)
+
+115 — كينزي كولا / Kenzi Cola — QAR 12.00 (…)
+
+116 — مشروب طاقة (ريد بُل) / Red Bull Energy Drink — QAR 25.00 (…)
+
+${SEP}
+
+108 — Small Water — QAR 7.00 (recipe to be recorded)
+
+109 — Big Water — QAR 16.00 (recipe to be recorded)
+
+110 — Coca-Cola — QAR 12.00 (recipe to be recorded)
+
+111 — Coca-Cola Zero — QAR 12.00 (recipe to be recorded)
+
+117 — Coca-Cola Diet — QAR 12.00 (recipe to be recorded)
+
+112 — Fanta — QAR 12.00 (recipe to be recorded)
+
+113 — Sprite — QAR 12.00 (recipe to be recorded)
+
+114 — Kenzi — QAR 12.00 (recipe to be recorded)
+
+115 — Kenzi Cola — QAR 12.00 (recipe to be recorded)
+
+116 — Red Bull Energy Drink — QAR 25.00 (recipe to be recorded)`
+            }
+        ]
+    });
+})();
+
+</script>
+<!-- دليل النظافة مشترك بين البراندين: GAIMER_W_KAHI__CLEANER و SHAI_BU_HAMAD__CLEANER -->
+<!-- ==== محتوى مضمّن من training-content/gaimer-w-kahi-cleaner.js ==== -->
+<script>
+/* =============================================================================
+   محتوى التدريب — قيمر وكاهي / قسم التنظيف وغسيل الصحون (Stewarding)
+   Training Content — Gaimer W Kahi / Cleaning & Stewarding
+   -----------------------------------------------------------------------------
+   المصدر: «البرنامج التدريبي الشامل لعمال النظافة» — استنادًا إلى دليل قواعد
+   ممارسات سلامة الأغذية والاشتراطات الصحية لوزارة الصحة العامة بدولة قطر
+   (MoPH) ونظام HACCP — إعداد إدارة مطعم قيمر وكاهي (فرع الوست ووك).
+
+   النص الإنجليزي هنا هو النص الرسمي الذي أرسلته الإدارة (لم يُترجَم آليًا).
+
+   نطاق الاستخدام: بتوجيه الإدارة، هذا الدليل مشترك بين البراندين (قيمر وكاهي
+   وشاي بوحمد)، فيُسجَّل مستندان: GAIMER_W_KAHI__CLEANER و
+   SHAI_BU_HAMAD__CLEANER. المحتوى واحد لأن بروتوكولات السلامة الغذائية
+   (MoPH/HACCP) وأسماء المشرفين مشتركة، ولا يوجد اسم براند يُنطق للضيف داخل
+   نص دليل النظافة (بخلاف الكاشير) فلا حاجة لاستبدال أي اسم.
+
+   ملاحظة في المستند الأصلي — وُثّقت ولم تُعالَج باختراع:
+   • فقرة المقدمة الأصلية ذكرت «شاي بوحمد / Chai Bohmad» بينما الترويسة والخاتمة
+     «قيمر وكاهي / GAIMER W KAHI». بما أن الدليل صار مشتركًا للبراندين، لم يعد
+     التعارض ذا أثر؛ وأُبقي على نص المقدمة كما أُعيدت صياغته أعلاه.
+   • ترقيم الأقسام يقفز: النسخة العربية تنتقل من 6 إلى 8 (لا يوجد قسم 7)،
+      والنسخة الإنجليزية تكرّر الرقم في الترقيم — أُبقيت العناوين وترتيبها كما
+      في المصدر دون إعادة ترقيم قسري.
+
+   ملاحظات تقنية: انظر تعليقات gaimer-w-kahi-hospitality.js — نفس البنية،
+   ونفس قاعدة الأسطر الفارغة التي تحدد اتجاه كل فقرة تلقائيًا في الكيوسك.
+   ============================================================================= */
+
+(function () {
+    "use strict";
+
+    window.TRAINING_CONTENT_REGISTRY = window.TRAINING_CONTENT_REGISTRY || [];
+
+    var SEP = "———————————————";
+
+    // دليل النظافة مشترك بين البراندين (بتوجيه الإدارة) — المحتوى واحد لأن
+    // بروتوكولات السلامة الغذائية (MoPH/HACCP) وأسماء المشرفين واحدة للفرعين،
+    // فلا يوجد اسم براند يُستبدل داخل النص. لذا نبني الأقسام مرة واحدة ونسجّلها
+    // لكلا المستندين: GAIMER_W_KAHI__CLEANER و SHAI_BU_HAMAD__CLEANER.
+    var CLEANER_SECTIONS = [
+
+            /* ---------------------------------------------------------------
+               1. المقدمة والهدف
+               --------------------------------------------------------------- */
+            {
+                heading: "1 — المقدمة والهدف من البرنامج / Introduction and Objectives",
+                text: `البرنامج التدريبي الشامل لعمال النظافة (فريق غسيل الصحون — Stewarding)
+استنادًا إلى دليل قواعد ممارسات سلامة الأغذية والاشتراطات الصحية لوزارة الصحة العامة بدولة قطر (MoPH) ونظام HACCP.
+إعداد وتطوير: إدارة مطعم قيمر وكاهي — فرع الوست ووك.
+
+يهدف هذا البرنامج إلى تدريب وتأهيل فريق التنظيف وغسيل الصحون على أعلى معايير السلامة الغذائية والنظافة والصحة العامة المعتمدة من وزارة الصحة العامة في دولة قطر (MoPH).
+
+يضمن هذا البرنامج الحد من التلوث الخلطي، وتطبيق آليات الغسيل والتطهير الصحيحة، وحماية صحة وسلامة الضيوف والموظفين.
+
+${SEP}
+
+Comprehensive Training Program for Cleaning Staff (Stewarding Team)
+Based on the Food Safety Code of Practice & Health Regulations — Ministry of Public Health, Qatar (MoPH) & HACCP System.
+Prepared and Developed by Management of GAIMER W KAHI Restaurant — West Walk Branch.
+
+This program aims to train and qualify the cleaning and dishwashing team (Stewarding Team) on the highest standards of food safety, hygiene, and public health approved by the Ministry of Public Health in Qatar (MoPH).
+
+This program ensures the prevention of cross-contamination, execution of correct washing and sanitizing procedures, and protection of the health and safety of guests and staff.`
+            },
+
+            /* ---------------------------------------------------------------
+               2. الصحة والسلامة الشخصية
+               --------------------------------------------------------------- */
+            {
+                heading: "2 — اشتراطات الصحة والسلامة الشخصية / Personal Health and Safety Requirements",
+                text: `الشهادة الصحية:
+الالتزام بوجود شهادة صحية سارية المفعول وصادرة من الجهات المختصة في قطر لكل عامل.
+
+المظهر العام والزي الرسمي:
+ارتداء الزي المخصص النظيف، غطاء الرأس الكامل، وأحذية السلامة المقاومة للانزلاق.
+
+الابتعاد عن العمل عند المرض:
+الإبلاغ الفوري للإدارة في حال وجود أعراض مرضية (مثل أعراض الجهاز الهضمي أو الحمى/الزكام) وتجنب التعامل مع الأواني.
+
+قواعد غسل اليدين الصارمة:
+غسل اليدين بماء دافئ وصابون مضاد للبكتيريا لمدة 20 ثانية على الأقل في الحالات التالية:
+• قبل بدء العمل أو ارتداء القفازات.
+• بعد التعامل مع الصحون والأواني المتسخة وقبل لمس الأواني النظيفة.
+• بعد استخدام دورات المياه أو التخلص من النفايات.
+• بعد العطس، السعال، أو لمس الوجه.
+
+معدات الحماية الشخصية (PPE):
+ارتداء القفازات المخصصة للتنظيف (Heavy-duty gloves)، المآزر المائية (Waterproof aprons)، والنظارات الواقية عند التعامل مع المواد الكيميائية المركّزة.
+
+${SEP}
+
+Health Certificate:
+Strict compliance with having a valid medical health certificate issued by competent authorities in Qatar for every worker.
+
+General Appearance and Uniform:
+Wearing designated clean uniforms, full hairnets/head covers, and non-slip safety shoes.
+
+Exclusion Due to Illness:
+Immediate reporting to management upon experiencing illness symptoms (such as gastrointestinal distress or fever/cold symptoms) and refraining from handling utensils.
+
+Strict Handwashing Protocols:
+Washing hands with warm water and antibacterial soap for at least 20 seconds under the following circumstances:
+• Before starting work or putting on gloves.
+• After handling dirty dishes and utensils, and before touching clean ones.
+• After using restrooms or disposing of waste.
+• After sneezing, coughing, or touching the face.
+
+Personal Protective Equipment (PPE):
+Wearing heavy-duty gloves, waterproof aprons, and safety goggles when handling concentrated chemicals.`
+            },
+
+            /* ---------------------------------------------------------------
+               3. غسيل الصحون — يدوي وآلي
+               --------------------------------------------------------------- */
+            {
+                heading: "3.1 — الغسيل اليدوي بحوض الغسيل الثلاثي / Manual Washing: Three-Compartment Sink",
+                text: `يُطبّق هذا البروتوكول بدقة لضمان التعقيم الكامل وفق المعايير القطرية:
+
+0. الإزالة المبدئية (Scraping):
+إزالة بقايا الطعام من الأطباق والأواني في سلة المهملات قبل إدخالها للأحواض. — حرارة الغرفة.
+
+1. الحوض الأول: الغسيل (Wash):
+فرك الصحون بالماء الدافئ والمنظف المعتمد (Food-grade detergent). — لا تقل عن 45°C.
+
+2. الحوض الثاني: الشطف (Rinse):
+شطف الصحون جيداً بماء نظيف لإزالة أي بقايا للصابون والمنظفات. — ماء دافئ نظيف (45°C – 50°C).
+
+3. الحوض الثالث: التطهير/التعقيم (Sanitize):
+نقع الصحون والأدوات في محلول التعقيم الكيميائي (الكلور أو مركبات الأمونيوم الرباعية) أو ماء ساخن. — تعقيم كيميائي حسب تركيز المصنع، أو تعقيم حراري بماء لا يقل عن 77°C لمدة 30 ثانية.
+
+4. التجفيف بالهواء الطبيعي (Air Drying):
+ترك الأدوات لتجف تلقائياً على رفوف شبكية نظيفة. يُمنع منعاً باتاً استخدام الفوط للتجفيف لتجنب التلوث. — منطقة تجفيف نظيفة ومجهزة.
+
+${SEP}
+
+Apply this protocol precisely to ensure complete sanitization per Qatari standards:
+
+0. Scraping:
+Remove food residue from dishes and utensils into trash bins before placing them in sinks. — Room temperature.
+
+1. Sink 1: Wash:
+Scrub dishes using warm water and approved food-grade detergent. — Not less than 45°C.
+
+2. Sink 2: Rinse:
+Thoroughly rinse dishes with clean water to remove soap and detergent residues. — Clean warm water (45°C – 50°C).
+
+3. Sink 3: Sanitize:
+Soak dishes and utensils in a chemical sanitizing solution (chlorine or quaternary ammonium compounds) or hot water. — Chemical sanitizer per manufacturer specs, or thermal sanitization in water at ≥ 77°C for 30 seconds.
+
+4. Air Drying:
+Allow items to air dry naturally on clean wire racks. Do not use towels to dry items, to prevent recontamination. — Clean, dedicated drying area.`
+            },
+
+            {
+                heading: "3.2 — الغسيل الآلي بغسالة الصحون التجارية / Mechanical Washing: Commercial Dishwasher",
+                text: `درجة حرارة الشطف النهائي (High-Temp Rinse):
+يجب أن تصل درجة حرارة الشطف النهائي إلى 82°C لضمان القضاء على الميكروبات.
+
+التحقق اليومي:
+فحص تركيز المواد الكيميائية (Disinfectant/Detergent) وقياس الحرارة وتسجيلها في السجل اليومي.
+
+التنظيم داخل السلال:
+وضع الأطباق والأكواب بشكل يسمح بوصول رذاذ الماء لكافة الأسطح دون تراكم.
+
+${SEP}
+
+High-Temp Final Rinse:
+Final rinse temperature must reach 82°C to ensure complete microbial destruction.
+
+Daily Verification:
+Check chemical concentrations (detergent/sanitizer), measure temperatures, and record them in the daily log.
+
+Rack Loading:
+Arrange plates, cups, and utensils systematically so water spray covers all surfaces without obstruction.`
+            },
+
+            /* ---------------------------------------------------------------
+               4. مصيدة الدهون
+               --------------------------------------------------------------- */
+            {
+                heading: "4.1 — مصيدة الدهون: الأدوات والمعدات / Grease Trap: Equipment & Tools",
+                text: `مصيدة الدهون (Grease Trap) مسؤولة عن تجميع الدهون والزيوت والشحوم لضمان عدم انسداد الصرف الصحي والامتثال للأنظمة البيئية والصحية بدولة قطر. تُنظَّف يومياً نهاية كل وردية.
+
+الأدوات والمعدات المستعملة:
+• قفازات مطاطية ثقيلة مخصصة للتنظيف الشاق.
+• كمامة واقية للوجه ونظارات حماية شفافة.
+• مغرفة طويلة الساق أو كشاطة استيل مسطحة.
+• دلو أو سطل محكم الإغلاق مخصص لجمع الشحوم.
+• مادة مزيل الدهون (Degreaser): 2 كجم لكل عملية تنظيف لإذابة الرواسب المستعصية.
+• فرشاة سلكية/خشنة لتنظيف المكونات الداخلية.
+• فوط تنظيف بلون مخصص ومحارم امتصاص زيتي.
+• أكياس سميكة مخصصة للتخلص من النفايات الصلبة للشحوم.
+
+${SEP}
+
+The grease trap captures fats, oils and grease (FOG) to prevent drain blockages and ensure compliance with environmental and health regulations in Qatar. It must be cleaned daily at the end of each shift.
+
+Equipment & Tools Required:
+• Heavy-duty rubber gloves.
+• Protective face mask & transparent safety goggles.
+• Long-handled scoop or stainless steel flat scraper.
+• Dedicated, sealable bucket for grease collection.
+• Chemical degreaser: 2 kg per cleaning cycle to dissolve stubborn deposits.
+• Wire/stiff-bristled brush for internal components.
+• Color-coded cleaning cloths and oil-absorbent towels.
+• Heavy-duty trash bags for solid grease disposal.`
+            },
+
+            {
+                heading: "4.2 — مصيدة الدهون: خطوات التنظيف اليومي / Grease Trap: Daily Cleaning Steps",
+                text: `1. التجهيز وارتداء السلامة: ارتداء القفازات الثقيلة والكمامة والنظارة الواقية، مع التأكد من إيقاف جريان الماء عبر الأحواض المتصلة بالمصيدة.
+
+2. فتح غطاء المصيدة: فك براغي أو مقابض الغطاء بحذر، وإزالته جانباً وتفقّد مستوى الدهون المتراكمة.
+
+3. كشط وتفريغ الطبقة العائمة (Skimming): إزالة طبقة الدهون العائمة والشحوم الصلبة بعناية ووضعها داخل الدلو المحكم. (يُمنع منعاً باتاً سكب الدهون في مجاري الصرف الصحي).
+
+4. تفريغ الحاجز الداخلي والمصفاة: رفع حاجز المصيدة (Baffle Plate) والمصفاة وتفريغ بقايا الطعام الصلبة من القاع.
+
+5. تطبيق مزيل الدهون (2 كجم): توزيع 2 كجم من مادة مزيل الدهون داخل جدران المصيدة، وتركها 10 إلى 15 دقيقة للتفاعل مع الدهون وإذابتها بالكامل.
+
+6. دعك الغرفة والأنابيب: فرك الجدران والفواصل والغطاء بالفرشاة الخشنة مع الماء الدافئ لإزالة جميع التراكمات.
+
+7. الشطف وإعادة التركيب: شطف الأجزاء بالماء الدافئ، إعادة تركيب الحاجز والمصفاة في أماكنها، ثم إغلاق الغطاء بإحكام لمنع تسرب الرائحة.
+
+8. التخلص الآمن من النفايات: إغلاق كيس النفايات المحتوي على الدهون بإحكام وإلقاؤه في الحاوية المخصصة للشحوم والزيوت.
+
+${SEP}
+
+1. Preparation & PPE: Put on heavy-duty gloves, mask and goggles, and ensure water flow to connected sinks is shut off.
+
+2. Open the Trap Cover: Loosen screws/latches carefully, set the cover aside, and inspect grease buildup.
+
+3. Skim the Grease Layer: Carefully remove the floating grease layer and solid fats into the sealed bucket. (Never pour grease into drainage lines).
+
+4. Empty Baffle & Screen: Lift out the internal baffle plate and strainer basket; clear out solid food particles from the bottom.
+
+5. Apply Degreasing Agent (2 kg): Distribute 2 kg of heavy-duty degreaser across the internal walls, and allow it to sit for 10 to 15 minutes to react with and dissolve the grease.
+
+6. Scrub Interior & Pipes: Scrub internal walls, dividers, and cover thoroughly using the stiff brush and warm water.
+
+7. Rinse & Reassemble: Rinse all components with warm water, reinstall the baffle plate and strainer correctly, and secure the cover tightly to prevent odors.
+
+8. Safe Waste Disposal: Seal the trash bag containing the collected grease tightly and dispose of it in the designated grease/oil disposal units.`
+            },
+
+            /* ---------------------------------------------------------------
+               5. الأرضيات
+               --------------------------------------------------------------- */
+            {
+                heading: "5.1 — تنظيف الأرضيات: الأدوات والمواد / Floor Cleaning: Equipment & Materials",
+                text: `تنظيف الأرضيات يتطلب التزاماً كاملاً لمنع الانزلاقات والحفاظ على أعلى مستويات التعقيم والتخلص من الدهون الزيتية الساقطة أثناء التحضير.
+
+الأدوات والمواد المستعملة:
+• فرشاة أرضيات خشنة بيد طويلة.
+• قشاطة أرضيات مطاطية (Squeegee).
+• دلو مزدوج مع نظام عصر الممسحة.
+• ممسحة أرضيات خيطية.
+• سائل تنظيف أرضيات ومزيل دهون.
+• مادة مطهرة ومعقمة (محلول الكلور أو المطهر الغذائي).
+• لوحات تحذيرية «أرضية مبللة».
+
+${SEP}
+
+Cleaning kitchen floors requires strict adherence to prevent slip hazards, maintain sanitization, and remove accumulated oils and grease.
+
+Equipment & Materials Required:
+• Heavy-duty long-handled floor scrubbing brush.
+• Rubber floor squeegee.
+• Double-bucket mop system with wringer.
+• Cotton string mop head.
+• Floor cleaner & heavy-duty degreaser.
+• Sanitizing/disinfecting agent (chlorine solution or food-grade sanitizer).
+• "Wet Floor" caution signs.`
+            },
+
+            {
+                heading: "5.2 — تنظيف الأرضيات: خطوات التنظيف اليومي / Floor Cleaning: Daily Steps",
+                text: `1. وضع اللوحات التحذيرية: وضع لوحة «أرضية مبللة / Caution Wet Floor» عند المداخل والممرات لحماية العمال والموظفين.
+
+2. الكنس الجاف (Dry Sweeping): كنس الأرضيات بالكامل لإزالة الأتربة وبقايا الطعام والأجسام الصلبة قبل استخدام أي ماء.
+
+3. تحضير محلول التنظيف: خلط الماء الدافئ مع المنظف ومزيل الدهون بالتركيز الموصى به من المصنع داخل الدلو الأول.
+
+4. توزيع المحلول والفرك: سكب الصابون ومزيل الدهون على الأرضية خاصة في أماكن الطبخ وغسيل الصحون وتحت المعدات، ودعك الأرضية والزوايا والأخاديد (Grout lines) بالفرشاة الخشنة لإزالة الزيوت المستعصية.
+
+5. سحب المياه القذرة (Squeegee): استخدام القشاطة المطاطية لسحب كافة المياه القذرة والرغوة باتجاه فتحات التصريف.
+
+6. المسح والتطهير النهائي: تجهيز الدلو الثاني بماء نظيف مضاف إليه المطهر، ومسح الأرضية بأسلوب الحركة القوسية (Figure-8) لضمان تغطية كافة المساحات بالمعقم.
+
+7. التجفيف والتهوية: ترك الأرضية لتجف تماماً بالتهوية الطبيعية أو المروحة قبل إزالة اللوحات التحذيرية.
+
+${SEP}
+
+1. Display Safety Signs: Place "Caution Wet Floor" signs at entrances and walkways around the target area.
+
+2. Dry Sweeping: Sweep floors completely to remove loose dust, food debris and solid items before applying water.
+
+3. Prepare Cleaning Solution: Mix warm water with the floor cleaner and degreaser according to manufacturer ratios in the first bucket.
+
+4. Apply Solution & Scrub: Pour the detergent solution onto the floor, focusing on cooking lines, dishwashing zones and under equipment, then scrub floors, corners and grout lines vigorously with the stiff brush to loosen stubborn grease.
+
+5. Squeegee Dirty Water: Use the rubber squeegee to scrape all dirty water and foam directly into floor drains.
+
+6. Mop & Sanitize: Prepare the second bucket with clean water mixed with the sanitizing agent, and mop the area using a figure-8 pattern to ensure complete surface coverage.
+
+7. Drying & Ventilation: Allow the floor to air dry completely via ventilation before removing caution signs.`
+            },
+
+            /* ---------------------------------------------------------------
+               6. نظام الترميز اللوني للمناشف
+               --------------------------------------------------------------- */
+            {
+                heading: "6.1 — نظام الترميز اللوني للمناشف والفوط / Color-Coded Cloth & Towel System",
+                text: `يمنع هذا النظام التلوث الخلطي بين المناطق، وهو إلزامي لجميع العاملين في التنظيف والصالة والمطبخ:
+
+الأزرق (Blue): منطقة الصالة والضيوف — مسح وتلميع طاولات الضيوف والكراسي وكاونتر الاستقبال. يُستخدم فقط مع مطهر أسطح آمن، ويُحظر إدخاله إلى المطبخ أو دورات المياه.
+
+الأخضر (Green): مناطق تحضير الطعام والمطبخ — مسح أسطح العمل وألواح التقطيع ومعدات التحضير. يجب أن تكون فوطاً معقمة ومطابقة للمواصفات الغذائية.
+
+الأصفر (Yellow): منطقة غسيل الصحون والأواني — تنظيف أحواض الغسيل والأسطح المحيطة ومعدات الطبخ المتسخة بالدهون. تُستخدم لمسح رذاذ الماء وتكتلات الدهون حول الأحواض.
+
+الأحمر (Red): مناطق الخطورة العالية ودورات المياه — تنظيف حمامات الموظفين والضيوف ومغاسل التواليت وحاويات النفايات. تُحفظ وتُغسل بشكل منفصل تماماً، ويُمنع منعاً باتاً خروجها من منطقة دورات المياه.
+
+${SEP}
+
+This system prevents cross-contamination between operational zones and is mandatory for all cleaning, service and kitchen personnel:
+
+Blue: Dining Area & Guest Service — wiping and polishing guest tables, chairs and reception counters. Use strictly with surface-safe disinfectant; prohibited in kitchen or restrooms.
+
+Green: Kitchen & Food Prep Areas — wiping food-contact surfaces, cutting boards and prep equipment. Must be sanitized, food-grade cloths.
+
+Yellow: Dishwashing & Stewarding Area — cleaning dishwashing sinks, surrounding counters and greasy cooking gear. Used to wipe water splashes and grease around the sinks.
+
+Red: High-Risk Zones & Restrooms — cleaning staff/guest toilets, bathroom sinks and waste bins. Stored and washed completely separate from other cloths; must never leave the restroom area.`
+            },
+
+            {
+                heading: "6.2 — قواعد إدارة وصيانة المناشف الملونة / Color-Coded Cloth Management Rules",
+                text: `ممنوع الاستخدام الخاطئ:
+يُمنع منعاً باتاً استخدام المناشف الحمراء في الصالة أو المطبخ، أو استخدام فوط الصالة (الزرقاء) في مناطق الغسيل.
+
+الغسيل والتعقيم اليومي:
+نقع وتجميع المناشف المستعملة نهاية اليوم كل لون على حدة في محلول ماء ساخن مع مطهر الكلور (50–100 ppm) ثم غسلها في الغسالة.
+
+التخزين الصحيح:
+تخزين المناشف النظيفة والجافة في أرفف أو أدراج مغلقة ومخصصة لكل لون بشكل منفصل.
+
+${SEP}
+
+Prohibited Misuse:
+Never use red cloths in dining or kitchen areas, or blue cloths in dishwashing zones.
+
+Daily Laundering & Sanitizing:
+Soak and collect used cloths by color at the end of the shift in a hot water and chlorine solution (50–100 ppm) before machine washing.
+
+Hygienic Storage:
+Store clean, dry cloths in designated closed shelves or drawers, separated by color.`
+            },
+
+            /* ---------------------------------------------------------------
+               7. النفايات والآفات
+               --------------------------------------------------------------- */
+            {
+                heading: "7 — إدارة النفايات والوقاية من الآفات / Waste Management and Pest Control",
+                text: `حاويات النفايات:
+يجب أن تكون مزودة بأغطية تُفتح بالقدم (Foot-operated) وتُبطَّن بأكياس بلاستيكية محكمة.
+
+تفريغ النفايات:
+إفراغ الحاويات بانتظام بمجرد امتلائها لثلاثة أرباعها، وتنظيفها وتعقيمها يومياً.
+
+المحافظة على النظافة لمنع الآفات:
+إبقاء منطقة غسيل الصحون ومصائد الدهون خالية من بقايا الطعام والماء الراكد لتجنب جذب الحشرات والآفات.
+
+${SEP}
+
+Waste Receptacles:
+Waste bins must be foot-operated with tight-fitting lids and lined with heavy-duty plastic bags.
+
+Bin Emptying:
+Empty waste bins regularly once they reach three-quarters full; wash and sanitize bins daily.
+
+Pest Prevention:
+Keep dishwashing areas and grease traps clear of standing water and food debris to avoid attracting pests.`
+            },
+
+            /* ---------------------------------------------------------------
+               8. سجلات التوثيق + الإشراف
+               --------------------------------------------------------------- */
+            {
+                heading: "8 — سجلات التوثيق والتفتيش اليومي / Documentation and Daily Inspection Logs",
+                text: `يلتزم مسؤول الصالة وقائد فريق النظافة بالتحقق اليومي وتعبئة السجلات المعتمدة لدى وزارة الصحة القطرية:
+• سجل درجات حرارة غسالة الصحون وأحواض الشطف.
+• سجل تركيز المحاليل المطهرة (شرائط الفحص Chemical Test Strips).
+• سجل التنظيف والتفريغ اليومي لمصيدة الدهون (Grease Trap Log).
+• قائمة التدقيق اليومية لتنظيف وتطهير المطبخ والأرضيات ومنطقة غسيل الصحون.
+
+${SEP}
+
+The Floor Supervisor and Stewarding Team Lead are responsible for daily verification and completing the following MoPH-compliant logs:
+• Dishwasher and rinse sink temperature log.
+• Sanitizer concentration log (measured via chemical test strips).
+• Grease trap cleaning and discharge log.
+• Daily kitchen, floor, and dishwashing checklist.`
+            },
+
+            {
+                heading: "9 — الإشراف والمتابعة المباشرة / Supervision and Direct Oversight",
+                text: `يتولى السيد جون نادا والسيد أوما شنكر — بصفتهما مسؤولَي النظافة — تدريب العمال وتطبيق كافة المعايير المذكورة أعلاه في جميع الفروع.
+
+الإشراف والمتابعة: السيد فيكاس.
+
+الدعم التقني والفني: السيد عبد المالك كريم.
+
+مع تحيات إدارة مطعم قيمر وكاهي.
+
+${SEP}
+
+Mr. John Nada and Mr. Uma Shankar, in their capacity as Cleaning Supervisors, are responsible for training the employees and ensuring the implementation of all the standards and procedures mentioned above across all branches.
+
+Supervision and Follow-Up: Mr. Vikas.
+
+Technical and Operational Support: Mr. Abdelmalek Karim.
+
+With the compliments of GAIMER W KAHI Restaurant Management.`
+            }
+        ];
+
+    // نفس الدليل يُسجَّل للبراندين. sourceFile واحد لأن الملف واحد فعلاً.
+    window.TRAINING_CONTENT_REGISTRY.push({
+        restaurant: "GAIMER W KAHI",
+        department: "CLEANER",
+        sourceFile: "training-content/gaimer-w-kahi-cleaner.js",
+        sections: CLEANER_SECTIONS
+    });
+
+    window.TRAINING_CONTENT_REGISTRY.push({
+        restaurant: "SHAI BU HAMAD",
+        department: "CLEANER",
+        sourceFile: "training-content/gaimer-w-kahi-cleaner.js",
+        sections: CLEANER_SECTIONS
+    });
+})();
+
+</script>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import {
+        getFirestore, collection, doc, setDoc, getDoc, addDoc, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import {
+        getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    // نفس مشروع Firebase المستخدم في index.html و admin.html.
+    const firebaseConfig = {
+      apiKey: "AIzaSyCWZb0GwAeMgLtJIfq3kuRfmEQ1POBNSp0",
+      authDomain: "attendance-system-f32d6.firebaseapp.com",
+      projectId: "attendance-system-f32d6",
+      storageBucket: "attendance-system-f32d6.firebasestorage.app",
+      messagingSenderId: "302261734220",
+      appId: "1:302261734220:web:50cb9e10965ed3ddcf1de9",
+      measurementId: "G-W88XGV8E1Q"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    let currentUser = null;
+
+    // حد Firestore الفعلي لكل مستند هو 1,048,576 بايت. نتوقف عند 900KB لنترك
+    // هامشًا لحقول الميتاداتا (restaurant/department/updatedAt) وترميز Firestore
+    // الداخلي، حتى لا يفشل الرفع في اللحظة الأخيرة.
+    const FIRESTORE_DOC_LIMIT = 1048576;
+    const SAFE_DOC_LIMIT = 900 * 1024;
+
+    function escapeHtml(str) {
+        return String(str ?? "").replace(/[&<>"']/g, (ch) => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        }[ch]));
+    }
+
+    // يجب أن تبقى مطابقة تمامًا للنسخة الموجودة في index.html و admin.html —
+    // أي اختلاف يعني أن الكيوسك سيقرأ مستندًا مختلفًا عن الذي نكتبه هنا.
+    function trainingContentDocId(restaurant, department) {
+        return `${restaurant}__${department}`.replace(/\s+/g, '_');
+    }
+
+    function byteSize(obj) {
+        return new TextEncoder().encode(JSON.stringify(obj)).length;
+    }
+
+    function formatBytes(n) {
+        if (n < 1024) return `${n} B`;
+        if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+        return `${(n / (1024 * 1024)).toFixed(2)} MB`;
+    }
+
+    const registry = (window.TRAINING_CONTENT_REGISTRY || []).map(entry => {
+        const sections = (entry.sections || []).map(s => ({
+            heading: (s.heading || '').trim(),
+            text: (s.text || '').trim(),
+            imageBase64: s.imageBase64 || ''
+        })).filter(s => s.heading || s.text || s.imageBase64);
+        return {
+            restaurant: entry.restaurant,
+            department: entry.department,
+            sourceFile: entry.sourceFile || '-',
+            docId: trainingContentDocId(entry.restaurant, entry.department),
+            sections,
+            size: byteSize({ restaurant: entry.restaurant, department: entry.department, sections })
+        };
+    });
+
+    function sizePill(size) {
+        if (size > FIRESTORE_DOC_LIMIT) return `<span class="pill pill-bad">تجاوز الحد</span>`;
+        if (size > SAFE_DOC_LIMIT) return `<span class="pill pill-warn">قريب من الحد</span>`;
+        return `<span class="pill pill-ok">آمن</span>`;
+    }
+
+    function renderRegistry() {
+        const body = document.getElementById('registryBody');
+        if (!registry.length) {
+            body.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger);">
+                لم يُعثر على أي ملف محتوى. تأكد من وجود ملفات training-content/*.js ومن إضافة وسم script لها.
+            </td></tr>`;
+            document.getElementById('btnImportAll').disabled = true;
+            return;
+        }
+        body.innerHTML = registry.map((e, i) => `
+            <tr>
+                <td><b>${escapeHtml(e.restaurant)}</b><br>
+                    <span style="color:var(--text-dim); font-size:12px;">${escapeHtml(e.department)}</span></td>
+                <td><code>${escapeHtml(e.docId)}</code></td>
+                <td>${e.sections.length}</td>
+                <td>${formatBytes(e.size)}</td>
+                <td>${sizePill(e.size)}<div id="rowStatus${i}" style="font-size:11.5px; margin-top:4px; color:var(--text-dim);"></div></td>
+                <td style="white-space:nowrap;">
+                    <button class="btn-ghost btn-sm" data-preview="${i}">معاينة</button>
+                    <button class="btn-primary btn-sm" data-import="${i}">رفع</button>
+                </td>
+            </tr>
+        `).join('');
+
+        body.querySelectorAll('[data-preview]').forEach(btn => {
+            btn.addEventListener('click', () => showPreview(Number(btn.dataset.preview)));
+        });
+        body.querySelectorAll('[data-import]').forEach(btn => {
+            btn.addEventListener('click', () => importOne(Number(btn.dataset.import), btn));
+        });
+    }
+
+    // معاينة تحاكي طريقة عرض الكيوسك: كل فقرة منفصلة بسطر فارغ تأخذ اتجاهها
+    // تلقائيًا عبر dir="auto" (فالفقرة العربية تصبح RTL والإنجليزية LTR).
+    function showPreview(index) {
+        const e = registry[index];
+        document.getElementById('previewTitle').innerText =
+            `معاينة: ${e.restaurant} — ${e.department} (${e.sections.length} قسمًا)`;
+        let html = '';
+        e.sections.forEach(sec => {
+            if (sec.heading) html += `<h4 dir="auto">${escapeHtml(sec.heading)}</h4>`;
+            if (sec.imageBase64) html += `<img src="${sec.imageBase64}" style="max-width:100%; border-radius:8px; margin:8px 0; display:block;">`;
+            if (sec.text) {
+                sec.text.split(/\n{2,}/).forEach(block => {
+                    if (block.trim()) html += `<p dir="auto">${escapeHtml(block)}</p>`;
+                });
+            }
+        });
+        document.getElementById('previewBody').innerHTML = html;
+        document.getElementById('previewCard').classList.remove('hidden');
+        document.getElementById('previewCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    document.getElementById('btnClosePreview').addEventListener('click', () => {
+        document.getElementById('previewCard').classList.add('hidden');
+    });
+
+    async function importOne(index, btn) {
+        const e = registry[index];
+        const rowStatus = document.getElementById(`rowStatus${index}`);
+        if (e.size > FIRESTORE_DOC_LIMIT) {
+            rowStatus.innerHTML = `<span style="color:var(--danger);">لم يُرفع — الحجم يتجاوز حد المستند (1MB). قلّل عدد الصور أو اضغطها.</span>`;
+            return false;
+        }
+        if (btn) btn.disabled = true;
+        rowStatus.innerHTML = 'جارٍ الرفع...';
+        try {
+            // نتحقق إن كان هناك محتوى موجود مسبقًا لنُبلغ المستخدم بأنه سيُستبدل.
+            const ref = doc(db, "training_content", e.docId);
+            const existing = await getDoc(ref);
+            const wasExisting = existing.exists() && Array.isArray(existing.data().sections)
+                ? existing.data().sections.length : 0;
+
+            await setDoc(ref, {
+                restaurant: e.restaurant,
+                department: e.department,
+                sections: e.sections,
+                updatedAt: serverTimestamp()
+            });
+
+            // تسجيل في سجل التدقيق بنفس نمط admin.html (لا يوقف العملية إن فشل).
+            addDoc(collection(db, "audit_log"), {
+                action: "Training Content Imported",
+                details: `${e.restaurant} / ${e.department} — ${e.sections.length} section(s) from ${e.sourceFile}` +
+                         (wasExisting ? ` (replaced ${wasExisting} existing section(s))` : ' (new document)'),
+                actor: (currentUser && currentUser.email) || 'unknown',
+                createdAt: serverTimestamp()
+            }).catch(err => console.error("Audit log write failed (non-blocking):", err));
+
+            rowStatus.innerHTML = `<span style="color:var(--success);">تم الرفع ✓ (${e.sections.length} قسمًا` +
+                (wasExisting ? `، استُبدل ${wasExisting} قسمًا سابقًا` : '، مستند جديد') + `)</span>`;
+            return true;
+        } catch (error) {
+            console.error("Import failed:", error);
+            rowStatus.innerHTML = `<span style="color:var(--danger);">فشل: ${escapeHtml(error.message)}</span>`;
+            return false;
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    document.getElementById('btnImportAll').addEventListener('click', async () => {
+        const btn = document.getElementById('btnImportAll');
+        const statusEl = document.getElementById('importStatus');
+        btn.disabled = true;
+        statusEl.innerText = 'جارٍ رفع كل المحتوى...';
+        statusEl.style.color = 'var(--warning)';
+        let ok = 0, fail = 0;
+        for (let i = 0; i < registry.length; i++) {
+            const success = await importOne(i, null);
+            if (success) ok++; else fail++;
+        }
+        statusEl.innerText = `انتهى: ${ok} مستند تم رفعه بنجاح${fail ? `، ${fail} فشل` : ''}.`;
+        statusEl.style.color = fail ? 'var(--danger)' : 'var(--success)';
+        btn.disabled = false;
+    });
+
+    document.getElementById('btnLogin').addEventListener('click', async () => {
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const statusEl = document.getElementById('loginStatus');
+        statusEl.innerText = 'جارٍ تسجيل الدخول...';
+        statusEl.style.color = 'var(--warning)';
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+        } catch (error) {
+            statusEl.innerText = 'فشل تسجيل الدخول: تأكد من البريد وكلمة المرور.';
+            statusEl.style.color = 'var(--danger)';
+        }
+    });
+
+    document.getElementById('password').addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') document.getElementById('btnLogin').click();
+    });
+
+    document.getElementById('btnLogout').addEventListener('click', () => signOut(auth));
+
+    onAuthStateChanged(auth, (user) => {
+        currentUser = user;
+        const loginCard = document.getElementById('loginCard');
+        const contentCard = document.getElementById('contentCard');
+        if (user) {
+            loginCard.classList.add('hidden');
+            contentCard.classList.remove('hidden');
+            document.getElementById('signedInAs').innerText = `مسجّل الدخول كـ: ${user.email || 'مستخدم'}`;
+            renderRegistry();
+        } else {
+            loginCard.classList.remove('hidden');
+            contentCard.classList.add('hidden');
+            document.getElementById('previewCard').classList.add('hidden');
+            document.getElementById('loginStatus').innerText = '';
+        }
+    });
+</script>
+
+</body>
+</html>
