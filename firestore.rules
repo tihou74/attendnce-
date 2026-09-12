@@ -153,6 +153,22 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ---- sales_reports (the Daily Sales Report a branch manager submits from
+    // the managers-only #report screen in index.html) ------------------------
+    // The kiosk page may CREATE a report but can NEVER read one back. Sales
+    // figures are commercially sensitive and index.html is signed in
+    // ANONYMOUSLY, so granting it read access here would expose every branch's
+    // revenue to anyone who can open that page. Managers therefore submit
+    // "blind" and only get a confirmation message; the figures are readable
+    // exclusively from the admin dashboard's Daily Report tab.
+    // Update is admin-only as well: a manager who mistyped simply submits
+    // again, and the admin deletes the wrong entry — this also means a
+    // malicious anonymous caller cannot overwrite a real report it cannot read.
+    match /sales_reports/{reportId} {
+      allow read, update, delete: if isAdmin();
+      allow create: if isKiosk() || isAdmin();
+    }
+
     // ---- Default deny for anything not explicitly listed above ---------------
     match /{document=**} {
       allow read, write: if false;

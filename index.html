@@ -265,6 +265,27 @@
         .reg-scroll-hint { font-size: 12px; color: #dc3545; font-weight: 700; text-align: center; margin: 0 0 10px; display: none; }
         .reg-scroll-hint.show { display: block; }
         #regAgreeBtn:disabled { background-color: #adb5bd; cursor: not-allowed; }
+
+        /* ---- Daily Sales Report (managers only) ------------------------------
+           The auto-calculated total. Kept visually distinct from the inputs so a
+           manager can sanity-check the sum before sending, since they cannot
+           review the report afterwards. */
+        .report-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-top: 18px;
+            padding: 14px 16px;
+            background: #e7f5ff;
+            border: 1px solid #a5d8ff;
+            border-radius: 10px;
+            font-size: 14.5px;
+            font-weight: 700;
+            color: #1864ab;
+        }
+        .report-total b { font-size: 19px; }
+        .report-currency-note { text-align: left; color: #6c757d; font-size: 12px; margin: 8px 0 0; }
     </style>
 </head>
 <body>
@@ -490,6 +511,90 @@
             <div id="trainAlreadyAckBox" style="display:none; background: #d4edda; color: #155724; border: 1px solid #c3e6cb; border-radius: 8px; padding: 10px 12px; font-size: 13px; font-weight: 700; margin-top: 10px;"></div>
             <button class="action-btn btn-in" id="trainAckBtn" style="margin-top: 14px;" disabled onclick="acknowledgeTraining()">✅ I Have Read and Understood (فهمت وقرأت)</button>
             <button class="action-btn" style="background-color: #6c757d; margin-top: 10px;" onclick="trainingBackToDepartment()">⬅️ Back to Departments</button>
+        </div>
+    </div>
+
+    <!-- Section 5: Daily Sales Report — MANAGERS ONLY -------------------------
+         Deliberately NOT part of the tab bar. It is revealed only when the page
+         is opened with the #report hash (index.html#report), which managers keep
+         bookmarked on their own phones, so employees on the shared kiosk never
+         see it at all.
+
+         The hash is NOT the security boundary — it only hides the screen. The
+         real gates are: (1) the employee must be flagged "Can submit the Daily
+         Sales Report" in the admin dashboard, (2) they must enter their own PIN,
+         and (3) firestore.rules permits only CREATE on sales_reports from this
+         anonymous page and never read, so sales figures can never be read back
+         from here. That is also why a manager cannot review past reports. -->
+    <div id="reportSection" style="display: none;">
+        <div id="reportLoginStep">
+            <p style="text-align: left; color: #495057; font-size: 13px; margin-top: 0;">
+                <b style="font-size: 15px; color: #1a252f;">Daily Sales Report</b><br>
+                Managers only. Log in with your name and PIN code.
+            </p>
+            <div class="form-group">
+                <label for="reportManagerSelect">Manager Name:</label>
+                <select id="reportManagerSelect">
+                    <option value="">-- Choose Name --</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="reportPinInput">PIN Code:</label>
+                <input type="password" id="reportPinInput" placeholder="Enter PIN Code" maxlength="8" inputmode="numeric">
+            </div>
+            <button class="action-btn btn-submit" onclick="reportLogin()">Continue &#10132;</button>
+        </div>
+
+        <div id="reportBranchStep" style="display: none;">
+            <p style="text-align: left; color: #495057; font-size: 13px; margin-top: 0;">
+                Welcome, <b id="reportWelcomeName"></b>. Select the branch:
+            </p>
+            <div class="btn-group" style="flex-direction: column; gap: 8px;">
+                <button class="action-btn" style="background-color: #17a2b8; min-height: 48px;" onclick="selectReportBranch('GAIMER W KAHI WEST WALK')">GAIMER W KAHI &mdash; WEST WALK</button>
+                <button class="action-btn" style="background-color: #17a2b8; min-height: 48px;" onclick="selectReportBranch('GAIMER W KAHI OLD MINA PORT')">GAIMER W KAHI &mdash; OLD MINA PORT</button>
+                <button class="action-btn" style="background-color: #6f42c1; min-height: 48px;" onclick="selectReportBranch('SHAI BU HAMAD WEST WALK')">SHAI BU HAMAD &mdash; WEST WALK</button>
+                <button class="action-btn" style="background-color: #6f42c1; min-height: 48px;" onclick="selectReportBranch('SHAI BU HAMAD GULF MALL')">SHAI BU HAMAD &mdash; GULF MALL</button>
+            </div>
+            <button class="action-btn" style="background-color: #6c757d; margin-top: 14px;" onclick="reportBackToLogin()">&#11013; Back</button>
+        </div>
+
+        <div id="reportFormStep" style="display: none;">
+            <h2 id="reportFormTitle" style="font-size: 17px; margin-bottom: 2px;">Sales Report</h2>
+            <p style="text-align: left; color: #6c757d; font-size: 12.5px; margin: 0 0 16px; font-weight: 700;" id="reportBranchLabel"></p>
+
+            <div class="form-group">
+                <label for="reportDate">Date:</label>
+                <input type="date" id="reportDate" onchange="onReportDateChange()">
+            </div>
+            <div class="form-group">
+                <label for="reportCash">Cash:</label>
+                <input type="number" id="reportCash" placeholder="0.00" inputmode="decimal" step="0.01" min="0" oninput="recalcReportTotal()">
+            </div>
+            <div class="form-group">
+                <label for="reportCard">Card:</label>
+                <input type="number" id="reportCard" placeholder="0.00" inputmode="decimal" step="0.01" min="0" oninput="recalcReportTotal()">
+            </div>
+            <div class="form-group">
+                <label for="reportSnoonu">Snoonu:</label>
+                <input type="number" id="reportSnoonu" placeholder="0.00" inputmode="decimal" step="0.01" min="0" oninput="recalcReportTotal()">
+            </div>
+            <div class="form-group">
+                <label for="reportTalabat">Talabat:</label>
+                <input type="number" id="reportTalabat" placeholder="0.00" inputmode="decimal" step="0.01" min="0" oninput="recalcReportTotal()">
+            </div>
+            <div class="form-group">
+                <label for="reportKeeta">Keeta:</label>
+                <input type="number" id="reportKeeta" placeholder="0.00" inputmode="decimal" step="0.01" min="0" oninput="recalcReportTotal()">
+            </div>
+
+            <div class="report-total">
+                <span>Total sales</span>
+                <b id="reportTotal">0.00</b>
+            </div>
+            <p class="report-currency-note">All amounts in Qatari Riyal (QAR). Please review the total before sending &mdash; you cannot edit the report afterwards.</p>
+
+            <button class="action-btn btn-in" id="btnSubmitReport" style="margin-top: 16px;" onclick="submitSalesReport()">Send Report &#128228;</button>
+            <button class="action-btn" style="background-color: #6c757d; margin-top: 10px;" onclick="reportBackToBranch()">&#11013; Back to Branches</button>
         </div>
     </div>
 
@@ -745,7 +850,14 @@
             employees = [];
             querySnapshot.forEach(docSnap => {
                 const d = docSnap.data();
-                employees.push({ id: docSnap.id, name: d.name || docSnap.id, branch: d.branch || "" });
+                // canSubmitSalesReport يُفعّله المشرف من ملف الموظف في لوحة
+                // الإدارة، وهو ما يحدّد من يظهر في قائمة مديري التقرير اليومي.
+                employees.push({
+                    id: docSnap.id,
+                    name: d.name || docSnap.id,
+                    branch: d.branch || "",
+                    canSubmitSalesReport: d.canSubmitSalesReport === true
+                });
             });
             employees.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -759,6 +871,16 @@
             empSelect.innerHTML = optionsHtml;
             leaveEmpSelect.innerHTML = optionsHtml;
             if (trainEmpSelect) trainEmpSelect.innerHTML = optionsHtml;
+
+            // قائمة مديري التقرير اليومي: الموظفون المفعَّل لهم الخيار فقط.
+            const reportSelect = document.getElementById('reportManagerSelect');
+            if (reportSelect) {
+                const managers = employees.filter(e => e.canSubmitSalesReport);
+                reportSelect.innerHTML = managers.length
+                    ? '<option value="">-- Choose Name --</option>' +
+                      managers.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.name)}</option>`).join('')
+                    : '<option value="">-- No manager has been enabled yet --</option>';
+            }
 
             // Per-branch geofences (branch_geofences/{branchName} -> {lat,lng,radius}),
             // matching the collection admin.html's Settings tab now actually writes to.
@@ -1530,13 +1652,199 @@
         }
     };
 
+    /* =========================================================================
+       Daily Sales Report — MANAGERS ONLY
+       -------------------------------------------------------------------------
+       Revealed only when the page is opened as index.html#report. The hash just
+       HIDES the screen from employees; the actual gates are the manager flag on
+       the employee record, the manager's own PIN, and firestore.rules which
+       allows this anonymous page to CREATE a sales_reports doc but never to read
+       one. Sales figures are therefore never exposed here, which is also why a
+       manager cannot review or edit a report after sending it.
+       ========================================================================= */
+    const REPORT_FIELDS = ['cash', 'card', 'snoonu', 'talabat', 'keeta'];
+    const REPORT_FIELD_IDS = {
+        cash: 'reportCash', card: 'reportCard', snoonu: 'reportSnoonu',
+        talabat: 'reportTalabat', keeta: 'reportKeeta'
+    };
+    let reportState = { managerId: null, managerName: null, branch: null };
+    let isSubmittingReport = false;
+
+    function isReportMode() {
+        return (location.hash || '').toLowerCase() === '#report';
+    }
+
+    // يخفي شريط التبويبات وكل أقسام الموظفين تمامًا، فلا يمكن التنقل منها.
+    function enterReportMode() {
+        const tabGroup = document.querySelector('.tab-group');
+        if (tabGroup) tabGroup.style.display = 'none';
+        Object.values(TABS).forEach(ids => {
+            const section = document.getElementById(ids.section);
+            if (section) section.style.display = 'none';
+        });
+        const reportSection = document.getElementById('reportSection');
+        if (reportSection) reportSection.style.display = 'block';
+        resetReportFlow();
+    }
+
+    function resetReportFlow() {
+        reportState = { managerId: null, managerName: null, branch: null };
+        document.getElementById('reportLoginStep').style.display = 'block';
+        document.getElementById('reportBranchStep').style.display = 'none';
+        document.getElementById('reportFormStep').style.display = 'none';
+        const pinEl = document.getElementById('reportPinInput');
+        if (pinEl) pinEl.value = '';
+    }
+
+    window.reportLogin = async function() {
+        const empId = document.getElementById('reportManagerSelect').value;
+        const pinInput = document.getElementById('reportPinInput').value.trim();
+        if (!empId) { showStatus("Please select your name.", "error"); return; }
+        if (!pinInput) { showStatus("Please enter your PIN code.", "error"); return; }
+
+        const lockout = checkPinLockout(empId);
+        if (lockout.locked) {
+            showStatus(`Too many wrong PIN attempts. Try again in ${lockout.secondsLeft}s.`, "error");
+            return;
+        }
+
+        showStatus("Verifying PIN...", "loading");
+        const isPinValid = await verifyPin(empId, pinInput);
+        recordPinAttempt(empId, isPinValid);
+        if (!isPinValid) { showStatus("Incorrect PIN code! Access denied.", "error"); return; }
+
+        // إعادة التحقق من صلاحية المدير هنا أيضًا، لا عند بناء القائمة فقط، حتى
+        // لا تستطيع صفحة قديمة مفتوحة الإرسال بعد سحب الصلاحية.
+        const emp = employees.find(e => e.id === empId);
+        if (!emp || !emp.canSubmitSalesReport) {
+            showStatus("This account is not allowed to submit the Daily Sales Report.", "error");
+            return;
+        }
+
+        document.getElementById('statusMsg').style.display = 'none';
+        reportState.managerId = empId;
+        reportState.managerName = emp.name;
+        document.getElementById('reportWelcomeName').innerText = emp.name;
+        document.getElementById('reportPinInput').value = '';
+        document.getElementById('reportLoginStep').style.display = 'none';
+        document.getElementById('reportBranchStep').style.display = 'block';
+    };
+
+    window.reportBackToLogin = function() {
+        document.getElementById('reportBranchStep').style.display = 'none';
+        document.getElementById('reportLoginStep').style.display = 'block';
+    };
+    window.reportBackToBranch = function() {
+        document.getElementById('reportFormStep').style.display = 'none';
+        document.getElementById('reportBranchStep').style.display = 'block';
+    };
+
+    window.selectReportBranch = function(branch) {
+        reportState.branch = branch;
+        document.getElementById('reportBranchLabel').innerText = branch;
+        document.getElementById('reportDate').value = formatDateEnglish(new Date());
+        REPORT_FIELDS.forEach(key => {
+            const el = document.getElementById(REPORT_FIELD_IDS[key]);
+            if (el) el.value = '';
+        });
+        recalcReportTotal();
+        window.onReportDateChange();
+        document.getElementById('reportBranchStep').style.display = 'none';
+        document.getElementById('reportFormStep').style.display = 'block';
+    };
+
+    // القيم السالبة أو غير الرقمية تُعامل كصفر حتى لا يُرسل إجمالي مشوّه.
+    function reportFieldValue(key) {
+        const el = document.getElementById(REPORT_FIELD_IDS[key]);
+        const n = Number(el && el.value);
+        return (isFinite(n) && n > 0) ? n : 0;
+    }
+
+    window.recalcReportTotal = function() {
+        const total = REPORT_FIELDS.reduce((sum, key) => sum + reportFieldValue(key), 0);
+        document.getElementById('reportTotal').innerText = total.toFixed(2);
+    };
+
+    // العنوان بنفس الصيغة التي تستخدمها الإدارة: "Sales Report - 11-09-2026".
+    window.onReportDateChange = function() {
+        const iso = document.getElementById('reportDate').value;
+        const el = document.getElementById('reportFormTitle');
+        el.innerText = iso
+            ? `Sales Report - ${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}`
+            : 'Sales Report';
+    };
+
+    window.submitSalesReport = async function() {
+        if (isSubmittingReport) return; // حماية من الضغط المزدوج مثل الحضور
+        if (!reportState.managerId || !reportState.branch) {
+            showStatus("Session expired. Please log in again.", "error");
+            resetReportFlow();
+            return;
+        }
+        const dateISO = document.getElementById('reportDate').value;
+        if (!dateISO) { showStatus("Please select the report date.", "error"); return; }
+
+        const values = {};
+        REPORT_FIELDS.forEach(key => { values[key] = reportFieldValue(key); });
+        const totalSales = REPORT_FIELDS.reduce((sum, key) => sum + values[key], 0);
+        if (totalSales <= 0) {
+            showStatus("Please enter at least one sales amount before sending.", "error");
+            return;
+        }
+
+        const btn = document.getElementById('btnSubmitReport');
+        isSubmittingReport = true;
+        btn.disabled = true;
+        showStatus("Sending report...", "loading");
+        try {
+            await addDoc(collection(db, "sales_reports"), {
+                branch: reportState.branch,
+                date: dateISO,
+                cash: values.cash,
+                card: values.card,
+                snoonu: values.snoonu,
+                talabat: values.talabat,
+                keeta: values.keeta,
+                totalSales,
+                managerId: reportState.managerId,
+                managerName: reportState.managerName,
+                submittedAt: new Date().toISOString(),
+                timestamp: serverTimestamp()
+            });
+
+            showStatus(`Report sent successfully. Total sales: ${totalSales.toFixed(2)} QAR.`, "success");
+            // جهاز مشترك: نفرّغ الأرقام ونرجع لاختيار الفرع حتى يبدأ الإدخال
+            // التالي نظيفًا ولا تُرسل أرقام فرع لفرع آخر بالخطأ.
+            REPORT_FIELDS.forEach(key => {
+                const el = document.getElementById(REPORT_FIELD_IDS[key]);
+                if (el) el.value = '';
+            });
+            recalcReportTotal();
+            document.getElementById('reportFormStep').style.display = 'none';
+            document.getElementById('reportBranchStep').style.display = 'block';
+        } catch (e) {
+            console.error("Error sending sales report:", e);
+            showStatus("Error sending the report. Please check your connection and try again.", "error");
+        } finally {
+            isSubmittingReport = false;
+            btn.disabled = false;
+        }
+    };
+
+    // تغيير الـ hash يعيد تحميل الصفحة، فيضمن حالة نظيفة عند الدخول أو الخروج
+    // من شاشة التقرير بدل ترك أقسام مخفية/ظاهرة بشكل متضارب.
+    window.addEventListener('hashchange', () => location.reload());
+
     // Sign in anonymously (see security note at top) before touching Firestore,
     // so this page works cleanly once Security Rules require request.auth != null.
     authReady = signInAnonymously(auth).catch((err) => {
         console.error("Anonymous sign-in failed:", err);
         showStatus("Could not connect securely. Please check your internet connection and refresh.", "error");
     });
-    authReady.then(() => loadData());
+    // شاشة التقرير تُفتح بعد loadData لأنها تحتاج قائمة المديرين مبنيةً.
+    authReady
+        .then(() => loadData())
+        .then(() => { if (isReportMode()) enterReportMode(); });
 
     // ---- Rotating background photo slideshow --------------------------------
     // Cross-fades between the 3 background layers automatically. Respects

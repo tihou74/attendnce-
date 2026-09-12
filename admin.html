@@ -337,6 +337,9 @@
         <button class="nav-tab-btn" data-tab="tab-audit">
             <span class="ic-slot" data-icon="listChecks"></span> Audit Log
         </button>
+        <button class="nav-tab-btn" data-tab="tab-sales">
+            <span class="ic-slot" data-icon="dollar"></span> Daily Report
+        </button>
         <button class="nav-tab-btn" data-tab="tab-settings"><span class="ic-slot" data-icon="settings"></span> Settings</button>
     </div>
 
@@ -791,6 +794,62 @@
         </div>
     </div>
 
+    <!-- التقرير اليومي للمبيعات -->
+    <div id="tab-sales" class="tab-content">
+        <div class="filter-section">
+            <h3><span data-icon="dollar"></span> Daily Sales Report Filter</h3>
+            <div class="date-group">
+                <div><label for="salesStartDate">From</label><input type="date" id="salesStartDate" onchange="renderSalesReports()"></div>
+                <div><label for="salesEndDate">To</label><input type="date" id="salesEndDate" onchange="renderSalesReports()"></div>
+                <div style="flex: 1; min-width: 200px;"><label for="salesFilterBranch">Branch</label>
+                    <select id="salesFilterBranch" onchange="renderSalesReports()">
+                        <option value="">All Branches</option>
+                        <option value="GAIMER W KAHI WEST WALK">GAIMER W KAHI - WEST WALK</option>
+                        <option value="GAIMER W KAHI OLD MINA PORT">GAIMER W KAHI - OLD MINA PORT</option>
+                        <option value="SHAI BU HAMAD WEST WALK">SHAI BU HAMAD - WEST WALK</option>
+                        <option value="SHAI BU HAMAD GULF MALL">SHAI BU HAMAD - GULF MALL</option>
+                    </select>
+                </div>
+                <button class="btn-ghost" onclick="loadSalesReports()"><span data-icon="refresh"></span> Refresh</button>
+                <button class="btn-success" onclick="exportSalesReportsExcel()"><span data-icon="download"></span> Export Excel</button>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box money-only"><div class="stat-icon" data-icon="dollar"></div><div><h3>Total Sales (Filtered)</h3><p id="salesTotalFiltered">0 QAR</p></div></div>
+            <div class="stat-box"><div class="stat-icon" data-icon="fileText"></div><div><h3>Reports Received</h3><p id="salesReportCount">0</p></div></div>
+            <div class="stat-box money-only"><div class="stat-icon" data-icon="calendar"></div><div><h3>Daily Average</h3><p id="salesDailyAverage">0 QAR</p></div></div>
+        </div>
+
+        <div class="card">
+            <h3><span data-icon="fileText"></span> Daily Sales Reports</h3>
+            <p class="card-sub">Submitted by branch managers from the managers-only screen. Newest first. Managers cannot read or edit a report once sent, so if a figure is wrong they resubmit and you delete the incorrect entry here.</p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Branch</th>
+                            <th class="money-col">Cash</th>
+                            <th class="money-col">Card</th>
+                            <th class="money-col">Snoonu</th>
+                            <th class="money-col">Talabat</th>
+                            <th class="money-col">Keeta</th>
+                            <th class="money-col">Total Sales</th>
+                            <th>Manager</th>
+                            <th>Submitted</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="salesReportsTableBody">
+                        <tr><td colspan="11" style="text-align: center;">Loading daily reports...</td></tr>
+                    </tbody>
+                    <tfoot id="salesReportsTableFoot"></tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- 6. الإعدادات -->
     <div id="tab-settings" class="tab-content">
         <div class="card">
@@ -866,6 +925,14 @@
                     <option value="external">External Housing</option>
                     <option value="company">Company Housing (-50 QAR/mo)</option>
                 </select>
+            </div>
+            <!-- يحدّد من يظهر في قائمة مديري «التقرير اليومي» في صفحة الموظفين
+                 (index.html#report) ومن يُسمح له بإرساله. -->
+            <div><label>Daily Sales Report</label>
+                <label style="display: flex; align-items: center; gap: 9px; font-weight: 500; font-size: 13px; cursor: pointer; padding: 12px 0;">
+                    <input type="checkbox" id="editEmpCanSubmitSalesReport" style="width: 18px; height: 18px; flex-shrink: 0; cursor: pointer;">
+                    Can submit the Daily Sales Report
+                </label>
             </div>
         </div>
 
@@ -1448,6 +1515,7 @@
         if (tabId === 'tab-leaves') renderLeavesTable();
         if (tabId === 'tab-training') { loadTrainingContentForAdmin(); loadTrainingRecords(); }
         if (tabId === 'tab-audit') loadAuditLog();
+        if (tabId === 'tab-sales') loadSalesReports();
     };
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -1456,8 +1524,8 @@
         });
         const start = firstDayOfCurrentMonthISO();
         const end = lastDayOfCurrentMonthISO();
-        ["payrollStartDate", "startDate", "attReportStart"].forEach(id => { const el = document.getElementById(id); if (el) el.value = start; });
-        ["payrollEndDate", "endDate", "attReportEnd"].forEach(id => { const el = document.getElementById(id); if (el) el.value = end; });
+        ["payrollStartDate", "startDate", "attReportStart", "salesStartDate"].forEach(id => { const el = document.getElementById(id); if (el) el.value = start; });
+        ["payrollEndDate", "endDate", "attReportEnd", "salesEndDate"].forEach(id => { const el = document.getElementById(id); if (el) el.value = end; });
         const dd = document.getElementById('newDeductionDate');
         if (dd) dd.value = todayISO();
         applySavedTheme();
@@ -2763,6 +2831,168 @@
         }
     };
 
+    // ---- Daily Sales Report tab ---------------------------------------------
+    // Reports are submitted by branch managers from the managers-only #report
+    // screen in index.html. That page can CREATE a report but can never read one
+    // back (see firestore.rules), so this tab is the ONLY place the figures are
+    // visible. Loaded on demand when the tab is opened, like the Audit Log.
+    let allSalesReports = [];
+    const SALES_FIELDS = ['cash', 'card', 'snoonu', 'talabat', 'keeta'];
+
+    window.loadSalesReports = async function() {
+        const body = document.getElementById("salesReportsTableBody");
+        if (!body) return;
+        body.innerHTML = `<tr><td colspan="11" style="text-align: center;">Loading daily reports...</td></tr>`;
+        try {
+            const q = query(collection(db, "sales_reports"), orderBy("timestamp", "desc"), limit(1000));
+            const snap = await getDocs(q);
+            allSalesReports = [];
+            snap.forEach(d => allSalesReports.push({ id: d.id, ...d.data() }));
+        } catch (error) {
+            // ترتيب timestamp قد يحتاج فهرسًا في أول تشغيل — نفس نمط البدائل
+            // المستخدم في بقية المجموعات: مسح بلا ترتيب ثم ترتيب محليًا.
+            console.error("Ordered sales_reports query failed, falling back:", error);
+            try {
+                const snap = await getDocs(collection(db, "sales_reports"));
+                allSalesReports = [];
+                snap.forEach(d => allSalesReports.push({ id: d.id, ...d.data() }));
+                allSalesReports.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+            } catch (err) {
+                console.error("Error loading sales reports:", err);
+                body.innerHTML = `<tr><td colspan="11" style="text-align: center; color: var(--danger);">Error loading reports: ${escapeHtml(err.message)}</td></tr>`;
+                return;
+            }
+        }
+        renderSalesReports();
+    };
+
+    function filteredSalesReports() {
+        const start = document.getElementById("salesStartDate")?.value;
+        const end = document.getElementById("salesEndDate")?.value;
+        const branch = document.getElementById("salesFilterBranch")?.value;
+        return allSalesReports.filter(r =>
+            (!start || (r.date || '') >= start) &&
+            (!end || (r.date || '') <= end) &&
+            (!branch || r.branch === branch)
+        );
+    }
+
+    window.renderSalesReports = function() {
+        const body = document.getElementById("salesReportsTableBody");
+        const foot = document.getElementById("salesReportsTableFoot");
+        if (!body) return;
+
+        const rows = filteredSalesReports();
+        const totals = { cash: 0, card: 0, snoonu: 0, talabat: 0, keeta: 0, totalSales: 0 };
+        rows.forEach(r => {
+            SALES_FIELDS.forEach(f => { totals[f] += Number(r[f]) || 0; });
+            totals.totalSales += Number(r.totalSales) || 0;
+        });
+
+        // متوسط اليوم يُحسب على الأيام التي وردت تقارير عنها فعلًا، لا على طول
+        // الفترة، حتى لا يهبط المتوسط بسبب أيام لم يُرسل عنها تقرير بعد.
+        const distinctDays = new Set(rows.map(r => r.date).filter(Boolean)).size;
+        const dailyAverage = distinctDays > 0 ? totals.totalSales / distinctDays : 0;
+
+        const totalEl = document.getElementById("salesTotalFiltered");
+        const countEl = document.getElementById("salesReportCount");
+        const avgEl = document.getElementById("salesDailyAverage");
+        if (totalEl) totalEl.innerText = `${totals.totalSales.toFixed(2)} QAR`;
+        if (countEl) countEl.innerText = rows.length;
+        if (avgEl) avgEl.innerText = `${dailyAverage.toFixed(2)} QAR`;
+
+        if (!rows.length) {
+            body.innerHTML = `<tr><td colspan="11" style="text-align: center;">No daily reports found for this period/branch.</td></tr>`;
+            if (foot) foot.innerHTML = "";
+            return;
+        }
+
+        body.innerHTML = rows.map(r => {
+            const submitted = r.timestamp && typeof r.timestamp.toDate === 'function'
+                ? r.timestamp.toDate().toLocaleString()
+                : (r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '-');
+            // العنوان بصيغة الإدارة: 11-09-2026
+            const d = r.date || '';
+            const shownDate = d ? `${d.slice(8, 10)}-${d.slice(5, 7)}-${d.slice(0, 4)}` : '-';
+            const cells = SALES_FIELDS.map(f =>
+                `<td class="money-col">${(Number(r[f]) || 0).toFixed(2)}</td>`
+            ).join('');
+            return `<tr>
+                <td><b>${escapeHtml(shownDate)}</b></td>
+                <td>${escapeHtml(r.branch || '-')}</td>
+                ${cells}
+                <td class="money-col"><strong style="color: var(--accent); font-size: 14.5px;">${(Number(r.totalSales) || 0).toFixed(2)}</strong></td>
+                <td>${escapeHtml(r.managerName || r.managerId || '-')}</td>
+                <td style="font-size: 12px; color: var(--text-dim);">${escapeHtml(submitted)}</td>
+                <td><button class="btn-danger btn-sm" onclick="deleteSalesReport('${escapeJsAttr(r.id)}')">${iconSvg('trash','ic-sm')}</button></td>
+            </tr>`;
+        }).join('');
+
+        if (foot) {
+            foot.innerHTML = `<tr style="background: var(--surface-2); font-weight: 800;">
+                <td colspan="2">TOTAL (${rows.length} report(s), ${distinctDays} day(s))</td>
+                ${SALES_FIELDS.map(f => `<td class="money-col">${totals[f].toFixed(2)}</td>`).join('')}
+                <td class="money-col"><strong style="color: var(--accent); font-size: 15px;">${totals.totalSales.toFixed(2)}</strong></td>
+                <td colspan="3"></td>
+            </tr>`;
+        }
+    };
+
+    window.deleteSalesReport = async function(reportId) {
+        const r = allSalesReports.find(x => x.id === reportId);
+        const label = r ? `${r.branch || ''} ${r.date || ''} (${(Number(r.totalSales) || 0).toFixed(2)} QAR)` : reportId;
+        if (!confirm(`Delete this daily sales report?\n${label}`)) return;
+        try {
+            await deleteDoc(doc(db, "sales_reports", reportId));
+            logAudit("Daily Sales Report Deleted", label);
+            await loadSalesReports();
+        } catch (error) {
+            alert("Error deleting report: " + error.message);
+        }
+    };
+
+    window.exportSalesReportsExcel = function() {
+        const rows = filteredSalesReports();
+        if (!rows.length) { alert("No daily reports to export for this period/branch."); return; }
+
+        const sheetRows = rows.map(r => {
+            const d = r.date || '';
+            return {
+                "Date": d ? `${d.slice(8, 10)}-${d.slice(5, 7)}-${d.slice(0, 4)}` : '-',
+                "Branch": r.branch || '-',
+                "Cash (QAR)": Number((Number(r.cash) || 0).toFixed(2)),
+                "Card (QAR)": Number((Number(r.card) || 0).toFixed(2)),
+                "Snoonu (QAR)": Number((Number(r.snoonu) || 0).toFixed(2)),
+                "Talabat (QAR)": Number((Number(r.talabat) || 0).toFixed(2)),
+                "Keeta (QAR)": Number((Number(r.keeta) || 0).toFixed(2)),
+                "Total Sales (QAR)": Number((Number(r.totalSales) || 0).toFixed(2)),
+                "Manager": r.managerName || r.managerId || '-',
+                "Submitted": r.timestamp && typeof r.timestamp.toDate === 'function'
+                    ? r.timestamp.toDate().toLocaleString()
+                    : (r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '-')
+            };
+        });
+
+        const totalRow = { "Date": "TOTAL", "Branch": "" };
+        SALES_FIELDS.forEach(f => {
+            const key = `${f.charAt(0).toUpperCase() + f.slice(1)} (QAR)`;
+            totalRow[key] = Number(rows.reduce((s, r) => s + (Number(r[f]) || 0), 0).toFixed(2));
+        });
+        totalRow["Total Sales (QAR)"] = Number(rows.reduce((s, r) => s + (Number(r.totalSales) || 0), 0).toFixed(2));
+        totalRow["Manager"] = "";
+        totalRow["Submitted"] = "";
+        sheetRows.push(totalRow);
+
+        const ws = XLSX.utils.json_to_sheet(sheetRows);
+        ws['!cols'] = [{ wch: 12 }, { wch: 28 }, { wch: 13 }, { wch: 13 }, { wch: 13 }, { wch: 13 }, { wch: 13 }, { wch: 17 }, { wch: 24 }, { wch: 22 }];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Daily Sales");
+        const start = document.getElementById("salesStartDate")?.value || 'all';
+        const end = document.getElementById("salesEndDate")?.value || 'all';
+        XLSX.writeFile(wb, `Daily_Sales_Report_${start}_to_${end}.xlsx`);
+        logAudit("Daily Sales Reports Exported", `${rows.length} report(s), period ${start} to ${end}`);
+    };
+
     window.exportToExcel = function() {
         const startDate = document.getElementById("startDate").value;
         const endDate = document.getElementById("endDate").value;
@@ -3024,6 +3254,8 @@
             document.getElementById("editEmpSalary").value = emp.salary || 0;
             document.getElementById("editEmpShift").value = emp.shift || "Morning";
             document.getElementById("editEmpHousingType").value = emp.housingType || "external";
+            // الحقل غائب عن الموظفين المنشَئين قبل هذه الميزة، فالغياب = غير مفعّل.
+            document.getElementById("editEmpCanSubmitSalesReport").checked = emp.canSubmitSalesReport === true;
 
             document.getElementById("qidFrontContainer").innerHTML = emp.qidFront ? `<img src="${emp.qidFront}">` : "<span class='no-img'>No Image</span>";
             document.getElementById("qidBackContainer").innerHTML = emp.qidBack ? `<img src="${emp.qidBack}">` : "<span class='no-img'>No Image</span>";
@@ -3217,6 +3449,7 @@
         const pin = document.getElementById("editEmpPin").value.trim();
         const shift = document.getElementById("editEmpShift").value;
         const housingType = document.getElementById("editEmpHousingType").value; // 'company' or 'external'
+        const canSubmitSalesReport = document.getElementById("editEmpCanSubmitSalesReport").checked;
         const statusEl = document.getElementById("editProfileStatus");
 
         if (!name) { statusEl.innerText = "Name cannot be empty."; statusEl.style.color = "var(--danger)"; return; }
@@ -3234,7 +3467,7 @@
             let healthCert = await readFileIfPresent(document.getElementById("editHealthCertInput"), emp.healthCert || "");
 
             // Base fields any signed-in admin (Accountant OR Secretary) may edit.
-            const payload = { name, role, branch, phone, shift, housingType, qidFront, qidBack, healthCard, contract, healthCert };
+            const payload = { name, role, branch, phone, shift, housingType, canSubmitSalesReport, qidFront, qidBack, healthCard, contract, healthCert };
             // Salary / OT rate are only ever sent for Accountants — Secretaries
             // never include these fields in the update at all, and
             // firestore.rules independently rejects them server-side too if a
@@ -4045,7 +4278,11 @@
         "employees", "employee_pins", "attendance", "deductions",
         "leave_requests", "employee_applications", "employee_warnings",
         "annual_leaves", "allowance_payments", "audit_log",
-        "branch_geofences", "settings"
+        "branch_geofences", "settings",
+        // كانت هذه الثلاث غائبة عن النسخة الاحتياطية: التقارير اليومية للمبيعات،
+        // وكل أدلة التدريب، وإثباتات قراءة الموظفين لها — وهي بيانات لا تُستعاد
+        // إن فُقدت، فأُضيفت هنا.
+        "sales_reports", "training_content", "training_acknowledgments"
     ];
     window.exportFullBackup = async function() {
         if (!hasFinanceAccess()) { alert("Only Admins or Accountants can export a full backup."); return; }
