@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daily Sales Report — Al Sheikha Group</title>
+
+<!-- =============================================================================
+     صفحة المديرين — نقطة الدخول لتقرير المبيعات اليومي
+     -----------------------------------------------------------------------------
+     لماذا توجد هذه الصفحة ولم نكتفِ بـ index.html#report؟
+     سببان:
+       1) رابط أنظف وأسهل في التواصل: .../report.html بدل .../index.html#report
+       2) وهو الأهم: التثبيت كتطبيق. كل صفحة تربط ملف manifest واحدًا، وصفحة
+          index.html تربط manifest.json الخاص بتطبيق الموظفين. فلو ثبّت المدير
+          التطبيق من index.html#report لحصل على تطبيق **الموظفين** وفتح شاشة
+          الحضور لا شاشة التقرير. هذه الصفحة تربط manifest-report.json الذي
+          start_url فيه هو index.html#report، فيحصل المدير على تطبيق مستقل باسم
+          "Sales Report" يفتح شاشة التقرير مباشرة.
+
+     الصفحة نفسها لا تحتوي واجهة: تنقل فورًا إلى شاشة التقرير داخل index.html
+     حيث يوجد منطق تسجيل الدخول والتحقق من صلاحية المدير.
+     ============================================================================= -->
+
+<link rel="manifest" href="./manifest-report.json">
+<meta name="theme-color" content="#1864ab">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+
+<!-- iOS لا يقرأ manifest للتثبيت، بل يعتمد على هذه الوسوم -->
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sales Report">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<!-- محركات البحث: هذه صفحة داخلية للإدارة -->
+<meta name="robots" content="noindex, nofollow">
+
+<style>
+    html, body { margin: 0; padding: 0; height: 100%; }
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #1a252f;
+        color: #f1f3f5;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        text-align: center;
+        padding: 24px;
+        box-sizing: border-box;
+    }
+    img { width: 84px; height: 84px; border-radius: 18px; }
+    h1 { font-size: 17px; font-weight: 700; margin: 0; }
+    p { font-size: 13.5px; color: #adb5bd; margin: 0; line-height: 1.6; }
+    a {
+        display: inline-block;
+        margin-top: 6px;
+        padding: 13px 26px;
+        background: #1864ab;
+        color: #fff;
+        text-decoration: none;
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 700;
+    }
+    .spinner {
+        width: 26px; height: 26px;
+        border: 3px solid rgba(255,255,255,0.25);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+</style>
+</head>
+<body>
+
+<img src="./icons/icon-192.png" alt="Al Sheikha Group">
+<h1>Daily Sales Report</h1>
+<p>Opening the report screen&hellip;</p>
+<div class="spinner" role="status" aria-label="Loading"></div>
+<!-- احتياطي إن كان الجافاسكربت معطّلًا أو تأخر التحويل -->
+<noscript><p>JavaScript is required. Please open the link below.</p></noscript>
+<a href="./index.html#report">Open manually</a>
+
+<script>
+    // location.replace لا يضيف مدخلًا في سجل التنقّل، فزر الرجوع لا يعيد المدير
+    // إلى هذه الصفحة الوسيطة في حلقة.
+    location.replace('./index.html#report');
+</script>
+
+<script>
+    // تسجيل الـ Service Worker حتى يصبح التطبيق قابلًا للتثبيت من هذه الصفحة.
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').catch(function () { /* غير حرج */ });
+    }
+</script>
+
+</body>
+</html>

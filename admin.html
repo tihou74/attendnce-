@@ -4,6 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Al Sheikha Group - Executive Dashboard</title>
+
+<!-- ---- التثبيت كتطبيق (PWA) — تطبيق مستقل باسم "Dashboard" ------------------ -->
+<link rel="manifest" href="./manifest-admin.json">
+<meta name="theme-color" content="#6366f1">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Dashboard">
+<meta name="robots" content="noindex, nofollow">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -4374,6 +4384,20 @@
             reader.onerror = error => reject(error);
         });
     };
+</script>
+
+<!-- ---- تسجيل الـ Service Worker (يجعل الصفحة قابلة للتثبيت كتطبيق) --------
+     سكربت عادي لا وحدة (module) حتى يعمل بلا اعتماد على أي استيراد، ومؤجَّل إلى
+     ما بعد load حتى لا يتنافس على الشبكة مع تحميل Firebase وبيانات الصفحة.
+     الفشل غير حرج: التطبيق يعمل كاملًا بدونه، فلا نُظهر خطأً للمستخدم. -->
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+            navigator.serviceWorker.register('./sw.js').catch(function () {
+                /* التثبيت غير متاح — لا أثر على عمل التطبيق */
+            });
+        });
+    }
 </script>
 
 </body>

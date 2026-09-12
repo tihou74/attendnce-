@@ -8,6 +8,18 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Employee Attendance & Requests Portal</title>
+
+    <!-- ---- التثبيت كتطبيق (PWA) ---------------------------------------------
+         manifest.json هو تطبيق الموظفين (start_url يفتح شاشة الحضور). المديرون
+         يثبّتون تطبيقهم من report.html الذي يربط manifest-report.json، لأن كل
+         صفحة تربط ملف manifest واحدًا فقط. -->
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+    <!-- iOS يتجاهل manifest عند «إضافة إلى الشاشة الرئيسية» ويعتمد على هذين -->
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-title" content="Attendance">
+    <!-- صفحة داخلية للعمل، لا تُفهرس -->
+    <meta name="robots" content="noindex, nofollow">
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         html, body { margin: 0; padding: 0; }
@@ -2030,6 +2042,20 @@
             slides[current].classList.add('active');
         }, 5000);
     })();
+</script>
+
+<!-- ---- تسجيل الـ Service Worker (يجعل الصفحة قابلة للتثبيت كتطبيق) --------
+     سكربت عادي لا وحدة (module) حتى يعمل بلا اعتماد على أي استيراد، ومؤجَّل إلى
+     ما بعد load حتى لا يتنافس على الشبكة مع تحميل Firebase وبيانات الصفحة.
+     الفشل غير حرج: التطبيق يعمل كاملًا بدونه، فلا نُظهر خطأً للمستخدم. -->
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+            navigator.serviceWorker.register('./sw.js').catch(function () {
+                /* التثبيت غير متاح — لا أثر على عمل التطبيق */
+            });
+        });
+    }
 </script>
 
 </body>
