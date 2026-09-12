@@ -6,38 +6,42 @@
 <title>Daily Sales Report — Al Sheikha Group</title>
 
 <!-- =============================================================================
-     صفحة المديرين — نقطة الدخول لتقرير المبيعات اليومي
+     صفحة المديرين — نقطة الدخول والتثبيت لتقرير المبيعات اليومي
      -----------------------------------------------------------------------------
-     لماذا توجد هذه الصفحة ولم نكتفِ بـ index.html#report؟
-     سببان:
-       1) رابط أنظف وأسهل في التواصل: .../report.html بدل .../index.html#report
-       2) وهو الأهم: التثبيت كتطبيق. كل صفحة تربط ملف manifest واحدًا، وصفحة
-          index.html تربط manifest.json الخاص بتطبيق الموظفين. فلو ثبّت المدير
-          التطبيق من index.html#report لحصل على تطبيق **الموظفين** وفتح شاشة
-          الحضور لا شاشة التقرير. هذه الصفحة تربط manifest-report.json الذي
-          start_url فيه هو index.html#report، فيحصل المدير على تطبيق مستقل باسم
-          "Sales Report" يفتح شاشة التقرير مباشرة.
+     ⚠️ لا تُعِد إضافة تحويل تلقائي غير مشروط إلى هذه الصفحة.
 
-     الصفحة نفسها لا تحتوي واجهة: تنقل فورًا إلى شاشة التقرير داخل index.html
-     حيث يوجد منطق تسجيل الدخول والتحقق من صلاحية المدير.
+     كانت الصفحة تحوّل فورًا إلى index.html?report=1، وهذا هو ما جعل تثبيت
+     التطبيق على iPhone ينتج تطبيق **الموظفين**: نظام iOS يقرأ ملف التعريف
+     (manifest) وأيقونة apple-touch-icon من الصفحة المفتوحة **لحظة** الضغط على
+     "Add to Home Screen"، وبعد التحويل تكون الصفحة المفتوحة هي index.html
+     المرتبطة بـ manifest.json الخاص بالموظفين. فكان التحويل يُبطل الغرض.
+
+     السلوك الصحيح المطبَّق هنا:
+       • في المتصفح العادي  → تبقى الصفحة ظاهرة (فيبقى manifest-report.json هو
+         المرتبط بها) وتُعرض تعليمات التثبيت وزر للفتح اليدوي.
+       • عند فتحها كتطبيق مثبَّت (standalone) → تحوّل فورًا إلى شاشة التقرير،
+         فلا يحتاج المدير ضغطة إضافية.
+
+     هكذا يعمل التثبيت سواء حفظ iOS رابط هذه الصفحة أو حفظ start_url من ملف
+     التعريف — وكلا المسارين ينتهي بشاشة التقرير.
      ============================================================================= -->
 
 <link rel="manifest" href="./manifest-report.json">
 <meta name="theme-color" content="#1864ab">
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 
-<!-- iOS لا يقرأ manifest للتثبيت، بل يعتمد على هذه الوسوم -->
+<!-- iOS لا يقرأ manifest للتثبيت في كل الإصدارات، بل يعتمد على هذه الوسوم -->
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Sales Report">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-<!-- محركات البحث: هذه صفحة داخلية للإدارة -->
 <meta name="robots" content="noindex, nofollow">
 
 <style>
-    html, body { margin: 0; padding: 0; height: 100%; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; min-height: 100%; }
     body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         background: #1a252f;
@@ -46,57 +50,93 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 18px;
         text-align: center;
-        padding: 24px;
-        box-sizing: border-box;
+        padding: 28px 20px calc(28px + env(safe-area-inset-bottom));
+        padding-top: calc(28px + env(safe-area-inset-top));
     }
-    img { width: 84px; height: 84px; border-radius: 18px; }
-    h1 { font-size: 17px; font-weight: 700; margin: 0; }
-    p { font-size: 13.5px; color: #adb5bd; margin: 0; line-height: 1.6; }
-    a {
-        display: inline-block;
-        margin-top: 6px;
-        padding: 13px 26px;
+    .card { width: 100%; max-width: 380px; }
+    img.logo { width: 88px; height: 88px; border-radius: 20px; display: block; margin: 0 auto 18px; }
+    h1 { font-size: 19px; font-weight: 800; margin: 0 0 6px; }
+    .sub { font-size: 13px; color: #9aa5b1; margin: 0 0 24px; line-height: 1.6; }
+    a.btn {
+        display: block;
+        padding: 15px 22px;
         background: #1864ab;
         color: #fff;
         text-decoration: none;
-        border-radius: 10px;
-        font-size: 15px;
+        border-radius: 11px;
+        font-size: 16px;
         font-weight: 700;
     }
-    .spinner {
-        width: 26px; height: 26px;
-        border: 3px solid rgba(255,255,255,0.25);
-        border-top-color: #fff;
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
+    a.btn:active { transform: scale(0.985); }
+    .install {
+        margin-top: 26px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 12px;
+        padding: 16px 18px;
+        text-align: left;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+    .install h2 { font-size: 13.5px; margin: 0 0 10px; color: #ffd479; font-weight: 800; }
+    .install ol { margin: 0; padding-left: 20px; font-size: 13px; color: #ced4da; line-height: 1.85; }
+    .install .note { font-size: 11.5px; color: #8b96a3; margin: 10px 0 0; line-height: 1.6; }
+    .hidden { display: none !important; }
 </style>
 </head>
 <body>
 
-<img src="./icons/icon-192.png" alt="Al Sheikha Group">
-<h1>Daily Sales Report</h1>
-<p>Opening the report screen&hellip;</p>
-<div class="spinner" role="status" aria-label="Loading"></div>
-<!-- احتياطي إن كان الجافاسكربت معطّلًا أو تأخر التحويل -->
-<noscript><p>JavaScript is required. Please open the link below.</p></noscript>
-<a href="./index.html?report=1">Open manually</a>
+<div class="card">
+    <img class="logo" src="./icons/icon-192.png" alt="Al Sheikha Group">
+    <h1>Daily Sales Report</h1>
+    <p class="sub">Managers only &mdash; Al Sheikha Group</p>
+
+    <a class="btn" id="openBtn" href="./index.html?report=1">Open Report</a>
+
+    <div class="install" id="installBox">
+        <h2 id="installTitle">Add to your home screen</h2>
+        <ol id="installSteps"></ol>
+        <p class="note">Install from <b>this</b> page so you get the Sales Report app. Installing from the staff attendance page gives the wrong app.</p>
+    </div>
+</div>
 
 <script>
-    // ?report=1 لا #report — التطبيقات المثبَّتة على الشاشة الرئيسية (وiOS
-    // خاصةً) تُسقط الـ fragment عند إعادة الفتح فتُفتح شاشة الموظفين بالخطأ،
-    // أما query string فيبقى محفوظًا.
-    // location.replace لا يضيف مدخلًا في سجل التنقّل، فزر الرجوع لا يعيد المدير
-    // إلى هذه الصفحة الوسيطة في حلقة.
-    location.replace('./index.html?report=1');
+    // هل فُتحت الصفحة كتطبيق مثبَّت؟ navigator.standalone خاص بـ iOS،
+    // و display-mode: standalone يغطي أندرويد وسطح المكتب.
+    function isStandalone() {
+        if (navigator.standalone === true) return true;
+        try {
+            return window.matchMedia('(display-mode: standalone)').matches ||
+                   window.matchMedia('(display-mode: fullscreen)').matches ||
+                   window.matchMedia('(display-mode: minimal-ui)').matches;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+                // iPadOS يُعرّف نفسه كـ Mac لكن بشاشة لمس
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    if (isStandalone()) {
+        // تطبيق مثبَّت: لا حاجة لتعليمات ولا لضغطة إضافية.
+        // replace لا يضيف مدخلًا في السجل فلا يعود المدير إلى هنا بزر الرجوع.
+        location.replace('./index.html?report=1');
+    } else {
+        // متصفح عادي: نبقى هنا حتى يبقى manifest-report.json مرتبطًا بالصفحة
+        // لحظة التثبيت، ونعرض التعليمات المناسبة للجهاز.
+        var steps = isIOS
+            ? ['Tap the Share button at the bottom of Safari.',
+               'Scroll down and tap <b>Add to Home Screen</b>.',
+               'Tap <b>Add</b>. The Sales Report icon appears on your home screen.']
+            : ['Open the browser menu (\u22EE).',
+               'Tap <b>Add to Home screen</b> or <b>Install app</b>.',
+               'Confirm. The Sales Report icon appears on your home screen.'];
+        document.getElementById('installSteps').innerHTML =
+            steps.map(function (s) { return '<li>' + s + '</li>'; }).join('');
+    }
 </script>
 
 <script>
-    // تسجيل الـ Service Worker حتى يصبح التطبيق قابلًا للتثبيت من هذه الصفحة.
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').catch(function () { /* غير حرج */ });
     }

@@ -2048,7 +2048,16 @@
     // كانت تُفتح بعد انتهاء loadData، فيرى المدير شاشة الموظفين لحظاتٍ (أو تبقى
     // ظاهرة كليًا إن كانت الشبكة بطيئة أو تعذّر تحميل البيانات). إخفاء أقسام
     // الموظفين لا يحتاج أي بيانات، فلا سبب لتأجيله.
-    if (isReportMode()) enterReportMode();
+    if (isReportMode()) {
+        enterReportMode();
+        // شبكة أمان ثانية للتثبيت: هذه الصفحة تربط manifest.json الخاص
+        // بالموظفين، فلو ثبّت المدير التطبيق وهو على هذه الصفحة لحصل على تطبيق
+        // الموظفين. نستبدل الرابط بملف تعريف المديرين حين نكون في وضع التقرير،
+        // فيقرأ المتصفح/النظام الملف الصحيح لحظة "Add to Home Screen".
+        // (الطريق الموصى به يبقى report.html، وهذا احتياط إضافي.)
+        const manifestLink = document.querySelector('link[rel="manifest"]');
+        if (manifestLink) manifestLink.href = './manifest-report.json';
+    }
 
     authReady.then(() => loadData());
 
