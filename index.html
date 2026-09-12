@@ -286,6 +286,51 @@
         }
         .report-total b { font-size: 19px; }
         .report-currency-note { text-align: left; color: #6c757d; font-size: 12px; margin: 8px 0 0; }
+
+        /* ---- ملخص التقرير بعد الإرسال + زر واتساب ---------------------------- */
+        .report-summary {
+            text-align: left;
+            border: 1px solid #dee2e6;
+            border-radius: 12px;
+            padding: 16px;
+            background: #fafbfc;
+        }
+        .report-summary-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 4px;
+        }
+        .report-summary-head span:first-child { font-size: 16px; font-weight: 800; color: #1a252f; }
+        .report-sent-badge {
+            background: #d4edda; color: #155724; border: 1px solid #c3e6cb;
+            border-radius: 20px; padding: 3px 11px; font-size: 11.5px; font-weight: 700;
+            white-space: nowrap;
+        }
+        .report-summary-branch { font-size: 12.5px; font-weight: 700; color: #6c757d; margin-bottom: 12px; }
+        .report-summary-row {
+            display: flex; justify-content: space-between; gap: 10px;
+            padding: 7px 0; font-size: 13.5px; border-bottom: 1px dashed #e9ecef;
+        }
+        .report-summary-row span:last-child { font-weight: 700; font-variant-numeric: tabular-nums; }
+        .report-summary-total {
+            display: flex; justify-content: space-between; align-items: center; gap: 10px;
+            margin-top: 10px; padding-top: 11px; border-top: 2px solid #dee2e6;
+            font-size: 14.5px; font-weight: 800; color: #1864ab;
+        }
+        .report-summary-total b { font-size: 17px; font-variant-numeric: tabular-nums; }
+        .report-summary-by { font-size: 12px; color: #6c757d; margin-top: 12px; }
+
+        /* زر الواتساب وسم <a> لا <button>: الوسم <a> لا يُحجب أبدًا بمانع النوافذ
+           المنبثقة، بخلاف window.open الذي قد تحجبه المتصفحات على الهاتف. */
+        a.action-btn {
+            display: flex; align-items: center; justify-content: center;
+            text-decoration: none; box-sizing: border-box;
+        }
+        .btn-whatsapp { background-color: #25D366; }
+        .btn-whatsapp:hover { background-color: #1da851; }
     </style>
 </head>
 <body>
@@ -595,6 +640,29 @@
 
             <button class="action-btn btn-in" id="btnSubmitReport" style="margin-top: 16px;" onclick="submitSalesReport()">Send Report &#128228;</button>
             <button class="action-btn" style="background-color: #6c757d; margin-top: 10px;" onclick="reportBackToBranch()">&#11013; Back to Branches</button>
+        </div>
+
+        <!-- الخطوة الرابعة: ملخص التقرير بعد حفظه في قاعدة البيانات، ومنه يُشارك
+             على واتساب. يُبنى الملخص من نفس الكائن الذي حُفظ فعلًا (لا من قراءة
+             لاحقة، لأن هذه الصفحة لا تستطيع قراءة التقارير إطلاقًا). -->
+        <div id="reportSummaryStep" style="display: none;">
+            <div class="report-summary">
+                <div class="report-summary-head">
+                    <span id="reportSummaryTitle">Sales Report</span>
+                    <span class="report-sent-badge">&#10003; Saved</span>
+                </div>
+                <div class="report-summary-branch" id="reportSummaryBranch"></div>
+                <div id="reportSummaryRows"></div>
+                <div class="report-summary-total">
+                    <span>Total sales</span>
+                    <b id="reportSummaryTotal">0.00</b>
+                </div>
+                <div class="report-summary-by" id="reportSummaryBy"></div>
+            </div>
+
+            <a class="action-btn btn-whatsapp" id="btnWhatsAppReport" style="margin-top: 16px;" href="#" target="_blank" rel="noopener">Send on WhatsApp</a>
+            <p class="report-currency-note">WhatsApp will open with the report ready. Choose the group or contact, then press send.</p>
+            <button class="action-btn btn-submit" style="margin-top: 14px;" onclick="startNewReport()">&#10133; New Report</button>
         </div>
     </div>
 
@@ -1667,8 +1735,13 @@
         cash: 'reportCash', card: 'reportCard', snoonu: 'reportSnoonu',
         talabat: 'reportTalabat', keeta: 'reportKeeta'
     };
+    const REPORT_LABELS = {
+        cash: 'Cash', card: 'Card', snoonu: 'Snoonu', talabat: 'Talabat', keeta: 'Keeta'
+    };
     let reportState = { managerId: null, managerName: null, branch: null };
     let isSubmittingReport = false;
+    // آخر تقرير حُفظ فعلًا — منه يُبنى الملخص ونص الواتساب.
+    let lastSubmittedReport = null;
 
     function isReportMode() {
         return (location.hash || '').toLowerCase() === '#report';
@@ -1689,12 +1762,64 @@
 
     function resetReportFlow() {
         reportState = { managerId: null, managerName: null, branch: null };
+        lastSubmittedReport = null;
         document.getElementById('reportLoginStep').style.display = 'block';
         document.getElementById('reportBranchStep').style.display = 'none';
         document.getElementById('reportFormStep').style.display = 'none';
+        document.getElementById('reportSummaryStep').style.display = 'none';
         const pinEl = document.getElementById('reportPinInput');
         if (pinEl) pinEl.value = '';
     }
+
+    // 1,870.75 — فواصل الآلاف وخانتان عشريتان دائمًا، لأن الرقم يُقرأ في واتساب.
+    function formatReportMoney(n) {
+        return Number(n || 0).toLocaleString('en-US', {
+            minimumFractionDigits: 2, maximumFractionDigits: 2
+        });
+    }
+
+    // 2026-09-11 → 11-09-2026 (صيغة الإدارة)
+    function formatReportDateLabel(iso) {
+        return iso ? `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}` : '';
+    }
+
+    // نص الواتساب. النجمتان تجعلان السطر عريضًا (bold) في واتساب.
+    function buildReportWhatsAppText(r) {
+        const lines = [
+            `*Sales Report - ${formatReportDateLabel(r.date)}*`,
+            `*Branch:* ${r.branch}`,
+            '',
+            ...REPORT_FIELDS.map(key => `${REPORT_LABELS[key]}: ${formatReportMoney(r[key])} QAR`),
+            '',
+            `*Total Sales: ${formatReportMoney(r.totalSales)} QAR*`,
+            '',
+            `Submitted by: ${r.managerName}`
+        ];
+        return lines.join('\n');
+    }
+
+    function showReportSummary(r) {
+        document.getElementById('reportSummaryTitle').innerText = `Sales Report - ${formatReportDateLabel(r.date)}`;
+        document.getElementById('reportSummaryBranch').innerText = r.branch;
+        // أرقام وتسميات ثابتة فقط، فلا خطر من innerHTML هنا.
+        document.getElementById('reportSummaryRows').innerHTML = REPORT_FIELDS.map(key =>
+            `<div class="report-summary-row"><span>${REPORT_LABELS[key]}</span><span>${formatReportMoney(r[key])}</span></div>`
+        ).join('');
+        document.getElementById('reportSummaryTotal').innerText = `${formatReportMoney(r.totalSales)} QAR`;
+        document.getElementById('reportSummaryBy').innerText = `Submitted by: ${r.managerName}`;
+
+        // بلا رقم في الرابط: يفتح واتساب ليختار المدير المجموعة أو جهة الاتصال —
+        // وهي الطريقة الوحيدة التي تعمل مع مجموعات واتساب.
+        document.getElementById('btnWhatsAppReport').href =
+            `https://wa.me/?text=${encodeURIComponent(buildReportWhatsAppText(r))}`;
+    }
+
+    window.startNewReport = function() {
+        lastSubmittedReport = null;
+        document.getElementById('reportSummaryStep').style.display = 'none';
+        document.getElementById('reportBranchStep').style.display = 'block';
+        document.getElementById('statusMsg').style.display = 'none';
+    };
 
     window.reportLogin = async function() {
         const empId = document.getElementById('reportManagerSelect').value;
@@ -1797,7 +1922,7 @@
         btn.disabled = true;
         showStatus("Sending report...", "loading");
         try {
-            await addDoc(collection(db, "sales_reports"), {
+            const report = {
                 branch: reportState.branch,
                 date: dateISO,
                 cash: values.cash,
@@ -1808,20 +1933,26 @@
                 totalSales,
                 managerId: reportState.managerId,
                 managerName: reportState.managerName,
-                submittedAt: new Date().toISOString(),
-                timestamp: serverTimestamp()
-            });
+                submittedAt: new Date().toISOString()
+            };
+            await addDoc(collection(db, "sales_reports"), { ...report, timestamp: serverTimestamp() });
 
-            showStatus(`Report sent successfully. Total sales: ${totalSales.toFixed(2)} QAR.`, "success");
-            // جهاز مشترك: نفرّغ الأرقام ونرجع لاختيار الفرع حتى يبدأ الإدخال
-            // التالي نظيفًا ولا تُرسل أرقام فرع لفرع آخر بالخطأ.
+            // الملخص يُبنى من الكائن المحفوظ نفسه — هذه الصفحة لا تستطيع قراءة
+            // التقارير من قاعدة البيانات (قواعد الأمان تمنع ذلك عن قصد).
+            lastSubmittedReport = report;
+            showReportSummary(report);
+            document.getElementById('statusMsg').style.display = 'none';
+
+            // جهاز مشترك: نفرّغ خانات النموذج فورًا حتى لا تُرسل أرقام فرع لفرع
+            // آخر بالخطأ عند الضغط على "New Report".
             REPORT_FIELDS.forEach(key => {
                 const el = document.getElementById(REPORT_FIELD_IDS[key]);
                 if (el) el.value = '';
             });
             recalcReportTotal();
+
             document.getElementById('reportFormStep').style.display = 'none';
-            document.getElementById('reportBranchStep').style.display = 'block';
+            document.getElementById('reportSummaryStep').style.display = 'block';
         } catch (e) {
             console.error("Error sending sales report:", e);
             showStatus("Error sending the report. Please check your connection and try again.", "error");
