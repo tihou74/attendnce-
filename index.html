@@ -660,8 +660,12 @@
                 <div class="report-summary-by" id="reportSummaryBy"></div>
             </div>
 
-            <a class="action-btn btn-whatsapp" id="btnWhatsAppReport" style="margin-top: 16px;" href="#" target="_blank" rel="noopener">Send on WhatsApp</a>
+            <a class="action-btn btn-whatsapp" id="btnWhatsAppReport" style="margin-top: 16px;" href="#" rel="noopener">Send on WhatsApp</a>
             <p class="report-currency-note">WhatsApp will open with the report ready. Choose the group or contact, then press send.</p>
+            <!-- يظهر على الهاتف فقط: احتياطي إن لم يكن تطبيق واتساب مثبَّتًا -->
+            <p class="report-currency-note" id="reportWhatsAppFallbackWrap" style="display: none;">
+                Not opening? <a id="linkWhatsAppFallback" href="#" target="_blank" rel="noopener" style="color: #1864ab; font-weight: 700;">Use WhatsApp Web instead</a>
+            </p>
             <button class="action-btn btn-submit" style="margin-top: 14px;" onclick="startNewReport()">&#10133; New Report</button>
         </div>
     </div>
@@ -1783,6 +1787,25 @@
         return iso ? `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}` : '';
     }
 
+    // على الهاتف يجب فتح تطبيق واتساب مباشرة، لا واتساب المتصفح.
+    function isMobileDevice() {
+        return /android|iphone|ipad|ipod|iemobile|blackberry|opera mini|webos/i.test(navigator.userAgent || '');
+    }
+
+    // رابطان لنفس النص:
+    // - app: مخطط whatsapp:// وهو رابط التطبيق المباشر — يفتح التطبيق فورًا بلا
+    //   صفحة وسيطة وبلا واتساب ويب. هذا ما نستخدمه على الهاتف.
+    // - web: wa.me وهو رابط ويب يمرّ بصفحة تحويل من واتساب، مناسب لسطح المكتب
+    //   ويصلح احتياطيًا على الهاتف إن لم يكن التطبيق مثبَّتًا.
+    // كلاهما بلا رقم هاتف حتى يختار المدير المجموعة أو جهة الاتصال.
+    function buildWhatsAppUrls(text) {
+        const encoded = encodeURIComponent(text);
+        return {
+            app: `whatsapp://send?text=${encoded}`,
+            web: `https://wa.me/?text=${encoded}`
+        };
+    }
+
     // نص الواتساب. النجمتان تجعلان السطر عريضًا (bold) في واتساب.
     function buildReportWhatsAppText(r) {
         const lines = [
@@ -1808,10 +1831,25 @@
         document.getElementById('reportSummaryTotal').innerText = `${formatReportMoney(r.totalSales)} QAR`;
         document.getElementById('reportSummaryBy').innerText = `Submitted by: ${r.managerName}`;
 
-        // بلا رقم في الرابط: يفتح واتساب ليختار المدير المجموعة أو جهة الاتصال —
-        // وهي الطريقة الوحيدة التي تعمل مع مجموعات واتساب.
-        document.getElementById('btnWhatsAppReport').href =
-            `https://wa.me/?text=${encodeURIComponent(buildReportWhatsAppText(r))}`;
+        const urls = buildWhatsAppUrls(buildReportWhatsAppText(r));
+        const btn = document.getElementById('btnWhatsAppReport');
+        const fallbackWrap = document.getElementById('reportWhatsAppFallbackWrap');
+        const fallbackLink = document.getElementById('linkWhatsAppFallback');
+
+        if (isMobileDevice()) {
+            // التطبيق مباشرة. ونحذف target="_blank" لأن المخططات المخصّصة
+            // (whatsapp://) تترك تبويبًا فارغًا مفتوحًا إن استُخدم _blank.
+            btn.href = urls.app;
+            btn.removeAttribute('target');
+            // شبكة أمان: لو لم يكن التطبيق مثبَّتًا لا يحدث شيء عند الضغط، فنُظهر
+            // رابطًا صغيرًا لواتساب ويب حتى لا يبقى المدير عاجزًا.
+            if (fallbackWrap) fallbackWrap.style.display = 'block';
+            if (fallbackLink) fallbackLink.href = urls.web;
+        } else {
+            btn.href = urls.web;
+            btn.setAttribute('target', '_blank');
+            if (fallbackWrap) fallbackWrap.style.display = 'none';
+        }
     }
 
     window.startNewReport = function() {
