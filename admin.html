@@ -956,7 +956,7 @@
         <!-- 2) المدفوعات -->
         <div class="card">
             <h3><span data-icon="inbox"></span> 2. Payments</h3>
-            <p class="card-sub">Salaries are pulled automatically from the payroll engine for this month and branch. Add your other fixed and variable payments below.</p>
+            <p class="card-sub">Salaries are pulled automatically from the payroll engine for this month and branch, split into three lines so nothing is hidden: the registered salaries as they are, the bonus &amp; overtime added on top, and the amounts deducted. Add your other fixed and variable payments below.</p>
 
             <div class="controls" style="flex-wrap: wrap; align-items: flex-end; gap: 10px; background: var(--surface-2); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-bottom: 18px;">
                 <div style="flex: 1; min-width: 190px;"><label for="finPayName">Payment name</label>
@@ -3443,17 +3443,38 @@
         return t;
     }
 
-    /** إجمالي الرواتب لشهر وفرع، محسوبًا بمحرك الرواتب نفسه لا بإدخال يدوي. */
+    /**
+     * الرواتب لشهر وفرع، محسوبة بمحرك الرواتب نفسه لا بإدخال يدوي، ومفصولة إلى
+     * ثلاثة أرقام صريحة بدل رقم واحد يخلطها — بطلب الإدارة، ليكون السطر واضحًا:
+     *
+     *   gross    = مجموع الرواتب كما هي مسجَّلة في ملفات الموظفين. رقم ثابت لا
+     *              يتغيّر بالحضور ولا بالغياب؛ لا يتحرّك إلا إذا أُضيف موظف
+     *              جديد أو حُذف أو عُدِّل راتبه.
+     *   bonus    = الأوفر تايم + مكافأة الأيام الزائدة + بدل الإجازة والتذكرة
+     *              المصروف في هذا الشهر. (زيادة على الرواتب)
+     *   deducted = كل ما اقتُطع فعليًا: الخصومات اليدوية + الغياب التلقائي +
+     *              السكن + المبالغ الأخرى المخصومة. (نقص من الرواتب)
+     *   total    = المدفوع فعلًا = gross + bonus - deducted
+     *
+     * ملاحظة مهمة في طريقة حساب deducted: لا نجمع بنود الخصم مباشرة، بل نأخذ
+     * الفرق (gross + bonus - net). السبب أن صافي راتب الموظف مُثبَّت على صفر
+     * إذا نزل تحته، فجمع الخصومات الخام قد يزيد عن الراتب نفسه ولا تتوازن
+     * الأسطر الثلاثة. بهذه الطريقة يتطابق المجموع دائمًا إلى القرش.
+     */
     function financePayrollTotal(month, branch) {
         const { start, end } = financeMonthRange(month);
-        let total = 0, count = 0;
+        let gross = 0, bonus = 0, total = 0, count = 0;
         allEmployees.forEach(emp => {
             // فرع فارغ = الشركة كلها، فتُحتسب رواتب المكتب الرئيسي أيضًا.
             if (branch && emp.branch !== branch) return;
-            total += computePayroll(emp, start, end).netSalary;
+            const p = computePayroll(emp, start, end);
+            gross += p.totalSalary;
+            bonus += p.otAmount + p.extraWorkedAmount + p.allowancesPaidThisPeriod;
+            total += p.netSalary;
             count++;
         });
-        return { total, count };
+        const deducted = gross + bonus - total;
+        return { gross, bonus, deducted, total, count };
     }
 
     function financePaymentsFor(month, branch) {
@@ -3578,14 +3599,38 @@
             </tr>`;
         };
 
-        // الرواتب سطر تلقائي غير قابل للحذف — مصدره محرك الرواتب.
+        // الرواتب أسطر تلقائية غير قابلة للحذف — مصدرها محرك الرواتب.
+        // بطلب الإدارة تُعرض مفصولة إلى ثلاثة أسطر ثم مجموعها، بدل رقم واحد
+        // يخلط الراتب بالبونيس بالخصم: السطر الأول ثابت لا يتحرك إلا بإضافة
+        // موظف أو تعديل راتبه، والسطران بعده يوضحان ما زاد وما نقص.
         const payrollRow = `
             <tr style="background: var(--accent-soft);">
-                <td><b>Salaries</b><br><small style="color: var(--text-dim);">Automatic — from payroll, ${s.payroll.count} employee(s)</small></td>
+                <td><b>Salaries — as registered</b><br><small style="color: var(--text-dim);">${s.payroll.count} employee(s) · fixed figure — changes only when you add, remove or edit an employee</small></td>
                 <td>${escapeHtml(branch || 'All branches')}</td>
-                <td class="money-col"><b>${money(s.payroll.total)}</b></td>
-                <td style="color: var(--text-dim); font-size: 12.5px;">Pulled from the payroll engine</td>
+                <td class="money-col"><b>${money(s.payroll.gross)}</b></td>
+                <td style="color: var(--text-dim); font-size: 12.5px;">Sum of every employee's registered total salary</td>
                 <td><span style="color: var(--text-faint); font-size: 11px;">auto</span></td>
+            </tr>
+            <tr style="background: var(--accent-soft);">
+                <td><b>Bonus &amp; overtime</b><br><small style="color: var(--text-dim);">Overtime + extra worked days + leave &amp; ticket allowance paid this month</small></td>
+                <td>${escapeHtml(branch || 'All branches')}</td>
+                <td class="money-col"><b style="color: var(--danger);">+${money(s.payroll.bonus)}</b></td>
+                <td style="color: var(--text-dim); font-size: 12.5px;">Added on top of the salaries above</td>
+                <td><span style="color: var(--text-faint); font-size: 11px;">auto</span></td>
+            </tr>
+            <tr style="background: var(--accent-soft);">
+                <td><b>Deducted from salaries</b><br><small style="color: var(--text-dim);">Manual deductions + unexcused absence + housing + other amounts</small></td>
+                <td>${escapeHtml(branch || 'All branches')}</td>
+                <td class="money-col"><b style="color: var(--success);">-${money(s.payroll.deducted)}</b></td>
+                <td style="color: var(--text-dim); font-size: 12.5px;">Reduces what is actually paid out</td>
+                <td><span style="color: var(--text-faint); font-size: 11px;">auto</span></td>
+            </tr>
+            <tr style="background: var(--surface-2);">
+                <td style="padding-left: 22px;"><b>= Net salaries payable</b><br><small style="color: var(--text-dim);">Salaries + bonus − deductions · this is the amount counted as an expense</small></td>
+                <td></td>
+                <td class="money-col"><b>${money(s.payroll.total)}</b></td>
+                <td style="color: var(--text-dim); font-size: 12.5px;">Same figure the Payroll tab produces</td>
+                <td></td>
             </tr>`;
 
         document.getElementById('finFixedTableBody').innerHTML =
@@ -3851,12 +3896,18 @@
             r('NET REVENUE', s.sales.grossTotal, '', s.sales.totalFees, s.sales.netRevenue),
             r('', '', '', '', ''),
             r('FIXED PAYMENTS', '', '', '', ''),
-            r(`Salaries (${s.payroll.count} employees, automatic)`, '', '', s.payroll.total, ''),
-            ...s.fixedManual.map(p => r(p.name || '-', '', '', Number(p.amount) || 0, '')),
+            r(`Salaries — as registered (${s.payroll.count} employees)`, '', '', s.payroll.gross, ''),
+            r('Bonus & overtime', '', '', s.payroll.bonus, ''),
+            r('Deducted from salaries', '', '', -s.payroll.deducted, ''),
+            r('= Net salaries payable', '', '', s.payroll.total, ''),
+            // المبلغ الفعلي لا المُدخَل: إيجارات النسبة من المبيعات يزيد مبلغها
+            // بحسب مبيعات الشهر، وكان التصدير يكتب المبلغ الأساسي فقط فيظهر
+            // إيجار وست ووك وميناء الدوحة أقل من الحقيقة في ملف Excel.
+            ...s.fixedManual.map(p => r(p.name || '-', '', '', paymentEffectiveAmount(p, month).total, '')),
             r('Total fixed', '', '', s.fixedTotal, ''),
             r('', '', '', '', ''),
             r('VARIABLE PAYMENTS', '', '', '', ''),
-            ...s.variableManual.map(p => r(p.name || '-', '', '', Number(p.amount) || 0, '')),
+            ...s.variableManual.map(p => r(p.name || '-', '', '', paymentEffectiveAmount(p, month).total, '')),
             r('Total variable', '', '', s.variableTotal, ''),
             r('', '', '', '', ''),
             r('NET PROFIT', '', '', s.totalPayments, s.netProfit),
