@@ -900,60 +900,94 @@
 
         <!-- 0) رصيد الحساب الحالي — يُحدَّث تلقائيًا من الداخل والخارج -->
         <div class="card">
-            <h3><span data-icon="dollar"></span> Account Balance Right Now</h3>
-            <p class="card-sub">Updates itself: sales come IN the day after they were made at 19:00, fixed payments go OUT on their due day, purchases go OUT on the exact date you enter, and salaries go out only when you press the button below.</p>
+            <h3><span data-icon="dollar"></span> Balances Right Now</h3>
+            <p class="card-sub">Three separate pots, because the money really is in three different places. <b>Card</b> sales go into the BANK after the 1.5% bank fee. <b>Cash</b> sales stay in the CASH BOX and only reach the bank when you record a deposit. <b>Delivery</b> sales sit in the DELIVERY pot after the 21.5% commission and only reach the bank when you collect a cheque and record it. Sales of one day land the next day at 19:00.</p>
 
             <div id="cashSetupNeeded" style="display: none; background: var(--surface-2); border: 1px solid var(--warning); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 16px;">
-                <b>Start here:</b> type the amount that is in the account right now and the date it was correct on. Everything after that date is added and subtracted automatically.
+                <b>Start here:</b> type the three amounts you have right now and the date they were correct on. Everything after that date is added and subtracted automatically. Leave a box empty if it is zero.
             </div>
 
             <div class="controls" style="flex-wrap: wrap; align-items: flex-end; gap: 10px; background: var(--surface-2); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-bottom: 18px;">
-                <div style="width: 190px;"><label for="cashOpeningAmount">Amount in the account (QAR)</label><input type="number" id="cashOpeningAmount" step="0.01" placeholder="0.00"></div>
+                <div style="width: 175px;"><label for="cashOpeningBank">In the BANK now (QAR)</label><input type="number" id="cashOpeningBank" step="0.01" placeholder="0.00"></div>
+                <div style="width: 175px;"><label for="cashOpeningCash">In the CASH BOX now</label><input type="number" id="cashOpeningCash" step="0.01" placeholder="0.00"></div>
+                <div style="width: 195px;"><label for="cashOpeningDelivery" title="Money the delivery apps still owe you, after their commission">Owed by DELIVERY apps</label><input type="number" id="cashOpeningDelivery" step="0.01" placeholder="0.00"></div>
                 <div style="width: 170px;"><label for="cashOpeningDate">Correct as of date</label><input type="date" id="cashOpeningDate"></div>
-                <div style="width: 210px;"><label for="cashSalesBasis" title="Whether sales enter the account after the bank and delivery commissions are taken off, or before">Sales enter as</label>
-                    <select id="cashSalesBasis">
-                        <option value="net">Net — after card &amp; delivery fees</option>
-                        <option value="gross">Gross — before any fees</option>
-                    </select>
-                </div>
-                <button class="btn-accent" onclick="saveCashOpeningBalance()"><span data-icon="save"></span> Save balance</button>
+                <button class="btn-accent" onclick="saveCashOpeningBalance()"><span data-icon="save"></span> Save balances</button>
                 <button class="btn-ghost" onclick="renderCashAccount()"><span data-icon="refresh"></span> Recalculate</button>
             </div>
             <div class="status" id="cashStatus" style="min-height: 18px; font-size: 13px; font-weight: 700; margin-bottom: 12px;"></div>
 
             <div class="stats" style="margin-bottom: 4px;">
                 <div class="stat-box money-only" style="flex-direction: column; align-items: stretch;">
-                    <h3 style="margin: 0 0 8px;">BALANCE NOW</h3>
-                    <p id="cashBalance" style="margin: 0;">— QAR</p>
-                    <div style="font-size: 12px; color: var(--text-dim); margin-top: 8px;" id="cashBalanceSub"></div>
+                    <h3 style="margin: 0 0 8px;">BANK ACCOUNT</h3>
+                    <p id="cashBankBalance" style="margin: 0;">— QAR</p>
+                    <div style="font-size: 11.5px; color: var(--text-dim); margin-top: 8px;" id="cashBankFlow"></div>
                 </div>
-                <div class="stat-box money-only"><div class="stat-icon" data-icon="save"></div><div><h3>Opening Balance</h3><p id="cashOpeningShow">—</p></div></div>
-                <div class="stat-box money-only"><div class="stat-icon" data-icon="download"></div><div><h3>Total In Since Then</h3><p id="cashInflow">—</p></div></div>
-                <div class="stat-box money-only"><div class="stat-icon" data-icon="inbox"></div><div><h3>Total Out Since Then</h3><p id="cashOutflow">—</p></div></div>
+                <div class="stat-box money-only" style="flex-direction: column; align-items: stretch;">
+                    <h3 style="margin: 0 0 8px;">CASH BOX</h3>
+                    <p id="cashCashBalance" style="margin: 0;">— QAR</p>
+                    <div style="font-size: 11.5px; color: var(--text-dim); margin-top: 8px;" id="cashCashFlow"></div>
+                </div>
+                <div class="stat-box money-only" style="flex-direction: column; align-items: stretch;">
+                    <h3 style="margin: 0 0 8px;">OWED BY DELIVERY</h3>
+                    <p id="cashDeliveryBalance" style="margin: 0;">— QAR</p>
+                    <div style="font-size: 11.5px; color: var(--text-dim); margin-top: 8px;" id="cashDeliveryFlow"></div>
+                </div>
+            </div>
+            <p class="card-sub" style="margin: 10px 0 0;" id="cashBalanceSub"></p>
+
+            <!-- التحويلات: المال ينتقل من وعاء إلى وعاء ولا يُخلق ولا يُفنى -->
+            <h4 style="margin: 22px 0 8px;">Record a transfer into the bank</h4>
+            <p class="card-sub" style="margin: 0 0 10px;">Use this when you deposit cash, or when you collect a cheque from a delivery app. The amount leaves that pot and enters the bank on the same date — nothing is created or lost.</p>
+            <div class="controls" style="flex-wrap: wrap; align-items: flex-end; gap: 10px; background: var(--surface-2); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
+                <div style="width: 250px;"><label for="cashMoveKind">What are you moving?</label>
+                    <select id="cashMoveKind">
+                        <option value="cash_to_bank">Cash deposited into the bank</option>
+                        <option value="delivery_to_bank">Delivery cheque banked</option>
+                    </select>
+                </div>
+                <div style="width: 150px;"><label for="cashMoveAmount">Amount (QAR)</label><input type="number" id="cashMoveAmount" step="0.01" min="0" placeholder="0.00"></div>
+                <div style="width: 160px;"><label for="cashMoveDate">Date</label><input type="date" id="cashMoveDate"></div>
+                <div style="flex: 1; min-width: 180px;"><label for="cashMoveNote">Note (cheque no., app name…)</label><input type="text" id="cashMoveNote" placeholder="—"></div>
+                <button class="btn-accent" onclick="addCashMovement()"><span data-icon="check"></span> Record transfer</button>
             </div>
 
             <!-- زر الرواتب: لا تُخصم إلا بضغطة، لأن تاريخ التحويل الفعلي قد يتأخر -->
             <div style="margin-top: 16px; padding: 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;">
-                <div style="width: 170px;"><label for="cashSalaryPaidOn">Salaries paid on</label><input type="date" id="cashSalaryPaidOn"></div>
+                <div style="width: 160px;"><label for="cashSalaryPaidOn">Salaries paid on</label><input type="date" id="cashSalaryPaidOn"></div>
+                <div style="width: 150px;"><label for="cashSalaryPaidFrom">Paid from</label>
+                    <select id="cashSalaryPaidFrom">
+                        <option value="bank">Bank account</option>
+                        <option value="cash">Cash box</option>
+                    </select>
+                </div>
                 <button class="btn-warning" id="btnMarkSalariesPaid" onclick="markSalariesPaid()"><span data-icon="check"></span> Salaries paid — deduct now</button>
                 <button class="btn-danger" id="btnUnmarkSalariesPaid" onclick="unmarkSalariesPaid()" style="display: none;"><span data-icon="x"></span> Undo salaries paid</button>
                 <p class="card-sub" style="margin: 0; flex: 1; min-width: 240px;" id="cashSalaryNote"></p>
             </div>
 
-            <h4 style="margin: 22px 0 8px;">Movements already in the balance</h4>
+            <h4 style="margin: 22px 0 8px;">Movements already in the balances</h4>
             <div class="table-container">
                 <table>
-                    <thead><tr><th>Date</th><th>Type</th><th>Detail</th><th class="money-col">Amount</th><th class="money-col">Balance after</th></tr></thead>
+                    <thead><tr><th>Date</th><th>Type</th><th class="money-col">Bank</th><th class="money-col">Cash</th><th class="money-col">Delivery</th><th class="money-col">Bank balance after</th></tr></thead>
                     <tbody id="cashLedgerBody"></tbody>
                 </table>
             </div>
 
-            <h4 style="margin: 22px 0 8px;">Scheduled — not deducted yet</h4>
-            <p class="card-sub" style="margin: 0 0 10px;">Money that is already recorded but whose date has not arrived. It is deliberately NOT in the balance above.</p>
+            <h4 style="margin: 22px 0 8px;">Scheduled — not counted yet</h4>
+            <p class="card-sub" style="margin: 0 0 10px;">Already recorded, but the date has not arrived. Deliberately NOT in the balances above.</p>
             <div class="table-container">
                 <table>
-                    <thead><tr><th>Date</th><th>Type</th><th>Detail</th><th class="money-col">Amount</th></tr></thead>
+                    <thead><tr><th>Date</th><th>Type</th><th class="money-col">Bank</th><th class="money-col">Cash</th><th class="money-col">Delivery</th></tr></thead>
                     <tbody id="cashUpcomingBody"></tbody>
+                </table>
+            </div>
+
+            <h4 style="margin: 22px 0 8px;">Transfers you recorded</h4>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Date</th><th>Type</th><th class="money-col">Amount</th><th>Note</th><th></th></tr></thead>
+                    <tbody id="cashMovementsBody"></tbody>
                 </table>
             </div>
         </div>
@@ -1053,6 +1087,12 @@
                 <div style="width: 140px;"><label for="finPayAmount">Amount (QAR)</label><input type="number" id="finPayAmount" step="0.01" min="0" placeholder="0.00"></div>
                 <div style="width: 110px;"><label for="finPayDay">Pay on day</label><input type="number" id="finPayDay" min="1" max="31" placeholder="—"></div>
                 <div style="width: 160px;"><label for="finPayDate" title="Exact date the money leaves the account. Use this for purchases; leave empty for a monthly cheque and fill 'Pay on day' instead.">Exact date (optional)</label><input type="date" id="finPayDate"></div>
+                <div style="width: 140px;"><label for="finPayFrom" title="Which pot the money leaves: the bank account or the cash box">Paid from</label>
+                    <select id="finPayFrom">
+                        <option value="bank">Bank</option>
+                        <option value="cash">Cash box</option>
+                    </select>
+                </div>
                 <div style="width: 120px;"><label for="finPaySalesPct" title="Extra rent calculated as a percentage of this branch's monthly sales">% of sales</label><input type="number" id="finPaySalesPct" step="0.1" min="0" max="100" placeholder="—"></div>
                 <div style="width: 150px;"><label for="finPayThreshold" title="Only the part of the percentage above this figure is paid">% paid above</label><input type="number" id="finPayThreshold" step="0.01" min="0" placeholder="0"></div>
                 <div style="flex: 1; min-width: 150px;"><label for="finPayNote">Note (optional)</label><input type="text" id="finPayNote" placeholder="—"></div>
@@ -3710,6 +3750,7 @@
             note: p.note || '',
             dayOfMonth: p.dayOfMonth || null,
             paymentDate: p.paymentDate || null,
+            paidFrom: p.paidFrom === 'cash' ? 'cash' : 'bank',
             salesPercent: Number(p.salesPercent) || 0,
             salesPercentThreshold: Number(p.salesPercentThreshold) || 0,
             // المبلغ الفعلي وقت الإغلاق — إيجارات النسبة من المبيعات لا يمكن
@@ -3808,8 +3849,18 @@
     const SALES_SETTLEMENT_OFFSET_DAYS = 1;   // مبيعات اليوم تدخل في اليوم التالي
     const SALES_SETTLEMENT_HOUR = 19;         // الساعة 7 مساءً
 
-    let cashAccount = { openingBalance: 0, openingDate: '', salesBasis: 'net' };
+    // ثلاثة أوعية منفصلة لا وعاء واحد — بقرار الإدارة، ولأن المال فعلًا في ثلاثة
+    // أماكن مختلفة لا يصح خلطها:
+    //   BANK     الحساب البنكي. يدخله: صافي البطاقة بعد 1.5%، وما يُحوَّل من
+    //            الكاش، وشيكات الدليفري عند إيداعها. ويخرج منه: المدفوعات.
+    //   CASH     صندوق الكاش. يدخله: مبيعات الكاش كاملة. ولا يدخل البنك إلا
+    //            بتحويل يسجّله المالك بنفسه عند الإيداع.
+    //   DELIVERY مستحقات لدى تطبيقات التوصيل بعد خصم 21.5%. لا تدخل البنك
+    //            تلقائيًا: المالك يذهب إليهم ويأخذ شيكات، فيسجّل الشيك كتحويل.
+    const CASH_STREAMS = ['bank', 'cash', 'delivery'];
+    let cashAccount = { openingBank: 0, openingCash: 0, openingDelivery: 0, openingDate: '' };
     let salaryPayouts = {};   // { 'YYYY-MM': { paid, paidOn, amount, paidBy } }
+    let cashMovements = [];   // تحويلات: كاش←بنك، ودليفري←بنك (شيكات)
 
     function dateAtMidnight(iso) {
         const [y, m, d] = String(iso).split('-').map(Number);
@@ -3839,120 +3890,232 @@
     }
 
     /**
-     * المبلغ الذي يدخل الحساب فعلًا من تقرير مبيعات يوم واحد.
-     * الافتراضي 'net': البطاقة تصل بعد خصم عمولة البنك، والدليفري بعد عمولته —
-     * فهذا هو ما يُودَع حقًا. ولو أراد المالك المبلغ الإجمالي قبل العمولات
-     * فليضبط الأساس على 'gross' من الخانة أعلى البطاقة.
+     * يوزّع مبيعات يوم واحد على الأوعية الثلاثة:
+     *   الكاش   → صندوق الكاش بكامله (لا يدخل البنك حتى يُحوَّل)
+     *   البطاقة → البنك بعد خصم عمولة البنك (1.5%)
+     *   الدليفري→ وعاء المستحقات بعد خصم العمولة (21.5%)، لا البنك
      */
-    function salesReportInflow(r) {
+    function salesReportSplit(r) {
         const cash = Number(r.cash) || 0;
         const card = Number(r.card) || 0;
         const del = (Number(r.snoonu) || 0) + (Number(r.talabat) || 0) + (Number(r.keeta) || 0);
-        if (cashAccount.salesBasis === 'gross') return cash + card + del;
         const cPct = Number(financialRates.cardFeePercent) || 0;
         const dPct = Number(financialRates.deliveryCommissionPercent) || 0;
-        return cash + card * (1 - cPct / 100) + del * (1 - dPct / 100);
+        return {
+            cash: cash,
+            bank: card * (1 - cPct / 100),
+            delivery: del * (1 - dPct / 100)
+        };
     }
 
     /**
-     * يبني كشف الحركة كاملًا ويحسب الرصيد الحالي.
-     * أي حركة تاريخها قبل تاريخ الرصيد الافتتاحي تُستثنى، لأن الرصيد الافتتاحي
+     * يبني كشف الحركة ويحسب الأرصدة الثلاثة.
+     * أي حركة تاريخها قبل تاريخ الأرصدة الافتتاحية تُستثنى، لأن الافتتاحي
      * يشملها أصلًا — وإلا حُسبت مرتين.
      */
     function buildCashLedger(now) {
         now = now || new Date();
-        const opening = Number(cashAccount.openingBalance) || 0;
+        const opening = {
+            bank: Number(cashAccount.openingBank) || 0,
+            cash: Number(cashAccount.openingCash) || 0,
+            delivery: Number(cashAccount.openingDelivery) || 0
+        };
         const openISO = cashAccount.openingDate || '';
-        if (!openISO) return { ready: false, opening, events: [], upcoming: [], balance: opening, inflow: 0, outflow: 0 };
+        if (!openISO) {
+            return { ready: false, opening, events: [], upcoming: [], balance: { ...opening },
+                     inflow: { bank: 0, cash: 0, delivery: 0 }, outflow: { bank: 0, cash: 0, delivery: 0 } };
+        }
         const openAt = dateAtMidnight(openISO);
 
         const settled = [], upcoming = [];
-        const push = (at, kind, label, amount, when) => {
-            if (at < openAt) return;              // مشمول في الرصيد الافتتاحي
-            const row = { at, kind, label, amount, when };
-            (at <= now ? settled : upcoming).push(row);
+        // delta = { bank, cash, delivery } بقيم موجبة للداخل وسالبة للخارج
+        const push = (at, kind, label, delta, when) => {
+            if (at < openAt) return;              // مشمول في الأرصدة الافتتاحية
+            const d = { bank: delta.bank || 0, cash: delta.cash || 0, delivery: delta.delivery || 0 };
+            if (!d.bank && !d.cash && !d.delivery) return;
+            (at <= now ? settled : upcoming).push({ at, kind, label, delta: d, when });
         };
 
         allSalesReports.forEach(r => {
             if (!r.date) return;
+            const sp = salesReportSplit(r);
             push(salesSettlementAt(r.date), 'sales',
                 `Sales of ${r.date}${r.branch ? ' — ' + r.branch : ''}`,
-                salesReportInflow(r), `${r.date} +1 day, ${SALES_SETTLEMENT_HOUR}:00`);
+                sp, `${r.date} +1 day, ${SALES_SETTLEMENT_HOUR}:00`);
+        });
+
+        cashMovements.forEach(m => {
+            const amt = Number(m.amount) || 0;
+            if (!amt || !m.date) return;
+            if (m.kind === 'cash_to_bank') {
+                push(dateAtMidnight(m.date), 'transfer',
+                    `Cash deposited into the bank${m.note ? ' — ' + m.note : ''}`,
+                    { bank: amt, cash: -amt }, m.date);
+            } else if (m.kind === 'delivery_to_bank') {
+                push(dateAtMidnight(m.date), 'cheque',
+                    `Delivery cheque banked${m.note ? ' — ' + m.note : ''}`,
+                    { bank: amt, delivery: -amt }, m.date);
+            }
         });
 
         allFinancialPayments.forEach(p => {
             const amt = paymentEffectiveAmount(p, p.month).total;
             if (!amt) return;
+            // المدفوعات من البنك افتراضيًا؛ ما يُدفع نقدًا يُعلَّم paidFrom:'cash'.
+            const fromCash = p.paidFrom === 'cash';
             push(paymentDueAt(p), p.type === 'fixed' ? 'fixed' : 'variable',
-                `${p.name || 'Payment'}${p.branch ? ' — ' + p.branch : ''}`, -amt,
+                `${p.name || 'Payment'}${p.branch ? ' — ' + p.branch : ''}${fromCash ? ' (cash)' : ''}`,
+                fromCash ? { cash: -amt } : { bank: -amt },
                 p.paymentDate || (p.dayOfMonth ? `${p.month} day ${p.dayOfMonth}` : `${p.month} month end`));
         });
 
         Object.entries(salaryPayouts).forEach(([month, sp]) => {
             if (!sp || !sp.paid) return;
+            const amt = Number(sp.amount) || 0;
+            const fromCash = sp.paidFrom === 'cash';
             push(dateAtMidnight(sp.paidOn || payrollPaymentDate(month)), 'salary',
-                `Salaries for ${month} — marked paid`, -(Number(sp.amount) || 0), sp.paidOn);
+                `Salaries for ${month} — marked paid${fromCash ? ' (cash)' : ''}`,
+                fromCash ? { cash: -amt } : { bank: -amt }, sp.paidOn);
         });
 
         settled.sort((a, b) => a.at - b.at);
         upcoming.sort((a, b) => a.at - b.at);
-        let bal = opening;
-        settled.forEach(e => { e.balanceAfter = (bal += e.amount); });
 
-        return {
-            ready: true, opening, openingDate: openISO, events: settled, upcoming,
-            balance: bal,
-            inflow: settled.filter(e => e.amount > 0).reduce((s, e) => s + e.amount, 0),
-            outflow: -settled.filter(e => e.amount < 0).reduce((s, e) => s + e.amount, 0)
-        };
+        const balance = { ...opening };
+        const inflow = { bank: 0, cash: 0, delivery: 0 };
+        const outflow = { bank: 0, cash: 0, delivery: 0 };
+        settled.forEach(e => {
+            CASH_STREAMS.forEach(k => {
+                const v = e.delta[k];
+                balance[k] += v;
+                if (v > 0) inflow[k] += v; else if (v < 0) outflow[k] -= v;
+            });
+            e.balanceAfter = { ...balance };
+        });
+
+        return { ready: true, opening, openingDate: openISO, events: settled, upcoming, balance, inflow, outflow };
     }
 
     window.loadCashAccount = async function() {
         try {
-            const [acct, pay] = await Promise.all([
+            const [acct, pay, mov] = await Promise.all([
                 getDoc(doc(db, "settings", "cash_account")),
-                getDoc(doc(db, "settings", "salary_payouts"))
+                getDoc(doc(db, "settings", "salary_payouts")),
+                getDoc(doc(db, "settings", "cash_movements"))
             ]);
             if (acct.exists()) {
                 const d = acct.data();
                 cashAccount = {
-                    openingBalance: Number(d.openingBalance) || 0,
-                    openingDate: d.openingDate || '',
-                    salesBasis: d.salesBasis === 'gross' ? 'gross' : 'net'
+                    openingBank: Number(d.openingBank) || 0,
+                    openingCash: Number(d.openingCash) || 0,
+                    openingDelivery: Number(d.openingDelivery) || 0,
+                    openingDate: d.openingDate || ''
                 };
             }
             salaryPayouts = (pay.exists() && pay.data().months) ? pay.data().months : {};
+            cashMovements = (mov.exists() && Array.isArray(mov.data().items)) ? mov.data().items : [];
         } catch (e) {
             console.error("Error loading the cash account:", e);
             const st = document.getElementById('cashStatus');
-            if (st) { st.innerText = "Could not load the account balance: " + e.message; st.style.color = "var(--danger)"; }
+            if (st) { st.innerText = "Could not load the balances: " + e.message; st.style.color = "var(--danger)"; }
         }
     };
 
     window.saveCashOpeningBalance = async function() {
         const st = document.getElementById('cashStatus');
         const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
-        const amountRaw = document.getElementById('cashOpeningAmount').value;
+        const bankRaw = document.getElementById('cashOpeningBank').value;
+        const cashRaw = document.getElementById('cashOpeningCash').value;
+        const delRaw = document.getElementById('cashOpeningDelivery').value;
         const dateISO = document.getElementById('cashOpeningDate').value;
-        const basis = document.getElementById('cashSalesBasis').value;
 
-        const amount = Number(amountRaw);
-        if (amountRaw === '' || !isFinite(amount)) { show('Enter the amount that is in the account.', 'var(--danger)'); return; }
-        if (!dateISO) { show('Choose the date this balance was correct on.', 'var(--danger)'); return; }
+        const bank = Number(bankRaw || 0), cash = Number(cashRaw || 0), delivery = Number(delRaw || 0);
+        if (![bank, cash, delivery].every(isFinite)) { show('All three balances must be numbers.', 'var(--danger)'); return; }
+        if (bankRaw === '' && cashRaw === '' && delRaw === '') { show('Enter at least the bank balance.', 'var(--danger)'); return; }
+        if (!dateISO) { show('Choose the date these balances were correct on.', 'var(--danger)'); return; }
 
         show('Saving...', 'var(--warning)');
         try {
             await setDoc(doc(db, "settings", "cash_account"), {
-                openingBalance: amount,
+                openingBank: bank, openingCash: cash, openingDelivery: delivery,
                 openingDate: dateISO,
-                salesBasis: basis,
                 updatedAt: serverTimestamp(),
                 updatedBy: (currentUser && currentUser.email) || 'unknown'
             }, { merge: true });
-            logAudit("Cash Account Opening Balance Set", `${amount} QAR as of ${dateISO}, sales basis ${basis}`);
+            logAudit("Opening Balances Set",
+                `bank ${bank}, cash ${cash}, delivery ${delivery} as of ${dateISO}`);
             await loadCashAccount();
             renderCashAccount();
-            show(`Saved. The balance now updates automatically from ${dateISO} onwards.`, 'var(--success)');
+            show(`Saved. The three balances now update automatically from ${dateISO} onwards.`, 'var(--success)');
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    /**
+     * يسجّل تحويلًا: إمّا إيداع كاش في البنك، أو إيداع شيك دليفري.
+     * التحويل لا يُنشئ مالًا ولا يُفنيه — ينقله من وعاء إلى وعاء، ولهذا يُخصم
+     * من المصدر ويُضاف للبنك بنفس المبلغ في الحركة نفسها.
+     */
+    window.addCashMovement = async function() {
+        const st = document.getElementById('cashStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        const kind = document.getElementById('cashMoveKind').value;
+        const amount = Number(document.getElementById('cashMoveAmount').value);
+        const date = document.getElementById('cashMoveDate').value;
+        const note = document.getElementById('cashMoveNote').value.trim();
+
+        if (!isFinite(amount) || amount <= 0) { show('Enter the amount transferred.', 'var(--danger)'); return; }
+        if (!date) { show('Choose the date of the transfer.', 'var(--danger)'); return; }
+        if (cashAccount.openingDate && date < cashAccount.openingDate) {
+            show(`The date must be on or after ${cashAccount.openingDate}, the date of your opening balances.`, 'var(--danger)');
+            return;
+        }
+
+        // تحذير لا منع: قد يكون هناك مال لم يُسجّل بعد، فالقرار للمالك.
+        const led = buildCashLedger(dateAtMidnight(date));
+        const source = kind === 'cash_to_bank' ? 'cash' : 'delivery';
+        if (led.ready && amount > led.balance[source] + 0.005) {
+            const label = source === 'cash' ? 'cash box' : 'delivery balance';
+            if (!confirm(
+                `On ${date} the ${label} holds ${money(led.balance[source])} QAR, ` +
+                `but you are transferring ${money(amount)} QAR.\n\n` +
+                `This will push it negative. Continue anyway?`
+            )) { show('Cancelled.', 'var(--warning)'); return; }
+        }
+
+        show('Saving...', 'var(--warning)');
+        try {
+            const item = {
+                id: `mv_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+                kind, amount, date, note,
+                createdBy: (currentUser && currentUser.email) || 'unknown',
+                createdAt: new Date().toISOString()
+            };
+            await setDoc(doc(db, "settings", "cash_movements"), { items: [...cashMovements, item] }, { merge: true });
+            logAudit("Cash Movement Added", `${kind} ${amount} QAR on ${date}${note ? ' — ' + note : ''}`);
+            ['cashMoveAmount', 'cashMoveNote'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+            await loadCashAccount();
+            renderCashAccount();
+            show(`Recorded: ${money(amount)} QAR moved into the bank on ${date}.`, 'var(--success)');
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    window.deleteCashMovement = async function(id) {
+        const st = document.getElementById('cashStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        const m = cashMovements.find(x => x.id === id);
+        if (!confirm(`Delete this transfer?\n${m ? money(m.amount) + ' QAR on ' + m.date : ''}`)) return;
+        show('Deleting...', 'var(--warning)');
+        try {
+            // نكتب المصفوفة كاملة بلا merge حتى يُحذف العنصر فعلًا.
+            await setDoc(doc(db, "settings", "cash_movements"), { items: cashMovements.filter(x => x.id !== id) });
+            logAudit("Cash Movement Deleted", m ? `${m.kind} ${m.amount} QAR on ${m.date}` : id);
+            await loadCashAccount();
+            renderCashAccount();
+            show('Transfer deleted.', 'var(--warning)');
         } catch (e) {
             show('Error: ' + e.message, 'var(--danger)');
         }
@@ -3970,11 +4133,14 @@
         const amount = Number(s.payroll.total) || 0;
         const dateEl = document.getElementById('cashSalaryPaidOn');
         const paidOn = (dateEl && dateEl.value) || payrollPaymentDate(month);
+        const fromEl = document.getElementById('cashSalaryPaidFrom');
+        const paidFrom = (fromEl && fromEl.value) === 'cash' ? 'cash' : 'bank';
         if (!confirm(
             `Mark the salaries for ${month} as PAID?\n\n` +
             `Amount : ${money(amount)} QAR\n` +
-            `Date   : ${paidOn}\n\n` +
-            `This amount will be deducted from the account balance on that date.`
+            `Date   : ${paidOn}\n` +
+            `From   : ${paidFrom === 'cash' ? 'CASH BOX' : 'BANK ACCOUNT'}\n\n` +
+            `This amount will be deducted from that balance on that date.`
         )) return;
 
         show('Saving...', 'var(--warning)');
@@ -3983,7 +4149,7 @@
                 months: {
                     ...salaryPayouts,
                     [month]: {
-                        paid: true, paidOn, amount,
+                        paid: true, paidOn, amount, paidFrom,
                         paidBy: (currentUser && currentUser.email) || 'unknown',
                         markedAt: new Date().toISOString()
                     }
@@ -4025,45 +4191,61 @@
         const led = buildCashLedger();
         const month = currentFinMonth();
         const set = (id, t) => { const el = document.getElementById(id); if (el) el.innerText = t; };
+        const colour = (id, v) => { const el = document.getElementById(id); if (el) el.style.color = v >= 0 ? 'var(--success)' : 'var(--danger)'; };
 
-        // خانة الإدخال تعرض القيمة المحفوظة حتى يعرف المالك ما المسجَّل.
-        const amtEl = document.getElementById('cashOpeningAmount');
-        const dtEl = document.getElementById('cashOpeningDate');
-        const bsEl = document.getElementById('cashSalesBasis');
-        if (amtEl && document.activeElement !== amtEl && cashAccount.openingDate) amtEl.value = cashAccount.openingBalance;
-        if (dtEl && document.activeElement !== dtEl && cashAccount.openingDate) dtEl.value = cashAccount.openingDate;
-        if (bsEl && cashAccount.openingDate) bsEl.value = cashAccount.salesBasis;
+        // خانات الإدخال تعرض المحفوظ حتى يعرف المالك ما المسجَّل — ولا نلمس خانة
+        // يكتب فيها الآن.
+        const fill = (id, val) => {
+            const el = document.getElementById(id);
+            if (el && document.activeElement !== el && cashAccount.openingDate) el.value = val;
+        };
+        fill('cashOpeningBank', cashAccount.openingBank);
+        fill('cashOpeningCash', cashAccount.openingCash);
+        fill('cashOpeningDelivery', cashAccount.openingDelivery);
+        fill('cashOpeningDate', cashAccount.openingDate);
 
         const setupBox = document.getElementById('cashSetupNeeded');
         if (setupBox) setupBox.style.display = led.ready ? 'none' : 'block';
 
+        const mvDate = document.getElementById('cashMoveDate');
+        if (mvDate && !mvDate.value) mvDate.value = todayISO();
+
         if (!led.ready) {
-            set('cashBalance', '— QAR');
-            set('cashBalanceSub', 'Enter the amount currently in the account and the date it was correct on, then press Save.');
-            ['cashInflow', 'cashOutflow', 'cashOpeningShow'].forEach(id => set(id, '—'));
+            ['cashBankBalance', 'cashCashBalance', 'cashDeliveryBalance'].forEach(id => set(id, '— QAR'));
+            set('cashBalanceSub', 'Enter your three opening balances and the date they were correct on, then press Save.');
+            ['cashBankFlow', 'cashCashFlow', 'cashDeliveryFlow'].forEach(id => set(id, '—'));
             const b1 = document.getElementById('cashLedgerBody');
-            if (b1) b1.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-faint);">Set the opening balance first.</td></tr>`;
-            const b2 = document.getElementById('cashUpcomingBody');
-            if (b2) b2.innerHTML = '';
+            if (b1) b1.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text-faint);">Set the opening balances first.</td></tr>`;
+            ['cashUpcomingBody', 'cashMovementsBody'].forEach(id => {
+                const el = document.getElementById(id); if (el) el.innerHTML = '';
+            });
             return;
         }
 
-        set('cashBalance', `${money(led.balance)} QAR`);
-        const bEl = document.getElementById('cashBalance');
-        if (bEl) bEl.style.color = led.balance >= 0 ? 'var(--success)' : 'var(--danger)';
-        set('cashBalanceSub', `As of ${new Date().toISOString().slice(0, 16).replace('T', ' ')} — ${led.events.length} movement(s) since ${led.openingDate}.`);
-        set('cashOpeningShow', `${money(led.opening)} QAR`);
-        set('cashInflow', `+${money(led.inflow)} QAR`);
-        set('cashOutflow', `-${money(led.outflow)} QAR`);
+        set('cashBankBalance', `${money(led.balance.bank)} QAR`);       colour('cashBankBalance', led.balance.bank);
+        set('cashCashBalance', `${money(led.balance.cash)} QAR`);       colour('cashCashBalance', led.balance.cash);
+        set('cashDeliveryBalance', `${money(led.balance.delivery)} QAR`); colour('cashDeliveryBalance', led.balance.delivery);
+        set('cashBankFlow', `in +${money(led.inflow.bank)} · out -${money(led.outflow.bank)} · opened at ${money(led.opening.bank)}`);
+        set('cashCashFlow', `in +${money(led.inflow.cash)} · out -${money(led.outflow.cash)} · opened at ${money(led.opening.cash)}`);
+        set('cashDeliveryFlow', `in +${money(led.inflow.delivery)} · out -${money(led.outflow.delivery)} · opened at ${money(led.opening.delivery)}`);
+        set('cashBalanceSub', `As of ${new Date().toISOString().slice(0, 16).replace('T', ' ')} — ${led.events.length} movement(s) since ${led.openingDate}. Total across all three: ${money(led.balance.bank + led.balance.cash + led.balance.delivery)} QAR.`);
 
-        const kindLabel = { sales: 'Sales in', fixed: 'Fixed payment', variable: 'Purchase / variable', salary: 'Salaries' };
+        const kindLabel = {
+            sales: 'Sales', transfer: 'Cash → Bank', cheque: 'Delivery cheque → Bank',
+            fixed: 'Fixed payment', variable: 'Purchase / variable', salary: 'Salaries'
+        };
+        const cell = (v) => v
+            ? `<span style="color: ${v > 0 ? 'var(--success)' : 'var(--danger)'}; font-weight: 700;">${v > 0 ? '+' : ''}${money(v)}</span>`
+            : '<span style="color: var(--text-faint);">—</span>';
+
         const rowHtml = (e, withBalance) => `
             <tr>
-                <td>${e.at.toISOString().slice(0, 10)}<br><small style="color: var(--text-dim);">${e.kind === 'sales' ? SALES_SETTLEMENT_HOUR + ':00' : ''}</small></td>
-                <td>${escapeHtml(kindLabel[e.kind] || e.kind)}</td>
-                <td>${escapeHtml(e.label)}</td>
-                <td class="money-col" style="color: ${e.amount >= 0 ? 'var(--success)' : 'var(--danger)'}; font-weight: 700;">${e.amount >= 0 ? '+' : ''}${money(e.amount)}</td>
-                ${withBalance ? `<td class="money-col"><b>${money(e.balanceAfter)}</b></td>` : ''}
+                <td>${e.at.toISOString().slice(0, 10)}${e.kind === 'sales' ? `<br><small style="color: var(--text-dim);">${SALES_SETTLEMENT_HOUR}:00</small>` : ''}</td>
+                <td>${escapeHtml(kindLabel[e.kind] || e.kind)}<br><small style="color: var(--text-dim);">${escapeHtml(e.label)}</small></td>
+                <td class="money-col">${cell(e.delta.bank)}</td>
+                <td class="money-col">${cell(e.delta.cash)}</td>
+                <td class="money-col">${cell(e.delta.delivery)}</td>
+                ${withBalance ? `<td class="money-col"><b>${money(e.balanceAfter.bank)}</b><br><small style="color: var(--text-dim);">cash ${money(e.balanceAfter.cash)} · del ${money(e.balanceAfter.delivery)}</small></td>` : ''}
             </tr>`;
 
         // الأحدث أولًا في العرض، مع الإبقاء على الرصيد التراكمي المحسوب زمنيًا.
@@ -4072,14 +4254,29 @@
         if (body) {
             body.innerHTML = recent.length
                 ? recent.map(e => rowHtml(e, true)).join('')
-                : `<tr><td colspan="5" style="text-align:center; color: var(--text-faint);">No movements yet since ${escapeHtml(led.openingDate)}.</td></tr>`;
+                : `<tr><td colspan="6" style="text-align:center; color: var(--text-faint);">No movements yet since ${escapeHtml(led.openingDate)}.</td></tr>`;
         }
         const up = document.getElementById('cashUpcomingBody');
         if (up) {
             const next = led.upcoming.slice(0, 12);
             up.innerHTML = next.length
                 ? next.map(e => rowHtml(e, false)).join('')
-                : `<tr><td colspan="4" style="text-align:center; color: var(--text-faint);">Nothing scheduled after today.</td></tr>`;
+                : `<tr><td colspan="5" style="text-align:center; color: var(--text-faint);">Nothing scheduled after today.</td></tr>`;
+        }
+
+        // قائمة التحويلات المسجَّلة، لتصحيح أي خطأ إدخال
+        const mvBody = document.getElementById('cashMovementsBody');
+        if (mvBody) {
+            const list = [...cashMovements].sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 20);
+            mvBody.innerHTML = list.length ? list.map(m => `
+                <tr>
+                    <td>${escapeHtml(m.date || '—')}</td>
+                    <td>${m.kind === 'cash_to_bank' ? 'Cash → Bank' : 'Delivery cheque → Bank'}</td>
+                    <td class="money-col"><b>${money(m.amount)}</b></td>
+                    <td style="color: var(--text-dim); font-size: 12.5px;">${escapeHtml(m.note || '—')}</td>
+                    <td><button class="btn-danger btn-sm" onclick="deleteCashMovement('${escapeJsAttr(m.id)}')">${iconSvg('trash', 'ic-sm')}</button></td>
+                </tr>`).join('')
+                : `<tr><td colspan="5" style="text-align:center; color: var(--text-faint);">No transfers recorded yet.</td></tr>`;
         }
 
         // زر الرواتب لهذا الشهر
@@ -4094,8 +4291,8 @@
         if (salNote) {
             const s = financeSummary(month, '');
             salNote.innerText = paid
-                ? `Salaries for ${month}: PAID on ${salaryPayouts[month].paidOn} — ${money(salaryPayouts[month].amount)} QAR already deducted.`
-                : `Salaries for ${month}: ${money(s.payroll.total)} QAR NOT yet deducted. They are only taken out of the balance when you press the button.`;
+                ? `Salaries for ${month}: PAID on ${salaryPayouts[month].paidOn} from the ${salaryPayouts[month].paidFrom === 'cash' ? 'cash box' : 'bank'} — ${money(salaryPayouts[month].amount)} QAR already deducted.`
+                : `Salaries for ${month}: ${money(s.payroll.total)} QAR NOT yet deducted. They only leave a balance when you press the button.`;
             salNote.style.color = paid ? 'var(--success)' : 'var(--warning)';
         }
     };
@@ -4565,6 +4762,7 @@
         const note = document.getElementById('finPayNote').value.trim();
         const dayRaw = document.getElementById('finPayDay').value;
         const paymentDate = document.getElementById('finPayDate').value; // '' أو YYYY-MM-DD
+        const paidFrom = document.getElementById('finPayFrom').value === 'cash' ? 'cash' : 'bank';
         const pctRaw = document.getElementById('finPaySalesPct').value;
         const thrRaw = document.getElementById('finPayThreshold').value;
         const status = document.getElementById('finPayStatus');
@@ -4598,7 +4796,7 @@
         try {
             await addDoc(collection(db, "financial_payments"), {
                 month, branch, name, type, amount, note,
-                dayOfMonth, paymentDate: paymentDate || null,
+                dayOfMonth, paymentDate: paymentDate || null, paidFrom,
                 salesPercent, salesPercentThreshold,
                 createdAt: serverTimestamp()
             });
@@ -4715,6 +4913,7 @@
                     month, branch: p.branch, name: p.name, type: 'variable',
                     amount: 0, note: p.note || '',
                     dayOfMonth: p.dayOfMonth || null,
+                    paidFrom: p.paidFrom === 'cash' ? 'cash' : 'bank',
                     salesPercent: 0, salesPercentThreshold: 0,
                     createdAt: serverTimestamp()
                 });
@@ -4763,6 +4962,7 @@
                     // التاريخ الصريح لا يُنسخ: تاريخ الشهر الماضي لا يعني شيئًا
                     // في هذا الشهر. يوم الشهر (dayOfMonth) هو المتكرر.
                     paymentDate: null,
+                    paidFrom: p.paidFrom === 'cash' ? 'cash' : 'bank',
                     salesPercent: Number(p.salesPercent) || 0,
                     salesPercentThreshold: Number(p.salesPercentThreshold) || 0,
                     createdAt: serverTimestamp()
