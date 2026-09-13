@@ -1,12 +1,49 @@
 rules_version = '2';
 
 // =============================================================================
-// Al Sheikha Group — Attendance & Payroll — Firestore Security Rules (v4)
+// Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
+//
+//   >>>  RULES REVISION: v5   (2026-09-13)  <<<
+//
+// -----------------------------------------------------------------------------
+// HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
+// -----------------------------------------------------------------------------
+// Do NOT judge by this header alone. Instead, in the Firebase Console
+// (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
+// search for:
+//
+//       financial_payments
+//
+//   FOUND     -> v5 is live. Good.
+//   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
+//                paste this ENTIRE file, then click "Publish".
+//
+// A missing collection shows up in the dashboard as:
+//       "Error: Missing or insufficient permissions."
+//
+// -----------------------------------------------------------------------------
+// REVISION HISTORY  —  ALWAYS bump the revision line above on EVERY change.
+// -----------------------------------------------------------------------------
+// If the revision line is not bumped, the header of an old published version
+// looks IDENTICAL to the new file, so nobody can tell them apart in the
+// console and the new rules are assumed to be live when they are not. That
+// exact mistake happened with the "(v4)" label, which never changed across
+// three different rule sets and caused a real "insufficient permissions"
+// failure to go undiagnosed. Bump it every single time.
+//
+//   v5  2026-09-13  + financial_payments   (Monthly Financial Report tab)
+//   --  (unlabelled, still said v4)  + sales_reports  (Daily Sales Report)
+//   v4  initial     + training_content, training_acknowledgments,
+//                     role system (Admin/Accountant/Secretary) REMOVED
+//
 // -----------------------------------------------------------------------------
 // How to deploy:
 //   1) Firebase Console -> Firestore Database -> Rules tab
-//   2) Paste this ENTIRE file, replacing whatever is there now
-//   3) Click "Publish"
+//   2) Click in the editor, press Ctrl+A then Delete (box must be EMPTY)
+//   3) Paste this ENTIRE file
+//   4) Click "Publish" (top right). It is greyed out when the text on screen
+//      is identical to what is already live — that is why the revision line
+//      above must change on every edit.
 //
 // Role system (Admin/Accountant/Secretary) has been REMOVED per request.
 // Any user who can sign in with a valid email/password Firebase Auth
