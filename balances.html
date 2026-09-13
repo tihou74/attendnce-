@@ -92,6 +92,10 @@
     .total { margin-top: 16px; padding: 16px 18px; background: rgba(11,114,133,0.18); border: 1px solid rgba(11,114,133,0.5); border-radius: 12px; }
     .total .k { font-size: 12px; color: #9aa5b1; margin: 0 0 4px; }
     .total .v { font-size: 20px; font-weight: 800; margin: 0; }
+    .tonight { margin-top: 16px; padding: 16px 18px; background: rgba(255,212,121,0.10); border: 1px solid rgba(255,212,121,0.45); border-radius: 12px; }
+    .tonight .k { font-size: 12px; color: #ffd479; margin: 0 0 4px; font-weight: 700; }
+    .tonight .v { font-size: 20px; font-weight: 800; margin: 0; color: #ffd479; }
+    .tonight .k2 { font-size: 11.5px; color: #c9b382; margin: 8px 0 0; line-height: 1.7; }
 
     .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 18px; }
     .bar button { width: auto; padding: 11px 16px; font-size: 13.5px; }
@@ -167,6 +171,14 @@
                 <p class="amt" id="cashAmt">&mdash;<span class="cur">QAR</span></p>
                 <p class="meta" id="cashMeta"></p>
             </div>
+        </div>
+
+        <!-- الداخل الليلة الساعة 7 — يظهر فقط إذا كان هناك مبلغ لم تصل ساعته -->
+        <div class="tonight hidden" id="tonightBox">
+            <p class="k">Arriving tonight at 19:00 &mdash; <span dir="rtl">يدخل الليلة الساعة ٧ مساءً</span></p>
+            <p class="v" id="tonightAmt">&mdash;</p>
+            <p class="k2" id="tonightDetail"></p>
+            <p class="k2" id="tonightAfter"></p>
         </div>
 
         <div class="total">
@@ -289,12 +301,26 @@
 
         const balance = { ...opening };
         const pending = { bank: 0, cash: 0, delivery: 0 };
+        // «الداخل الليلة»: ما تاريخه اليوم نفسه ولم تصل ساعته بعد — يُفصل عن بقية
+        // المستقبل، فالسؤال العملي هو: إن فتحتُ الشاشة قبل السابعة، ماذا سيدخل
+        // الساعة السابعة؟ خلطه مع إيجار لاحق في الشهر يُفقده معناه.
+        const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+        const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        const arrivingToday = { bank: 0, cash: 0, delivery: 0 };
+        let arrivingTodayCount = 0;
         let count = 0;
         const apply = (at, delta) => {
             if (at < openAt) return;
-            const target = at <= now ? balance : pending;
-            CASH_STREAMS.forEach(k => { target[k] += (delta[k] || 0); });
-            if (at <= now) count++;
+            if (at <= now) {
+                CASH_STREAMS.forEach(k => { balance[k] += (delta[k] || 0); });
+                count++;
+                return;
+            }
+            CASH_STREAMS.forEach(k => { pending[k] += (delta[k] || 0); });
+            if (at >= dayStart && at <= dayEnd) {
+                CASH_STREAMS.forEach(k => { arrivingToday[k] += (delta[k] || 0); });
+                arrivingTodayCount++;
+            }
         };
 
         salesReports.forEach(r => { if (r.date) apply(salesSettlementAt(r.date), salesReportSplit(r)); });
@@ -316,7 +342,13 @@
                   sp.paidFrom === 'cash' ? { cash: -amt } : { bank: -amt });
         });
 
-        return { ready: true, opening, balance, pending, count, openingDate: openISO };
+        const afterToday = {
+            bank: balance.bank + arrivingToday.bank,
+            cash: balance.cash + arrivingToday.cash,
+            delivery: balance.delivery + arrivingToday.delivery
+        };
+        return { ready: true, opening, balance, pending, count, openingDate: openISO,
+                 arrivingToday, arrivingTodayCount, afterToday };
     }
 
     // ---- تحميل البيانات ---------------------------------------------------
@@ -382,13 +414,37 @@
             return;
         }
 
-        const pend = (k) => led.pending[k] ? `Not counted yet: ${money(led.pending[k])} QAR (date has not arrived).` : 'Everything recorded is counted.';
+        // نفصل «الليلة» عن «لاحقًا» فلا يظن أن إيجار يوم 23 سيدخل الليلة.
+        const pend = (k) => {
+            const tonight = led.arrivingToday[k];
+            const later = led.pending[k] - tonight;
+            const parts = [];
+            if (tonight) parts.push(`Tonight at 19:00: ${tonight > 0 ? '+' : ''}${money(tonight)} QAR`);
+            if (Math.abs(later) > 0.005) parts.push(`Later this month: ${later > 0 ? '+' : ''}${money(later)} QAR`);
+            return parts.length ? parts.join(' · ') : 'Everything recorded is already counted.';
+        };
         put('bankAmt', 'bankMeta', 'bank', pend('bank'));
         put('delAmt', 'delMeta', 'delivery', pend('delivery'));
         put('cashAmt', 'cashMeta', 'cash', pend('cash'));
 
         const total = led.balance.bank + led.balance.cash + led.balance.delivery;
         el('totalAmt').innerText = `${money(total)} QAR`;
+
+        // صندوق «الداخل الليلة» — يظهر فقط عند وجود مبلغ لم تصل ساعته اليوم،
+        // أي عمليًا قبل السابعة مساءً في يوم فيه تقرير مبيعات لليوم السابق.
+        const t = led.arrivingToday;
+        const tTotal = t.bank + t.cash + t.delivery;
+        const box = el('tonightBox');
+        if (Math.abs(tTotal) > 0.005) {
+            box.classList.remove('hidden');
+            el('tonightAmt').innerText = `${tTotal > 0 ? '+' : ''}${money(tTotal)} QAR`;
+            el('tonightDetail').innerText =
+                `Bank ${t.bank > 0 ? '+' : ''}${money(t.bank)} · Cash ${t.cash > 0 ? '+' : ''}${money(t.cash)} · Delivery ${t.delivery > 0 ? '+' : ''}${money(t.delivery)}`;
+            el('tonightAfter').innerText =
+                `After 19:00 the bank becomes ${money(led.afterToday.bank)} · cash ${money(led.afterToday.cash)} · delivery ${money(led.afterToday.delivery)} QAR.`;
+        } else {
+            box.classList.add('hidden');
+        }
 
         const now = new Date();
         el('stamp').innerText =

@@ -934,6 +934,13 @@
                     <div style="font-size: 11.5px; color: var(--text-dim); margin-top: 8px;" id="cashDeliveryFlow"></div>
                 </div>
             </div>
+            <!-- الداخل الليلة الساعة 7 — يظهر فقط عند وجود مبلغ لم تصل ساعته -->
+            <div id="cashTonightBox" style="display: none; margin-top: 14px; padding: 14px 16px; background: rgba(255,212,121,0.10); border: 1px solid rgba(255,212,121,0.45); border-radius: var(--radius-sm);">
+                <div style="font-size: 12.5px; font-weight: 800; color: var(--warning); margin-bottom: 4px;">ARRIVING TONIGHT AT 19:00 — not in the balances above yet</div>
+                <div style="font-size: 20px; font-weight: 800; color: var(--warning);" id="cashTonightAmt">—</div>
+                <div style="font-size: 12px; color: var(--text-dim); margin-top: 6px; line-height: 1.8;" id="cashTonightDetail"></div>
+                <div style="font-size: 12px; color: var(--text-dim); line-height: 1.8;" id="cashTonightAfter"></div>
+            </div>
             <p class="card-sub" style="margin: 10px 0 0;" id="cashBalanceSub"></p>
 
             <!-- التحويلات: المال ينتقل من وعاء إلى وعاء ولا يُخلق ولا يُفنى -->
@@ -3928,12 +3935,26 @@
         const openAt = dateAtMidnight(openISO);
 
         const settled = [], upcoming = [];
+        // «الداخل الليلة»: ما تاريخه اليوم نفسه ولم تصل ساعته بعد. يُفصل عن بقية
+        // المستقبل عن قصد — لأن سؤال المالك عمليّ: إن فتح الشاشة الساعة 3 عصرًا
+        // فماذا سيدخل الساعة 7 مساءً؟ خلط مبيعات الليلة مع إيجار يوم 23 يجعل
+        // الرقم عديم الفائدة لهذا السؤال.
+        const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+        const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        const arrivingToday = { bank: 0, cash: 0, delivery: 0 };
+        let arrivingTodayCount = 0;
+
         // delta = { bank, cash, delivery } بقيم موجبة للداخل وسالبة للخارج
         const push = (at, kind, label, delta, when) => {
             if (at < openAt) return;              // مشمول في الأرصدة الافتتاحية
             const d = { bank: delta.bank || 0, cash: delta.cash || 0, delivery: delta.delivery || 0 };
             if (!d.bank && !d.cash && !d.delivery) return;
-            (at <= now ? settled : upcoming).push({ at, kind, label, delta: d, when });
+            if (at <= now) { settled.push({ at, kind, label, delta: d, when }); return; }
+            upcoming.push({ at, kind, label, delta: d, when });
+            if (at >= dayStart && at <= dayEnd) {
+                CASH_STREAMS.forEach(k => { arrivingToday[k] += d[k]; });
+                arrivingTodayCount++;
+            }
         };
 
         allSalesReports.forEach(r => {
@@ -3993,7 +4014,14 @@
             e.balanceAfter = { ...balance };
         });
 
-        return { ready: true, opening, openingDate: openISO, events: settled, upcoming, balance, inflow, outflow };
+        // الرصيد المتوقَّع بعد أن تحلّ حركات اليوم — يجيب «كم سيصبح عندي الليلة».
+        const afterToday = {
+            bank: balance.bank + arrivingToday.bank,
+            cash: balance.cash + arrivingToday.cash,
+            delivery: balance.delivery + arrivingToday.delivery
+        };
+        return { ready: true, opening, openingDate: openISO, events: settled, upcoming,
+                 balance, inflow, outflow, arrivingToday, arrivingTodayCount, afterToday };
     }
 
     window.loadCashAccount = async function() {
@@ -4209,6 +4237,22 @@
 
         const mvDate = document.getElementById('cashMoveDate');
         if (mvDate && !mvDate.value) mvDate.value = todayISO();
+
+        const tonightBox = document.getElementById('cashTonightBox');
+        if (tonightBox) {
+            const t = led.arrivingToday || { bank: 0, cash: 0, delivery: 0 };
+            const tTotal = t.bank + t.cash + t.delivery;
+            if (led.ready && Math.abs(tTotal) > 0.005) {
+                tonightBox.style.display = 'block';
+                set('cashTonightAmt', `${tTotal > 0 ? '+' : ''}${money(tTotal)} QAR`);
+                set('cashTonightDetail',
+                    `Bank ${t.bank > 0 ? '+' : ''}${money(t.bank)} · Cash ${t.cash > 0 ? '+' : ''}${money(t.cash)} · Delivery ${t.delivery > 0 ? '+' : ''}${money(t.delivery)}`);
+                set('cashTonightAfter',
+                    `After 19:00: bank ${money(led.afterToday.bank)} · cash ${money(led.afterToday.cash)} · delivery ${money(led.afterToday.delivery)} QAR.`);
+            } else {
+                tonightBox.style.display = 'none';
+            }
+        }
 
         if (!led.ready) {
             ['cashBankBalance', 'cashCashBalance', 'cashDeliveryBalance'].forEach(id => set(id, '— QAR'));
