@@ -664,6 +664,7 @@
                 <select id="warnEmployeeSelect">
                     <option value="">-- Choose Employee --</option>
                 </select>
+                <p id="warnDupNote" style="display: none; font-size: 11.5px; color: #b45309; line-height: 1.6; margin: 8px 0 0; font-weight: 700;" dir="auto"></p>
             </div>
             <div class="form-group">
                 <label for="warnDays">Days to deduct:</label>
@@ -2085,15 +2086,51 @@
         ['warnDays', 'warnReason'].forEach(id => {
             const el = document.getElementById(id); if (el) el.value = '';
         });
-        // قائمة موظفي هذا الفرع — المدير يُنذر من يعمل عنده لا كل الشركة.
+        // كل الموظفين، لا موظفي فرع المدير فقط.
+        // كانت القائمة مُرشَّحة بفرع المدير، فكانت تُخفي أسماء موظفين قد يحتاج
+        // إنذارهم (منقول، أو من المكتب، أو يعمل بين فرعين) — وهو ما أُبلغ عنه.
         const sel = document.getElementById('warnEmployeeSelect');
         if (sel) {
-            const mine = employees
-                .filter(e => !reportState.branch || e.branch === reportState.branch)
+            // حماية من تكرار المعرّف نفسه مرتين في المصفوفة.
+            const seen = new Set();
+            const list = employees
+                .filter(e => { if (!e || seen.has(e.id)) return false; seen.add(e.id); return true; })
                 .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
-            sel.innerHTML = '<option value="">-- Choose Employee --</option>' +
-                (mine.length ? mine : employees)
-                    .map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.name || e.id)}</option>`).join('');
+
+            // اسمان متطابقان لشخصين مختلفين يبدوان «تكرارًا» بلا سببه الحقيقي.
+            // نُلحق الفرع للتمييز، وإن تطابق الاسم والفرع أيضًا فهما سجلان
+            // مكرّران فعلًا في قاعدة البيانات — نُلحق طرفًا من المعرّف ونُخبر
+            // المدير، فالحل الحقيقي حذف أحدهما من لوحة الإدارة لا إخفاؤه هنا.
+            const key = (e) => String(e.name || '').trim().toUpperCase();
+            const keyWithBranch = (e) => key(e) + '|' + String(e.branch || '').trim().toUpperCase();
+            const nameCount = {}, pairCount = {};
+            list.forEach(e => {
+                nameCount[key(e)] = (nameCount[key(e)] || 0) + 1;
+                pairCount[keyWithBranch(e)] = (pairCount[keyWithBranch(e)] || 0) + 1;
+            });
+
+            let realDuplicates = 0;
+            sel.innerHTML = '<option value="">-- Choose Employee --</option>' + list.map(e => {
+                let label = e.name || e.id;
+                if (nameCount[key(e)] > 1) {
+                    label += e.branch ? ` — ${e.branch}` : ' — (no branch)';
+                    if (pairCount[keyWithBranch(e)] > 1) {
+                        realDuplicates++;
+                        label += ` [${String(e.id).slice(-4)}]`;
+                    }
+                }
+                return `<option value="${escapeHtml(e.id)}">${escapeHtml(label)}</option>`;
+            }).join('');
+
+            const note = document.getElementById('warnDupNote');
+            if (note) {
+                if (realDuplicates > 0) {
+                    note.innerText = `Note: ${realDuplicates} entries share the same name AND branch, so they are duplicated employee records. They are shown with a code in brackets to tell them apart — please ask the office to remove the extra record.`;
+                    note.style.display = 'block';
+                } else {
+                    note.style.display = 'none';
+                }
+            }
         }
         showReportStep('reportWarnStep');
     };
