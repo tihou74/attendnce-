@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Balances — Al Sheikha Group</title>
+
+<!-- =============================================================================
+     لوحة الأرصدة — عرض فقط
+     -----------------------------------------------------------------------------
+     صفحة مخصّصة لعرض ثلاثة أرقام فقط في اللحظة الحالية:
+       • ما في الحساب البنكي
+       • ما لدى تطبيقات التوصيل ولم يدخل الحساب بعد
+       • ما في صندوق الكاش
+
+     ⚠️ لا يوجد في هذه الصفحة أي زر يكتب أو يحذف أو يعدّل. كل ما تفعله هو
+     القراءة والحساب في المتصفح. أي إضافة مستقبلية لزر تعديل هنا تُخالف الغرض
+     منها وتُوسّع صلاحيات من يستخدمها.
+
+     ⚠️ تضاعف منطقي مقصود: دوال الحساب أدناه (salesSettlementAt، paymentDueAt،
+     salesReportSplit، buildCashLedger) هي نسخة مطابقة لما في admin.html.
+     السبب أن المشروع بلا خطوة بناء ولا وحدات مشتركة، فلا سبيل لاستيرادها.
+     أي تعديل على قواعد الحساب في admin.html يجب أن يُنقل إلى هنا حرفيًا، وإلا
+     أظهرت الصفحتان رقمين مختلفين لنفس اللحظة.
+
+     ⚠️ نسخة Firebase هنا مُسمّاة "balances" عن قصد. صفحة الموظفين على نفس
+     النطاق تسجّل دخولًا مجهولًا، ولو تشاركت النسخة الافتراضية معها لاستبدلت
+     جلسة هذه الصفحة وانكسرت القراءة. لا تحذف الاسم.
+     ============================================================================= -->
+
+<link rel="manifest" href="./manifest-balances.json">
+<meta name="theme-color" content="#0b7285">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Balances">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="robots" content="noindex, nofollow">
+
+<style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; min-height: 100%; }
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #16212b;
+        color: #f1f3f5;
+        padding: 20px 16px calc(28px + env(safe-area-inset-bottom));
+        padding-top: calc(20px + env(safe-area-inset-top));
+    }
+    .wrap { max-width: 720px; margin: 0 auto; }
+    header { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+    header img { width: 46px; height: 46px; border-radius: 11px; }
+    header h1 { font-size: 17px; font-weight: 800; margin: 0; }
+    header p { font-size: 12px; color: #8b96a3; margin: 3px 0 0; }
+
+    .panel {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.11);
+        border-radius: 14px;
+        padding: 20px;
+    }
+    label { display: block; font-size: 12px; font-weight: 700; color: #adb5bd; margin-bottom: 6px; }
+    input {
+        width: 100%; padding: 13px 14px; font-size: 15px;
+        background: #1f2c38; color: #f1f3f5;
+        border: 1px solid rgba(255,255,255,0.14); border-radius: 10px;
+        margin-bottom: 14px;
+    }
+    button {
+        width: 100%; padding: 14px; font-size: 15.5px; font-weight: 700;
+        background: #0b7285; color: #fff; border: 0; border-radius: 10px; cursor: pointer;
+    }
+    button:active { transform: scale(0.99); }
+    button.ghost { background: rgba(255,255,255,0.08); }
+
+    .cards { display: grid; gap: 14px; grid-template-columns: 1fr; }
+    @media (min-width: 620px) { .cards { grid-template-columns: 1fr 1fr 1fr; } }
+    .card {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.11);
+        border-radius: 14px; padding: 18px;
+    }
+    .card h2 { font-size: 11.5px; letter-spacing: .6px; text-transform: uppercase; color: #8b96a3; margin: 0 0 4px; font-weight: 800; }
+    .card .ar { font-size: 12px; color: #7d8894; margin: 0 0 12px; }
+    .card .amt { font-size: 25px; font-weight: 800; margin: 0; line-height: 1.25; }
+    .card .cur { font-size: 13px; font-weight: 700; color: #8b96a3; margin-left: 4px; }
+    .card .meta { font-size: 11.5px; color: #7d8894; margin: 10px 0 0; line-height: 1.7; }
+    .pos { color: #51cf66; }
+    .neg { color: #ff6b6b; }
+
+    .total { margin-top: 16px; padding: 16px 18px; background: rgba(11,114,133,0.18); border: 1px solid rgba(11,114,133,0.5); border-radius: 12px; }
+    .total .k { font-size: 12px; color: #9aa5b1; margin: 0 0 4px; }
+    .total .v { font-size: 20px; font-weight: 800; margin: 0; }
+
+    .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 18px; }
+    .bar button { width: auto; padding: 11px 16px; font-size: 13.5px; }
+    .stamp { font-size: 12px; color: #8b96a3; margin: 14px 0 0; line-height: 1.7; }
+    .err { color: #ff8787; font-size: 13px; font-weight: 700; margin: 0 0 12px; min-height: 18px; }
+    .note { font-size: 11.5px; color: #7d8894; line-height: 1.75; margin: 18px 0 0; }
+    .install {
+        margin-top: 22px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 12px;
+        padding: 16px 18px;
+        text-align: left;
+    }
+    .install h2 { font-size: 13.5px; margin: 0 0 10px; color: #ffd479; font-weight: 800; }
+    .install ol { margin: 0; padding-left: 20px; font-size: 13px; color: #ced4da; line-height: 1.85; }
+    .install .note { margin: 10px 0 0; }
+    .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+    <header>
+        <img src="./icons/icon-192.png" alt="Al Sheikha Group">
+        <div>
+            <h1>Balances</h1>
+            <p>Al Sheikha Group &mdash; view only</p>
+        </div>
+    </header>
+
+    <!-- تسجيل الدخول -->
+    <div class="panel" id="loginPanel">
+        <p class="err" id="loginError"></p>
+        <label for="email">Email</label>
+        <input type="email" id="email" autocomplete="username" inputmode="email">
+        <label for="pass">Password</label>
+        <input type="password" id="pass" autocomplete="current-password">
+        <button id="loginBtn">Sign in</button>
+        <p class="note">This screen only shows the three balances. Nothing here can be changed.</p>
+
+        <!-- تعليمات التثبيت — نفس نمط لوحة المديرين: تطبيق مستقل بأيقونته.
+             تظهر فقط في المتصفح العادي، فإن كانت الصفحة مفتوحة كتطبيق مثبَّت
+             فلا معنى لها. ويجب التثبيت من *هذه* الصفحة تحديدًا حتى يربط
+             النظام manifest-balances.json وأيقونة الأرصدة، لا تطبيقًا آخر. -->
+        <div class="install" id="installBox">
+            <h2 id="installTitle">Add this panel to your home screen</h2>
+            <ol id="installSteps"></ol>
+            <p class="note">Install from <b>this</b> page so you get the Balances app. Installing from the staff attendance page or the sales report page gives a different app.</p>
+        </div>
+    </div>
+
+    <!-- الأرصدة -->
+    <div id="dataPanel" class="hidden">
+        <p class="err" id="dataError"></p>
+
+        <div class="cards">
+            <div class="card">
+                <h2>Bank account</h2>
+                <p class="ar" dir="rtl">الموجود في الحساب البنكي</p>
+                <p class="amt" id="bankAmt">&mdash;<span class="cur">QAR</span></p>
+                <p class="meta" id="bankMeta"></p>
+            </div>
+            <div class="card">
+                <h2>Owed by delivery</h2>
+                <p class="ar" dir="rtl">لدى تطبيقات التوصيل ولم يدخل الحساب</p>
+                <p class="amt" id="delAmt">&mdash;<span class="cur">QAR</span></p>
+                <p class="meta" id="delMeta"></p>
+            </div>
+            <div class="card">
+                <h2>Cash box</h2>
+                <p class="ar" dir="rtl">الموجود في صندوق الكاش</p>
+                <p class="amt" id="cashAmt">&mdash;<span class="cur">QAR</span></p>
+                <p class="meta" id="cashMeta"></p>
+            </div>
+        </div>
+
+        <div class="total">
+            <p class="k">All three together &mdash; <span dir="rtl">المجموع الكلي</span></p>
+            <p class="v" id="totalAmt">&mdash; QAR</p>
+        </div>
+
+        <div class="bar">
+            <button id="refreshBtn">Refresh now</button>
+            <button class="ghost" id="logoutBtn">Sign out</button>
+        </div>
+        <p class="stamp" id="stamp"></p>
+        <p class="note">
+            Sales reach these balances the day after they were made, at 19:00 &mdash; so today's takings are not here yet.
+            Card sales arrive in the bank after the bank fee. Cash stays in the cash box until it is deposited.
+            Delivery money stays with the apps until a cheque is collected.
+        </p>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, doc, getDoc }
+        from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut }
+        from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCWZb0GwAeMgLtJIfq3kuRfmEQ1POBNSp0",
+      authDomain: "attendance-system-f32d6.firebaseapp.com",
+      projectId: "attendance-system-f32d6",
+      storageBucket: "attendance-system-f32d6.firebasestorage.app",
+      messagingSenderId: "302261734220",
+      appId: "1:302261734220:web:50cb9e10965ed3ddcf1de9",
+      measurementId: "G-W88XGV8E1Q"
+    };
+
+    // نسخة مُسمّاة — انظر التحذير أعلى الملف. لا تحذف الاسم.
+    const app = initializeApp(firebaseConfig, "balances");
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    const DEFAULT_DELIVERY_COMMISSION_PCT = 21.5;
+    const DEFAULT_CARD_FEE_PCT = 1.5;
+    const SALES_SETTLEMENT_OFFSET_DAYS = 1;
+    const SALES_SETTLEMENT_HOUR = 19;
+    const CASH_STREAMS = ['bank', 'cash', 'delivery'];
+    const AUTO_REFRESH_MS = 60000;
+
+    let rates = { deliveryCommissionPercent: DEFAULT_DELIVERY_COMMISSION_PCT, cardFeePercent: DEFAULT_CARD_FEE_PCT };
+    let cashAccount = { openingBank: 0, openingCash: 0, openingDelivery: 0, openingDate: '' };
+    let salaryPayouts = {}, cashMovements = [], salesReports = [], payments = [];
+    let timer = null;
+
+    const el = (id) => document.getElementById(id);
+    const money = (n) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // ---- منطق الحساب: نسخة مطابقة لما في admin.html ----------------------
+    function dateAtMidnight(iso) {
+        const [y, m, d] = String(iso).split('-').map(Number);
+        return new Date(y, m - 1, d, 0, 0, 0, 0);
+    }
+    function salesSettlementAt(dateISO) {
+        const [y, m, d] = String(dateISO).split('-').map(Number);
+        return new Date(y, m - 1, d + SALES_SETTLEMENT_OFFSET_DAYS, SALES_SETTLEMENT_HOUR, 0, 0, 0);
+    }
+    function paymentDueAt(p) {
+        if (p.paymentDate) return dateAtMidnight(p.paymentDate);
+        const [y, m] = String(p.month).split('-').map(Number);
+        const lastDay = new Date(y, m, 0).getDate();
+        if (p.dayOfMonth) return new Date(y, m - 1, Math.min(Number(p.dayOfMonth), lastDay), 0, 0, 0, 0);
+        return new Date(y, m - 1, lastDay, 0, 0, 0, 0);
+    }
+    function salesReportSplit(r) {
+        const cash = Number(r.cash) || 0;
+        const card = Number(r.card) || 0;
+        const del = (Number(r.snoonu) || 0) + (Number(r.talabat) || 0) + (Number(r.keeta) || 0);
+        const cPct = Number(rates.cardFeePercent) || 0;
+        const dPct = Number(rates.deliveryCommissionPercent) || 0;
+        return { cash: cash, bank: card * (1 - cPct / 100), delivery: del * (1 - dPct / 100) };
+    }
+    // إيجارات النسبة من المبيعات: نحسب النصيب الفعلي كما في admin.html.
+    function paymentEffectiveTotal(p) {
+        const base = Number(p.amount) || 0;
+        const pct = Number(p.salesPercent) || 0;
+        if (!pct) return base;
+        const scope = (p.branch === 'COMPANY (shared)') ? '' : p.branch;
+        const { start, end } = monthRange(p.month);
+        let gross = 0;
+        salesReports.forEach(r => {
+            if (!r.date || r.date < start || r.date > end) return;
+            if (scope && r.branch !== scope) return;
+            gross += (Number(r.cash) || 0) + (Number(r.card) || 0)
+                   + (Number(r.snoonu) || 0) + (Number(r.talabat) || 0) + (Number(r.keeta) || 0);
+        });
+        const threshold = Number(p.salesPercentThreshold) || 0;
+        return base + Math.max(0, gross * pct / 100 - threshold);
+    }
+    function monthRange(month) {
+        const [y, m] = String(month).split('-').map(Number);
+        const last = new Date(y, m, 0).getDate();
+        return { start: `${month}-01`, end: `${month}-${String(last).padStart(2, '0')}` };
+    }
+    function payrollPaymentDate(month) {
+        const [y, m] = String(month).split('-').map(Number);
+        const d = new Date(y, m, 1);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+    }
+
+    function buildCashLedger(now) {
+        now = now || new Date();
+        const opening = {
+            bank: Number(cashAccount.openingBank) || 0,
+            cash: Number(cashAccount.openingCash) || 0,
+            delivery: Number(cashAccount.openingDelivery) || 0
+        };
+        const openISO = cashAccount.openingDate || '';
+        if (!openISO) return { ready: false, opening, balance: { ...opening }, count: 0, pending: { bank: 0, cash: 0, delivery: 0 } };
+        const openAt = dateAtMidnight(openISO);
+
+        const balance = { ...opening };
+        const pending = { bank: 0, cash: 0, delivery: 0 };
+        let count = 0;
+        const apply = (at, delta) => {
+            if (at < openAt) return;
+            const target = at <= now ? balance : pending;
+            CASH_STREAMS.forEach(k => { target[k] += (delta[k] || 0); });
+            if (at <= now) count++;
+        };
+
+        salesReports.forEach(r => { if (r.date) apply(salesSettlementAt(r.date), salesReportSplit(r)); });
+        cashMovements.forEach(m => {
+            const amt = Number(m.amount) || 0;
+            if (!amt || !m.date) return;
+            if (m.kind === 'cash_to_bank') apply(dateAtMidnight(m.date), { bank: amt, cash: -amt });
+            else if (m.kind === 'delivery_to_bank') apply(dateAtMidnight(m.date), { bank: amt, delivery: -amt });
+        });
+        payments.forEach(p => {
+            const amt = paymentEffectiveTotal(p);
+            if (!amt) return;
+            apply(paymentDueAt(p), p.paidFrom === 'cash' ? { cash: -amt } : { bank: -amt });
+        });
+        Object.entries(salaryPayouts).forEach(([month, sp]) => {
+            if (!sp || !sp.paid) return;
+            const amt = Number(sp.amount) || 0;
+            apply(dateAtMidnight(sp.paidOn || payrollPaymentDate(month)),
+                  sp.paidFrom === 'cash' ? { cash: -amt } : { bank: -amt });
+        });
+
+        return { ready: true, opening, balance, pending, count, openingDate: openISO };
+    }
+
+    // ---- تحميل البيانات ---------------------------------------------------
+    async function loadAll() {
+        const err = el('dataError');
+        err.innerText = '';
+        try {
+            const [ratesSnap, acctSnap, paySnap, movSnap, salesSnap, paySnap2] = await Promise.all([
+                getDoc(doc(db, "settings", "financial_rates")),
+                getDoc(doc(db, "settings", "cash_account")),
+                getDoc(doc(db, "settings", "salary_payouts")),
+                getDoc(doc(db, "settings", "cash_movements")),
+                getDocs(collection(db, "sales_reports")),
+                getDocs(collection(db, "financial_payments"))
+            ]);
+
+            if (ratesSnap.exists()) {
+                const d = ratesSnap.data();
+                const dp = Number(d.deliveryCommissionPercent), cp = Number(d.cardFeePercent);
+                rates = {
+                    deliveryCommissionPercent: isFinite(dp) ? dp : DEFAULT_DELIVERY_COMMISSION_PCT,
+                    cardFeePercent: isFinite(cp) ? cp : DEFAULT_CARD_FEE_PCT
+                };
+            }
+            if (acctSnap.exists()) {
+                const d = acctSnap.data();
+                cashAccount = {
+                    openingBank: Number(d.openingBank) || 0,
+                    openingCash: Number(d.openingCash) || 0,
+                    openingDelivery: Number(d.openingDelivery) || 0,
+                    openingDate: d.openingDate || ''
+                };
+            }
+            salaryPayouts = (paySnap.exists() && paySnap.data().months) ? paySnap.data().months : {};
+            cashMovements = (movSnap.exists() && Array.isArray(movSnap.data().items)) ? movSnap.data().items : [];
+            salesReports = []; salesSnap.forEach(d => salesReports.push({ id: d.id, ...d.data() }));
+            payments = []; paySnap2.forEach(d => payments.push({ id: d.id, ...d.data() }));
+
+            render();
+        } catch (e) {
+            console.error(e);
+            // لا نُظهر أرقامًا قديمة كأنها حالية عند فشل التحميل.
+            err.innerText = 'Could not load the balances: ' + e.message;
+        }
+    }
+
+    function render() {
+        const led = buildCashLedger();
+        const put = (amtId, metaId, key, metaText) => {
+            const v = led.balance[key];
+            const a = el(amtId);
+            a.innerHTML = `${money(v)}<span class="cur">QAR</span>`;
+            a.className = 'amt ' + (v >= 0 ? 'pos' : 'neg');
+            el(metaId).innerText = metaText;
+        };
+
+        if (!led.ready) {
+            ['bankAmt', 'delAmt', 'cashAmt'].forEach(id => { el(id).innerHTML = '&mdash;<span class="cur">QAR</span>'; el(id).className = 'amt'; });
+            ['bankMeta', 'delMeta', 'cashMeta'].forEach(id => el(id).innerText = '');
+            el('totalAmt').innerText = '— QAR';
+            el('dataError').innerText = 'The opening balances have not been entered yet by management, so nothing can be calculated.';
+            el('stamp').innerText = '';
+            return;
+        }
+
+        const pend = (k) => led.pending[k] ? `Not counted yet: ${money(led.pending[k])} QAR (date has not arrived).` : 'Everything recorded is counted.';
+        put('bankAmt', 'bankMeta', 'bank', pend('bank'));
+        put('delAmt', 'delMeta', 'delivery', pend('delivery'));
+        put('cashAmt', 'cashMeta', 'cash', pend('cash'));
+
+        const total = led.balance.bank + led.balance.cash + led.balance.delivery;
+        el('totalAmt').innerText = `${money(total)} QAR`;
+
+        const now = new Date();
+        el('stamp').innerText =
+            `Calculated at ${now.toLocaleString('en-GB', { hour12: false })} · `
+            + `${led.count} movement(s) since ${led.openingDate} · refreshes by itself every minute.`;
+    }
+
+    // ---- المصادقة ---------------------------------------------------------
+    el('loginBtn').addEventListener('click', async () => {
+        const err = el('loginError');
+        err.innerText = '';
+        const email = el('email').value.trim();
+        const pass = el('pass').value;
+        if (!email || !pass) { err.innerText = 'Enter your email and password.'; return; }
+        el('loginBtn').disabled = true;
+        try {
+            await signInWithEmailAndPassword(auth, email, pass);
+        } catch (e) {
+            err.innerText = 'Wrong email or password.';
+        } finally {
+            el('loginBtn').disabled = false;
+        }
+    });
+    el('pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') el('loginBtn').click(); });
+    el('refreshBtn').addEventListener('click', loadAll);
+    el('logoutBtn').addEventListener('click', () => signOut(auth));
+
+    onAuthStateChanged(auth, (user) => {
+        // الدخول المجهول لا يُقبل هنا: صفحة الموظفين تستخدمه، وهو لا يملك
+        // صلاحية قراءة المبيعات والمدفوعات، فستظهر الصفحة فارغة بلا تفسير.
+        if (user && user.isAnonymous) {
+            signOut(auth);
+            el('loginError').innerText = 'Please sign in with the email and password you were given.';
+            return;
+        }
+        if (user) {
+            el('loginPanel').classList.add('hidden');
+            el('dataPanel').classList.remove('hidden');
+            loadAll();
+            if (timer) clearInterval(timer);
+            timer = setInterval(loadAll, AUTO_REFRESH_MS);
+        } else {
+            if (timer) { clearInterval(timer); timer = null; }
+            el('dataPanel').classList.add('hidden');
+            el('loginPanel').classList.remove('hidden');
+            el('pass').value = '';
+        }
+    });
+
+    // إعادة الحساب عند العودة إلى الصفحة، فالوقت تقدّم وقد تكون مبيعات دخلت.
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && auth.currentUser) loadAll();
+    });
+</script>
+
+<script>
+    // تعليمات التثبيت — نفس منطق report.html.
+    // ملاحظة مهمة: لا يوجد هنا أي تحويل تلقائي للصفحة. اللوحة كاملة في هذا
+    // الملف، فلا يتكرر خطأ iPhone الذي جعل التثبيت ينتج تطبيقًا آخر بسبب
+    // التحويل قبل لحظة "Add to Home Screen".
+    (function () {
+        function isStandalone() {
+            if (navigator.standalone === true) return true;
+            try {
+                return window.matchMedia('(display-mode: standalone)').matches ||
+                       window.matchMedia('(display-mode: fullscreen)').matches ||
+                       window.matchMedia('(display-mode: minimal-ui)').matches;
+            } catch (e) { return false; }
+        }
+        var box = document.getElementById('installBox');
+        if (isStandalone()) { if (box) box.style.display = 'none'; return; }
+
+        var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        var steps = isIOS
+            ? ['Tap the Share button at the bottom of Safari.',
+               'Scroll down and tap <b>Add to Home Screen</b>.',
+               'Tap <b>Add</b>. The Balances icon appears on your home screen.']
+            : ['Open the browser menu (\u22EE).',
+               'Tap <b>Add to Home screen</b> or <b>Install app</b>.',
+               'Confirm. The Balances icon appears on your home screen.'];
+        document.getElementById('installSteps').innerHTML =
+            steps.map(function (s) { return '<li>' + s + '</li>'; }).join('');
+    })();
+</script>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').catch(function () { /* غير حرج */ });
+    }
+</script>
+
+</body>
+</html>

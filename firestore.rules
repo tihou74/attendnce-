@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v6   (2026-09-13)  <<<
+//   >>>  RULES REVISION: v7   (2026-09-13)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,9 +12,9 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       financial_months
+//       isViewer
 //
-//   FOUND     -> v6 is live. Good.
+//   FOUND     -> v7 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -33,6 +33,9 @@ rules_version = '2';
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
 //
+//   v7  2026-09-13  + isViewer()           (balances.html — READ-ONLY viewers,
+//                                          excluded from isAdmin, limited to
+//                                          settings/sales_reports/financial_payments)
 //   v6  2026-09-13  + financial_months     (Close month / frozen snapshot)
 //   v5  2026-09-13  + financial_payments   (Monthly Financial Report tab)
 //   --  (unlabelled, still said v4)  + sales_reports  (Daily Sales Report)
@@ -68,10 +71,41 @@ function isSignedIn() {
   return request.auth != null;
 }
 
-// Any real admin-dashboard login (email/password), NOT the kiosk's
-// anonymous session. Every such user now gets full access — no roles.
-function isAdmin() {
+function isRealLogin() {
   return isSignedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+}
+
+// -----------------------------------------------------------------------------
+// VIEWERS — balances.html only, READ ONLY, and only three collections.
+// -----------------------------------------------------------------------------
+// These two people open balances.html to see the bank / delivery / cash figures
+// and NOTHING else. A page with no buttons is not protection on its own: any
+// email/password account used to be a full admin here, so they could simply
+// open admin.html and change payroll. That is why the restriction lives in
+// these rules and not only in the page.
+//
+// Consequences of being on this list, enforced server-side:
+//   • READ  only settings, sales_reports and financial_payments — exactly what
+//     the three balances are computed from.
+//   • NO write, update or delete anywhere, ever.
+//   • NO access at all to employees, salaries, attendance, deductions, QID
+//     photos, warnings, leave requests, audit log or training records.
+//
+// The email must match EXACTLY the account created in
+// Firebase Console > Authentication > Users. Create the accounts with these
+// exact addresses — if an account is created with a different address it is
+// NOT on this list and would be treated as a full admin instead.
+function isViewer() {
+  return isRealLogin() && request.auth.token.email in [
+    'houti.anes@alsheikhagroup.qa',
+    'fatima.alrumaihi@alsheikhagroup.qa'
+  ];
+}
+
+// Any real admin-dashboard login (email/password) that is NOT on the viewer
+// list, and NOT the kiosk's anonymous session. Such a user gets full access.
+function isAdmin() {
+  return isRealLogin() && !isViewer();
 }
 
 function isKiosk() {
@@ -130,9 +164,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // ---- settings (legacy single geofence doc, if still present) ------------
+    // ---- settings ------------------------------------------------------------
+    // Holds financial_rates, cash_account (opening balances), salary_payouts and
+    // cash_movements, plus the legacy single geofence doc if still present.
+    // Viewers may READ (balances.html needs these four docs) but never write.
     match /settings/{docId} {
-      allow read: if isAdmin() || isKiosk();
+      allow read: if isAdmin() || isKiosk() || isViewer();
       allow write: if isAdmin();
     }
 
@@ -207,8 +244,11 @@ service cloud.firestore {
     // Admin-only in BOTH directions. Unlike sales_reports the kiosk has no
     // reason to even create these: rent, salaries and purchase figures are
     // entered by management on the dashboard, never from the employee page.
+    // Viewers may READ these (money going out is part of the balance) but can
+    // never add, change or delete a payment.
     match /financial_payments/{paymentId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin() || isViewer();
+      allow write: if isAdmin();
     }
 
     // ---- sales_reports (the Daily Sales Report a branch manager submits from
@@ -222,8 +262,11 @@ service cloud.firestore {
     // Update is admin-only as well: a manager who mistyped simply submits
     // again, and the admin deletes the wrong entry — this also means a
     // malicious anonymous caller cannot overwrite a real report it cannot read.
+    // Viewers may READ these (money coming in is part of the balance) but can
+    // never submit, change or delete a report.
     match /sales_reports/{reportId} {
-      allow read, update, delete: if isAdmin();
+      allow read: if isAdmin() || isViewer();
+      allow update, delete: if isAdmin();
       allow create: if isKiosk() || isAdmin();
     }
 
