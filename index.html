@@ -1816,7 +1816,7 @@
         cash: 'Cash', card: 'Card', snoonu: 'Snoonu', talabat: 'Talabat', keeta: 'Keeta'
     };
     // task = المهمة التي اختارها المدير قبل الفرع: 'sales' | 'petty' | 'warn'
-    let reportState = { managerId: null, managerName: null, branch: null, task: null };
+    let reportState = { managerId: null, managerName: null, branch: null, managerBranch: '', task: null };
     let isSubmittingReport = false;
     // آخر تقرير حُفظ فعلًا — منه يُبنى الملخص ونص الواتساب.
     let lastSubmittedReport = null;
@@ -1861,7 +1861,7 @@
     }
 
     function resetReportFlow() {
-        reportState = { managerId: null, managerName: null, branch: null, task: null };
+        reportState = { managerId: null, managerName: null, branch: null, managerBranch: '', task: null };
         lastSubmittedReport = null;
         showReportStep('reportLoginStep');
         const pinEl = document.getElementById('reportPinInput');
@@ -1982,14 +1982,19 @@
         // ملاحظة: خطوة الفروع لم تبقَ فيها ترحيب باسم المدير — صار الترحيب في
         // القائمة التي تسبقها، وعنوان خطوة الفروع يعرض المهمة المختارة.
         document.getElementById('reportPinInput').value = '';
+        // فرع المدير من ملفه — يُستخدم تلقائيًا في طلبَي البيتي كاش والإنذار.
+        reportState.managerBranch = emp.branch || '';
         const menuName = document.getElementById('reportMenuName');
-        if (menuName) menuName.innerText = `Welcome, ${emp.name}`;
+        if (menuName) {
+            menuName.innerText = `Welcome, ${emp.name}`
+                + (reportState.managerBranch ? ` — ${reportState.managerBranch}` : '');
+        }
         // بعد الدخول تظهر القائمة أولًا لا الفروع.
         showReportStep('reportMenuStep');
     };
 
     window.reportBackToLogin = function() {
-        reportState = { managerId: null, managerName: null, branch: null, task: null };
+        reportState = { managerId: null, managerName: null, branch: null, managerBranch: '', task: null };
         showReportStep('reportLoginStep');
     };
     window.reportBackToBranch = function() {
@@ -2021,6 +2026,23 @@
     };
     window.chooseReportTask = function(task) {
         reportState.task = REPORT_TASK_LABEL[task] ? task : 'sales';
+
+        // بطلب الإدارة: اختيار الفرع للتقرير اليومي وحده. طلب البيتي كاش وطلب
+        // الإنذار يخصّان فرع المدير نفسه، فيُؤخذ من ملفه بلا سؤال.
+        if (reportState.task !== 'sales') {
+            if (reportState.managerBranch) {
+                reportState.branch = reportState.managerBranch;
+                ['pettyBranchLabel', 'warnBranchLabel'].forEach(id => {
+                    const el = document.getElementById(id); if (el) el.innerText = reportState.branch;
+                });
+                if (reportState.task === 'petty') openPettyForm(); else openWarnForm();
+                return;
+            }
+            // ملف المدير بلا فرع مسجَّل — لا نُخمّن فرعًا في طلب مالي أو
+            // تأديبي، بل نطلب تحديده صراحةً هذه المرة.
+            showStatus("Your profile has no branch set. Please choose the branch for this request.", "error");
+        }
+
         const el = document.getElementById('reportTaskLabel');
         if (el) el.innerText = REPORT_TASK_LABEL[reportState.task];
         showReportStep('reportBranchStep');
