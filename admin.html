@@ -647,6 +647,19 @@
 
     <!-- Warning Letters (with optional automatic salary deduction) -->
     <div id="tab-warnings" class="tab-content">
+        <!-- طلبات إنذار من مديري الفروع — الموافقة تُصدر الإنذار وتخصم الأيام -->
+        <div class="card">
+            <h3><span data-icon="inbox"></span> Warning letter requests from branch managers <span id="warnReqPendingBadge" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
+            <p class="card-sub">Approving a request issues the warning letter straight away and, if the manager asked for deduction days, creates the matching payroll deduction dated today. You can still add the signed PDF afterwards from the table below.</p>
+            <div class="status" id="warnReqStatus" style="min-height: 18px; font-size: 13px; font-weight: 700; margin-bottom: 10px;"></div>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Requested</th><th>Employee</th><th>Branch / by</th><th>Days</th><th>Reason</th><th>Status</th><th></th></tr></thead>
+                    <tbody id="warnRequestsBody"></tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="card">
             <div class="controls" style="justify-content: space-between; margin-bottom: 18px;">
                 <h3 style="margin: 0;"><span data-icon="alertTriangle"></span> Employee Warning Letters</h3>
@@ -1206,6 +1219,20 @@
                 <button class="btn-ghost" onclick="switchTab('tab-finance')"><span data-icon="dollar"></span> Back to the report</button>
             </div>
             <span id="vrClosedBadge" style="display: none; font-weight: 800; font-size: 13px; padding: 6px 12px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); color: var(--warning);"></span>
+        </div>
+
+        <!-- طلبات بيتي كاش من المديرين — الموافقة تُسجّلها مصروفًا متغيرًا
+             وتخصمها من البنك في تاريخ الموافقة. -->
+        <div class="card">
+            <h3><span data-icon="inbox"></span> Petty cash requests from branch managers <span id="pettyPendingBadge" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
+            <p class="card-sub">Approving a request records it as a variable payment for its branch and deducts it from the <b>bank</b> balance on the approval date. Rejecting it leaves no expense behind.</p>
+            <div class="status" id="pettyStatus" style="min-height: 18px; font-size: 13px; font-weight: 700; margin-bottom: 10px;"></div>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Requested</th><th>Branch / by</th><th class="money-col">Amount</th><th>Reason</th><th>Status</th><th></th></tr></thead>
+                    <tbody id="pettyRequestsBody"></tbody>
+                </table>
+            </div>
         </div>
 
         <div class="card">
@@ -2072,7 +2099,7 @@
         document.getElementById(tabId).classList.add('active');
         document.querySelector(`.nav-tab-btn[data-tab="${tabId}"]`)?.classList.add('active');
         if (tabId === 'tab-shifts') renderShiftsTable();
-        if (tabId === 'tab-warnings') renderWarningsTable();
+        if (tabId === 'tab-warnings') { renderWarningsTable(); loadManagerRequests(); }
         if (tabId === 'tab-leaves') renderLeavesTable();
         if (tabId === 'tab-training') { loadTrainingContentForAdmin(); loadTrainingRecords(); }
         if (tabId === 'tab-audit') loadAuditLog();
@@ -2081,6 +2108,8 @@
         if (tabId === 'tab-finance' || tabId === 'tab-fixed' || tabId === 'tab-variable') {
             syncFinScopePickers();
             loadFinancialReportData();
+            // طلبات بيتي كاش تظهر في نافذة المتغيرات، فتُحمَّل معها.
+            if (tabId === 'tab-variable') loadManagerRequests();
         }
     };
 
@@ -4592,6 +4621,247 @@
         }
     };
 
+    // =====================================================================
+    // طلبات المديرين: بيتي كاش (للمحاسب) وإنذار (للسكرتيرة)
+    // ---------------------------------------------------------------------
+    // المدير يُرسل من شاشة المديرين بلا قدرة على قراءة ما أرسل، تمامًا كتقرير
+    // المبيعات. والموافقة هي ما يُحوّل الطلب إلى أثر حقيقي:
+    //   بيتي كاش → مصروف متغير + خصم من البنك في تاريخ الموافقة.
+    //   إنذار    → إنذار + خصم أيام من الراتب (قرار الإدارة: تلقائيًا).
+    // الرفض لا يُنشئ شيئًا، والطلب يبقى مسجَّلًا للمراجعة.
+    // =====================================================================
+    let allPettyRequests = [];
+    let allWarningRequests = [];
+
+    function reqWhen(r) {
+        if (r.createdAt && typeof r.createdAt.toDate === 'function') {
+            return r.createdAt.toDate().toISOString().slice(0, 16).replace('T', ' ');
+        }
+        return '—';
+    }
+    function reqSortDesc(a, b) {
+        const ms = (r) => (r.createdAt && typeof r.createdAt.toDate === 'function') ? r.createdAt.toDate().getTime() : 0;
+        return ms(b) - ms(a);
+    }
+    function statusPill(status) {
+        const map = {
+            pending: ['PENDING', 'var(--warning)'],
+            approved: ['APPROVED', 'var(--success)'],
+            rejected: ['REJECTED', 'var(--danger)']
+        };
+        const [label, colour] = map[status] || [String(status || '—').toUpperCase(), 'var(--text-dim)'];
+        return `<span style="font-weight: 800; font-size: 11.5px; color: ${colour};">${label}</span>`;
+    }
+
+    window.loadManagerRequests = async function() {
+        // كل قائمة في try خاصّ: المحاسب لا يقرأ طلبات الإنذار والسكرتيرة لا تقرأ
+        // طلبات الكاش، فرفض إحداهما لا يجوز أن يمنع الأخرى.
+        try {
+            const snap = await getDocs(collection(db, "petty_cash_requests"));
+            allPettyRequests = [];
+            snap.forEach(d => allPettyRequests.push({ id: d.id, ...d.data() }));
+        } catch (e) { allPettyRequests = []; }
+        try {
+            const snap = await getDocs(collection(db, "warning_requests"));
+            allWarningRequests = [];
+            snap.forEach(d => allWarningRequests.push({ id: d.id, ...d.data() }));
+        } catch (e) { allWarningRequests = []; }
+        renderPettyRequests();
+        renderWarningRequests();
+    };
+
+    window.renderPettyRequests = function() {
+        const body = document.getElementById('pettyRequestsBody');
+        if (!body) return;
+        const rows = [...allPettyRequests].sort(reqSortDesc);
+        const pending = rows.filter(r => r.status === 'pending').length;
+        const badge = document.getElementById('pettyPendingBadge');
+        if (badge) { badge.innerText = pending; badge.style.display = pending ? 'inline-block' : 'none'; }
+
+        body.innerHTML = rows.length ? rows.map(r => `
+            <tr>
+                <td>${escapeHtml(reqWhen(r))}</td>
+                <td>${escapeHtml(r.branch || '—')}<br><small style="color: var(--text-dim);">${escapeHtml(r.managerName || '')}</small></td>
+                <td class="money-col"><b>${money(r.amount)}</b></td>
+                <td style="max-width: 320px; white-space: pre-wrap;" dir="auto">${escapeHtml(r.reason || '—')}</td>
+                <td>${statusPill(r.status)}${r.decidedBy ? `<br><small style="color: var(--text-dim);">${escapeHtml(r.decidedBy)}</small>` : ''}</td>
+                <td>${r.status === 'pending' ? `
+                    <button class="btn-success btn-sm" onclick="approvePettyCash('${escapeJsAttr(r.id)}')">${iconSvg('check','ic-sm')}</button>
+                    <button class="btn-danger btn-sm" onclick="rejectPettyCash('${escapeJsAttr(r.id)}')">${iconSvg('x','ic-sm')}</button>` : ''}</td>
+            </tr>`).join('')
+            : `<tr><td colspan="6" style="text-align:center; color: var(--text-faint);">No petty cash requests.</td></tr>`;
+    };
+
+    window.renderWarningRequests = function() {
+        const body = document.getElementById('warnRequestsBody');
+        if (!body) return;
+        const rows = [...allWarningRequests].sort(reqSortDesc);
+        const pending = rows.filter(r => r.status === 'pending').length;
+        const badge = document.getElementById('warnReqPendingBadge');
+        if (badge) { badge.innerText = pending; badge.style.display = pending ? 'inline-block' : 'none'; }
+
+        body.innerHTML = rows.length ? rows.map(r => `
+            <tr>
+                <td>${escapeHtml(reqWhen(r))}</td>
+                <td><b>${escapeHtml(r.employeeName || r.employeeId || '—')}</b></td>
+                <td>${escapeHtml(r.branch || '—')}<br><small style="color: var(--text-dim);">${escapeHtml(r.managerName || '')}</small></td>
+                <td><b>${escapeHtml(String(r.deductionDays || 0))}</b></td>
+                <td style="max-width: 300px; white-space: pre-wrap;" dir="auto">${escapeHtml(r.reason || '—')}</td>
+                <td>${statusPill(r.status)}${r.decidedBy ? `<br><small style="color: var(--text-dim);">${escapeHtml(r.decidedBy)}</small>` : ''}</td>
+                <td>${r.status === 'pending' ? `
+                    <button class="btn-success btn-sm" onclick="approveWarningRequest('${escapeJsAttr(r.id)}')">${iconSvg('check','ic-sm')}</button>
+                    <button class="btn-danger btn-sm" onclick="rejectWarningRequest('${escapeJsAttr(r.id)}')">${iconSvg('x','ic-sm')}</button>` : ''}</td>
+            </tr>`).join('')
+            : `<tr><td colspan="7" style="text-align:center; color: var(--text-faint);">No warning letter requests.</td></tr>`;
+    };
+
+    window.approvePettyCash = async function(id) {
+        const st = document.getElementById('pettyStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        const r = allPettyRequests.find(x => x.id === id);
+        if (!r || r.status !== 'pending') { show('This request is no longer pending.', 'var(--warning)'); return; }
+
+        const today = todayISO();
+        const month = today.slice(0, 7);
+        // شهر مُغلق لا يُقبل مصروفًا جديدًا، وإلا خالف المصروف اللقطة المجمّدة.
+        if (!guardFinanceMonthOpen(month, st)) return;
+        if (!confirm(
+            `Approve ${money(r.amount)} QAR petty cash for ${r.branch}?\n\n` +
+            `Requested by: ${r.managerName || '—'}\n` +
+            `Reason: ${r.reason || '—'}\n\n` +
+            `It will be recorded as a variable payment dated ${today} and deducted from the BANK balance.`
+        )) return;
+
+        show('Approving...', 'var(--warning)');
+        try {
+            const payRef = await addDoc(collection(db, "financial_payments"), {
+                month, branch: r.branch || FINANCE_COMPANY,
+                name: `Petty cash — ${(r.reason || '').slice(0, 60)}`.trim(),
+                type: 'variable',
+                amount: Number(r.amount) || 0,
+                note: `Requested by ${r.managerName || '—'}`,
+                dayOfMonth: null, paymentDate: today, paidFrom: 'bank',
+                salesPercent: 0, salesPercentThreshold: 0,
+                createdAt: serverTimestamp()
+            });
+            await updateDoc(doc(db, "petty_cash_requests", id), {
+                status: 'approved',
+                decidedBy: (currentUser && currentUser.email) || 'unknown',
+                decidedAt: serverTimestamp(),
+                linkedPaymentId: payRef.id,
+                paymentMonth: month, paymentDate: today
+            });
+            logAudit("Petty Cash Approved", `${r.amount} QAR for ${r.branch} — requested by ${r.managerName || '—'}`);
+            await loadFinancialPayments();
+            await loadManagerRequests();
+            renderFinancialReport();
+            show(`Approved. ${money(r.amount)} QAR recorded as a variable payment on ${today} and deducted from the bank.`, 'var(--success)');
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    window.rejectPettyCash = async function(id) {
+        const st = document.getElementById('pettyStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        const r = allPettyRequests.find(x => x.id === id);
+        if (!r || r.status !== 'pending') { show('This request is no longer pending.', 'var(--warning)'); return; }
+        if (!confirm(`Reject the ${money(r.amount)} QAR request from ${r.managerName || '—'}? No expense will be recorded.`)) return;
+        show('Saving...', 'var(--warning)');
+        try {
+            await updateDoc(doc(db, "petty_cash_requests", id), {
+                status: 'rejected',
+                decidedBy: (currentUser && currentUser.email) || 'unknown',
+                decidedAt: serverTimestamp()
+            });
+            logAudit("Petty Cash Rejected", `${r.amount} QAR for ${r.branch}`);
+            await loadManagerRequests();
+            show('Request rejected.', 'var(--warning)');
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    window.approveWarningRequest = async function(id) {
+        const st = document.getElementById('warnReqStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        const r = allWarningRequests.find(x => x.id === id);
+        if (!r || r.status !== 'pending') { show('This request is no longer pending.', 'var(--warning)'); return; }
+
+        const days = Number(r.deductionDays) || 0;
+        const date = todayISO();
+        if (!confirm(
+            `Issue a warning letter for ${r.employeeName || r.employeeId}?\n\n` +
+            `Reason: ${r.reason || '—'}\n` +
+            `Deduction: ${days} day(s)\n` +
+            `Dated: ${date}\n\n` +
+            (days > 0
+                ? `${days} day(s) will be deducted from that employee's salary automatically.`
+                : `No salary deduction will be created.`)
+        )) return;
+
+        show('Issuing...', 'var(--warning)');
+        try {
+            let linkedDeductionId = "";
+            if (days > 0) {
+                // source:'warning' مطلوب في القواعد للسكرتيرة — انظر
+                // saveWarningLetter وقاعدة deductions.
+                const dedRef = await addDoc(collection(db, "deductions"), {
+                    employeeId: r.employeeId, date, days,
+                    note: "Warning letter deduction",
+                    source: 'warning',
+                    createdAt: serverTimestamp()
+                });
+                linkedDeductionId = dedRef.id;
+            }
+            const warnRef = await addDoc(collection(db, "employee_warnings"), {
+                employeeId: r.employeeId,
+                employeeName: r.employeeName || '',
+                date, deductionDays: days,
+                reason: r.reason || '-',
+                pdfFile: "", linkedDeductionId,
+                requestedBy: r.managerName || '',
+                requestBranch: r.branch || '',
+                createdAt: serverTimestamp()
+            });
+            await updateDoc(doc(db, "warning_requests", id), {
+                status: 'approved',
+                decidedBy: (currentUser && currentUser.email) || 'unknown',
+                decidedAt: serverTimestamp(),
+                linkedWarningId: warnRef.id
+            });
+            logAudit("Warning Request Approved",
+                `${r.employeeName || r.employeeId} — ${days} day(s), requested by ${r.managerName || '—'}`);
+            if (days > 0) await loadDeductions();
+            await loadWarnings();
+            await loadManagerRequests();
+            show(`Warning letter issued for ${r.employeeName || r.employeeId}${days > 0 ? ` — ${days} day(s) deducted` : ''}.`, 'var(--success)');
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    window.rejectWarningRequest = async function(id) {
+        const st = document.getElementById('warnReqStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        const r = allWarningRequests.find(x => x.id === id);
+        if (!r || r.status !== 'pending') { show('This request is no longer pending.', 'var(--warning)'); return; }
+        if (!confirm(`Reject the warning request for ${r.employeeName || r.employeeId}? No letter and no deduction will be created.`)) return;
+        show('Saving...', 'var(--warning)');
+        try {
+            await updateDoc(doc(db, "warning_requests", id), {
+                status: 'rejected',
+                decidedBy: (currentUser && currentUser.email) || 'unknown',
+                decidedAt: serverTimestamp()
+            });
+            logAudit("Warning Request Rejected", `${r.employeeName || r.employeeId}`);
+            await loadManagerRequests();
+            show('Request rejected.', 'var(--warning)');
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
     window.loadFinancialMonths = async function() {
         try {
             const snap = await getDocs(collection(db, "financial_months"));
@@ -6390,9 +6660,14 @@
 
             let linkedDeductionId = "";
             if (days > 0) {
+                // source:'warning' ليس زخرفة: قواعد الأمان تسمح للسكرتيرة
+                // بإنشاء خصم **إن كان** هذا الحقل موجودًا، فلا تستطيع إنشاء
+                // خصم راتب حرّ. لا تحذفه ولا تُغيّر قيمته.
                 const dedRef = await addDoc(collection(db, "deductions"), {
                     employeeId: empId, date, days,
-                    note: "Warning letter deduction", createdAt: serverTimestamp()
+                    note: "Warning letter deduction",
+                    source: 'warning',
+                    createdAt: serverTimestamp()
                 });
                 linkedDeductionId = dedRef.id;
             }
@@ -6848,7 +7123,9 @@
         // والمالية أيضًا: بنود المدفوعات الثابتة والمتغيرة لكل شهر، ولقطات
         // الشهور المُغلقة. لقطة شهر مُغلق سجل مالي معتمد لا يمكن إعادة بنائه
         // بعد تعديل الرواتب، ففقدانها فقدان دائم.
-        "financial_payments", "financial_months"
+        "financial_payments", "financial_months",
+        // وطلبات المديرين: سجل من طلب ومن وافق ومتى — إثبات لا يُعاد بناؤه.
+        "petty_cash_requests", "warning_requests"
     ];
     window.exportFullBackup = async function() {
         // النسخة الاحتياطية تحتوي كل شيء بلا استثناء — رواتب وصور هويات وعقود.

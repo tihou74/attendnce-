@@ -615,6 +615,65 @@
             <button class="action-btn" style="background-color: #6c757d; margin-top: 14px;" onclick="reportBackToLogin()">&#11013; Back</button>
         </div>
 
+        <!-- قائمة اختيار المهمة — أُضيفت لمّا صار للمدير ثلاث مهام لا مهمة واحدة -->
+        <div id="reportMenuStep" style="display: none;">
+            <p style="text-align: left; color: #495057; font-size: 13px; margin-top: 0;">
+                <b id="reportMenuName"></b><br>
+                <span id="reportMenuBranch" style="color: #6c757d; font-weight: 700; font-size: 12.5px;"></span>
+            </p>
+            <div class="btn-group" style="flex-direction: column; gap: 10px;">
+                <button class="action-btn btn-in" style="min-height: 52px;" onclick="openSalesForm()">&#128202; Daily Sales Report</button>
+                <button class="action-btn" style="background-color: #0b7285; min-height: 52px;" onclick="openPettyForm()">&#128176; Petty Cash Request</button>
+                <button class="action-btn" style="background-color: #b45309; min-height: 52px;" onclick="openWarnForm()">&#9888;&#65039; Warning Letter Request</button>
+            </div>
+            <button class="action-btn" style="background-color: #6c757d; margin-top: 14px;" onclick="showReportStep('reportBranchStep')">&#11013; Back to Branches</button>
+        </div>
+
+        <!-- طلب بيتي كاش — يُراجعه المحاسب، وعند الموافقة يُسجَّل مصروفًا متغيرًا
+             ويُخصم من حساب البنك. المدير لا يستطيع قراءة الطلبات بعد الإرسال. -->
+        <div id="reportPettyStep" style="display: none;">
+            <h2 style="font-size: 17px; margin-bottom: 2px;">Petty Cash Request</h2>
+            <p style="text-align: left; color: #6c757d; font-size: 12.5px; margin: 0 0 16px; font-weight: 700;" id="pettyBranchLabel"></p>
+
+            <div class="form-group">
+                <label for="pettyAmount">Amount needed (QAR):</label>
+                <input type="number" id="pettyAmount" placeholder="0.00" inputmode="decimal" step="0.01" min="0">
+            </div>
+            <div class="form-group">
+                <label for="pettyReason">What is it for?</label>
+                <textarea id="pettyReason" rows="4" placeholder="Explain what the money is needed for" dir="auto" style="width: 100%; padding: 12px; font-size: 15px; border: 1px solid #ced4da; border-radius: 8px; font-family: inherit;"></textarea>
+            </div>
+
+            <p class="report-currency-note">The request goes to the accountant. Once he approves it, the amount is recorded as a variable expense and deducted from the bank account.</p>
+            <button class="action-btn btn-in" id="btnSubmitPetty" style="margin-top: 14px;" onclick="submitPettyCashRequest()">Send Request &#128228;</button>
+            <button class="action-btn" style="background-color: #6c757d; margin-top: 10px;" onclick="showReportStep('reportMenuStep')">&#11013; Back</button>
+        </div>
+
+        <!-- طلب إنذار — يُراجعه/تُنجزه السكرتيرة -->
+        <div id="reportWarnStep" style="display: none;">
+            <h2 style="font-size: 17px; margin-bottom: 2px;">Warning Letter Request</h2>
+            <p style="text-align: left; color: #6c757d; font-size: 12.5px; margin: 0 0 16px; font-weight: 700;" id="warnBranchLabel"></p>
+
+            <div class="form-group">
+                <label for="warnEmployeeSelect">Employee:</label>
+                <select id="warnEmployeeSelect">
+                    <option value="">-- Choose Employee --</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="warnDays">Days to deduct:</label>
+                <input type="number" id="warnDays" placeholder="0" inputmode="numeric" step="1" min="0" max="31">
+            </div>
+            <div class="form-group">
+                <label for="warnReason">Reason:</label>
+                <textarea id="warnReason" rows="4" placeholder="Explain what happened" dir="auto" style="width: 100%; padding: 12px; font-size: 15px; border: 1px solid #ced4da; border-radius: 8px; font-family: inherit;"></textarea>
+            </div>
+
+            <p class="report-currency-note">The request goes to the secretary, who issues the warning letter. Enter 0 days if no salary deduction is meant.</p>
+            <button class="action-btn btn-in" id="btnSubmitWarn" style="margin-top: 14px;" onclick="submitWarningRequest()">Send Request &#128228;</button>
+            <button class="action-btn" style="background-color: #6c757d; margin-top: 10px;" onclick="showReportStep('reportMenuStep')">&#11013; Back</button>
+        </div>
+
         <div id="reportFormStep" style="display: none;">
             <h2 id="reportFormTitle" style="font-size: 17px; margin-bottom: 2px;">Sales Report</h2>
             <p style="text-align: left; color: #6c757d; font-size: 12.5px; margin: 0 0 16px; font-weight: 700;" id="reportBranchLabel"></p>
@@ -1801,10 +1860,7 @@
     function resetReportFlow() {
         reportState = { managerId: null, managerName: null, branch: null };
         lastSubmittedReport = null;
-        document.getElementById('reportLoginStep').style.display = 'block';
-        document.getElementById('reportBranchStep').style.display = 'none';
-        document.getElementById('reportFormStep').style.display = 'none';
-        document.getElementById('reportSummaryStep').style.display = 'none';
+        showReportStep('reportLoginStep');
         const pinEl = document.getElementById('reportPinInput');
         if (pinEl) pinEl.value = '';
     }
@@ -1888,9 +1944,8 @@
 
     window.startNewReport = function() {
         lastSubmittedReport = null;
-        document.getElementById('reportSummaryStep').style.display = 'none';
-        document.getElementById('reportBranchStep').style.display = 'block';
-        document.getElementById('statusMsg').style.display = 'none';
+        // يعود إلى القائمة لا إلى الفروع: الفرع مختار أصلًا، وله ثلاث مهام الآن.
+        showReportStep('reportMenuStep');
     };
 
     window.reportLogin = async function() {
@@ -1923,22 +1978,41 @@
         reportState.managerName = emp.name;
         document.getElementById('reportWelcomeName').innerText = emp.name;
         document.getElementById('reportPinInput').value = '';
-        document.getElementById('reportLoginStep').style.display = 'none';
-        document.getElementById('reportBranchStep').style.display = 'block';
+        showReportStep('reportBranchStep');
     };
 
     window.reportBackToLogin = function() {
-        document.getElementById('reportBranchStep').style.display = 'none';
-        document.getElementById('reportLoginStep').style.display = 'block';
+        showReportStep('reportLoginStep');
     };
     window.reportBackToBranch = function() {
-        document.getElementById('reportFormStep').style.display = 'none';
-        document.getElementById('reportBranchStep').style.display = 'block';
+        showReportStep('reportMenuStep');
+    };
+
+    // كل خطوات شاشة المدير في مكان واحد، فإظهار خطوة يُخفي الباقي تلقائيًا.
+    // لمّا صارت الخطوات سبعًا، صار التبديل اليدوي لكل زوج مصدرًا للأخطاء.
+    const REPORT_STEPS = ['reportLoginStep', 'reportBranchStep', 'reportMenuStep',
+        'reportPettyStep', 'reportWarnStep', 'reportFormStep', 'reportSummaryStep'];
+    window.showReportStep = function(stepId) {
+        REPORT_STEPS.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = (id === stepId) ? 'block' : 'none';
+        });
+        const s = document.getElementById('statusMsg');
+        if (s) s.style.display = 'none';
     };
 
     window.selectReportBranch = function(branch) {
         reportState.branch = branch;
-        document.getElementById('reportBranchLabel').innerText = branch;
+        ['reportBranchLabel', 'pettyBranchLabel', 'warnBranchLabel', 'reportMenuBranch'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.innerText = branch;
+        });
+        const nameEl = document.getElementById('reportMenuName');
+        if (nameEl) nameEl.innerText = `Welcome, ${reportState.managerName || ''}`;
+        showReportStep('reportMenuStep');
+    };
+
+    /** التقرير اليومي — نفس ما كان يفعله selectReportBranch سابقًا. */
+    window.openSalesForm = function() {
         document.getElementById('reportDate').value = formatDateEnglish(new Date());
         REPORT_FIELDS.forEach(key => {
             const el = document.getElementById(REPORT_FIELD_IDS[key]);
@@ -1946,8 +2020,103 @@
         });
         recalcReportTotal();
         window.onReportDateChange();
-        document.getElementById('reportBranchStep').style.display = 'none';
-        document.getElementById('reportFormStep').style.display = 'block';
+        showReportStep('reportFormStep');
+    };
+
+    window.openPettyForm = function() {
+        ['pettyAmount', 'pettyReason'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.value = '';
+        });
+        showReportStep('reportPettyStep');
+    };
+
+    window.openWarnForm = function() {
+        ['warnDays', 'warnReason'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.value = '';
+        });
+        // قائمة موظفي هذا الفرع — المدير يُنذر من يعمل عنده لا كل الشركة.
+        const sel = document.getElementById('warnEmployeeSelect');
+        if (sel) {
+            const mine = employees
+                .filter(e => !reportState.branch || e.branch === reportState.branch)
+                .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+            sel.innerHTML = '<option value="">-- Choose Employee --</option>' +
+                (mine.length ? mine : employees)
+                    .map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.name || e.id)}</option>`).join('');
+        }
+        showReportStep('reportWarnStep');
+    };
+
+    /**
+     * إرسال طلب بيتي كاش. الصفحة تُنشئ فقط ولا تقرأ الطلبات أبدًا (القواعد
+     * تمنعها)، فالتأكيد رسالة نجاح لا قراءة لاحقة — نفس نمط تقرير المبيعات.
+     */
+    window.submitPettyCashRequest = async function() {
+        const amount = Number(document.getElementById('pettyAmount').value);
+        const reason = document.getElementById('pettyReason').value.trim();
+        const btn = document.getElementById('btnSubmitPetty');
+
+        if (!isFinite(amount) || amount <= 0) { showStatus("Please enter the amount you need.", "error"); return; }
+        if (!reason) { showStatus("Please explain what the money is for.", "error"); return; }
+        if (!reportState.branch || !reportState.managerId) { showStatus("Please start again from the branch.", "error"); return; }
+
+        btn.disabled = true;
+        showStatus("Sending request...", "loading");
+        try {
+            await authReady;
+            await addDoc(collection(db, "petty_cash_requests"), {
+                branch: reportState.branch,
+                managerId: reportState.managerId,
+                managerName: reportState.managerName || '',
+                amount, reason,
+                status: 'pending',
+                createdAt: serverTimestamp()
+            });
+            document.getElementById('pettyAmount').value = '';
+            document.getElementById('pettyReason').value = '';
+            showStatus(`Request sent: ${amount.toFixed(2)} QAR. The accountant will review it.`, "success");
+        } catch (e) {
+            showStatus("Could not send the request: " + e.message, "error");
+        } finally {
+            btn.disabled = false;
+        }
+    };
+
+    window.submitWarningRequest = async function() {
+        const empId = document.getElementById('warnEmployeeSelect').value;
+        const days = Number(document.getElementById('warnDays').value) || 0;
+        const reason = document.getElementById('warnReason').value.trim();
+        const btn = document.getElementById('btnSubmitWarn');
+
+        if (!empId) { showStatus("Please choose the employee.", "error"); return; }
+        if (!reason) { showStatus("Please write the reason.", "error"); return; }
+        if (!Number.isInteger(days) || days < 0 || days > 31) { showStatus("Days to deduct must be between 0 and 31.", "error"); return; }
+        if (!reportState.branch || !reportState.managerId) { showStatus("Please start again from the branch.", "error"); return; }
+
+        const emp = employees.find(e => e.id === empId);
+        btn.disabled = true;
+        showStatus("Sending request...", "loading");
+        try {
+            await authReady;
+            await addDoc(collection(db, "warning_requests"), {
+                branch: reportState.branch,
+                managerId: reportState.managerId,
+                managerName: reportState.managerName || '',
+                employeeId: empId,
+                employeeName: emp ? (emp.name || '') : '',
+                deductionDays: days,
+                reason,
+                status: 'pending',
+                createdAt: serverTimestamp()
+            });
+            document.getElementById('warnDays').value = '';
+            document.getElementById('warnReason').value = '';
+            showStatus(`Request sent for ${emp ? emp.name : empId}. The secretary will issue the letter.`, "success");
+        } catch (e) {
+            showStatus("Could not send the request: " + e.message, "error");
+        } finally {
+            btn.disabled = false;
+        }
     };
 
     // القيم السالبة أو غير الرقمية تُعامل كصفر حتى لا يُرسل إجمالي مشوّه.
@@ -2023,8 +2192,7 @@
             });
             recalcReportTotal();
 
-            document.getElementById('reportFormStep').style.display = 'none';
-            document.getElementById('reportSummaryStep').style.display = 'block';
+            showReportStep('reportSummaryStep');
         } catch (e) {
             console.error("Error sending sales report:", e);
             showStatus("Error sending the report. Please check your connection and try again.", "error");

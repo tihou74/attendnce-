@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v8   (2026-09-13)  <<<
+//   >>>  RULES REVISION: v9   (2026-09-13)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,9 +12,9 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       isSupervisor
+//       petty_cash_requests
 //
-//   FOUND     -> v8 is live. Good.
+//   FOUND     -> v9 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -33,6 +33,12 @@ rules_version = '2';
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
 //
+//   v9  2026-09-13  + petty_cash_requests, warning_requests — branch managers
+//                     submit blind from the managers screen; the accountant
+//                     approves cash, the secretary issues warnings. deductions
+//                     now let the SECRETARY create/delete one ONLY when it
+//                     carries source:'warning', because a warning deducts from
+//                     salary automatically by management's rule.
 //   v8  2026-09-13  + isAccountant/isSecretary/isSupervisor — four levels of
 //                     access to admin.html. isAdmin() now means the OWNER only.
 //                     Salaries stay readable by all four roles by management's
@@ -210,9 +216,19 @@ service cloud.firestore {
     // shows the CORRECT net salary. Without it the deductions would silently
     // come back empty and the screen would display an inflated figure, which is
     // worse than showing nothing. Writing stays with the owner and accountant.
+    // The secretary issues warning letters and, by management's rule, a warning
+    // deducts from salary automatically. She therefore needs to write a
+    // deduction — but ONLY one carrying source:'warning'. She cannot create a
+    // free-form salary deduction, and cannot edit an existing one at all.
+    // Delete is allowed on the same narrow condition because removing a warning
+    // letter removes its linked deduction.
     match /deductions/{deductionId} {
       allow read: if isAdmin() || isStaff();
-      allow write: if isAdmin() || isAccountant();
+      allow create: if isAdmin() || isAccountant()
+                    || (isSecretary() && request.resource.data.get('source', '') == 'warning');
+      allow update: if isAdmin() || isAccountant();
+      allow delete: if isAdmin() || isAccountant()
+                    || (isSecretary() && resource.data.get('source', '') == 'warning');
     }
 
     // ---- attendance ---------------------------------------------------------
@@ -327,6 +343,28 @@ service cloud.firestore {
       allow read: if isAdmin() || isKiosk();
       allow create: if isKiosk() || isAdmin();
       allow update, delete: if false;
+    }
+
+    // ---- petty_cash_requests (a branch manager asks for cash from the
+    // managers-only screen in index.html) -------------------------------------
+    // Same blind-submit pattern as sales_reports: the kiosk may CREATE but can
+    // never read one back, so a manager cannot browse other branches' requests
+    // or see the amounts they asked for. The accountant reviews and approves,
+    // which is what turns it into a variable expense.
+    match /petty_cash_requests/{reqId} {
+      allow read: if isAdmin() || isAccountant();
+      allow create: if isKiosk() || isAdmin();
+      allow update, delete: if isAdmin() || isAccountant();
+    }
+
+    // ---- warning_requests (a branch manager asks the secretary to issue a
+    // warning letter for an employee) ----------------------------------------
+    // Blind submit as above. Only the secretary and the owner see them; the
+    // accountant has no reason to read staff discipline cases.
+    match /warning_requests/{reqId} {
+      allow read: if isAdmin() || isSecretary();
+      allow create: if isKiosk() || isAdmin();
+      allow update, delete: if isAdmin() || isSecretary();
     }
 
     // ---- financial_months (one doc per closed month, id = 'YYYY-MM') --------
