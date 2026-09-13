@@ -93,12 +93,23 @@ def glyph_coins(x, y):
 
 
 # ---------------------------------------------------------------- التطبيقات
+# أيقونات مرسومة حسابيًا
 APPS = [
     # slug        الخلفية            الرمز              الدالة        الوصف
     ('attendance', (26, 37, 47),   (212, 175, 55),  glyph_clock, 'كيوسك الموظفين — كحلي + ساعة ذهبية'),
     ('report',     (24, 100, 171), (255, 255, 255), glyph_bars,  'تقرير المديرين — أزرق + أعمدة بيضاء'),
-    ('admin',      (67, 56, 202),  (255, 255, 255), glyph_grid,  'لوحة الإدارة — بنفسجي + شبكة بيضاء'),
     ('balances',   (21, 128, 61),  (255, 255, 255), glyph_coins, 'الأرصدة — أخضر + عملات بيضاء'),
+]
+
+# أيقونات مبنية على شعار المجموعة نفسه — بطلب الإدارة للوحة الإدارة.
+# تُبنى بإعادة استخدام خط أنابيب make_icons.py (فك PNG وعزل الرمز عن نص الاسم)،
+# فلا يُكرَّر ذلك المنطق هنا.
+#
+# الخلفية بنفسجية لا كحلية عن قصد: الكحلي مأخوذ لكيوسك الموظفين، ولو صارت
+# أيقونتان كحليتين بحبر ذهبي لعاد المشكل نفسه — أيقونتان لا تُفرَّقان في مقاس
+# صغير على الشاشة. البنفسجي يُبقي التمييز مع بقاء الشعار هو الرمز.
+LOGO_APPS = [
+    ('admin', (67, 56, 202), 'لوحة الإدارة — بنفسجي + شعار مجموعة الشيخة'),
 ]
 
 
@@ -167,6 +178,37 @@ def build(mask_scaled, box, size, bg, fg):
     return canvas
 
 
+def load_logo_mark():
+    """
+    يعيد (بكسلات RGBA، عرض، ارتفاع) لرمز الشعار وحده بلا نص الاسم.
+    يستورد make_icons.py المجاور بدل تكرار فك ترميز PNG وعزل الرمز.
+    """
+    import importlib.util
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'make_icons.py')
+    spec = importlib.util.spec_from_file_location('mk_logo', path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    mod.ensure_logo()
+    width, height, rows = mod.read_png_rgba(mod.SRC)
+    w, h, sr, sg, sb, sa, cnt = mod.accumulate(width, height, rows, mod.INTERMEDIATE_WIDTH)
+    logo = mod.to_rgba_pixels(w, h, sr, sg, sb, sa, cnt)
+
+    bx0, by0, bx1, by1 = mod.opaque_bbox(logo, w, h)
+    logo, w, h = mod.crop(logo, w, h, bx0, by0, bx1, by1)
+
+    # نص اسم المجموعة غير مقروء في مقاس أيقونة ويُصغّر الرمز بلا داعٍ
+    isolated = mod.isolate_mark(logo, w, h)
+    if isolated:
+        logo, w, h = isolated
+    return mod, logo, w, h
+
+
+def build_logo_icon(mod, logo, lw, lh, size, ratio, bg):
+    """يضع الشعار بألوانه الأصلية وسط مربع بالخلفية المطلوبة."""
+    return mod.build_icon(logo, lw, lh, size, ratio, bg)
+
+
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     print(f'دقة رسم القناع: {MASK_RES}×{MASK_RES}\n')
@@ -188,6 +230,20 @@ def main():
             open(os.path.join(OUT_DIR, name), 'wb').write(blob)
             print(f'            {name:32} {size}x{size}  {len(blob) / 1024:6.1f} KB')
         print()
+
+    if LOGO_APPS:
+        print('تحميل شعار المجموعة وعزل الرمز...')
+        mod, logo, lw, lh = load_logo_mark()
+        print(f'            رمز الشعار: {lw}x{lh}\n')
+        for slug, bg, desc in LOGO_APPS:
+            print(f'{slug:11} {desc}')
+            for pattern, size, ratio in TARGETS:
+                canvas = build_logo_icon(mod, logo, lw, lh, size, ratio, bg)
+                name = pattern.format(slug=slug)
+                blob = encode_png_rgb(canvas, size, size)
+                open(os.path.join(OUT_DIR, name), 'wb').write(blob)
+                print(f'            {name:32} {size}x{size}  {len(blob) / 1024:6.1f} KB')
+            print()
 
     print('تم. حدّث بعدها الـmanifests ووسوم <link rel="icon"> في الصفحات الأربعة.')
 

@@ -2,7 +2,7 @@
   "name": "Al Sheikha Sales Report",
   "short_name": "Sales Report",
   "description": "Managers only — submit the daily sales report for your branch and share it on WhatsApp.",
-  "start_url": "./index.html?report=1",
+  "start_url": "./report.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

@@ -1829,6 +1829,12 @@
     //   ?report=1  ← الصيغة المعتمدة في تطبيق المديرين المثبَّت
     //   #report    ← الصيغة القديمة، نُبقيها لأن روابط وُزّعت بها فعلًا
     //
+    // ⚠️ ولهذا صار start_url في manifest-report.json هو ./report.html لا
+    // ./index.html?report=1 : لو أسقط نظام الهاتف الـquery عند إعادة الفتح —
+    // وهو ما يحدث فعلًا — لفُتح هذا الملف بلا علامة فظهرت شاشة الموظفين
+    // للمدير. أما report.html فلا تستطيع إظهار شاشة الموظفين بحال، فهي نقطة
+    // بداية آمنة تُحوّل بنفسها إلى شاشة التقرير.
+    //
     // لماذا صار الاعتماد على ?report=1 بدل #report؟ لأن التطبيقات المثبَّتة على
     // الشاشة الرئيسية — وiOS خاصةً — تُسقط الـ fragment (#) عند إعادة الفتح،
     // فيُفتح التطبيق على شاشة الموظفين بدل شاشة التقرير. أما query string فيبقى
@@ -1843,8 +1849,29 @@
         }
     }
 
+    /**
+     * تُبدّل هوية الصفحة إلى هوية تطبيق المديرين.
+     *
+     * السبب: هذه الصفحة تربط manifest.json وأيقونة الموظفين. فحين يصل إليها
+     * المدير عبر ?report=1 كانت الصفحة — من ناحية النظام — «تطبيق الموظفين»،
+     * فلو ضغط «إضافة إلى الشاشة الرئيسية» من هنا لثبّت تطبيق الموظفين بأيقونته،
+     * وهو نفس الالتباس الذي أُبلغ عنه.
+     */
+    function applyReportIdentity() {
+        const set = (selector, attr, value) => {
+            const el = document.querySelector(selector);
+            if (el) el.setAttribute(attr, value);
+        };
+        set('link[rel="manifest"]', 'href', './manifest-report.json');
+        set('link[rel="icon"]', 'href', './icons/report-192.png');
+        set('link[rel="apple-touch-icon"]', 'href', './icons/report-touch.png');
+        set('meta[name="apple-mobile-web-app-title"]', 'content', 'Sales Report');
+        document.title = 'Daily Sales Report — Al Sheikha Group';
+    }
+
     // يخفي شريط التبويبات وكل أقسام الموظفين تمامًا، فلا يمكن التنقل منها.
     function enterReportMode() {
+        applyReportIdentity();
         const tabGroup = document.querySelector('.tab-group');
         if (tabGroup) tabGroup.style.display = 'none';
         Object.values(TABS).forEach(ids => {

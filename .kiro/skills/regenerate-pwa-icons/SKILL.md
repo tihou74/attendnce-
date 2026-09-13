@@ -18,7 +18,7 @@ description: Regenerate the PWA app icons for the Al Sheikha attendance system. 
 |---|---|---|---|
 | كيوسك الموظفين | `attendance-*` | كحلي `#1a252f` | ساعة ذهبية |
 | تقرير المديرين | `report-*` | أزرق `#1864ab` | أعمدة بيانية |
-| لوحة الإدارة | `admin-*` | بنفسجي `#4338ca` | شبكة ٢×٢ |
+| لوحة الإدارة | `admin-*` | بنفسجي `#4338ca` | **شعار مجموعة الشيخة** (بطلب الإدارة) |
 | الأرصدة | `balances-*` | أخضر `#15803d` | ثلاث عملات |
 
 ## التشغيل
@@ -49,6 +49,17 @@ python3 .kiro/skills/regenerate-pwa-icons/scripts/make_icons.py
 1. **الـmanifests الأربعة** — `manifest.json` · `manifest-report.json` · `manifest-admin.json` · `manifest-balances.json`
 2. **وسوم الصفحات** — `<link rel="icon">` و `<link rel="apple-touch-icon">` في `index.html` · `admin.html` · `report.html` · `balances.html` (والصورة الظاهرة في ترويسة `report.html` و `balances.html`)
 3. **`sw.js`** — قائمة `SHELL_FILES`، **ورفع `CACHE_VERSION`** وإلا بقيت الأيقونة القديمة في كاش من ثبّت التطبيق سابقًا
+
+## أيقونة الداشبورد مبنية على الشعار لا على شكل هندسي
+
+`LOGO_APPS` في `make_app_icons.py` تُبنى بإعادة استخدام خط أنابيب `make_icons.py`
+(جلب الشعار، فك ترميز PNG، عزل الرمز عن نص الاسم)، فلا يُكرَّر ذلك المنطق.
+
+**الخلفية بنفسجية لا كحلية عن قصد:** الكحلي مأخوذ لكيوسك الموظفين، ولو صارت
+أيقونتان كحليتين بحبر ذهبي لعاد المشكل الأصلي — أيقونتان لا تُفرَّقان في مقاس
+صغير. البنفسجي يُبقي التمييز مع بقاء الشعار هو الرمز.
+
+الشعار يُجلب من مستودع الأصول إلى `.icons/logo.png` (مُستثنى في `.gitignore`).
 
 ## إضافة تطبيق خامس
 
