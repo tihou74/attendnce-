@@ -1454,7 +1454,23 @@
       measurementId: "G-W88XGV8E1Q"
     };
 
-    const app = initializeApp(firebaseConfig);
+    // IMPORTANT — the app instance is deliberately NAMED "admin".
+    //
+    // index.html (the employee kiosk) lives on the SAME ORIGIN as this page and
+    // calls signInAnonymously() on every load. Firebase Auth persists the signed-in
+    // user per (apiKey, appName) pair, so when both pages used the default unnamed
+    // app they shared ONE session: opening the kiosk replaced the admin's
+    // email/password session with an ANONYMOUS one. firestore.rules then evaluated
+    // isKiosk() instead of isAdmin(), which silently broke every admin-only
+    // collection while employees/attendance kept loading (the kiosk may read those)
+    // — the dashboard looked perfectly normal but every write to
+    // financial_payments / sales_reports failed with
+    // "Missing or insufficient permissions".
+    //
+    // Naming this instance gives the dashboard its own persistence key, so the
+    // kiosk's anonymous session can never clobber the admin session again.
+    // Do NOT remove the name.
+    const app = initializeApp(firebaseConfig, "admin");
     const db = getFirestore(app);
     const auth = getAuth(app);
 
@@ -1671,6 +1687,25 @@
     }
 
     onAuthStateChanged(auth, async (user) => {
+        // An ANONYMOUS user must never be treated as logged in here. The kiosk
+        // signs in anonymously, and firestore.rules grants such a session only
+        // isKiosk() access — so the dashboard would render but every admin-only
+        // read would come back empty and every write would be rejected with
+        // "Missing or insufficient permissions". Sign it out and demand a real
+        // email/password login instead of showing a dashboard that cannot save.
+        if (user && user.isAnonymous) {
+            currentUser = null;
+            document.getElementById("dashboard").style.display = "none";
+            document.getElementById("loginOverlay").style.display = "flex";
+            const errEl = document.getElementById("loginError");
+            if (errEl) {
+                errEl.innerText = "Please sign in with your admin email and password.";
+                errEl.style.display = "block";
+            }
+            try { await signOut(auth); } catch (e) { console.error("Could not clear anonymous session:", e); }
+            return;
+        }
+
         currentUser = user;
         if (user) {
             document.getElementById("loginOverlay").style.display = "none";
@@ -3354,8 +3389,18 @@
             allFinancialPayments = [];
             snap.forEach(d => allFinancialPayments.push({ id: d.id, ...d.data() }));
         } catch (e) {
+            // Never fail silently here. An empty list looks identical to "no
+            // payments entered yet", which is exactly how a permission problem
+            // stayed hidden: the table said "No other fixed payments added for
+            // this month" while Firestore was actually refusing to read them.
             console.error("Error loading financial payments:", e);
             allFinancialPayments = [];
+            const status = document.getElementById('finPayStatus');
+            if (status) {
+                status.innerText = "Could not load saved payments: " + e.message +
+                    " — the list below may be incomplete.";
+                status.style.color = "var(--danger)";
+            }
         }
     };
 
