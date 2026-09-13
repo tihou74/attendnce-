@@ -898,6 +898,66 @@
             <p class="card-sub" style="margin: 6px 0 0;">A closed month is a permanent record: its figures are read from a saved snapshot instead of being recalculated, so editing a salary or removing an employee later can no longer change a month you already approved and paid.</p>
         </div>
 
+        <!-- 0) رصيد الحساب الحالي — يُحدَّث تلقائيًا من الداخل والخارج -->
+        <div class="card">
+            <h3><span data-icon="dollar"></span> Account Balance Right Now</h3>
+            <p class="card-sub">Updates itself: sales come IN the day after they were made at 19:00, fixed payments go OUT on their due day, purchases go OUT on the exact date you enter, and salaries go out only when you press the button below.</p>
+
+            <div id="cashSetupNeeded" style="display: none; background: var(--surface-2); border: 1px solid var(--warning); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 16px;">
+                <b>Start here:</b> type the amount that is in the account right now and the date it was correct on. Everything after that date is added and subtracted automatically.
+            </div>
+
+            <div class="controls" style="flex-wrap: wrap; align-items: flex-end; gap: 10px; background: var(--surface-2); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-bottom: 18px;">
+                <div style="width: 190px;"><label for="cashOpeningAmount">Amount in the account (QAR)</label><input type="number" id="cashOpeningAmount" step="0.01" placeholder="0.00"></div>
+                <div style="width: 170px;"><label for="cashOpeningDate">Correct as of date</label><input type="date" id="cashOpeningDate"></div>
+                <div style="width: 210px;"><label for="cashSalesBasis" title="Whether sales enter the account after the bank and delivery commissions are taken off, or before">Sales enter as</label>
+                    <select id="cashSalesBasis">
+                        <option value="net">Net — after card &amp; delivery fees</option>
+                        <option value="gross">Gross — before any fees</option>
+                    </select>
+                </div>
+                <button class="btn-accent" onclick="saveCashOpeningBalance()"><span data-icon="save"></span> Save balance</button>
+                <button class="btn-ghost" onclick="renderCashAccount()"><span data-icon="refresh"></span> Recalculate</button>
+            </div>
+            <div class="status" id="cashStatus" style="min-height: 18px; font-size: 13px; font-weight: 700; margin-bottom: 12px;"></div>
+
+            <div class="stats" style="margin-bottom: 4px;">
+                <div class="stat-box money-only" style="flex-direction: column; align-items: stretch;">
+                    <h3 style="margin: 0 0 8px;">BALANCE NOW</h3>
+                    <p id="cashBalance" style="margin: 0;">— QAR</p>
+                    <div style="font-size: 12px; color: var(--text-dim); margin-top: 8px;" id="cashBalanceSub"></div>
+                </div>
+                <div class="stat-box money-only"><div class="stat-icon" data-icon="save"></div><div><h3>Opening Balance</h3><p id="cashOpeningShow">—</p></div></div>
+                <div class="stat-box money-only"><div class="stat-icon" data-icon="download"></div><div><h3>Total In Since Then</h3><p id="cashInflow">—</p></div></div>
+                <div class="stat-box money-only"><div class="stat-icon" data-icon="inbox"></div><div><h3>Total Out Since Then</h3><p id="cashOutflow">—</p></div></div>
+            </div>
+
+            <!-- زر الرواتب: لا تُخصم إلا بضغطة، لأن تاريخ التحويل الفعلي قد يتأخر -->
+            <div style="margin-top: 16px; padding: 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;">
+                <div style="width: 170px;"><label for="cashSalaryPaidOn">Salaries paid on</label><input type="date" id="cashSalaryPaidOn"></div>
+                <button class="btn-warning" id="btnMarkSalariesPaid" onclick="markSalariesPaid()"><span data-icon="check"></span> Salaries paid — deduct now</button>
+                <button class="btn-danger" id="btnUnmarkSalariesPaid" onclick="unmarkSalariesPaid()" style="display: none;"><span data-icon="x"></span> Undo salaries paid</button>
+                <p class="card-sub" style="margin: 0; flex: 1; min-width: 240px;" id="cashSalaryNote"></p>
+            </div>
+
+            <h4 style="margin: 22px 0 8px;">Movements already in the balance</h4>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Date</th><th>Type</th><th>Detail</th><th class="money-col">Amount</th><th class="money-col">Balance after</th></tr></thead>
+                    <tbody id="cashLedgerBody"></tbody>
+                </table>
+            </div>
+
+            <h4 style="margin: 22px 0 8px;">Scheduled — not deducted yet</h4>
+            <p class="card-sub" style="margin: 0 0 10px;">Money that is already recorded but whose date has not arrived. It is deliberately NOT in the balance above.</p>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Date</th><th>Type</th><th>Detail</th><th class="money-col">Amount</th></tr></thead>
+                    <tbody id="cashUpcomingBody"></tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- 1) المبيعات مقسّمة على ثلاث بطاقات -->
         <div class="card">
             <h3><span data-icon="fileText"></span> 1. Sales &amp; Deductions</h3>
@@ -992,6 +1052,7 @@
                 </div>
                 <div style="width: 140px;"><label for="finPayAmount">Amount (QAR)</label><input type="number" id="finPayAmount" step="0.01" min="0" placeholder="0.00"></div>
                 <div style="width: 110px;"><label for="finPayDay">Pay on day</label><input type="number" id="finPayDay" min="1" max="31" placeholder="—"></div>
+                <div style="width: 160px;"><label for="finPayDate" title="Exact date the money leaves the account. Use this for purchases; leave empty for a monthly cheque and fill 'Pay on day' instead.">Exact date (optional)</label><input type="date" id="finPayDate"></div>
                 <div style="width: 120px;"><label for="finPaySalesPct" title="Extra rent calculated as a percentage of this branch's monthly sales">% of sales</label><input type="number" id="finPaySalesPct" step="0.1" min="0" max="100" placeholder="—"></div>
                 <div style="width: 150px;"><label for="finPayThreshold" title="Only the part of the percentage above this figure is paid">% paid above</label><input type="number" id="finPayThreshold" step="0.01" min="0" placeholder="0"></div>
                 <div style="flex: 1; min-width: 150px;"><label for="finPayNote">Note (optional)</label><input type="text" id="finPayNote" placeholder="—"></div>
@@ -3499,6 +3560,7 @@
         await loadFinancialRates();
         await loadFinancialPayments();
         await loadFinancialMonths();
+        await loadCashAccount();
         renderFinancialReport();
     };
 
@@ -3647,6 +3709,7 @@
             amount: Number(p.amount) || 0,
             note: p.note || '',
             dayOfMonth: p.dayOfMonth || null,
+            paymentDate: p.paymentDate || null,
             salesPercent: Number(p.salesPercent) || 0,
             salesPercentThreshold: Number(p.salesPercentThreshold) || 0,
             // المبلغ الفعلي وقت الإغلاق — إيجارات النسبة من المبيعات لا يمكن
@@ -3721,6 +3784,321 @@
         else alert(msg);
         return false;
     }
+
+    // =====================================================================
+    // رصيد الحساب الحالي (Cash Account)
+    // ---------------------------------------------------------------------
+    // خانة واحدة تُظهر «كم في حسابي الآن»، وتُحدَّث تلقائيًا من الداخل والخارج
+    // بلا إدخال يدوي لكل حركة. القواعد كما حدّدتها الإدارة:
+    //
+    //  الداخل  : المبيعات. مبيعات يوم 12 لا تدخل الحساب يوم 12، بل يوم 13
+    //            الساعة 7 مساءً. فقبل تلك اللحظة لا تُحتسب إطلاقًا.
+    //  الخارج  : • البنود الثابتة (إيجار…) تُخصم تلقائيًا في يومها المحدد.
+    //            • المشتريات وغيرها تُخصم في تاريخها الصريح الذي يُدخله المستخدم.
+    //            • الرواتب لا تُخصم تلقائيًا أبدًا — بل بضغطة زر «دُفعت»، لأن
+    //              تاريخ التحويل الفعلي قد يتأخر ولا يصح افتراضه.
+    //
+    // كل شيء مُشتقّ من البيانات الموجودة أصلًا (sales_reports و
+    // financial_payments) فلا يوجد سجل حركات مكرر يمكن أن يتعارض معها.
+    // المخزَّن فعلًا شيئان صغيران فقط في settings (وصلاحياتها موجودة، فلا
+    // يحتاج هذا نشر قواعد جديدة):
+    //   settings/cash_account   : الرصيد الافتتاحي وتاريخه وأساس احتساب المبيعات
+    //   settings/salary_payouts : أي شهور رواتب ضُغط لها زر «دُفعت»
+    // =====================================================================
+    const SALES_SETTLEMENT_OFFSET_DAYS = 1;   // مبيعات اليوم تدخل في اليوم التالي
+    const SALES_SETTLEMENT_HOUR = 19;         // الساعة 7 مساءً
+
+    let cashAccount = { openingBalance: 0, openingDate: '', salesBasis: 'net' };
+    let salaryPayouts = {};   // { 'YYYY-MM': { paid, paidOn, amount, paidBy } }
+
+    function dateAtMidnight(iso) {
+        const [y, m, d] = String(iso).split('-').map(Number);
+        return new Date(y, m - 1, d, 0, 0, 0, 0);
+    }
+
+    /** لحظة دخول مبيعات يوم معيّن إلى الحساب: اليوم التالي الساعة 7 مساءً. */
+    function salesSettlementAt(dateISO) {
+        const [y, m, d] = String(dateISO).split('-').map(Number);
+        return new Date(y, m - 1, d + SALES_SETTLEMENT_OFFSET_DAYS, SALES_SETTLEMENT_HOUR, 0, 0, 0);
+    }
+
+    /**
+     * تاريخ خروج مبلغ بند مدفوع من الحساب:
+     *   1) التاريخ الصريح إن أُدخل (المشتريات).
+     *   2) وإلا يوم الشهر المحدد (الإيجارات) — ومقصوص على آخر يوم في الشهر حتى
+     *      لا يقع «يوم 31» في شهر من 30 يومًا على الشهر الذي بعده.
+     *   3) وإلا آخر يوم في الشهر: أكثر الاحتمالات تحفّظًا، فلا يُخصم مبلغ قبل
+     *      وقته بسبب بند نُسي تحديد تاريخه.
+     */
+    function paymentDueAt(p) {
+        if (p.paymentDate) return dateAtMidnight(p.paymentDate);
+        const [y, m] = String(p.month).split('-').map(Number);
+        const lastDay = new Date(y, m, 0).getDate();
+        if (p.dayOfMonth) return new Date(y, m - 1, Math.min(Number(p.dayOfMonth), lastDay), 0, 0, 0, 0);
+        return new Date(y, m - 1, lastDay, 0, 0, 0, 0);
+    }
+
+    /**
+     * المبلغ الذي يدخل الحساب فعلًا من تقرير مبيعات يوم واحد.
+     * الافتراضي 'net': البطاقة تصل بعد خصم عمولة البنك، والدليفري بعد عمولته —
+     * فهذا هو ما يُودَع حقًا. ولو أراد المالك المبلغ الإجمالي قبل العمولات
+     * فليضبط الأساس على 'gross' من الخانة أعلى البطاقة.
+     */
+    function salesReportInflow(r) {
+        const cash = Number(r.cash) || 0;
+        const card = Number(r.card) || 0;
+        const del = (Number(r.snoonu) || 0) + (Number(r.talabat) || 0) + (Number(r.keeta) || 0);
+        if (cashAccount.salesBasis === 'gross') return cash + card + del;
+        const cPct = Number(financialRates.cardFeePercent) || 0;
+        const dPct = Number(financialRates.deliveryCommissionPercent) || 0;
+        return cash + card * (1 - cPct / 100) + del * (1 - dPct / 100);
+    }
+
+    /**
+     * يبني كشف الحركة كاملًا ويحسب الرصيد الحالي.
+     * أي حركة تاريخها قبل تاريخ الرصيد الافتتاحي تُستثنى، لأن الرصيد الافتتاحي
+     * يشملها أصلًا — وإلا حُسبت مرتين.
+     */
+    function buildCashLedger(now) {
+        now = now || new Date();
+        const opening = Number(cashAccount.openingBalance) || 0;
+        const openISO = cashAccount.openingDate || '';
+        if (!openISO) return { ready: false, opening, events: [], upcoming: [], balance: opening, inflow: 0, outflow: 0 };
+        const openAt = dateAtMidnight(openISO);
+
+        const settled = [], upcoming = [];
+        const push = (at, kind, label, amount, when) => {
+            if (at < openAt) return;              // مشمول في الرصيد الافتتاحي
+            const row = { at, kind, label, amount, when };
+            (at <= now ? settled : upcoming).push(row);
+        };
+
+        allSalesReports.forEach(r => {
+            if (!r.date) return;
+            push(salesSettlementAt(r.date), 'sales',
+                `Sales of ${r.date}${r.branch ? ' — ' + r.branch : ''}`,
+                salesReportInflow(r), `${r.date} +1 day, ${SALES_SETTLEMENT_HOUR}:00`);
+        });
+
+        allFinancialPayments.forEach(p => {
+            const amt = paymentEffectiveAmount(p, p.month).total;
+            if (!amt) return;
+            push(paymentDueAt(p), p.type === 'fixed' ? 'fixed' : 'variable',
+                `${p.name || 'Payment'}${p.branch ? ' — ' + p.branch : ''}`, -amt,
+                p.paymentDate || (p.dayOfMonth ? `${p.month} day ${p.dayOfMonth}` : `${p.month} month end`));
+        });
+
+        Object.entries(salaryPayouts).forEach(([month, sp]) => {
+            if (!sp || !sp.paid) return;
+            push(dateAtMidnight(sp.paidOn || payrollPaymentDate(month)), 'salary',
+                `Salaries for ${month} — marked paid`, -(Number(sp.amount) || 0), sp.paidOn);
+        });
+
+        settled.sort((a, b) => a.at - b.at);
+        upcoming.sort((a, b) => a.at - b.at);
+        let bal = opening;
+        settled.forEach(e => { e.balanceAfter = (bal += e.amount); });
+
+        return {
+            ready: true, opening, openingDate: openISO, events: settled, upcoming,
+            balance: bal,
+            inflow: settled.filter(e => e.amount > 0).reduce((s, e) => s + e.amount, 0),
+            outflow: -settled.filter(e => e.amount < 0).reduce((s, e) => s + e.amount, 0)
+        };
+    }
+
+    window.loadCashAccount = async function() {
+        try {
+            const [acct, pay] = await Promise.all([
+                getDoc(doc(db, "settings", "cash_account")),
+                getDoc(doc(db, "settings", "salary_payouts"))
+            ]);
+            if (acct.exists()) {
+                const d = acct.data();
+                cashAccount = {
+                    openingBalance: Number(d.openingBalance) || 0,
+                    openingDate: d.openingDate || '',
+                    salesBasis: d.salesBasis === 'gross' ? 'gross' : 'net'
+                };
+            }
+            salaryPayouts = (pay.exists() && pay.data().months) ? pay.data().months : {};
+        } catch (e) {
+            console.error("Error loading the cash account:", e);
+            const st = document.getElementById('cashStatus');
+            if (st) { st.innerText = "Could not load the account balance: " + e.message; st.style.color = "var(--danger)"; }
+        }
+    };
+
+    window.saveCashOpeningBalance = async function() {
+        const st = document.getElementById('cashStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        const amountRaw = document.getElementById('cashOpeningAmount').value;
+        const dateISO = document.getElementById('cashOpeningDate').value;
+        const basis = document.getElementById('cashSalesBasis').value;
+
+        const amount = Number(amountRaw);
+        if (amountRaw === '' || !isFinite(amount)) { show('Enter the amount that is in the account.', 'var(--danger)'); return; }
+        if (!dateISO) { show('Choose the date this balance was correct on.', 'var(--danger)'); return; }
+
+        show('Saving...', 'var(--warning)');
+        try {
+            await setDoc(doc(db, "settings", "cash_account"), {
+                openingBalance: amount,
+                openingDate: dateISO,
+                salesBasis: basis,
+                updatedAt: serverTimestamp(),
+                updatedBy: (currentUser && currentUser.email) || 'unknown'
+            }, { merge: true });
+            logAudit("Cash Account Opening Balance Set", `${amount} QAR as of ${dateISO}, sales basis ${basis}`);
+            await loadCashAccount();
+            renderCashAccount();
+            show(`Saved. The balance now updates automatically from ${dateISO} onwards.`, 'var(--success)');
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    /** يسجّل أن رواتب شهر ما دُفعت فعلًا، فتُخصم من الحساب بتاريخ الدفع. */
+    window.markSalariesPaid = async function() {
+        const month = currentFinMonth();
+        const st = document.getElementById('cashStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        if (salaryPayouts[month] && salaryPayouts[month].paid) {
+            show(`Salaries for ${month} are already marked as paid.`, 'var(--warning)'); return;
+        }
+        const s = financeSummary(month, '');
+        const amount = Number(s.payroll.total) || 0;
+        const dateEl = document.getElementById('cashSalaryPaidOn');
+        const paidOn = (dateEl && dateEl.value) || payrollPaymentDate(month);
+        if (!confirm(
+            `Mark the salaries for ${month} as PAID?\n\n` +
+            `Amount : ${money(amount)} QAR\n` +
+            `Date   : ${paidOn}\n\n` +
+            `This amount will be deducted from the account balance on that date.`
+        )) return;
+
+        show('Saving...', 'var(--warning)');
+        try {
+            await setDoc(doc(db, "settings", "salary_payouts"), {
+                months: {
+                    ...salaryPayouts,
+                    [month]: {
+                        paid: true, paidOn, amount,
+                        paidBy: (currentUser && currentUser.email) || 'unknown',
+                        markedAt: new Date().toISOString()
+                    }
+                }
+            }, { merge: true });
+            logAudit("Salaries Marked Paid", `${month} — ${amount.toFixed(2)} QAR on ${paidOn}`);
+            await loadCashAccount();
+            renderCashAccount();
+            show(`Salaries for ${month} recorded as paid on ${paidOn} — ${money(amount)} QAR deducted.`, 'var(--success)');
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    window.unmarkSalariesPaid = async function() {
+        const month = currentFinMonth();
+        const st = document.getElementById('cashStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        if (!(salaryPayouts[month] && salaryPayouts[month].paid)) {
+            show(`Salaries for ${month} are not marked as paid.`, 'var(--warning)'); return;
+        }
+        if (!confirm(`Undo the "paid" mark for ${month}? The amount will be added back to the balance.`)) return;
+        show('Saving...', 'var(--warning)');
+        try {
+            const next = { ...salaryPayouts };
+            delete next[month];
+            // نكتب الخريطة كاملة بلا merge حتى يُحذف المفتاح فعلًا.
+            await setDoc(doc(db, "settings", "salary_payouts"), { months: next });
+            logAudit("Salaries Paid Mark Removed", month);
+            await loadCashAccount();
+            renderCashAccount();
+            show(`The "paid" mark for ${month} was removed.`, 'var(--warning)');
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    window.renderCashAccount = function() {
+        const led = buildCashLedger();
+        const month = currentFinMonth();
+        const set = (id, t) => { const el = document.getElementById(id); if (el) el.innerText = t; };
+
+        // خانة الإدخال تعرض القيمة المحفوظة حتى يعرف المالك ما المسجَّل.
+        const amtEl = document.getElementById('cashOpeningAmount');
+        const dtEl = document.getElementById('cashOpeningDate');
+        const bsEl = document.getElementById('cashSalesBasis');
+        if (amtEl && document.activeElement !== amtEl && cashAccount.openingDate) amtEl.value = cashAccount.openingBalance;
+        if (dtEl && document.activeElement !== dtEl && cashAccount.openingDate) dtEl.value = cashAccount.openingDate;
+        if (bsEl && cashAccount.openingDate) bsEl.value = cashAccount.salesBasis;
+
+        const setupBox = document.getElementById('cashSetupNeeded');
+        if (setupBox) setupBox.style.display = led.ready ? 'none' : 'block';
+
+        if (!led.ready) {
+            set('cashBalance', '— QAR');
+            set('cashBalanceSub', 'Enter the amount currently in the account and the date it was correct on, then press Save.');
+            ['cashInflow', 'cashOutflow', 'cashOpeningShow'].forEach(id => set(id, '—'));
+            const b1 = document.getElementById('cashLedgerBody');
+            if (b1) b1.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-faint);">Set the opening balance first.</td></tr>`;
+            const b2 = document.getElementById('cashUpcomingBody');
+            if (b2) b2.innerHTML = '';
+            return;
+        }
+
+        set('cashBalance', `${money(led.balance)} QAR`);
+        const bEl = document.getElementById('cashBalance');
+        if (bEl) bEl.style.color = led.balance >= 0 ? 'var(--success)' : 'var(--danger)';
+        set('cashBalanceSub', `As of ${new Date().toISOString().slice(0, 16).replace('T', ' ')} — ${led.events.length} movement(s) since ${led.openingDate}.`);
+        set('cashOpeningShow', `${money(led.opening)} QAR`);
+        set('cashInflow', `+${money(led.inflow)} QAR`);
+        set('cashOutflow', `-${money(led.outflow)} QAR`);
+
+        const kindLabel = { sales: 'Sales in', fixed: 'Fixed payment', variable: 'Purchase / variable', salary: 'Salaries' };
+        const rowHtml = (e, withBalance) => `
+            <tr>
+                <td>${e.at.toISOString().slice(0, 10)}<br><small style="color: var(--text-dim);">${e.kind === 'sales' ? SALES_SETTLEMENT_HOUR + ':00' : ''}</small></td>
+                <td>${escapeHtml(kindLabel[e.kind] || e.kind)}</td>
+                <td>${escapeHtml(e.label)}</td>
+                <td class="money-col" style="color: ${e.amount >= 0 ? 'var(--success)' : 'var(--danger)'}; font-weight: 700;">${e.amount >= 0 ? '+' : ''}${money(e.amount)}</td>
+                ${withBalance ? `<td class="money-col"><b>${money(e.balanceAfter)}</b></td>` : ''}
+            </tr>`;
+
+        // الأحدث أولًا في العرض، مع الإبقاء على الرصيد التراكمي المحسوب زمنيًا.
+        const recent = led.events.slice(-40).reverse();
+        const body = document.getElementById('cashLedgerBody');
+        if (body) {
+            body.innerHTML = recent.length
+                ? recent.map(e => rowHtml(e, true)).join('')
+                : `<tr><td colspan="5" style="text-align:center; color: var(--text-faint);">No movements yet since ${escapeHtml(led.openingDate)}.</td></tr>`;
+        }
+        const up = document.getElementById('cashUpcomingBody');
+        if (up) {
+            const next = led.upcoming.slice(0, 12);
+            up.innerHTML = next.length
+                ? next.map(e => rowHtml(e, false)).join('')
+                : `<tr><td colspan="4" style="text-align:center; color: var(--text-faint);">Nothing scheduled after today.</td></tr>`;
+        }
+
+        // زر الرواتب لهذا الشهر
+        const paid = salaryPayouts[month] && salaryPayouts[month].paid;
+        const btnPay = document.getElementById('btnMarkSalariesPaid');
+        const btnUndo = document.getElementById('btnUnmarkSalariesPaid');
+        const salNote = document.getElementById('cashSalaryNote');
+        const salDate = document.getElementById('cashSalaryPaidOn');
+        if (salDate && !salDate.value) salDate.value = payrollPaymentDate(month);
+        if (btnPay) btnPay.style.display = paid ? 'none' : 'inline-flex';
+        if (btnUndo) btnUndo.style.display = paid ? 'inline-flex' : 'none';
+        if (salNote) {
+            const s = financeSummary(month, '');
+            salNote.innerText = paid
+                ? `Salaries for ${month}: PAID on ${salaryPayouts[month].paidOn} — ${money(salaryPayouts[month].amount)} QAR already deducted.`
+                : `Salaries for ${month}: ${money(s.payroll.total)} QAR NOT yet deducted. They are only taken out of the balance when you press the button.`;
+            salNote.style.color = paid ? 'var(--success)' : 'var(--warning)';
+        }
+    };
 
     window.loadFinancialMonths = async function() {
         try {
@@ -3977,6 +4355,7 @@
         renderFinanceClosedState(month);
         renderFinanceVsPrevious(month, branch, s);
         renderFinanceWhatsAppLink(month, branch, s);
+        renderCashAccount();
     };
 
     /** شارة الشهر المُغلق وأزراره — ويُخفي أزرار التعديل حتى لا تُضغط عبثًا. */
@@ -4185,6 +4564,7 @@
         const amount = Number(document.getElementById('finPayAmount').value);
         const note = document.getElementById('finPayNote').value.trim();
         const dayRaw = document.getElementById('finPayDay').value;
+        const paymentDate = document.getElementById('finPayDate').value; // '' أو YYYY-MM-DD
         const pctRaw = document.getElementById('finPaySalesPct').value;
         const thrRaw = document.getElementById('finPayThreshold').value;
         const status = document.getElementById('finPayStatus');
@@ -4208,17 +4588,23 @@
         }
         // مبلغ صفر بلا نسبة يعني بندًا فارغًا لا معنى له.
         if (amount === 0 && !salesPercent) { show('Enter an amount, a % of sales, or both.', 'var(--danger)'); return; }
+        // التاريخ الصريح يجب أن يقع داخل الشهر المعروض، وإلا خرج البند من تقريره.
+        if (paymentDate && paymentDate.slice(0, 7) !== month) {
+            show(`The exact date must fall inside ${month}, otherwise this payment belongs to another month's report.`, 'var(--danger)');
+            return;
+        }
 
         show('Saving...', 'var(--warning)');
         try {
             await addDoc(collection(db, "financial_payments"), {
                 month, branch, name, type, amount, note,
-                dayOfMonth, salesPercent, salesPercentThreshold,
+                dayOfMonth, paymentDate: paymentDate || null,
+                salesPercent, salesPercentThreshold,
                 createdAt: serverTimestamp()
             });
             logAudit("Financial Payment Added",
                 `${name} — ${amount} QAR${salesPercent ? ` + ${salesPercent}% of sales` : ''} (${type}), ${branch}, ${month}`);
-            ['finPayName', 'finPayAmount', 'finPayNote', 'finPayDay', 'finPaySalesPct', 'finPayThreshold']
+            ['finPayName', 'finPayAmount', 'finPayNote', 'finPayDay', 'finPayDate', 'finPaySalesPct', 'finPayThreshold']
                 .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
             await loadFinancialPayments();
             renderFinancialReport();
@@ -4374,6 +4760,9 @@
                     month, branch: p.branch, name: p.name, type: 'fixed',
                     amount: Number(p.amount) || 0, note: p.note || '',
                     dayOfMonth: p.dayOfMonth || null,
+                    // التاريخ الصريح لا يُنسخ: تاريخ الشهر الماضي لا يعني شيئًا
+                    // في هذا الشهر. يوم الشهر (dayOfMonth) هو المتكرر.
+                    paymentDate: null,
                     salesPercent: Number(p.salesPercent) || 0,
                     salesPercentThreshold: Number(p.salesPercentThreshold) || 0,
                     createdAt: serverTimestamp()
