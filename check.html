@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Diagnostics — Al Sheikha Group</title>
+
+<!-- =============================================================================
+     صفحة تشخيص — تُقرأ وتُصوَّر، ولا تُعدّل شيئًا.
+     -----------------------------------------------------------------------------
+     سببها: مشكلة «تطبيق المديرين يفتح شاشة الموظفين» لم تُحلّ بعد أربع محاولات،
+     وكل محاولة كانت مبنية على فرضية عن سلوك الهاتف لا على قياس. هذه الصفحة
+     تُظهر الحقائق مباشرة من الجهاز نفسه — الرابط الذي فُتح به التطبيق، وهل هو
+     مثبَّت، وما الوضع المحفوظ، وأي إصدار من الكود يُقدَّم له فعلًا.
+
+     ⚠️ لا تُسجّل Service Worker ولا تكتب أي شيء — قراءة فقط.
+     ============================================================================= -->
+
+<meta name="robots" content="noindex, nofollow">
+<style>
+    * { box-sizing: border-box; }
+    body {
+        font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0;
+        background: #f5f1e8; color: #3a3226;
+        padding: 18px 14px calc(24px + env(safe-area-inset-bottom));
+        padding-top: calc(18px + env(safe-area-inset-top));
+    }
+    .wrap { max-width: 620px; margin: 0 auto; }
+    h1 { font-size: 17px; margin: 0 0 4px; }
+    .sub { font-size: 12.5px; color: #7a6f5a; margin: 0 0 18px; line-height: 1.7; }
+    .row {
+        background: #fffdf8; border: 1px solid #ddd2b8; border-radius: 10px;
+        padding: 12px 14px; margin-bottom: 10px;
+    }
+    .k { font-size: 11px; font-weight: 800; color: #7a6f5a; text-transform: uppercase; letter-spacing: .5px; }
+    .v { font-size: 14px; font-weight: 700; margin-top: 5px; word-break: break-all; line-height: 1.6; }
+    .ok { color: #16a34a; } .bad { color: #dc2626; } .warn { color: #b45309; }
+    .verdict { border-width: 2px; }
+    .hint { font-size: 12px; color: #7a6f5a; margin-top: 6px; line-height: 1.7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <h1>Diagnostics</h1>
+    <p class="sub">Screenshot this whole page and send it. Nothing here changes any setting.</p>
+    <div id="out"></div>
+</div>
+
+<script>
+(function () {
+    var out = document.getElementById('out');
+    function row(k, v, cls, hint, verdict) {
+        var d = document.createElement('div');
+        d.className = 'row' + (verdict ? ' verdict' : '');
+        d.innerHTML = '<div class="k">' + k + '</div><div class="v ' + (cls || '') + '">' + v + '</div>'
+                    + (hint ? '<div class="hint">' + hint + '</div>' : '');
+        out.appendChild(d);
+        return d;
+    }
+    function esc(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // 1) كيف فُتحت الصفحة
+    var standalone = (navigator.standalone === true);
+    try {
+        standalone = standalone
+            || window.matchMedia('(display-mode: standalone)').matches
+            || window.matchMedia('(display-mode: fullscreen)').matches
+            || window.matchMedia('(display-mode: minimal-ui)').matches;
+    } catch (e) {}
+    row('1 — Opened as', standalone ? 'INSTALLED APP' : 'BROWSER',
+        standalone ? 'ok' : 'warn',
+        standalone ? '' : 'If you tapped an icon on the home screen and this says BROWSER, the icon is a plain bookmark, not an installed app.');
+
+    // 2) الرابط الكامل
+    row('2 — Launch address', esc(location.href), '',
+        'This is what the icon actually stored. If it ends in index.html with no ?report=1, that is the whole problem.');
+
+    // 3) الوضع المحفوظ
+    var mode = '(cannot read)';
+    try { mode = localStorage.getItem('alsheikha_pwa_mode') || '(empty)'; } catch (e) {}
+    row('3 — Remembered mode', esc(mode), mode === 'report' ? 'ok' : 'warn',
+        'Should say "report" for the managers\' app. "(empty)" means it has never opened the report screen in this app.');
+
+    // 4) Service worker المسيطر
+    var swTxt = 'not supported';
+    if ('serviceWorker' in navigator) {
+        swTxt = navigator.serviceWorker.controller
+            ? esc(navigator.serviceWorker.controller.scriptURL)
+            : 'NONE controlling this page';
+    }
+    row('4 — Service worker', swTxt, '', 'Which cached copy of the site is serving this app.');
+
+    // 5) إصدار الكود المُقدَّم فعلًا للتطبيق
+    row('5 — Code version served', 'checking...', '', '', true);
+    var vRow = out.lastChild;
+    function setRow(el, k, v, cls, hint) {
+        el.innerHTML = '<div class="k">' + k + '</div><div class="v ' + (cls || '') + '">' + v + '</div>'
+                     + (hint ? '<div class="hint">' + hint + '</div>' : '');
+    }
+    fetch('./sw.js', { cache: 'no-store' })
+        .then(function (r) { return r.text(); })
+        .then(function (t) {
+            var m = t.match(/CACHE_VERSION\s*=\s*'([^']+)'/);
+            setRow(vRow, '5 — Code version on the server', m ? esc(m[1]) : '(not found)', 'ok');
+        })
+        .catch(function (e) { setRow(vRow, '5 — Code version on the server', 'FAILED: ' + esc(e.message), 'bad'); });
+
+    // 6) هل النسخة التي يراها التطبيق تحتوي الإصلاح؟
+    row('6 — Fix present in the page the app receives', 'checking...', '', '', true);
+    var fRow = out.lastChild;
+    fetch('./index.html', { cache: 'no-store' })
+        .then(function (r) { return r.text(); })
+        .then(function (t) {
+            var hasHatch = t.indexOf('managerHatch') !== -1;
+            var hasMemory = t.indexOf('alsheikha_pwa_mode') !== -1;
+            setRow(fRow, '6 — Fix present in the page the app receives',
+                (hasHatch ? 'button: YES' : 'button: NO') + ' &middot; ' + (hasMemory ? 'memory: YES' : 'memory: NO'),
+                (hasHatch && hasMemory) ? 'ok' : 'bad',
+                (hasHatch && hasMemory)
+                    ? 'The app is receiving the corrected page.'
+                    : 'The app is being served an OLD copy of the page — that is why the fixes appear to do nothing.');
+        })
+        .catch(function (e) {
+            setRow(fRow, '6 — Fix present in the page the app receives', 'FAILED: ' + esc(e.message), 'bad');
+        });
+
+    // 7) بيانات الجهاز
+    row('7 — Device', esc(navigator.userAgent), '', '');
+})();
+</script>
+</body>
+</html>
