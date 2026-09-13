@@ -604,7 +604,8 @@
 
         <div id="reportBranchStep" style="display: none;">
             <p style="text-align: left; color: #495057; font-size: 13px; margin-top: 0;">
-                Welcome, <b id="reportWelcomeName"></b>. Select the branch:
+                <b id="reportTaskLabel"></b><br>
+                <span style="color: #6c757d; font-weight: 700; font-size: 12.5px;">Which branch?</span>
             </p>
             <div class="btn-group" style="flex-direction: column; gap: 8px;">
                 <button class="action-btn" style="background-color: #17a2b8; min-height: 48px;" onclick="selectReportBranch('GAIMER W KAHI WEST WALK')">GAIMER W KAHI &mdash; WEST WALK</button>
@@ -612,21 +613,22 @@
                 <button class="action-btn" style="background-color: #6f42c1; min-height: 48px;" onclick="selectReportBranch('SHAI BU HAMAD WEST WALK')">SHAI BU HAMAD &mdash; WEST WALK</button>
                 <button class="action-btn" style="background-color: #6f42c1; min-height: 48px;" onclick="selectReportBranch('SHAI BU HAMAD GULF MALL')">SHAI BU HAMAD &mdash; GULF MALL</button>
             </div>
-            <button class="action-btn" style="background-color: #6c757d; margin-top: 14px;" onclick="reportBackToLogin()">&#11013; Back</button>
+            <button class="action-btn" style="background-color: #6c757d; margin-top: 14px;" onclick="showReportStep('reportMenuStep')">&#11013; Back</button>
         </div>
 
-        <!-- قائمة اختيار المهمة — أُضيفت لمّا صار للمدير ثلاث مهام لا مهمة واحدة -->
+        <!-- قائمة اختيار المهمة — تأتي مباشرة بعد الدخول و**قبل** اختيار الفرع،
+             بطلب الإدارة: المدير يختار ما يريد عمله أولًا ثم يحدّد الفرع. -->
         <div id="reportMenuStep" style="display: none;">
             <p style="text-align: left; color: #495057; font-size: 13px; margin-top: 0;">
                 <b id="reportMenuName"></b><br>
-                <span id="reportMenuBranch" style="color: #6c757d; font-weight: 700; font-size: 12.5px;"></span>
+                <span style="color: #6c757d; font-weight: 700; font-size: 12.5px;">What would you like to do?</span>
             </p>
             <div class="btn-group" style="flex-direction: column; gap: 10px;">
-                <button class="action-btn btn-in" style="min-height: 52px;" onclick="openSalesForm()">&#128202; Daily Sales Report</button>
-                <button class="action-btn" style="background-color: #0b7285; min-height: 52px;" onclick="openPettyForm()">&#128176; Petty Cash Request</button>
-                <button class="action-btn" style="background-color: #b45309; min-height: 52px;" onclick="openWarnForm()">&#9888;&#65039; Warning Letter Request</button>
+                <button class="action-btn btn-in" style="min-height: 52px;" onclick="chooseReportTask('sales')">&#128202; Daily Sales Report</button>
+                <button class="action-btn" style="background-color: #0b7285; min-height: 52px;" onclick="chooseReportTask('petty')">&#128176; Petty Cash Request</button>
+                <button class="action-btn" style="background-color: #b45309; min-height: 52px;" onclick="chooseReportTask('warn')">&#9888;&#65039; Warning Letter Request</button>
             </div>
-            <button class="action-btn" style="background-color: #6c757d; margin-top: 14px;" onclick="showReportStep('reportBranchStep')">&#11013; Back to Branches</button>
+            <button class="action-btn" style="background-color: #6c757d; margin-top: 14px;" onclick="reportBackToLogin()">&#11013; Sign out</button>
         </div>
 
         <!-- طلب بيتي كاش — يُراجعه المحاسب، وعند الموافقة يُسجَّل مصروفًا متغيرًا
@@ -1813,7 +1815,8 @@
     const REPORT_LABELS = {
         cash: 'Cash', card: 'Card', snoonu: 'Snoonu', talabat: 'Talabat', keeta: 'Keeta'
     };
-    let reportState = { managerId: null, managerName: null, branch: null };
+    // task = المهمة التي اختارها المدير قبل الفرع: 'sales' | 'petty' | 'warn'
+    let reportState = { managerId: null, managerName: null, branch: null, task: null };
     let isSubmittingReport = false;
     // آخر تقرير حُفظ فعلًا — منه يُبنى الملخص ونص الواتساب.
     let lastSubmittedReport = null;
@@ -1858,7 +1861,7 @@
     }
 
     function resetReportFlow() {
-        reportState = { managerId: null, managerName: null, branch: null };
+        reportState = { managerId: null, managerName: null, branch: null, task: null };
         lastSubmittedReport = null;
         showReportStep('reportLoginStep');
         const pinEl = document.getElementById('reportPinInput');
@@ -1976,16 +1979,21 @@
         document.getElementById('statusMsg').style.display = 'none';
         reportState.managerId = empId;
         reportState.managerName = emp.name;
-        document.getElementById('reportWelcomeName').innerText = emp.name;
+        // ملاحظة: خطوة الفروع لم تبقَ فيها ترحيب باسم المدير — صار الترحيب في
+        // القائمة التي تسبقها، وعنوان خطوة الفروع يعرض المهمة المختارة.
         document.getElementById('reportPinInput').value = '';
-        showReportStep('reportBranchStep');
+        const menuName = document.getElementById('reportMenuName');
+        if (menuName) menuName.innerText = `Welcome, ${emp.name}`;
+        // بعد الدخول تظهر القائمة أولًا لا الفروع.
+        showReportStep('reportMenuStep');
     };
 
     window.reportBackToLogin = function() {
+        reportState = { managerId: null, managerName: null, branch: null, task: null };
         showReportStep('reportLoginStep');
     };
     window.reportBackToBranch = function() {
-        showReportStep('reportMenuStep');
+        showReportStep('reportBranchStep');
     };
 
     // كل خطوات شاشة المدير في مكان واحد، فإظهار خطوة يُخفي الباقي تلقائيًا.
@@ -2001,17 +2009,35 @@
         if (s) s.style.display = 'none';
     };
 
-    window.selectReportBranch = function(branch) {
-        reportState.branch = branch;
-        ['reportBranchLabel', 'pettyBranchLabel', 'warnBranchLabel', 'reportMenuBranch'].forEach(id => {
-            const el = document.getElementById(id); if (el) el.innerText = branch;
-        });
-        const nameEl = document.getElementById('reportMenuName');
-        if (nameEl) nameEl.innerText = `Welcome, ${reportState.managerName || ''}`;
-        showReportStep('reportMenuStep');
+    /**
+     * ترتيب الخطوات بطلب الإدارة: دخول ← اختيار المهمة ← اختيار الفرع ← النموذج.
+     * المهمة تُحفظ في reportState.task، فاختيار الفرع بعدها يعرف إلى أي نموذج
+     * ينتقل. لو لم تُحفظ لكان زر الفرع الواحد لا يعرف ما يفتح.
+     */
+    const REPORT_TASK_LABEL = {
+        sales: 'Daily Sales Report',
+        petty: 'Petty Cash Request',
+        warn: 'Warning Letter Request'
+    };
+    window.chooseReportTask = function(task) {
+        reportState.task = REPORT_TASK_LABEL[task] ? task : 'sales';
+        const el = document.getElementById('reportTaskLabel');
+        if (el) el.innerText = REPORT_TASK_LABEL[reportState.task];
+        showReportStep('reportBranchStep');
     };
 
-    /** التقرير اليومي — نفس ما كان يفعله selectReportBranch سابقًا. */
+    window.selectReportBranch = function(branch) {
+        reportState.branch = branch;
+        ['reportBranchLabel', 'pettyBranchLabel', 'warnBranchLabel'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.innerText = branch;
+        });
+        // ينتقل إلى نموذج المهمة التي اختارها قبل الفرع.
+        if (reportState.task === 'petty') openPettyForm();
+        else if (reportState.task === 'warn') openWarnForm();
+        else openSalesForm();
+    };
+
+    /** التقرير اليومي. */
     window.openSalesForm = function() {
         document.getElementById('reportDate').value = formatDateEnglish(new Date());
         REPORT_FIELDS.forEach(key => {
