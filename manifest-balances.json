@@ -1,6 +1,7 @@
 {
   "name": "Al Sheikha Balances",
   "short_name": "Balances",
+  "id": "./?app=balances",
   "description": "View only — how much is in the bank, how much the delivery apps still owe, and how much is in the cash box right now.",
   "start_url": "./balances.html",
   "scope": "./",

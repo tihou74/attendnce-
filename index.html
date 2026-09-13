@@ -364,6 +364,16 @@
     </div>
 
     <!-- Switch Tabs -->
+    <!-- مخرج للمدير العالق: يظهر فقط في تطبيق مثبَّت فُتح بلا علامة وبلا
+         تذكُّر — أي تطبيق مدير ثُبّت قبل إصلاح رابط الفتح. الضغط يُسجّل الوضع
+         فلا يتكرر السؤال، والشاشة نفسها محمية بالرقم السري على أي حال. -->
+    <div id="managerHatch" style="display: none; margin: 0 0 14px;">
+        <a href="./index.html?report=1"
+           style="display: block; text-align: center; padding: 13px 16px; background: #1864ab; color: #fff; text-decoration: none; border-radius: 10px; font-size: 14.5px; font-weight: 700;">
+            Managers &mdash; open the Sales Report
+        </a>
+    </div>
+
     <div class="tab-group" role="tablist" aria-label="Employee portal sections">
         <button class="tab-btn active" role="tab" aria-selected="true" id="btnTabAttendance" onclick="switchTab('attendance')">
             <svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/></svg>
@@ -2331,15 +2341,61 @@
     // كانت تُفتح بعد انتهاء loadData، فيرى المدير شاشة الموظفين لحظاتٍ (أو تبقى
     // ظاهرة كليًا إن كانت الشبكة بطيئة أو تعذّر تحميل البيانات). إخفاء أقسام
     // الموظفين لا يحتاج أي بيانات، فلا سبب لتأجيله.
-    if (isReportMode()) {
+    // =====================================================================
+    // اختيار الوضع — لا يعتمد على الرابط وحده
+    // ---------------------------------------------------------------------
+    // على الهاتف (iOS خاصةً) يحفظ التطبيق المثبَّت رابط الفتح لحظة التثبيت
+    // و**يُسقط منه الـquery**. فكان تطبيق المديرين يُفتح على `index.html` بلا
+    // علامة، فتظهر شاشة الموظفين — وهي المشكلة التي تكرّرت ثلاث مرات.
+    // على الكمبيوتر لم تظهر أبدًا لأن كروم يحفظ الرابط كاملًا.
+    //
+    // الحل: التطبيق **يتذكّر** أنه تطبيق المديرين في localStorage، فلا يحتاج
+    // العلامة في المرات التالية.
+    //
+    // ولماذا لا يسرّب هذا الوضع إلى تطبيق الموظفين؟
+    //   • على iOS لكل تطبيق مثبَّت مخزنه المعزول، فلا يرى أحدهما علامة الآخر.
+    //   • وعلى أندرويد يتشاركان المخزن، فأُعطي تطبيق الموظفين علامته الصريحة
+    //     `?app=staff` التي **تمحو** التذكُّر عند كل فتح — فيعود لوضعه الصحيح.
+    //   • والتذكُّر لا يُكتب ولا يُقرأ إلا في التطبيق المثبَّت، فلا يؤثر على
+    //     فتح الصفحة من المتصفح إطلاقًا.
+    // =====================================================================
+    const PWA_MODE_KEY = 'alsheikha_pwa_mode';
+
+    function isStandaloneApp() {
+        if (navigator.standalone === true) return true;
+        try {
+            return window.matchMedia('(display-mode: standalone)').matches ||
+                   window.matchMedia('(display-mode: fullscreen)').matches ||
+                   window.matchMedia('(display-mode: minimal-ui)').matches;
+        } catch (e) { return false; }
+    }
+    function readMode() {
+        try { return localStorage.getItem(PWA_MODE_KEY) || ''; } catch (e) { return ''; }
+    }
+    function writeMode(v) {
+        try { v ? localStorage.setItem(PWA_MODE_KEY, v) : localStorage.removeItem(PWA_MODE_KEY); }
+        catch (e) { /* الوضع الخاص يمنع الكتابة — لا يُعطّل شيئًا */ }
+    }
+    function isStaffMarked() {
+        try { return new URLSearchParams(location.search).has('app'); }
+        catch (e) { return /[?&]app=/i.test(location.search || ''); }
+    }
+
+    const standalone = isStandaloneApp();
+    if (isStaffMarked()) {
+        // تطبيق الموظفين صرّح عن نفسه — نمحو أي تذكُّر لوضع المديرين.
+        writeMode('');
+    } else if (isReportMode()) {
+        if (standalone) writeMode('report');
         enterReportMode();
-        // شبكة أمان ثانية للتثبيت: هذه الصفحة تربط manifest.json الخاص
-        // بالموظفين، فلو ثبّت المدير التطبيق وهو على هذه الصفحة لحصل على تطبيق
-        // الموظفين. نستبدل الرابط بملف تعريف المديرين حين نكون في وضع التقرير،
-        // فيقرأ المتصفح/النظام الملف الصحيح لحظة "Add to Home Screen".
-        // (الطريق الموصى به يبقى report.html، وهذا احتياط إضافي.)
-        const manifestLink = document.querySelector('link[rel="manifest"]');
-        if (manifestLink) manifestLink.href = './manifest-report.json';
+    } else if (standalone && readMode() === 'report') {
+        // فُتح التطبيق بلا علامة لأن النظام أسقطها — لكنه يتذكّر أنه للمديرين.
+        enterReportMode();
+    } else if (standalone) {
+        // تطبيق مثبَّت بلا علامة وبلا تذكُّر: قد يكون تطبيق مدير ثُبّت قبل هذا
+        // الإصلاح. نُظهر مخرجًا بنقرة واحدة بدل تركه عالقًا حتى يُعيد التثبيت.
+        const hatch = document.getElementById('managerHatch');
+        if (hatch) hatch.style.display = 'block';
     }
 
     authReady.then(() => loadData());

@@ -1,8 +1,9 @@
 {
   "name": "Al Sheikha Attendance",
   "short_name": "Attendance",
+  "id": "./?app=staff",
   "description": "Check-in and check-out, employee requests, and department training guides for Al Sheikha Group staff.",
-  "start_url": "./index.html",
+  "start_url": "./index.html?app=staff",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

@@ -1,6 +1,7 @@
 {
   "name": "Al Sheikha Sales Report",
   "short_name": "Sales Report",
+  "id": "./?app=report",
   "description": "Managers only — submit the daily sales report for your branch and share it on WhatsApp.",
   "start_url": "./report.html",
   "scope": "./",
