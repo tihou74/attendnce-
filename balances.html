@@ -29,7 +29,7 @@
      ============================================================================= -->
 
 <link rel="manifest" href="./manifest-balances.json">
-<meta name="theme-color" content="#0b7285">
+<meta name="theme-color" content="#f5f1e8">
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -39,79 +39,119 @@
 <meta name="robots" content="noindex, nofollow">
 
 <style>
+    /* =========================================================================
+       نفس هوية لوحة الإدارة: خلفية بيج فاتحة وبطاقات كريمية وحدود تان ناعمة.
+       كانت هذه الصفحة كحلية داكنة بفيروزي وأصفر وأخضر وأحمر معًا، فبدت غريبة
+       عن باقي النظام وغير متناسقة. القيم أدناه منسوخة حرفيًا من :root في
+       admin.html حتى تكون الصفحتان عائلة واحدة.
+
+       ضبط الألوان — لون واحد للتمييز فقط:
+         • كل الأرقام بلون النص العادي، لا أخضر ولا أصفر.
+         • الأحمر محجوز للرصيد السالب وحده، لأنه التحذير الحقيقي الوحيد هنا.
+         • الأزرق (--accent) للأزرار وصندوق «الداخل الليلة» فقط.
+       ========================================================================= */
+    :root {
+        --bg: #f5f1e8;
+        --surface: #fffdf8;
+        --surface-2: #f3ede0;
+        --border: #ddd2b8;
+        --text: #3a3226;
+        --text-dim: #7a6f5a;
+        --text-faint: #a89b7f;
+        --accent: #0284c7;
+        --accent-soft: rgba(2, 132, 199, 0.10);
+        --danger: #dc2626;
+        --radius: 14px;
+        --radius-sm: 10px;
+        --shadow-sm: 0 4px 12px -4px rgba(58, 50, 38, 0.12);
+    }
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; min-height: 100%; }
     body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background: #16212b;
-        color: #f1f3f5;
+        background: var(--bg);
+        color: var(--text);
         padding: 20px 16px calc(28px + env(safe-area-inset-bottom));
         padding-top: calc(20px + env(safe-area-inset-top));
     }
-    .wrap { max-width: 720px; margin: 0 auto; }
+    .wrap { max-width: 760px; margin: 0 auto; }
     header { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
     header img { width: 46px; height: 46px; border-radius: 11px; }
     header h1 { font-size: 17px; font-weight: 800; margin: 0; }
-    header p { font-size: 12px; color: #8b96a3; margin: 3px 0 0; }
+    header p { font-size: 12px; color: var(--text-dim); margin: 3px 0 0; }
 
     .panel {
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.11);
-        border-radius: 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
         padding: 20px;
+        box-shadow: var(--shadow-sm);
     }
-    label { display: block; font-size: 12px; font-weight: 700; color: #adb5bd; margin-bottom: 6px; }
+    label { display: block; font-size: 12px; font-weight: 700; color: var(--text-dim); margin-bottom: 6px; }
     input {
         width: 100%; padding: 13px 14px; font-size: 15px;
-        background: #1f2c38; color: #f1f3f5;
-        border: 1px solid rgba(255,255,255,0.14); border-radius: 10px;
+        background: #fff; color: var(--text);
+        border: 1px solid var(--border); border-radius: var(--radius-sm);
         margin-bottom: 14px;
     }
+    input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
     button {
         width: 100%; padding: 14px; font-size: 15.5px; font-weight: 700;
-        background: #0b7285; color: #fff; border: 0; border-radius: 10px; cursor: pointer;
+        background: var(--accent); color: #fff; border: 0;
+        border-radius: var(--radius-sm); cursor: pointer;
     }
     button:active { transform: scale(0.99); }
-    button.ghost { background: rgba(255,255,255,0.08); }
+    button.ghost { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
 
     .cards { display: grid; gap: 14px; grid-template-columns: 1fr; }
-    @media (min-width: 620px) { .cards { grid-template-columns: 1fr 1fr 1fr; } }
+    @media (min-width: 640px) { .cards { grid-template-columns: 1fr 1fr 1fr; } }
     .card {
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.11);
-        border-radius: 14px; padding: 18px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 18px;
+        box-shadow: var(--shadow-sm);
     }
-    .card h2 { font-size: 11.5px; letter-spacing: .6px; text-transform: uppercase; color: #8b96a3; margin: 0 0 4px; font-weight: 800; }
-    .card .ar { font-size: 12px; color: #7d8894; margin: 0 0 12px; }
-    .card .amt { font-size: 25px; font-weight: 800; margin: 0; line-height: 1.25; }
-    .card .cur { font-size: 13px; font-weight: 700; color: #8b96a3; margin-left: 4px; }
-    .card .meta { font-size: 11.5px; color: #7d8894; margin: 10px 0 0; line-height: 1.7; }
-    .pos { color: #51cf66; }
-    .neg { color: #ff6b6b; }
+    .card h2 { font-size: 11px; letter-spacing: .6px; text-transform: uppercase; color: var(--text-dim); margin: 0 0 4px; font-weight: 800; }
+    .card .ar { font-size: 12px; color: var(--text-faint); margin: 0 0 12px; }
+    .card .amt { font-size: 25px; font-weight: 800; margin: 0; line-height: 1.25; color: var(--text); }
+    .card .cur { font-size: 13px; font-weight: 700; color: var(--text-faint); margin-left: 4px; }
+    .card .meta { font-size: 11.5px; color: var(--text-dim); margin: 10px 0 0; line-height: 1.7; }
+    /* الأرقام كلها بلون النص؛ الأحمر للسالب فقط */
+    .pos { color: var(--text); }
+    .neg { color: var(--danger); }
 
-    .total { margin-top: 16px; padding: 16px 18px; background: rgba(11,114,133,0.18); border: 1px solid rgba(11,114,133,0.5); border-radius: 12px; }
-    .total .k { font-size: 12px; color: #9aa5b1; margin: 0 0 4px; }
-    .total .v { font-size: 20px; font-weight: 800; margin: 0; }
-    .tonight { margin-top: 16px; padding: 16px 18px; background: rgba(255,212,121,0.10); border: 1px solid rgba(255,212,121,0.45); border-radius: 12px; }
-    .tonight .k { font-size: 12px; color: #ffd479; margin: 0 0 4px; font-weight: 700; }
-    .tonight .v { font-size: 20px; font-weight: 800; margin: 0; color: #ffd479; }
-    .tonight .k2 { font-size: 11.5px; color: #c9b382; margin: 8px 0 0; line-height: 1.7; }
+    .total {
+        margin-top: 16px; padding: 16px 18px;
+        background: var(--surface-2); border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+    }
+    .total .k { font-size: 12px; color: var(--text-dim); margin: 0 0 4px; font-weight: 700; }
+    .total .v { font-size: 20px; font-weight: 800; margin: 0; color: var(--text); }
+
+    .tonight {
+        margin-top: 16px; padding: 16px 18px;
+        background: var(--accent-soft); border: 1px solid var(--accent);
+        border-radius: var(--radius-sm);
+    }
+    .tonight .k { font-size: 12px; color: var(--accent); margin: 0 0 4px; font-weight: 800; }
+    .tonight .v { font-size: 20px; font-weight: 800; margin: 0; color: var(--accent); }
+    .tonight .k2 { font-size: 11.5px; color: var(--text-dim); margin: 8px 0 0; line-height: 1.7; }
 
     .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 18px; }
     .bar button { width: auto; padding: 11px 16px; font-size: 13.5px; }
-    .stamp { font-size: 12px; color: #8b96a3; margin: 14px 0 0; line-height: 1.7; }
-    .err { color: #ff8787; font-size: 13px; font-weight: 700; margin: 0 0 12px; min-height: 18px; }
-    .note { font-size: 11.5px; color: #7d8894; line-height: 1.75; margin: 18px 0 0; }
+    .stamp { font-size: 12px; color: var(--text-dim); margin: 14px 0 0; line-height: 1.7; }
+    .err { color: var(--danger); font-size: 13px; font-weight: 700; margin: 0 0 12px; min-height: 18px; }
+    .note { font-size: 11.5px; color: var(--text-dim); line-height: 1.75; margin: 18px 0 0; }
     .install {
         margin-top: 22px;
-        background: rgba(255,255,255,0.06);
-        border: 1px solid rgba(255,255,255,0.12);
-        border-radius: 12px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
         padding: 16px 18px;
         text-align: left;
     }
-    .install h2 { font-size: 13.5px; margin: 0 0 10px; color: #ffd479; font-weight: 800; }
-    .install ol { margin: 0; padding-left: 20px; font-size: 13px; color: #ced4da; line-height: 1.85; }
+    .install h2 { font-size: 13.5px; margin: 0 0 10px; color: var(--accent); font-weight: 800; }
+    .install ol { margin: 0; padding-left: 20px; font-size: 13px; color: var(--text); line-height: 1.85; }
     .install .note { margin: 10px 0 0; }
     .hidden { display: none !important; }
 </style>
