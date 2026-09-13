@@ -932,7 +932,7 @@
         <!-- مقارنة الفروع — تظهر فقط عند اختيار «كل الفروع» -->
         <div class="card" id="finPerBranchCard" style="display: none;">
             <h3><span data-icon="users"></span> Branch by Branch</h3>
-            <p class="card-sub">Each branch on its own line, so you can compare them side by side while still seeing the combined total above.</p>
+            <p class="card-sub">Each branch on its own line, so you can compare them side by side while still seeing the combined total above. Shared company costs (staff housing, office rent, company representative, Visa settlement) are allocated across the branches: <b>Gaimer W Kahi West Walk 40%</b>, and <b>20%</b> each for Old Mina Port, Shai Bu Hamad West Walk and Gulf Mall — so the four lines add up to the company total.</p>
             <div class="table-container">
                 <table>
                     <thead>
@@ -3267,10 +3267,48 @@
     ];
     const DEFAULT_DELIVERY_COMMISSION_PCT = 21.5;
     const DEFAULT_CARD_FEE_PCT = 1.5;
-    // مصروفات مشتركة لا تتبع فرعًا واحدًا (سكن الموظفين، المكتب، مندوب الشركة).
-    // تظهر في الوضع المجمّع فقط، وتُستثنى من تقرير أي فرع منفرد — فتحميل فرع
-    // واحد بمصروف الشركة كله يشوّه ربحية ذلك الفرع.
+    // مصروفات مشتركة لا تتبع فرعًا واحدًا (سكن الموظفين، المكتب، مندوب الشركة،
+    // سيتلمنت الفيزا).
     const FINANCE_COMPANY = 'COMPANY (shared)';
+
+    // توزيع المصروف المشترك على الفروع — نسب معتمدة من الإدارة.
+    // وست ووك (قيمر) أكبر فرع فيحمل 40%، وكل فرع من الثلاثة الباقية 20%.
+    //
+    // المجموع 100% بالضبط، وهذا شرط ضروري: في الوضع المجمّع يُحتسب المصروف
+    // المشترك بكامله مرة واحدة، فلو لم تكن النسب 100% لما تساوى مجموع الفروع
+    // الأربعة مع إجمالي الشركة، ولظهر فرق لا تفسير له.
+    const FINANCE_SHARED_ALLOCATION = {
+        'GAIMER W KAHI WEST WALK': 40,
+        'GAIMER W KAHI OLD MINA PORT': 20,
+        'SHAI BU HAMAD WEST WALK': 20,
+        'SHAI BU HAMAD GULF MALL': 20
+    };
+
+    // حارس تطوير: يكشف فورًا أي تعديل مستقبلي على النسب يُخرج المجموع عن 100%.
+    (() => {
+        const t = Object.values(FINANCE_SHARED_ALLOCATION).reduce((a, b) => a + b, 0);
+        if (Math.abs(t - 100) > 0.001) {
+            console.error(`FINANCE_SHARED_ALLOCATION must total 100% — it totals ${t}%. ` +
+                `Branch profits will not reconcile with the company total until this is fixed.`);
+        }
+    })();
+
+    /** بنود المصروف المشترك لشهر معيّن، ونصيب الفرع منها بحسب نسبته. */
+    function financeSharedAllocation(month, branch) {
+        const pct = branch ? (FINANCE_SHARED_ALLOCATION[branch] || 0) : 0;
+        if (!pct) return { pct: 0, fixed: [], variable: [], fixedTotal: 0, variableTotal: 0, total: 0 };
+        const items = allFinancialPayments.filter(p => p.month === month && p.branch === FINANCE_COMPANY);
+        const decorate = (p) => {
+            const full = paymentEffectiveAmount(p, month).total;
+            return { ...p, __sharedFull: full, __sharedPct: pct, __sharedAmount: full * pct / 100 };
+        };
+        const fixed = items.filter(p => p.type === 'fixed').map(decorate);
+        const variable = items.filter(p => p.type !== 'fixed').map(decorate);
+        const sumShare = (arr) => arr.reduce((s, p) => s + p.__sharedAmount, 0);
+        const fixedTotal = sumShare(fixed);
+        const variableTotal = sumShare(variable);
+        return { pct, fixed, variable, fixedTotal, variableTotal, total: fixedTotal + variableTotal };
+    }
 
     // البنود الثابتة المعتمدة من الإدارة، تُضاف بضغطة زر بدل كتابتها كل شهر.
     // salesPercent           = نسبة من إجمالي مبيعات الفرع تُضاف على الإيجار.
@@ -3515,13 +3553,19 @@
         const variableManual = manual.filter(p => p.type !== 'fixed');
         // المبلغ الفعلي لا المُدخَل: بنود الإيجار المرتبطة بنسبة مبيعات يزيد
         // مبلغها بحسب مبيعات الشهر (انظر paymentEffectiveAmount).
-        const fixedManualTotal = fixedManual.reduce((s, p) => s + paymentEffectiveAmount(p, month).total, 0);
-        const variableTotal = variableManual.reduce((s, p) => s + paymentEffectiveAmount(p, month).total, 0);
+        // نصيب هذا الفرع من المصروف المشترك (40% لوست ووك و20% لكل فرع آخر).
+        // في الوضع المجمّع تكون النسبة صفرًا لأن بنود COMPANY (shared) تكون قد
+        // دخلت أصلًا في manual بكاملها — فلا تُحتسب مرتين.
+        const shared = financeSharedAllocation(month, branch);
+        const fixedManualTotal = fixedManual.reduce((s, p) => s + paymentEffectiveAmount(p, month).total, 0)
+            + shared.fixedTotal;
+        const variableTotal = variableManual.reduce((s, p) => s + paymentEffectiveAmount(p, month).total, 0)
+            + shared.variableTotal;
         // الرواتب بند ثابت يُحتسب تلقائيًا ولا يُخزَّن في financial_payments.
         const fixedTotal = fixedManualTotal + payroll.total;
         const totalPayments = fixedTotal + variableTotal;
         return {
-            sales, payroll, fixedManual, variableManual,
+            sales, payroll, fixedManual, variableManual, shared,
             fixedManualTotal, variableTotal, fixedTotal, totalPayments,
             netProfit: sales.netRevenue - totalPayments,
             labourPct: sales.grossTotal > 0 ? (payroll.total / sales.grossTotal * 100) : 0
@@ -3599,6 +3643,19 @@
             </tr>`;
         };
 
+        // نصيب الفرع من المصروف المشترك — سطر للقراءة فقط بلا زر حذف: البند
+        // الأصلي واحد ويُحذف من الوضع المجمّع، لا من نصيب فرع منه.
+        const sharedRow = (p) => `
+            <tr style="background: var(--surface-2);">
+                <td><b>${escapeHtml(p.name || '-')}</b>
+                    <div style="font-size: 11.5px; color: var(--text-dim); margin-top: 3px;">${p.__sharedPct}% share of ${money(p.__sharedFull)}</div>
+                </td>
+                <td>${escapeHtml(FINANCE_COMPANY)}<br><small style="color: var(--text-dim);">allocated to this branch</small></td>
+                <td class="money-col"><b>${money(p.__sharedAmount)}</b></td>
+                <td style="color: var(--text-dim); font-size: 12.5px;">${escapeHtml(p.note || '—')}</td>
+                <td><span style="color: var(--text-faint); font-size: 11px;">${p.__sharedPct}%</span></td>
+            </tr>`;
+
         // الرواتب أسطر تلقائية غير قابلة للحذف — مصدرها محرك الرواتب.
         // بطلب الإدارة تُعرض مفصولة إلى ثلاثة أسطر ثم مجموعها، بدل رقم واحد
         // يخلط الراتب بالبونيس بالخصم: السطر الأول ثابت لا يتحرك إلا بإضافة
@@ -3633,9 +3690,10 @@
                 <td></td>
             </tr>`;
 
+        const fixedRowsHtml = s.fixedManual.map(payRow).join('') + s.shared.fixed.map(sharedRow).join('');
         document.getElementById('finFixedTableBody').innerHTML =
-            payrollRow + (s.fixedManual.length ? s.fixedManual.map(payRow).join('')
-                : `<tr><td colspan="5" style="text-align:center; color: var(--text-faint);">No other fixed payments added for this month.</td></tr>`);
+            payrollRow + (fixedRowsHtml
+                || `<tr><td colspan="5" style="text-align:center; color: var(--text-faint);">No other fixed payments added for this month.</td></tr>`);
         document.getElementById('finFixedTableFoot').innerHTML = `
             <tr style="background: var(--surface-2); font-weight: 800;">
                 <td colspan="2">TOTAL FIXED</td>
@@ -3643,9 +3701,9 @@
                 <td colspan="2"></td>
             </tr>`;
 
-        document.getElementById('finVariableTableBody').innerHTML = s.variableManual.length
-            ? s.variableManual.map(payRow).join('')
-            : `<tr><td colspan="5" style="text-align:center; color: var(--text-faint);">No variable payments added for this month.</td></tr>`;
+        const variableRowsHtml = s.variableManual.map(payRow).join('') + s.shared.variable.map(sharedRow).join('');
+        document.getElementById('finVariableTableBody').innerHTML = variableRowsHtml
+            || `<tr><td colspan="5" style="text-align:center; color: var(--text-faint);">No variable payments added for this month.</td></tr>`;
         document.getElementById('finVariableTableFoot').innerHTML = `
             <tr style="background: var(--surface-2); font-weight: 800;">
                 <td colspan="2">TOTAL VARIABLE</td>
@@ -3697,12 +3755,27 @@
                 <td>${s.sales.grossTotal > 0 ? s.labourPct.toFixed(1) + '%' : '—'}</td>
             </tr>`).join('');
 
-        // المجموع هنا هو مجموع الفروع الأربعة فقط، وقد يختلف عن الإجمالي أعلاه
-        // الذي يشمل المكتب الرئيسي — نوضّح ذلك بصراحة في السطر.
+        // المصروف المشترك يُوزَّع الآن على الفروع بنسبة 100% مجتمعة، فمجموع
+        // الفروع الأربعة يجب أن يطابق إجمالي الشركة. وإن بقي فرق فسببه الوحيد
+        // موظف أو بند مدفوع مسجَّل على فرع غير الفروع الأربعة — نُظهره صريحًا
+        // بدل أن يبدو خطأً في الحساب.
         const sum = (f) => rows.reduce((t, r) => t + f(r.s), 0);
+        const company = financeSummary(month, '');
+        const profitDiff = company.netProfit - sum(s => s.netProfit);
+        const unassigned = allEmployees.filter(e =>
+            !FINANCE_BRANCHES.includes(e.branch) && e.branch !== FINANCE_COMPANY).length;
+
+        const diffRow = Math.abs(profitDiff) < 0.01 ? '' : `
+            <tr style="background: var(--surface-1);">
+                <td colspan="8" style="color: var(--danger); font-size: 12.5px; font-weight: 700;">
+                    Difference vs company total: ${money(profitDiff)} QAR.
+                    ${unassigned ? `${unassigned} employee(s) are on a branch that is not one of the four above, so their salary is in the company total but in no branch line. Fix their branch on the Employees tab.` : 'Check for a payment recorded on a branch outside the four above.'}
+                </td>
+            </tr>`;
+
         document.getElementById('finPerBranchFoot').innerHTML = `
             <tr style="background: var(--surface-2); font-weight: 800;">
-                <td>TOTAL (4 branches only)</td>
+                <td>TOTAL (4 branches, shared costs allocated)</td>
                 <td class="money-col">${money(sum(s => s.sales.cash))}</td>
                 <td class="money-col">${money(sum(s => s.sales.cardNet))}</td>
                 <td class="money-col">${money(sum(s => s.sales.deliveryNet))}</td>
@@ -3710,7 +3783,7 @@
                 <td class="money-col" style="color: var(--danger);">-${money(sum(s => s.totalPayments))}</td>
                 <td class="money-col">${money(sum(s => s.netProfit))}</td>
                 <td>—</td>
-            </tr>`;
+            </tr>${diffRow}`;
     }
 
     window.addFinancialPayment = async function() {
@@ -3904,10 +3977,12 @@
             // بحسب مبيعات الشهر، وكان التصدير يكتب المبلغ الأساسي فقط فيظهر
             // إيجار وست ووك وميناء الدوحة أقل من الحقيقة في ملف Excel.
             ...s.fixedManual.map(p => r(p.name || '-', '', '', paymentEffectiveAmount(p, month).total, '')),
+            ...s.shared.fixed.map(p => r(`${p.name || '-'} — ${p.__sharedPct}% share of COMPANY (shared)`, '', '', p.__sharedAmount, '')),
             r('Total fixed', '', '', s.fixedTotal, ''),
             r('', '', '', '', ''),
             r('VARIABLE PAYMENTS', '', '', '', ''),
             ...s.variableManual.map(p => r(p.name || '-', '', '', paymentEffectiveAmount(p, month).total, '')),
+            ...s.shared.variable.map(p => r(`${p.name || '-'} — ${p.__sharedPct}% share of COMPANY (shared)`, '', '', p.__sharedAmount, '')),
             r('Total variable', '', '', s.variableTotal, ''),
             r('', '', '', '', ''),
             r('NET PROFIT', '', '', s.totalPayments, s.netProfit),
