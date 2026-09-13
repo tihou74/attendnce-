@@ -623,10 +623,13 @@
                 <b id="reportMenuName"></b><br>
                 <span style="color: #6c757d; font-weight: 700; font-size: 12.5px;">What would you like to do?</span>
             </p>
+            <!-- الأزرار الثلاثة بلون واحد هو لون الإجراء الأساسي في الصفحة
+                 (btn-submit). كانت بثلاثة ألوان مختلفة فبدت مبعثرة، والألوان
+                 لم تكن تحمل أي معنى — التمييز بالنص لا باللون. -->
             <div class="btn-group" style="flex-direction: column; gap: 10px;">
-                <button class="action-btn btn-in" style="min-height: 52px;" onclick="chooseReportTask('sales')">&#128202; Daily Sales Report</button>
-                <button class="action-btn" style="background-color: #0b7285; min-height: 52px;" onclick="chooseReportTask('petty')">&#128176; Petty Cash Request</button>
-                <button class="action-btn" style="background-color: #b45309; min-height: 52px;" onclick="chooseReportTask('warn')">&#9888;&#65039; Warning Letter Request</button>
+                <button class="action-btn btn-submit" onclick="chooseReportTask('sales')">Daily Sales Report</button>
+                <button class="action-btn btn-submit" onclick="chooseReportTask('petty')">Petty Cash Request</button>
+                <button class="action-btn btn-submit" onclick="chooseReportTask('warn')">Warning Letter Request</button>
             </div>
             <button class="action-btn" style="background-color: #6c757d; margin-top: 14px;" onclick="reportBackToLogin()">&#11013; Sign out</button>
         </div>
