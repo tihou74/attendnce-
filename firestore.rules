@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v5   (2026-09-13)  <<<
+//   >>>  RULES REVISION: v6   (2026-09-13)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,11 +12,13 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       financial_payments
+//       financial_months
 //
-//   FOUND     -> v5 is live. Good.
+//   FOUND     -> v6 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
+//                (Searching for an older marker such as financial_payments is
+//                 not enough — always search for the newest collection added.)
 //
 // A missing collection shows up in the dashboard as:
 //       "Error: Missing or insufficient permissions."
@@ -31,6 +33,7 @@ rules_version = '2';
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
 //
+//   v6  2026-09-13  + financial_months     (Close month / frozen snapshot)
 //   v5  2026-09-13  + financial_payments   (Monthly Financial Report tab)
 //   --  (unlabelled, still said v4)  + sales_reports  (Daily Sales Report)
 //   v4  initial     + training_content, training_acknowledgments,
@@ -188,6 +191,15 @@ service cloud.firestore {
       allow read: if isAdmin() || isKiosk();
       allow create: if isKiosk() || isAdmin();
       allow update, delete: if false;
+    }
+
+    // ---- financial_months (one doc per closed month, id = 'YYYY-MM') --------
+    // Holds the frozen snapshot of a month's financial figures once management
+    // closes it, so a past month can never be silently recalculated by a later
+    // salary edit or employee deletion. Admin-only in both directions: the
+    // kiosk has no reason to read or write an accounting record.
+    match /financial_months/{monthId} {
+      allow read, write: if isAdmin();
     }
 
     // ---- financial_payments (the fixed/variable payment lines that feed the

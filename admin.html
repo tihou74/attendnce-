@@ -882,8 +882,20 @@
                 <div style="width: 150px;"><label for="finCardRate">Card / Bank %</label><input type="number" id="finCardRate" step="0.1" min="0" max="100" onchange="saveFinancialRates()"></div>
                 <button class="btn-ghost" onclick="loadFinancialReportData()"><span data-icon="refresh"></span> Refresh</button>
                 <button class="btn-success" onclick="exportFinancialReportExcel()"><span data-icon="download"></span> Export Excel</button>
+                <button class="btn-success" onclick="exportFinancialReportPdf()"><span data-icon="download"></span> Export PDF</button>
+                <a id="finWhatsAppLink" class="btn-accent" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;"><span data-icon="plane"></span> Send summary on WhatsApp</a>
             </div>
             <p class="card-sub" style="margin: 10px 0 0;" id="finRatesNote"></p>
+            <p class="card-sub" style="margin: 6px 0 0;" id="finWhatsAppFallback"></p>
+
+            <!-- إغلاق الشهر: يجمّد أرقامه فلا تتغيّر لاحقًا بتعديل راتب أو حذف موظف -->
+            <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+                <button class="btn-warning" id="btnCloseFinMonth" onclick="closeFinancialMonth()" title="Freeze this month's figures as a permanent record"><span data-icon="check"></span> Close month</button>
+                <button class="btn-danger" id="btnReopenFinMonth" onclick="reopenFinancialMonth()" title="Discard the frozen figures and calculate from live data again" style="display: none;"><span data-icon="refresh"></span> Reopen month</button>
+                <span id="finClosedBadge" style="display: none; font-weight: 800; font-size: 13px; padding: 6px 12px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border);"></span>
+            </div>
+            <div class="status" id="finCloseStatus" style="min-height: 18px; font-size: 13px; font-weight: 700; margin-top: 8px;"></div>
+            <p class="card-sub" style="margin: 6px 0 0;">A closed month is a permanent record: its figures are read from a saved snapshot instead of being recalculated, so editing a salary or removing an employee later can no longer change a month you already approved and paid.</p>
         </div>
 
         <!-- 1) المبيعات مقسّمة على ثلاث بطاقات -->
@@ -986,6 +998,7 @@
                 <button class="btn-accent" onclick="addFinancialPayment()"><span data-icon="check"></span> Add Payment</button>
                 <button class="btn-warning" onclick="seedStandardFixedPayments()" title="Insert the agreed rent cheques, staff housing, office, company representative and Visa settlement for this month"><span data-icon="sync"></span> Add standard fixed payments</button>
                 <button class="btn-ghost" onclick="copyFixedPaymentsFromPreviousMonth()" title="Bring last month's fixed payments into this month so you don't retype them"><span data-icon="sync"></span> Copy fixed from previous month</button>
+                <button class="btn-ghost" onclick="copyVariablePaymentsFromPreviousMonth()" title="Bring last month's variable payment NAMES into this month with amounts starting at zero"><span data-icon="sync"></span> Copy variable names from previous month</button>
             </div>
             <p class="card-sub" style="margin: -8px 0 14px;">
                 <b>% of sales</b> is for the two rent contracts linked to turnover: West Walk pays 12% but only the part above 48,000, and Old Mina Port pays a flat 8% on top of its cheque. Leave both percentage fields empty for every other payment.
@@ -1026,6 +1039,18 @@
                 <div class="stat-box"><div class="stat-icon" data-icon="users"></div><div><h3>Labour Cost % of Sales</h3><p id="finLabourPct">0%</p></div></div>
             </div>
             <p class="card-sub" style="margin: 14px 0 0;" id="finLabourNote"></p>
+
+            <!-- مقارنة بالشهر السابق: الرقم وحده لا يقول شيئًا بلا مرجع -->
+            <h4 style="margin: 22px 0 8px;">Compared with the previous month</h4>
+            <p class="card-sub" style="margin: 0 0 10px;" id="finVsPrevNote"></p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr><th>Figure</th><th class="money-col" id="finVsPrevThis">This month</th><th class="money-col" id="finVsPrevPrev">Previous month</th><th class="money-col">Change</th></tr>
+                    </thead>
+                    <tbody id="finVsPrevBody"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -3350,6 +3375,9 @@
     ];
 
     let allFinancialPayments = [];
+    // الشهور المُغلقة: مفتاحها 'YYYY-MM' وقيمتها مستند financial_months بلقطة
+    // أرقام مجمّدة. انظر closeFinancialMonth() لسبب وجودها.
+    let allFinancialMonths = {};
     let financialRates = {
         deliveryCommissionPercent: DEFAULT_DELIVERY_COMMISSION_PCT,
         cardFeePercent: DEFAULT_CARD_FEE_PCT
@@ -3374,8 +3402,30 @@
         const d = new Date(y, m - 2, 1); // m-1 هو الشهر الحالي بفهرسة JS
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     }
+    function nextMonth(month) {
+        const [y, m] = month.split('-').map(Number);
+        const d = new Date(y, m, 1); // m هو الشهر التالي بفهرسة JS
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
     function money(n) {
         return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function pctChange(now, before) {
+        if (!before) return null; // لا نسبة من صفر
+        return (now - before) / Math.abs(before) * 100;
+    }
+
+    // ---- سياسة تاريخ دفع الرواتب (قرار الإدارة) -----------------------------
+    // الرواتب تُصرف في نهاية الشهر، أي بتاريخ 1 من الشهر التالي، لكنها تُحتسب
+    // على مصروفات الشهر الذي عُمل فيه — لا على الشهر الذي صُرفت فيه. أي رواتب
+    // سبتمبر تظهر في مصروفات سبتمبر مهما كان تاريخ الصرف.
+    //
+    // لا يحتاج هذا أي تغيير في الحساب: computePayroll يُستدعى أصلًا بمدى
+    // الشهر المعروض، فالمصروف في شهره الصحيح. المطلوب فقط إظهار تاريخ الصرف
+    // بوضوح حتى لا يُظن أن الرقم يخص الشهر التالي.
+    const PAYROLL_PAID_ON_DAY = 1;
+    function payrollPaymentDate(month) {
+        return `${nextMonth(month)}-${String(PAYROLL_PAID_ON_DAY).padStart(2, '0')}`;
     }
 
     window.loadFinancialRates = async function() {
@@ -3448,6 +3498,7 @@
         if (!allSalesReports.length) await loadSalesReports();
         await loadFinancialRates();
         await loadFinancialPayments();
+        await loadFinancialMonths();
         renderFinancialReport();
     };
 
@@ -3544,8 +3595,11 @@
         return { base, percentAmount, total: base + percentAmount, gross, raw, threshold };
     }
 
-    /** كل أرقام التقرير لشهر وفرع — يُعاد استخدامها للعرض وللتصدير ولمقارنة الفروع. */
-    function financeSummary(month, branch) {
+    /**
+     * كل أرقام التقرير لشهر وفرع، محسوبة من البيانات الحيّة.
+     * لا تُستدعَ مباشرة من العرض — استخدم financeSummary() التي تحترم إغلاق الشهر.
+     */
+    function financeSummaryLive(month, branch) {
         const sales = financeSalesFor(month, branch);
         const payroll = financePayrollTotal(month, branch);
         const manual = financePaymentsFor(month, branch);
@@ -3571,6 +3625,177 @@
             labourPct: sales.grossTotal > 0 ? (payroll.total / sales.grossTotal * 100) : 0
         };
     }
+
+    // =====================================================================
+    // إغلاق الشهر
+    // ---------------------------------------------------------------------
+    // التقرير يُحسب لحظيًا من الموظفين والحضور والمبيعات. هذا ممتاز للشهر
+    // الجاري، وخطير للشهور المنتهية: لو رُفع راتب موظف أو حُذف موظف بعد شهور،
+    // أعاد التقرير حساب شهر مضى بأرقام مختلفة عمّا اعتُمد ودُفع فعلًا.
+    // الإغلاق يحفظ لقطة أرقام كاملة في financial_months/{YYYY-MM}، وبعدها
+    // يُعرض الشهر من اللقطة لا من الحساب — فيصبح سجلًا ماليًا ثابتًا.
+    // =====================================================================
+    const FINANCE_SNAPSHOT_COMPANY_KEY = '__company__';
+
+    /** يُجرِّد مستند مدفوع من حقول Firestore غير القابلة للتخزين في اللقطة. */
+    function plainPaymentForSnapshot(p) {
+        return {
+            id: p.id || null,
+            name: p.name || '',
+            branch: p.branch || '',
+            type: p.type || 'fixed',
+            amount: Number(p.amount) || 0,
+            note: p.note || '',
+            dayOfMonth: p.dayOfMonth || null,
+            salesPercent: Number(p.salesPercent) || 0,
+            salesPercentThreshold: Number(p.salesPercentThreshold) || 0,
+            // المبلغ الفعلي وقت الإغلاق — إيجارات النسبة من المبيعات لا يمكن
+            // إعادة حسابها لاحقًا لو تغيّرت تقارير المبيعات، فنُثبّتها هنا.
+            effectiveAmount: 0,
+            __sharedFull: p.__sharedFull != null ? Number(p.__sharedFull) : null,
+            __sharedPct: p.__sharedPct != null ? Number(p.__sharedPct) : null,
+            __sharedAmount: p.__sharedAmount != null ? Number(p.__sharedAmount) : null
+        };
+    }
+
+    /** يبني لقطة كاملة للشهر: الشركة + كل فرع على حدة. */
+    function buildFinanceSnapshot(month) {
+        const out = {};
+        ['', ...FINANCE_BRANCHES].forEach(b => {
+            const s = financeSummaryLive(month, b);
+            const withEff = (p) => {
+                const plain = plainPaymentForSnapshot(p);
+                plain.effectiveAmount = paymentEffectiveAmount(p, month).total;
+                return plain;
+            };
+            out[b || FINANCE_SNAPSHOT_COMPANY_KEY] = {
+                sales: { ...s.sales },
+                payroll: { ...s.payroll },
+                fixedManual: s.fixedManual.map(withEff),
+                variableManual: s.variableManual.map(withEff),
+                shared: {
+                    pct: s.shared.pct,
+                    fixed: s.shared.fixed.map(plainPaymentForSnapshot),
+                    variable: s.shared.variable.map(plainPaymentForSnapshot),
+                    fixedTotal: s.shared.fixedTotal,
+                    variableTotal: s.shared.variableTotal,
+                    total: s.shared.total
+                },
+                fixedManualTotal: s.fixedManualTotal,
+                variableTotal: s.variableTotal,
+                fixedTotal: s.fixedTotal,
+                totalPayments: s.totalPayments,
+                netProfit: s.netProfit,
+                labourPct: s.labourPct
+            };
+        });
+        return out;
+    }
+
+    function financeMonthDoc(month) { return allFinancialMonths[month] || null; }
+    function financeMonthIsClosed(month) {
+        const d = financeMonthDoc(month);
+        return !!(d && d.closed);
+    }
+
+    /**
+     * أرقام التقرير المعروضة: من اللقطة إذا كان الشهر مُغلقًا، ومن الحساب الحيّ
+     * إن كان مفتوحًا. كل العرض والتصدير والمقارنة يمرّ من هنا.
+     */
+    function financeSummary(month, branch) {
+        const d = financeMonthDoc(month);
+        if (d && d.closed && d.snapshot) {
+            const snap = d.snapshot[branch || FINANCE_SNAPSHOT_COMPANY_KEY];
+            // لو أُضيف فرع جديد بعد الإغلاق فلن يكون في اللقطة — نعيد الحساب
+            // الحيّ له بدل إظهار أصفار كاذبة.
+            if (snap) return snap;
+        }
+        return financeSummaryLive(month, branch);
+    }
+
+    /** يمنع أي تعديل مالي على شهر مُغلق، ويشرح السبب بدل الفشل الصامت. */
+    function guardFinanceMonthOpen(month, status) {
+        if (!financeMonthIsClosed(month)) return true;
+        const msg = `${month} is closed. Reopen the month before changing its payments.`;
+        if (status) { status.innerText = msg; status.style.color = 'var(--danger)'; }
+        else alert(msg);
+        return false;
+    }
+
+    window.loadFinancialMonths = async function() {
+        try {
+            const snap = await getDocs(collection(db, "financial_months"));
+            allFinancialMonths = {};
+            snap.forEach(d => { allFinancialMonths[d.id] = { id: d.id, ...d.data() }; });
+        } catch (e) {
+            console.error("Error loading closed months:", e);
+            allFinancialMonths = {};
+            const status = document.getElementById('finCloseStatus');
+            if (status) {
+                status.innerText = "Could not check which months are closed: " + e.message;
+                status.style.color = "var(--danger)";
+            }
+        }
+    };
+
+    window.closeFinancialMonth = async function() {
+        const month = currentFinMonth();
+        const status = document.getElementById('finCloseStatus');
+        const show = (m, c) => { if (status) { status.innerText = m; status.style.color = c; } };
+        if (financeMonthIsClosed(month)) { show(`${month} is already closed.`, 'var(--warning)'); return; }
+
+        const s = financeSummaryLive(month, '');
+        if (!confirm(
+            `Close ${month} and freeze its figures?\n\n` +
+            `Net revenue : ${money(s.sales.netRevenue)} QAR\n` +
+            `Payments    : ${money(s.totalPayments)} QAR\n` +
+            `Net profit  : ${money(s.netProfit)} QAR\n\n` +
+            `After closing, these numbers stop changing even if a salary is edited ` +
+            `or an employee is removed later. You can reopen the month if you need to correct it.`
+        )) return;
+
+        show('Closing...', 'var(--warning)');
+        try {
+            await setDoc(doc(db, "financial_months", month), {
+                month,
+                closed: true,
+                closedAt: serverTimestamp(),
+                closedBy: (currentUser && currentUser.email) || 'unknown',
+                deliveryCommissionPercent: financialRates.deliveryCommissionPercent,
+                cardFeePercent: financialRates.cardFeePercent,
+                snapshot: buildFinanceSnapshot(month)
+            });
+            logAudit("Financial Month Closed", `${month} — net profit ${s.netProfit.toFixed(2)} QAR`);
+            await loadFinancialMonths();
+            renderFinancialReport();
+            show(`${month} is closed. Its figures are now frozen.`, 'var(--success)');
+        } catch (e) {
+            show('Error closing the month: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    window.reopenFinancialMonth = async function() {
+        const month = currentFinMonth();
+        const status = document.getElementById('finCloseStatus');
+        const show = (m, c) => { if (status) { status.innerText = m; status.style.color = c; } };
+        if (!financeMonthIsClosed(month)) { show(`${month} is not closed.`, 'var(--warning)'); return; }
+        if (!confirm(
+            `Reopen ${month}?\n\n` +
+            `The frozen figures will be discarded and the report will go back to ` +
+            `calculating from live data, which may produce different numbers than ` +
+            `the ones that were approved. Close the month again when you are done.`
+        )) return;
+        show('Reopening...', 'var(--warning)');
+        try {
+            await deleteDoc(doc(db, "financial_months", month));
+            logAudit("Financial Month Reopened", month);
+            await loadFinancialMonths();
+            renderFinancialReport();
+            show(`${month} is open again. Remember to close it when the corrections are done.`, 'var(--warning)');
+        } catch (e) {
+            show('Error reopening the month: ' + e.message, 'var(--danger)');
+        }
+    };
 
     window.renderFinancialReport = function() {
         const month = currentFinMonth();
@@ -3623,8 +3848,24 @@
             : `No daily sales reports found for ${monthLabel}${branch ? ' — ' + branch : ''}. Ask the branch managers to submit them.`);
 
         // ---- المدفوعات
+        const monthClosed = financeMonthIsClosed(month);
         const payRow = (p) => {
-            const eff = paymentEffectiveAmount(p, month);
+            // في شهر مُغلق نعرض المبلغ المُثبَّت في اللقطة، لا حسابًا جديدًا:
+            // إيجارات النسبة من المبيعات تتغيّر لو عُدِّل تقرير مبيعات قديم.
+            const eff = (monthClosed && p.effectiveAmount != null)
+                ? { base: Number(p.amount) || 0, percentAmount: (Number(p.effectiveAmount) || 0) - (Number(p.amount) || 0),
+                    total: Number(p.effectiveAmount) || 0, gross: 0, raw: 0, threshold: Number(p.salesPercentThreshold) || 0 }
+                : paymentEffectiveAmount(p, month);
+            if (monthClosed) {
+                return `
+            <tr>
+                <td><b>${escapeHtml(p.name || '-')}</b>${eff.percentAmount ? `<div style="font-size: 11.5px; color: var(--text-dim); margin-top: 3px;">${money(eff.base)} + ${money(eff.percentAmount)} from % of sales (frozen)</div>` : ''}</td>
+                <td>${escapeHtml(p.branch || 'All')}${p.dayOfMonth ? `<br><small style="color: var(--text-dim);">day ${escapeHtml(p.dayOfMonth)}</small>` : ''}</td>
+                <td class="money-col"><b>${money(eff.total)}</b></td>
+                <td style="color: var(--text-dim); font-size: 12.5px;">${escapeHtml(p.note || '—')}</td>
+                <td><span style="color: var(--text-faint); font-size: 11px;">locked</span></td>
+            </tr>`;
+            }
             // نُظهر تفصيل النسبة صريحًا حتى يستطيع المالك مراجعة الرقم بنفسه
             // بدل أن يرى مبلغًا واحدًا لا يعرف كيف تكوّن.
             const pctDetail = eff.percentAmount > 0 || Number(p.salesPercent)
@@ -3663,7 +3904,7 @@
         const payrollRow = `
             <tr style="background: var(--accent-soft);">
                 <td><b>Salaries — as registered</b><br><small style="color: var(--text-dim);">${s.payroll.count} employee(s) · fixed figure — changes only when you add, remove or edit an employee</small></td>
-                <td>${escapeHtml(branch || 'All branches')}</td>
+                <td>${escapeHtml(branch || 'All branches')}<br><small style="color: var(--text-dim);">paid ${escapeHtml(payrollPaymentDate(month))}</small></td>
                 <td class="money-col"><b>${money(s.payroll.gross)}</b></td>
                 <td style="color: var(--text-dim); font-size: 12.5px;">Sum of every employee's registered total salary</td>
                 <td><span style="color: var(--text-faint); font-size: 11px;">auto</span></td>
@@ -3686,7 +3927,7 @@
                 <td style="padding-left: 22px;"><b>= Net salaries payable</b><br><small style="color: var(--text-dim);">Salaries + bonus − deductions · this is the amount counted as an expense</small></td>
                 <td></td>
                 <td class="money-col"><b>${money(s.payroll.total)}</b></td>
-                <td style="color: var(--text-dim); font-size: 12.5px;">Same figure the Payroll tab produces</td>
+                <td style="color: var(--text-dim); font-size: 12.5px;">Same figure the Payroll tab produces. Paid on ${escapeHtml(payrollPaymentDate(month))} (day ${PAYROLL_PAID_ON_DAY} of the following month) but counted as an expense of ${escapeHtml(month)}, the month it was earned.</td>
                 <td></td>
             </tr>`;
 
@@ -3733,7 +3974,155 @@
             : 'Labour cost % needs sales figures for this month before it can be calculated.');
 
         renderFinancePerBranch(month, branch);
+        renderFinanceClosedState(month);
+        renderFinanceVsPrevious(month, branch, s);
+        renderFinanceWhatsAppLink(month, branch, s);
     };
+
+    /** شارة الشهر المُغلق وأزراره — ويُخفي أزرار التعديل حتى لا تُضغط عبثًا. */
+    function renderFinanceClosedState(month) {
+        const closed = financeMonthIsClosed(month);
+        const d = financeMonthDoc(month);
+        const badge = document.getElementById('finClosedBadge');
+        const btnClose = document.getElementById('btnCloseFinMonth');
+        const btnReopen = document.getElementById('btnReopenFinMonth');
+
+        if (badge) {
+            badge.style.display = closed ? 'inline-block' : 'none';
+            if (closed) {
+                let when = '';
+                if (d && d.closedAt && typeof d.closedAt.toDate === 'function') {
+                    when = ' on ' + d.closedAt.toDate().toISOString().slice(0, 10);
+                }
+                badge.innerText = `🔒 ${month} CLOSED${when}${d && d.closedBy ? ' by ' + d.closedBy : ''} — figures are frozen`;
+                badge.style.color = 'var(--warning)';
+            }
+        }
+        if (btnClose) btnClose.style.display = closed ? 'none' : 'inline-flex';
+        if (btnReopen) btnReopen.style.display = closed ? 'inline-flex' : 'none';
+
+        // أزرار إضافة/نسخ المدفوعات لا معنى لها في شهر مُغلق.
+        ['finPayName', 'finPayBranch', 'finPayType', 'finPayAmount', 'finPayDay',
+         'finPaySalesPct', 'finPayThreshold', 'finPayNote'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.disabled = closed;
+        });
+    }
+
+    /**
+     * مقارنة بالشهر السابق. الرقم المطلق لا يقول شيئًا بلا مرجع: «الربح 40,000»
+     * تختلف قراءته تمامًا إن كان الشهر الماضي 20,000 أو 80,000.
+     */
+    function renderFinanceVsPrevious(month, branch, s) {
+        const body = document.getElementById('finVsPrevBody');
+        if (!body) return;
+        const prev = previousMonth(month);
+        const p = financeSummary(prev, branch);
+
+        const thisTh = document.getElementById('finVsPrevThis');
+        const prevTh = document.getElementById('finVsPrevPrev');
+        if (thisTh) thisTh.innerText = month;
+        if (prevTh) prevTh.innerText = prev;
+
+        // نسبة العمالة تُقاس بفروق النقاط المئوية لا بنسبة من نسبة.
+        const rows = [
+            { label: 'Gross sales', now: s.sales.grossTotal, before: p.sales.grossTotal, goodWhenUp: true },
+            { label: 'Net revenue', now: s.sales.netRevenue, before: p.sales.netRevenue, goodWhenUp: true },
+            { label: 'Total payments', now: s.totalPayments, before: p.totalPayments, goodWhenUp: false },
+            { label: 'Net salaries payable', now: s.payroll.total, before: p.payroll.total, goodWhenUp: false },
+            { label: 'Net profit', now: s.netProfit, before: p.netProfit, goodWhenUp: true }
+        ];
+
+        body.innerHTML = rows.map(r => {
+            const diff = r.now - r.before;
+            const pct = pctChange(r.now, r.before);
+            const better = r.goodWhenUp ? diff > 0 : diff < 0;
+            const colour = Math.abs(diff) < 0.01 ? 'var(--text-dim)' : (better ? 'var(--success)' : 'var(--danger)');
+            const pctText = pct === null
+                ? (Math.abs(r.now) < 0.01 ? '—' : 'new')
+                : `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`;
+            return `
+            <tr>
+                <td>${escapeHtml(r.label)}</td>
+                <td class="money-col">${money(r.now)}</td>
+                <td class="money-col" style="color: var(--text-dim);">${money(r.before)}</td>
+                <td class="money-col" style="color: ${colour}; font-weight: 700;">${diff > 0 ? '+' : ''}${money(diff)} <span style="font-size: 11.5px;">(${pctText})</span></td>
+            </tr>`;
+        }).join('') + `
+            <tr>
+                <td>Labour cost % of sales</td>
+                <td class="money-col">${s.sales.grossTotal > 0 ? s.labourPct.toFixed(1) + '%' : '—'}</td>
+                <td class="money-col" style="color: var(--text-dim);">${p.sales.grossTotal > 0 ? p.labourPct.toFixed(1) + '%' : '—'}</td>
+                <td class="money-col" style="font-weight: 700; color: ${(s.labourPct - p.labourPct) <= 0 ? 'var(--success)' : 'var(--danger)'};">${(s.labourPct - p.labourPct) > 0 ? '+' : ''}${(s.labourPct - p.labourPct).toFixed(1)} pts</td>
+            </tr>`;
+
+        const note = document.getElementById('finVsPrevNote');
+        if (note) {
+            const hasPrev = p.sales.reports > 0 || p.totalPayments > 0;
+            note.innerText = hasPrev
+                ? `Green means the change is in your favour. "new" means there was nothing recorded for ${prev} to compare against.`
+                : `Nothing was recorded for ${prev}, so there is no real comparison yet — the previous-month column will fill in once you have two months of data.`;
+        }
+    }
+
+    /**
+     * رابط ملخص واتساب. نبني وسم <a> بـ href جاهز ولا نستخدم window.open:
+     * متصفحات الهاتف تحجب النوافذ المنبثقة ولا تحجب الروابط. وعلى الهاتف
+     * نستخدم النظام الأصلي whatsapp:// لأن wa.me يمرّ بصفحة تحويل قد تنتهي
+     * في واتساب الويب. ولا نضع رقمًا حتى تُتاح المجموعات في قائمة المشاركة.
+     */
+    function renderFinanceWhatsAppLink(month, branch, s) {
+        const link = document.getElementById('finWhatsAppLink');
+        if (!link) return;
+        const isPhone = /android|iphone|ipad|ipod|iemobile|blackberry|opera mini|webos/i.test(navigator.userAgent);
+        const text = buildFinanceWhatsAppText(month, branch, s);
+        const encoded = encodeURIComponent(text);
+        const webUrl = `https://wa.me/?text=${encoded}`;
+
+        if (isPhone) {
+            link.href = `whatsapp://send?text=${encoded}`;
+            link.removeAttribute('target'); // مخطط مخصص في تبويب جديد يترك تبويبًا فارغًا
+        } else {
+            link.href = webUrl;
+            link.target = '_blank';
+            link.rel = 'noopener';
+        }
+
+        // على الهاتف: لو لم يكن واتساب مثبَّتًا لا يحدث شيء عند الضغط بلا أي
+        // إشعار، فنترك رابطًا بديلًا ظاهرًا بدل أن يبقى المستخدم حائرًا.
+        const fb = document.getElementById('finWhatsAppFallback');
+        if (fb) {
+            fb.innerHTML = isPhone
+                ? `If nothing happens when you tap the WhatsApp button, use this instead: <a href="${escapeHtml(webUrl)}" target="_blank" rel="noopener">open WhatsApp in the browser</a>.`
+                : '';
+        }
+    }
+
+    function buildFinanceWhatsAppText(month, branch, s) {
+        const L = [];
+        L.push(`*Monthly Financial Report — ${month}*`);
+        L.push(branch ? branch : 'ALL BRANCHES');
+        if (financeMonthIsClosed(month)) L.push('(closed — final figures)');
+        L.push('');
+        L.push(`Cash: ${money(s.sales.cash)}`);
+        L.push(`Card (net): ${money(s.sales.cardNet)}`);
+        L.push(`Delivery (net): ${money(s.sales.deliveryNet)}`);
+        L.push(`*Net revenue: ${money(s.sales.netRevenue)} QAR*`);
+        L.push('');
+        L.push(`Salaries as registered: ${money(s.payroll.gross)}`);
+        L.push(`Bonus & overtime: +${money(s.payroll.bonus)}`);
+        L.push(`Deducted from salaries: -${money(s.payroll.deducted)}`);
+        L.push(`Net salaries payable: ${money(s.payroll.total)}`);
+        L.push(`  (paid ${payrollPaymentDate(month)}, counted in ${month})`);
+        L.push('');
+        L.push(`Fixed payments (incl. salaries): ${money(s.fixedTotal)}`);
+        L.push(`Variable payments: ${money(s.variableTotal)}`);
+        L.push(`*Total payments: ${money(s.totalPayments)} QAR*`);
+        L.push('');
+        L.push(`*NET PROFIT: ${money(s.netProfit)} QAR*`);
+        if (s.sales.grossTotal > 0) L.push(`Labour cost: ${s.labourPct.toFixed(1)}% of sales`);
+        return L.join('\n');
+    }
 
     /** جدول مقارنة الفروع — يظهر فقط في وضع «كل الفروع». */
     function renderFinancePerBranch(month, branch) {
@@ -3801,6 +4190,7 @@
         const status = document.getElementById('finPayStatus');
         const show = (msg, color) => { if (status) { status.innerText = msg; status.style.color = color; } };
 
+        if (!guardFinanceMonthOpen(month, status)) return;
         if (!name) { show('Please enter the payment name.', 'var(--danger)'); return; }
         if (!isFinite(amount) || amount < 0) { show('Please enter a valid amount.', 'var(--danger)'); return; }
 
@@ -3845,6 +4235,7 @@
         const month = currentFinMonth();
         const status = document.getElementById('finPayStatus');
         const show = (msg, color) => { if (status) { status.innerText = msg; status.style.color = color; } };
+        if (!guardFinanceMonthOpen(month, status)) return;
 
         const existing = new Set(
             allFinancialPayments
@@ -3888,6 +4279,9 @@
 
     window.deleteFinancialPayment = async function(paymentId) {
         const p = allFinancialPayments.find(x => x.id === paymentId);
+        // يُمنع الحذف من شهر مُغلق حتى لا تُخالف اللقطة المجمّدة ما في السجل.
+        if (!guardFinanceMonthOpen((p && p.month) || currentFinMonth(),
+            document.getElementById('finPayStatus'))) return;
         if (!confirm(`Delete this payment?\n${p ? p.name + ' — ' + money(p.amount) + ' QAR' : ''}`)) return;
         try {
             await deleteDoc(doc(db, "financial_payments", paymentId));
@@ -3899,6 +4293,55 @@
         }
     };
 
+    // البنود المتغيرة (كهرباء، ماء وغاز، إنترنت، تعبئة، صيانة…) تتكرر بأسمائها
+    // كل شهر وتختلف مبالغها. ننسخ الأسماء فقط ونبدأ المبلغ من صفر عن قصد:
+    // نقل مبلغ الشهر الماضي كما هو يزرع رقمًا خاطئًا في تقرير مالي، وهو أسوأ من
+    // خانة فارغة يراها المستخدم فيملؤها.
+    window.copyVariablePaymentsFromPreviousMonth = async function() {
+        const month = currentFinMonth();
+        const branch = currentFinBranch();
+        const status = document.getElementById('finPayStatus');
+        const show = (msg, color) => { if (status) { status.innerText = msg; status.style.color = color; } };
+        if (!guardFinanceMonthOpen(month, status)) return;
+
+        const prev = previousMonth(month);
+        const source = allFinancialPayments.filter(p =>
+            p.month === prev && p.type !== 'fixed' && (!branch || p.branch === branch));
+        if (!source.length) { show(`No variable payments found for ${prev}.`, 'var(--warning)'); return; }
+
+        const existing = new Set(
+            allFinancialPayments
+                .filter(p => p.month === month && p.type !== 'fixed')
+                .map(p => `${p.branch}|${(p.name || '').trim().toLowerCase()}`)
+        );
+        const toCopy = source.filter(p => !existing.has(`${p.branch}|${(p.name || '').trim().toLowerCase()}`));
+        if (!toCopy.length) { show(`All variable payments from ${prev} are already in ${month}.`, 'var(--warning)'); return; }
+        if (!confirm(
+            `Bring ${toCopy.length} variable payment name(s) from ${prev} into ${month}?\n\n` +
+            `Only the NAMES are copied — every amount starts at 0.00 so you type this ` +
+            `month's real figure. Last month's amount is never carried over.`
+        )) return;
+
+        show('Copying names...', 'var(--warning)');
+        try {
+            for (const p of toCopy) {
+                await addDoc(collection(db, "financial_payments"), {
+                    month, branch: p.branch, name: p.name, type: 'variable',
+                    amount: 0, note: p.note || '',
+                    dayOfMonth: p.dayOfMonth || null,
+                    salesPercent: 0, salesPercentThreshold: 0,
+                    createdAt: serverTimestamp()
+                });
+            }
+            logAudit("Variable Payment Names Copied", `${toCopy.length} name(s) from ${prev} to ${month}, ${branch}`);
+            await loadFinancialPayments();
+            renderFinancialReport();
+            show(`Added ${toCopy.length} variable payment name(s) at 0.00 — now enter this month's amounts.`, 'var(--success)');
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
     // البنود الثابتة تتكرر كل شهر، فبدل إعادة كتابتها 12 مرة نستوردها من الشهر
     // السابق. كل بند يبقى مخزَّنًا بشهره الخاص، فتاريخ الشهور الماضية لا يتغيّر
     // أبدًا عند تعديل مبلغ هذا الشهر.
@@ -3907,6 +4350,7 @@
         const branch = currentFinBranch();
         const status = document.getElementById('finPayStatus');
         const show = (msg, color) => { if (status) { status.innerText = msg; status.style.color = color; } };
+        if (!guardFinanceMonthOpen(month, status)) return;
 
         const prev = previousMonth(month);
         // ينسخ كل الفروع ما لم يكن مُرشِّح التقرير على فرع محدد.
@@ -3942,6 +4386,140 @@
         } catch (e) {
             show('Error: ' + e.message, 'var(--danger)');
         }
+    };
+
+    /**
+     * تصدير PDF للتقرير الشهري.
+     *
+     * مبني بنص jsPDF مباشرة لا بتصوير الشاشة عبر html2canvas مثل تقرير الرواتب:
+     * بطاقة التقرير المالي طويلة وبخلفية داكنة وفيها جداول متعددة، فتصويرها
+     * يُنتج صفحة مقصوصة وغير مقروءة. النص يُنتج ملفًا نظيفًا بأي حجم.
+     * كل الأرقام تأتي من financeSummary نفسها التي تُغذّي الشاشة، فلا يمكن أن
+     * يختلف الـPDF عمّا رآه المستخدم.
+     */
+    window.exportFinancialReportPdf = function() {
+        const month = currentFinMonth();
+        const branch = currentFinBranch();
+        const s = financeSummary(month, branch);
+        const closed = financeMonthIsClosed(month);
+        const dPct = financialRates.deliveryCommissionPercent;
+        const cPct = financialRates.cardFeePercent;
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+        const W = pdf.internal.pageSize.getWidth();
+        const H = pdf.internal.pageSize.getHeight();
+        const M = 14;
+        const RIGHT = W - M;
+        let y = M;
+
+        const room = (need) => { if (y + need > H - M) { pdf.addPage(); y = M; } };
+        const heading = (t) => {
+            room(12); y += 4;
+            pdf.setFont('helvetica', 'bold'); pdf.setFontSize(11); pdf.setTextColor(20, 20, 20);
+            pdf.text(t, M, y); y += 2;
+            pdf.setDrawColor(190); pdf.line(M, y, RIGHT, y); y += 5;
+        };
+        const row = (label, value, opts = {}) => {
+            room(7);
+            pdf.setFont('helvetica', opts.bold ? 'bold' : 'normal');
+            pdf.setFontSize(opts.size || 10);
+            pdf.setTextColor(opts.dim ? 120 : 30);
+            pdf.text(String(label), opts.indent ? M + 5 : M, y);
+            if (value !== undefined && value !== null) {
+                pdf.setTextColor(opts.dim ? 120 : 30);
+                pdf.text(String(value), RIGHT, y, { align: 'right' });
+            }
+            y += opts.gap || 6;
+        };
+        const note = (t) => {
+            room(6);
+            pdf.setFont('helvetica', 'italic'); pdf.setFontSize(8.5); pdf.setTextColor(120);
+            pdf.text(pdf.splitTextToSize(String(t), RIGHT - M), M, y);
+            y += 4.5 * pdf.splitTextToSize(String(t), RIGHT - M).length;
+        };
+
+        // ---- الترويسة
+        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(16); pdf.setTextColor(20);
+        pdf.text('Monthly Financial Report', M, y); y += 7;
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10.5); pdf.setTextColor(80);
+        pdf.text(`${month}  ·  ${branch || 'ALL BRANCHES'}`, M, y); y += 5.5;
+        pdf.text(`Generated ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`, M, y); y += 5.5;
+        if (closed) {
+            pdf.setFont('helvetica', 'bold'); pdf.setTextColor(150, 90, 0);
+            pdf.text('CLOSED — these are the frozen, final figures for this month.', M, y); y += 5.5;
+        } else {
+            pdf.setFont('helvetica', 'italic'); pdf.setTextColor(150, 0, 0);
+            pdf.text('OPEN — figures are still being calculated live and can change.', M, y); y += 5.5;
+        }
+
+        // ---- المبيعات
+        heading('1. SALES & DEDUCTIONS');
+        row('Cash', money(s.sales.cash));
+        row(`Card (bank fee ${cPct}% = -${money(s.sales.cardFee)})`, money(s.sales.cardNet));
+        row(`Delivery (commission ${dPct}% = -${money(s.sales.deliveryFee)})`, money(s.sales.deliveryNet));
+        row('Snoonu / Talabat / Keeta (gross)',
+            `${money(s.sales.snoonu)} / ${money(s.sales.talabat)} / ${money(s.sales.keeta)}`, { dim: true, size: 9 });
+        row('Gross sales', money(s.sales.grossTotal), { bold: true });
+        row('NET REVENUE', money(s.sales.netRevenue) + ' QAR', { bold: true });
+        note(`Based on ${s.sales.reports || 0} daily sales report(s).`);
+
+        // ---- الرواتب
+        heading('2. SALARIES');
+        row(`Salaries as registered (${s.payroll.count} employees)`, money(s.payroll.gross));
+        row('Bonus & overtime', '+' + money(s.payroll.bonus));
+        row('Deducted from salaries', '-' + money(s.payroll.deducted));
+        row('NET SALARIES PAYABLE', money(s.payroll.total) + ' QAR', { bold: true });
+        note(`Paid on ${payrollPaymentDate(month)} (day ${PAYROLL_PAID_ON_DAY} of the following month) but counted as an expense of ${month}, the month it was earned.`);
+
+        // ---- المدفوعات
+        heading('3. FIXED PAYMENTS');
+        s.fixedManual.forEach(p => {
+            const amt = (closed && p.effectiveAmount != null) ? p.effectiveAmount : paymentEffectiveAmount(p, month).total;
+            row(`${p.name || '-'}${p.branch ? ' · ' + p.branch : ''}`, money(amt), { indent: true, size: 9.5 });
+        });
+        s.shared.fixed.forEach(p => {
+            row(`${p.name || '-'} · ${p.__sharedPct}% share of COMPANY (shared)`, money(p.__sharedAmount), { indent: true, size: 9.5 });
+        });
+        row('TOTAL FIXED (incl. salaries)', money(s.fixedTotal) + ' QAR', { bold: true });
+
+        heading('4. VARIABLE PAYMENTS');
+        if (!s.variableManual.length && !s.shared.variable.length) {
+            row('None recorded for this month.', '', { dim: true, size: 9.5, indent: true });
+        }
+        s.variableManual.forEach(p => {
+            const amt = (closed && p.effectiveAmount != null) ? p.effectiveAmount : paymentEffectiveAmount(p, month).total;
+            row(`${p.name || '-'}${p.branch ? ' · ' + p.branch : ''}`, money(amt), { indent: true, size: 9.5 });
+        });
+        s.shared.variable.forEach(p => {
+            row(`${p.name || '-'} · ${p.__sharedPct}% share of COMPANY (shared)`, money(p.__sharedAmount), { indent: true, size: 9.5 });
+        });
+        row('TOTAL VARIABLE', money(s.variableTotal) + ' QAR', { bold: true });
+
+        // ---- النتيجة
+        heading('5. BOTTOM LINE');
+        row('Net revenue', money(s.sales.netRevenue));
+        row('Total payments', '-' + money(s.totalPayments));
+        room(10);
+        pdf.setDrawColor(60); pdf.line(M, y - 3, RIGHT, y - 3);
+        row('NET PROFIT', money(s.netProfit) + ' QAR', { bold: true, size: 13 });
+        row('Labour cost % of sales', s.sales.grossTotal > 0 ? s.labourPct.toFixed(1) + '%' : '—');
+
+        // ---- مقارنة الفروع في الوضع المجمّع
+        if (!branch) {
+            heading('6. BRANCH BY BRANCH');
+            note('Shared company costs are allocated: Gaimer W Kahi West Walk 40%, the other three branches 20% each.');
+            FINANCE_BRANCHES.forEach(b => {
+                const bs = financeSummary(month, b);
+                row(b, `${money(bs.sales.netRevenue)}  -  ${money(bs.totalPayments)}  =  ${money(bs.netProfit)}`,
+                    { indent: true, size: 9 });
+            });
+            note('Columns: net revenue - total payments = net profit.');
+        }
+
+        const safeBranch = branch ? '-' + branch.replace(/\s+/g, '_') : '';
+        pdf.save(`financial-report-${month}${safeBranch}.pdf`);
+        logAudit("Financial Report PDF Exported", `${month}, ${branch || 'all branches'}`);
     };
 
     window.exportFinancialReportExcel = function() {
@@ -5307,7 +5885,11 @@
         // كانت هذه الثلاث غائبة عن النسخة الاحتياطية: التقارير اليومية للمبيعات،
         // وكل أدلة التدريب، وإثباتات قراءة الموظفين لها — وهي بيانات لا تُستعاد
         // إن فُقدت، فأُضيفت هنا.
-        "sales_reports", "training_content", "training_acknowledgments"
+        "sales_reports", "training_content", "training_acknowledgments",
+        // والمالية أيضًا: بنود المدفوعات الثابتة والمتغيرة لكل شهر، ولقطات
+        // الشهور المُغلقة. لقطة شهر مُغلق سجل مالي معتمد لا يمكن إعادة بنائه
+        // بعد تعديل الرواتب، ففقدانها فقدان دائم.
+        "financial_payments", "financial_months"
     ];
     window.exportFullBackup = async function() {
         if (!hasFinanceAccess()) { alert("Only Admins or Accountants can export a full backup."); return; }
