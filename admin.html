@@ -2185,7 +2185,13 @@
         if (!dd) return;
 
         const pendingApps = allApplications.filter(a => (a.status || 'Pending') === 'Pending');
-        const total = allPendingLeaveRequests.length + pendingApps.length;
+        // طلبات المديرين تدخل الجرس أيضًا — بلا هذا كان على المحاسب والسكرتيرة
+        // فتح التبويب وتخمين وجود طلب. القوائم فارغة للأدوار التي لا تقرؤها،
+        // فالعدّ صحيح لكل دور تلقائيًا.
+        const pendingPetty = allPettyRequests.filter(r => r.status === 'pending');
+        const pendingWarnReq = allWarningRequests.filter(r => r.status === 'pending');
+        const total = allPendingLeaveRequests.length + pendingApps.length
+            + pendingPetty.length + pendingWarnReq.length;
 
         if (bellBadge) {
             if (total > 0) { bellBadge.innerText = total; bellBadge.style.display = 'inline-block'; }
@@ -2203,6 +2209,19 @@
             html += `<div class="notif-item" onclick="switchTab('tab-applications'); toggleNotifDropdown();">
                 ${iconSvg('userPlus', 'ic-sm')}
                 <div>New-hire application from <b>${escapeHtml(app.fullName || 'Unknown')}</b> awaiting approval.</div>
+            </div>`;
+        });
+        // الضغط ينقل إلى النافذة التي فيها الطلب فعلًا، لا إلى تبويب عام.
+        pendingPetty.slice(0, 8).forEach(r => {
+            html += `<div class="notif-item" onclick="switchTab('tab-variable'); toggleNotifDropdown();">
+                ${iconSvg('dollar', 'ic-sm')}
+                <div>Petty cash request of <b>${money(r.amount)} QAR</b> from ${escapeHtml(r.managerName || 'a manager')}${r.branch ? ' — ' + escapeHtml(r.branch) : ''}.</div>
+            </div>`;
+        });
+        pendingWarnReq.slice(0, 8).forEach(r => {
+            html += `<div class="notif-item" onclick="switchTab('tab-warnings'); toggleNotifDropdown();">
+                ${iconSvg('alertTriangle', 'ic-sm')}
+                <div>Warning letter requested for <b>${escapeHtml(r.employeeName || r.employeeId || 'an employee')}</b> by ${escapeHtml(r.managerName || 'a manager')}.</div>
             </div>`;
         });
         dd.innerHTML = html || `<div class="notif-empty">${iconSvg('check')}<br>You're all caught up — no pending items.</div>`;
@@ -2294,6 +2313,9 @@
         await loadApplications();
         await loadWarnings();
         await loadAnnualLeaves();
+        // تُحمَّل عند الإقلاع لا عند فتح التبويب فقط، وإلا لم يظهر الجرس حتى
+        // يفتح المستخدم النافذة — وهو عكس الغرض من التنبيه.
+        await loadManagerRequests();
         renderLeaveEligibilityAlerts();
         renderHomeExtraStats();
         renderRecentActivity();
@@ -4653,22 +4675,55 @@
         return `<span style="font-weight: 800; font-size: 11.5px; color: ${colour};">${label}</span>`;
     }
 
+    // خطأ القراءة يجب أن يُرى. القائمة الفارغة تعني «لا طلبات»، والرفض يعني
+    // «القواعد غير منشورة» — وهما شيئان مختلفان تمامًا. إخفاء الثاني وراء
+    // الأول هو ما جعل مشكلة صلاحيات سابقة تبقى بلا تشخيص لوقت طويل.
+    let pettyLoadError = '', warningLoadError = '';
+
     window.loadManagerRequests = async function() {
         // كل قائمة في try خاصّ: المحاسب لا يقرأ طلبات الإنذار والسكرتيرة لا تقرأ
-        // طلبات الكاش، فرفض إحداهما لا يجوز أن يمنع الأخرى.
-        try {
-            const snap = await getDocs(collection(db, "petty_cash_requests"));
-            allPettyRequests = [];
-            snap.forEach(d => allPettyRequests.push({ id: d.id, ...d.data() }));
-        } catch (e) { allPettyRequests = []; }
-        try {
-            const snap = await getDocs(collection(db, "warning_requests"));
-            allWarningRequests = [];
-            snap.forEach(d => allWarningRequests.push({ id: d.id, ...d.data() }));
-        } catch (e) { allWarningRequests = []; }
+        // طلبات الكاش، فرفض إحداهما لا يجوز أن يمنع الأخرى. ولا نُظهر خطأً لدور
+        // لا يملك القراءة أصلًا — فذلك سلوك صحيح لا عطل.
+        const mayReadPetty = (currentRole === ROLE_ADMIN || currentRole === ROLE_ACCOUNTANT);
+        const mayReadWarn = (currentRole === ROLE_ADMIN || currentRole === ROLE_SECRETARY);
+
+        pettyLoadError = ''; warningLoadError = '';
+        if (mayReadPetty) {
+            try {
+                const snap = await getDocs(collection(db, "petty_cash_requests"));
+                allPettyRequests = [];
+                snap.forEach(d => allPettyRequests.push({ id: d.id, ...d.data() }));
+            } catch (e) {
+                console.error("Error loading petty cash requests:", e);
+                allPettyRequests = [];
+                pettyLoadError = e.message;
+            }
+        } else { allPettyRequests = []; }
+
+        if (mayReadWarn) {
+            try {
+                const snap = await getDocs(collection(db, "warning_requests"));
+                allWarningRequests = [];
+                snap.forEach(d => allWarningRequests.push({ id: d.id, ...d.data() }));
+            } catch (e) {
+                console.error("Error loading warning requests:", e);
+                allWarningRequests = [];
+                warningLoadError = e.message;
+            }
+        } else { allWarningRequests = []; }
+
         renderPettyRequests();
         renderWarningRequests();
+        renderNotifDropdown();
     };
+
+    /** رسالة صريحة عند رفض القراءة، تُسمّي السبب الأرجح بدل «لا طلبات». */
+    function requestLoadErrorRow(msg, cols) {
+        return `<tr><td colspan="${cols}" style="color: var(--danger); font-weight: 700; font-size: 12.5px; padding: 14px;">
+            Could not read the requests: ${escapeHtml(msg)}<br>
+            <span style="font-weight: 400;">If this says missing or insufficient permissions, the security rules (v9) have not been published yet — nothing sent by the managers can be read until they are.</span>
+        </td></tr>`;
+    }
 
     window.renderPettyRequests = function() {
         const body = document.getElementById('pettyRequestsBody');
@@ -4678,6 +4733,7 @@
         const badge = document.getElementById('pettyPendingBadge');
         if (badge) { badge.innerText = pending; badge.style.display = pending ? 'inline-block' : 'none'; }
 
+        if (pettyLoadError) { body.innerHTML = requestLoadErrorRow(pettyLoadError, 6); return; }
         body.innerHTML = rows.length ? rows.map(r => `
             <tr>
                 <td>${escapeHtml(reqWhen(r))}</td>
@@ -4700,6 +4756,7 @@
         const badge = document.getElementById('warnReqPendingBadge');
         if (badge) { badge.innerText = pending; badge.style.display = pending ? 'inline-block' : 'none'; }
 
+        if (warningLoadError) { body.innerHTML = requestLoadErrorRow(warningLoadError, 7); return; }
         body.innerHTML = rows.length ? rows.map(r => `
             <tr>
                 <td>${escapeHtml(reqWhen(r))}</td>
