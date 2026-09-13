@@ -309,6 +309,7 @@
                 </button>
                 <div id="notifDropdown" class="notif-dropdown"></div>
             </div>
+            <span id="roleBadge" style="display: none; font-size: 12px; font-weight: 800; padding: 7px 13px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent);"></span>
             <button class="btn-ghost" id="btnThemeToggle" onclick="toggleTheme()" title="Toggle dark/light mode"><span id="icTheme"></span></button>
             <button class="btn-warning" id="btnSyncDb" onclick="syncAllSalariesList()"><span id="icSync"></span> Sync Database</button>
             <button class="btn-ghost" onclick="initDashboard()"><span id="icRefresh"></span> Refresh</button>
@@ -1806,17 +1807,128 @@
         await signOut(auth);
     };
 
-    // Role system removed per request: any user who can successfully sign
-    // in with a valid admin email/password sees and can do everything. The
-    // access control that matters is Firebase Authentication itself (only
-    // accounts you create in Firebase Console > Authentication > Users can
-    // log in at all) plus firestore.rules (any signed-in non-anonymous user
-    // gets full read/write on the app's collections). hasFinanceAccess()
-    // is kept as a no-op returning true so the rest of the code (which
-    // calls it before showing salary fields / PDF export / employee
-    // create-delete) doesn't need to change.
+    // =====================================================================
+    // الأدوار والصلاحيات
+    // ---------------------------------------------------------------------
+    // أُعيد نظام الأدوار بطلب الإدارة بعد أن كان محذوفًا. الفرق الجوهري عن
+    // النسخة القديمة: هذه الخريطة هي **للواجهة فقط** — إخفاء تبويب لا يحمي
+    // شيئًا، فمن يعرف الرابط يستطيع نداء قاعدة البيانات مباشرة. الحماية
+    // الحقيقية في firestore.rules التي تُطابق هذه القائمة نفسها.
+    // أي تعديل هنا يجب أن يُنقل إلى firestore.rules وإلا اختلف ما تراه
+    // الشاشة عمّا يسمح به الخادم.
+    //
+    // قرار الإدارة الصريح: الرواتب **مرئية** للجميع، لكن **تعديلها** للمدير
+    // والمحاسب فقط.
+    // ---------------------------------------------------------------------
+    const ROLE_ADMIN = 'ADMIN';
+    const ROLE_ACCOUNTANT = 'ACCOUNTANT';
+    const ROLE_SECRETARY = 'SECRETARY';
+    const ROLE_SUPERVISOR = 'SUPERVISOR';
+
+    // الإيميل هو المفتاح، ويجب أن يطابق حرفيًا الحساب المُنشأ في
+    // Firebase Console > Authentication > Users. أي إيميل غير مذكور هنا
+    // يُعتبر مديرًا كاملًا — فهذه قائمة تقييد لا قائمة سماح.
+    const ROLE_BY_EMAIL = {
+        'shafiq@alsheikhagroup.qa': ROLE_ACCOUNTANT,            // المحاسب شفيق
+        // السكرتيرة Marieanne — العنوانان مقبولان عن قصد: العنوان الأول هو ما
+        // اعتُمد أولًا، والثاني باسمها. أيّهما أنشأت في Firebase يعمل، فلا يقع
+        // خطأ يجعلها مديرة كاملة بسبب اختلاف العنوان.
+        'secretary@alsheikhagroup.qa': ROLE_SECRETARY,
+        'marieanne@alsheikhagroup.qa': ROLE_SECRETARY,
+        'bilal.abdulsamad@alsheikhagroup.qa': ROLE_SUPERVISOR,  // بلال عبد الصمد
+        'ashraf.alsuhaili@alsheikhagroup.qa': ROLE_SUPERVISOR,  // أشرف السهيلي
+        'vikas@alsheikhagroup.qa': ROLE_SUPERVISOR              // فيكاس
+    };
+
+    // التبويبات المسموحة لكل دور، بالترتيب الذي تظهر به.
+    const TABS_BY_ROLE = {
+        [ROLE_ADMIN]: null, // null = كل التبويبات
+        // المحاسبة والمالية وسجل الحضور. الإجازات السنوية مُدرجة لأنها تُنشئ
+        // خصمًا 21 يومًا وبدلين 750+750 في كشف الرواتب، فلا يمكن للمحاسب
+        // مراجعة راتب دون رؤيتها.
+        [ROLE_ACCOUNTANT]: ['tab-home', 'tab-employees', 'tab-attendance', 'tab-shifts',
+                            'tab-leaves', 'tab-sales', 'tab-finance'],
+        // بروفايلات الموظفين + الإنذارات + طلبات التسجيل الجديدة + الطلبات.
+        [ROLE_SECRETARY]: ['tab-home', 'tab-employees', 'tab-requests',
+                           'tab-applications', 'tab-warnings'],
+        // البروفايل + الحضور + الطلبات + طلبات التسجيل الجديدة.
+        [ROLE_SUPERVISOR]: ['tab-home', 'tab-employees', 'tab-attendance', 'tab-shifts',
+                            'tab-requests', 'tab-applications']
+    };
+
+    let currentRole = ROLE_ADMIN;
+
+    function roleForEmail(email) {
+        return ROLE_BY_EMAIL[String(email || '').trim().toLowerCase()] || ROLE_ADMIN;
+    }
+    function allowedTabs() {
+        const t = TABS_BY_ROLE[currentRole];
+        return t === null ? null : (t || []);
+    }
+    function canSeeTab(tabId) {
+        const t = allowedTabs();
+        return t === null || t.includes(tabId);
+    }
+
+    /** المدير والمحاسب فقط: كشف الرواتب، التقرير المالي، النسخة الاحتياطية،
+     *  إنشاء/حذف موظف، وتعديل حقل الراتب. */
     function hasFinanceAccess() {
-        return true;
+        return currentRole === ROLE_ADMIN || currentRole === ROLE_ACCOUNTANT;
+    }
+    /** من يملك تعديل ملف الموظف (بلا الراتب): المدير والسكرتيرة والمشرفون. */
+    function canEditProfiles() {
+        return currentRole === ROLE_ADMIN || currentRole === ROLE_SECRETARY
+            || currentRole === ROLE_SUPERVISOR || currentRole === ROLE_ACCOUNTANT;
+    }
+    /** إنشاء موظف جديد — تحتاجه السكرتيرة والمشرفون لقبول طلب تسجيل. */
+    function canCreateEmployees() {
+        return currentRole !== ROLE_ACCOUNTANT; // المحاسب يراجع ولا يُنشئ
+    }
+
+    /**
+     * يُطبّق الدور على الشاشة: يخفي التبويبات غير المسموحة، ويجعل خانة الراتب
+     * للقراءة فقط لمن لا يملك تعديلها، ويعرض الدور في الترويسة.
+     * يُنادى بعد تسجيل الدخول وقبل أي شيء آخر.
+     */
+    function applyRoleToUi() {
+        const allowed = allowedTabs();
+
+        document.querySelectorAll('.nav-tab-btn[data-tab]').forEach(btn => {
+            const ok = allowed === null || allowed.includes(btn.dataset.tab);
+            btn.style.display = ok ? '' : 'none';
+        });
+
+        // خانات الراتب: مرئية للجميع بقرار الإدارة، لكن غير قابلة للكتابة إلا
+        // للمدير والمحاسب. القواعد ترفض التغيير على الخادم أيضًا، فهذا لمنع
+        // الإرباك لا للحماية.
+        const salaryEditable = hasFinanceAccess();
+        ['editEmpSalary', 'newEmpSalary'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.readOnly = !salaryEditable;
+            el.title = salaryEditable ? '' : 'Only the owner and the accountant can change a salary.';
+            el.style.opacity = salaryEditable ? '' : '0.65';
+        });
+
+        // شارة الدور في الترويسة حتى يعرف كل مستخدم بأي صفة دخل.
+        const badge = document.getElementById('roleBadge');
+        if (badge) {
+            const label = {
+                [ROLE_ADMIN]: 'Owner — full access',
+                [ROLE_ACCOUNTANT]: 'Accountant — payroll & finance',
+                [ROLE_SECRETARY]: 'Secretary — profiles, warnings & requests',
+                [ROLE_SUPERVISOR]: 'Supervisor — profiles, attendance & requests'
+            }[currentRole] || currentRole;
+            badge.innerText = label;
+            badge.style.display = 'inline-block';
+        }
+
+        // إن كان التبويب المفتوح غير مسموح، ننتقل لأول تبويب مسموح.
+        const activeTab = document.querySelector('.tab-content.active');
+        if (activeTab && !canSeeTab(activeTab.id)) {
+            const first = (allowed && allowed[0]) || 'tab-home';
+            window.switchTab(first);
+        }
     }
 
     onAuthStateChanged(auth, async (user) => {
@@ -1841,10 +1953,15 @@
 
         currentUser = user;
         if (user) {
+            // الدور يُحدَّد من الإيميل قبل عرض أي شيء، حتى لا يلمح المستخدم
+            // تبويبًا ليس من حقه قبل إخفائه.
+            currentRole = roleForEmail(user.email);
             document.getElementById("loginOverlay").style.display = "none";
             document.getElementById("dashboard").style.display = "block";
+            applyRoleToUi();
             initDashboard();
         } else {
+            currentRole = ROLE_ADMIN;
             document.getElementById("dashboard").style.display = "none";
             document.getElementById("loginOverlay").style.display = "flex";
         }
@@ -1853,6 +1970,13 @@
     // ---- Tabs -------------------------------------------------------------
 
     window.switchTab = function(tabId) {
+        // حارس: لا يُفتح تبويب خارج صلاحية الدور مهما كان مصدر النداء (زر مخفي،
+        // أو نداء من الكونسول). الحماية الحقيقية في القواعد، وهذا يمنع شاشة
+        // فارغة مليئة بأخطاء الصلاحيات.
+        if (!canSeeTab(tabId)) {
+            const t = allowedTabs();
+            tabId = (t && t[0]) || 'tab-home';
+        }
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.nav-tab-btn').forEach(el => el.classList.remove('active'));
         document.getElementById(tabId).classList.add('active');
@@ -5425,10 +5549,16 @@
         const branch = document.getElementById("newEmpBranch").value;
         const shift = document.getElementById("newEmpShift").value;
         const housingType = document.getElementById("newEmpHousingType").value; // 'company' or 'external'
-        const salary = Number(document.getElementById("newEmpSalary").value) || 0; // TOTAL salary; Basic is fixed system-wide
+        // الراتب لا يُرسل إلا ممّن يملك تعديله؛ غيره يُنشئ الموظف براتب صفر
+        // ويضبطه المدير أو المحاسب بعد ذلك. القواعد ترفض غير ذلك على الخادم.
+        const salary = hasFinanceAccess()
+            ? (Number(document.getElementById("newEmpSalary").value) || 0) // TOTAL salary; Basic is fixed system-wide
+            : 0;
         const statusEl = document.getElementById("empActionStatus");
 
-        if (!hasFinanceAccess()) { statusEl.innerText = "Only Admins or Accountants can add employees."; statusEl.style.color = "var(--danger)"; return; }
+        // السكرتيرة والمشرفون يحتاجون إنشاء موظف لقبول طلب تسجيل جديد، فالشرط
+        // ليس المالية بل canCreateEmployees. والمحاسب يراجع ولا يُنشئ.
+        if (!canCreateEmployees()) { statusEl.innerText = "The accountant reviews payroll but does not create employees."; statusEl.style.color = "var(--danger)"; return; }
         if (!name) { statusEl.innerText = "Please enter name."; statusEl.style.color = "var(--danger)"; return; }
         if (!/^\d{4,8}$/.test(pin)) { statusEl.innerText = "PIN must be 4-8 digits."; statusEl.style.color = "var(--danger)"; return; }
 
@@ -5461,7 +5591,8 @@
     };
 
     window.deleteEmployee = async function(id) {
-        if (!hasFinanceAccess()) { alert("Only Admins or Accountants can delete employees."); return; }
+        // الحذف نهائي ويأخذ معه سجل الموظف كله، فهو للمالك وحده.
+        if (currentRole !== ROLE_ADMIN) { alert("Only the owner can delete an employee."); return; }
         const emp = allEmployees.find(e => e.id === id);
         const label = emp ? emp.name : id;
         if (confirm(`Delete employee: ${label}? This will also remove their PIN so they can no longer check in/out.`)) {
@@ -5688,6 +5819,7 @@
         const canSubmitSalesReport = document.getElementById("editEmpCanSubmitSalesReport").checked;
         const statusEl = document.getElementById("editProfileStatus");
 
+        if (!canEditProfiles()) { statusEl.innerText = "You do not have permission to edit profiles."; statusEl.style.color = "var(--danger)"; return; }
         if (!name) { statusEl.innerText = "Name cannot be empty."; statusEl.style.color = "var(--danger)"; return; }
         if (pin && !/^\d{4,8}$/.test(pin)) { statusEl.innerText = "PIN must be 4-8 digits."; statusEl.style.color = "var(--danger)"; return; }
 
@@ -6525,7 +6657,9 @@
         "financial_payments", "financial_months"
     ];
     window.exportFullBackup = async function() {
-        if (!hasFinanceAccess()) { alert("Only Admins or Accountants can export a full backup."); return; }
+        // النسخة الاحتياطية تحتوي كل شيء بلا استثناء — رواتب وصور هويات وعقود.
+        // فهي للمالك وحده، لا لمن يملك صلاحية مالية فقط.
+        if (currentRole !== ROLE_ADMIN) { alert("Only the owner can export a full backup."); return; }
         const statusEl = document.getElementById("backupStatus");
         if (statusEl) { statusEl.innerText = "Reading all collections..."; statusEl.style.color = "var(--warning)"; }
         try {

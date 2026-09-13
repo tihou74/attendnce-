@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v7   (2026-09-13)  <<<
+//   >>>  RULES REVISION: v8   (2026-09-13)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,9 +12,9 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       isViewer
+//       isSupervisor
 //
-//   FOUND     -> v7 is live. Good.
+//   FOUND     -> v8 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -33,6 +33,10 @@ rules_version = '2';
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
 //
+//   v8  2026-09-13  + isAccountant/isSecretary/isSupervisor — four levels of
+//                     access to admin.html. isAdmin() now means the OWNER only.
+//                     Salaries stay readable by all four roles by management's
+//                     decision, but only owner+accountant may change one.
 //   v7  2026-09-13  + isViewer()           (balances.html — READ-ONLY viewers,
 //                                          excluded from isAdmin, limited to
 //                                          settings/sales_reports/financial_payments)
@@ -76,6 +80,70 @@ function isRealLogin() {
 }
 
 // -----------------------------------------------------------------------------
+// STAFF ROLES — restricted logins for the admin dashboard.
+// -----------------------------------------------------------------------------
+// Management asked for four levels of access to admin.html. These lists are the
+// ONLY place a role is decided, and they must stay identical to ROLE_BY_EMAIL in
+// admin.html. Hiding a tab in the page protects nothing on its own — anyone can
+// call the database directly — so every limit below is enforced here as well.
+//
+// An address NOT on any list is the OWNER and keeps full access. These are
+// restriction lists, not permission lists: creating an account with a different
+// address than the one written here would make that person a full owner.
+//
+// Management's explicit decision: salaries are VISIBLE to all four roles, but
+// only the owner and the accountant may CHANGE a salary. Firestore cannot hide
+// one field on read, so visibility is a real grant, not a UI trick — but the
+// write restriction below is genuinely enforced.
+//
+//   ACCOUNTANT  Shafiq — payroll, attendance, annual leave, sales, finance.
+//               Reviews payroll; does NOT create or delete employees.
+//   SECRETARY   Marieanne — employee profiles, warning letters, new
+//               applications and leave requests.
+//   SUPERVISOR  Bilal Abdulsamad, Ashraf Al Suhaili, Vikas — employee profiles,
+//               attendance, leave requests and new applications.
+//   VIEWER      balances.html only, read-only, three collections.
+// -----------------------------------------------------------------------------
+function isAccountant() {
+  return isRealLogin() && request.auth.token.email in [
+    'shafiq@alsheikhagroup.qa'
+  ];
+}
+
+function isSecretary() {
+  // Both addresses map to the secretary on purpose, so whichever one is created
+  // in Firebase works and she can never fall through to full owner access.
+  return isRealLogin() && request.auth.token.email in [
+    'secretary@alsheikhagroup.qa',
+    'marieanne@alsheikhagroup.qa'
+  ];
+}
+
+function isSupervisor() {
+  return isRealLogin() && request.auth.token.email in [
+    'bilal.abdulsamad@alsheikhagroup.qa',
+    'ashraf.alsuhaili@alsheikhagroup.qa',
+    'vikas@alsheikhagroup.qa'
+  ];
+}
+
+// Any restricted dashboard role.
+function isStaff() {
+  return isAccountant() || isSecretary() || isSupervisor();
+}
+
+// May open an employee profile and edit it, but never the salary field.
+function isProfileEditor() {
+  return isSecretary() || isSupervisor();
+}
+
+// True when an update leaves the salary exactly as it was. Uses get() with a
+// default so a document that has no salary field yet does not fail the rule.
+function salaryUnchanged() {
+  return request.resource.data.get('salary', 0) == resource.data.get('salary', 0);
+}
+
+// -----------------------------------------------------------------------------
 // VIEWERS — balances.html only, READ ONLY, and only three collections.
 // -----------------------------------------------------------------------------
 // These two people open balances.html to see the bank / delivery / cash figures
@@ -102,10 +170,10 @@ function isViewer() {
   ];
 }
 
-// Any real admin-dashboard login (email/password) that is NOT on the viewer
-// list, and NOT the kiosk's anonymous session. Such a user gets full access.
+// The OWNER: a real email/password login that is on none of the restricted
+// lists. Only this account has full access to everything.
 function isAdmin() {
-  return isRealLogin() && !isViewer();
+  return isRealLogin() && !isViewer() && !isStaff();
 }
 
 function isKiosk() {
@@ -116,34 +184,53 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ---- employees --------------------------------------------------------
+    // Salaries are readable by all four roles by management's decision.
+    // Creating: the secretary and supervisors accept new applications, so they
+    // may create — but only at salary 0, which the owner or accountant then
+    // sets. Updating: they may edit the profile as long as the salary is
+    // untouched. Deleting is the owner's alone, since it removes the record.
     match /employees/{empId} {
-      allow read: if isAdmin() || isKiosk();
-      allow create, update, delete: if isAdmin();
+      allow read: if isAdmin() || isStaff() || isKiosk();
+      allow create: if isAdmin()
+                    || (isProfileEditor() && request.resource.data.get('salary', 0) == 0);
+      allow update: if isAdmin() || isAccountant()
+                    || (isProfileEditor() && salaryUnchanged());
+      allow delete: if isAdmin();
     }
 
     // ---- employee_pins ------------------------------------------------------
+    // The PIN is part of the profile, so whoever edits profiles sets it.
     match /employee_pins/{empId} {
-      allow read: if isAdmin() || isKiosk();
-      allow write: if isAdmin();
+      allow read: if isAdmin() || isStaff() || isKiosk();
+      allow write: if isAdmin() || isProfileEditor();
     }
 
     // ---- deductions (dated deduction-day entries) ----------------------------
+    // Read is granted to every role so the payroll table they can already see
+    // shows the CORRECT net salary. Without it the deductions would silently
+    // come back empty and the screen would display an inflated figure, which is
+    // worse than showing nothing. Writing stays with the owner and accountant.
     match /deductions/{deductionId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin() || isStaff();
+      allow write: if isAdmin() || isAccountant();
     }
 
     // ---- attendance ---------------------------------------------------------
+    // The accountant needs it for payroll, the supervisors for their daily work.
+    // The secretary was not given attendance. Corrections are payroll-affecting,
+    // so only the owner and accountant may edit or delete a log.
     match /attendance/{logId} {
-      allow read: if isAdmin() || isKiosk();
+      allow read: if isAdmin() || isAccountant() || isSupervisor() || isKiosk();
       allow create: if isAdmin() || isKiosk();
-      allow update, delete: if isAdmin();
+      allow update, delete: if isAdmin() || isAccountant();
     }
 
     // ---- leave_requests -------------------------------------------------------
+    // The secretary and the supervisors handle these; the accountant does not.
     match /leave_requests/{reqId} {
-      allow read: if isAdmin();
-      allow create: if isKiosk() || isAdmin();
-      allow update, delete: if isAdmin();
+      allow read: if isAdmin() || isProfileEditor();
+      allow create: if isKiosk() || isAdmin() || isProfileEditor();
+      allow update, delete: if isAdmin() || isProfileEditor();
     }
 
     // ---- employee_applications (self-registration by new hires from the
@@ -152,15 +239,18 @@ service cloud.firestore {
     // the list back (so one applicant can't browse everyone else's QID
     // photos/phone numbers) and can never update/delete once submitted.
     // Only the admin dashboard can review, approve, or reject.
+    // The secretary and supervisors review and approve them; the accountant
+    // has no access to applicants' QID photos and phone numbers.
     match /employee_applications/{appId} {
-      allow read: if isAdmin();
-      allow create: if isKiosk() || isAdmin();
-      allow update, delete: if isAdmin();
+      allow read: if isAdmin() || isProfileEditor();
+      allow create: if isKiosk() || isAdmin() || isProfileEditor();
+      allow update, delete: if isAdmin() || isProfileEditor();
     }
 
     // ---- branch_geofences ---------------------------------------------------
+    // Read so the branch dropdowns fill in; only the owner moves a geofence.
     match /branch_geofences/{branchId} {
-      allow read: if isAdmin() || isKiosk();
+      allow read: if isAdmin() || isStaff() || isKiosk();
       allow write: if isAdmin();
     }
 
@@ -169,26 +259,31 @@ service cloud.firestore {
     // cash_movements, plus the legacy single geofence doc if still present.
     // Viewers may READ (balances.html needs these four docs) but never write.
     match /settings/{docId} {
-      allow read: if isAdmin() || isKiosk() || isViewer();
-      allow write: if isAdmin();
+      allow read: if isAdmin() || isStaff() || isKiosk() || isViewer();
+      allow write: if isAdmin() || isAccountant();
     }
 
-    // ---- employee_warnings (Warning Letters tab — admin-only; kiosk has no
-    // access at all, since only the admin dashboard creates/reviews these) ---
+    // ---- employee_warnings (Warning Letters tab) ----------------------------
+    // The secretary's job. The accountant and supervisors have no access.
     match /employee_warnings/{warnId} {
-      allow read, write: if isAdmin();
+      allow read, write: if isAdmin() || isSecretary();
     }
 
-    // ---- annual_leaves (Annual Leaves tab — admin-only) ---------------------
+    // ---- annual_leaves ------------------------------------------------------
+    // Granted to the accountant because a leave writes a 21-day deduction plus
+    // two 750 allowances straight into the payroll he has to reconcile.
+    // Readable by the others so the payroll figures they see stay correct.
     match /annual_leaves/{leaveId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin() || isStaff();
+      allow write: if isAdmin() || isAccountant();
     }
 
     // ---- allowance_payments (linked leave/ticket allowance payouts created
-    // automatically when an Annual Leave is saved — admin-only, same as the
-    // deductions/annual_leaves collections it is tied to) --------------------
+    // automatically when an Annual Leave is saved — tied to annual_leaves, so
+    // the same access applies) ----------------------------------------------
     match /allowance_payments/{paymentId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin() || isStaff();
+      allow write: if isAdmin() || isAccountant();
     }
 
     // ---- admin_users (legacy collection from the old role system — no
@@ -200,8 +295,12 @@ service cloud.firestore {
     // ---- audit_log (read-only trail of key mutating actions — admin-only
     // read/create, NO update/delete allowed for anyone, keeping the log
     // immutable/tamper-resistant once written) -------------------------------
+    // Every role may CREATE an entry, otherwise their actions would go
+    // unrecorded and the trail would only cover the owner — defeating its
+    // purpose now that five people can change data. Only the owner READS it.
     match /audit_log/{entryId} {
-      allow read, create: if isAdmin();
+      allow read: if isAdmin();
+      allow create: if isAdmin() || isStaff();
       allow update, delete: if false;
     }
 
@@ -211,7 +310,7 @@ service cloud.firestore {
     // it to the employee; only the admin dashboard's Training Content editor
     // ever writes it.
     match /training_content/{docId} {
-      allow read: if isAdmin() || isKiosk();
+      allow read: if isAdmin() || isStaff() || isKiosk();
       allow write: if isAdmin();
     }
 
@@ -235,8 +334,9 @@ service cloud.firestore {
     // closes it, so a past month can never be silently recalculated by a later
     // salary edit or employee deletion. Admin-only in both directions: the
     // kiosk has no reason to read or write an accounting record.
+    // The accountant closes the month, so he needs both read and write here.
     match /financial_months/{monthId} {
-      allow read, write: if isAdmin();
+      allow read, write: if isAdmin() || isAccountant();
     }
 
     // ---- financial_payments (the fixed/variable payment lines that feed the
@@ -247,8 +347,8 @@ service cloud.firestore {
     // Viewers may READ these (money going out is part of the balance) but can
     // never add, change or delete a payment.
     match /financial_payments/{paymentId} {
-      allow read: if isAdmin() || isViewer();
-      allow write: if isAdmin();
+      allow read: if isAdmin() || isAccountant() || isViewer();
+      allow write: if isAdmin() || isAccountant();
     }
 
     // ---- sales_reports (the Daily Sales Report a branch manager submits from
@@ -265,8 +365,8 @@ service cloud.firestore {
     // Viewers may READ these (money coming in is part of the balance) but can
     // never submit, change or delete a report.
     match /sales_reports/{reportId} {
-      allow read: if isAdmin() || isViewer();
-      allow update, delete: if isAdmin();
+      allow read: if isAdmin() || isAccountant() || isViewer();
+      allow update, delete: if isAdmin() || isAccountant();
       allow create: if isKiosk() || isAdmin();
     }
 
