@@ -27,7 +27,7 @@
 // تبويبًا جديدًا بعد نشره. v3: أُزيل التحويل التلقائي من report.html (كان يُبطل تثبيت تطبيق المديرين على
 // iOS)، ويجب إبطال
 // الكاش القديم حتى لا يبقى من ثبّت التطبيق سابقًا على النسخة القديمة.
-const CACHE_VERSION = 'v19';
+const CACHE_VERSION = 'v20';
 const SHELL_CACHE = `alsheikha-shell-${CACHE_VERSION}`;
 const ASSET_CACHE = `alsheikha-assets-${CACHE_VERSION}`;
 
@@ -42,10 +42,25 @@ const SHELL_FILES = [
     './manifest-report.json',
     './manifest-admin.json',
     './manifest-balances.json',
-    './icons/icon-192.png',
-    './icons/icon-512.png',
-    './icons/icon-maskable-512.png',
-    './icons/apple-touch-icon.png'
+    // أيقونة مميّزة لكل تطبيق. كانت الأربعة تتشارك icon-192.png فظهرت متشابهة
+    // على شاشة الهاتف ولم يعرف المستخدم أيّها يفتح. الملفات القديمة تُركت في
+    // المستودع لمن ثبّت التطبيق قبل التغيير، لكنها لم تبقَ مرجعًا لأي صفحة.
+    './icons/attendance-192.png',
+    './icons/attendance-512.png',
+    './icons/attendance-maskable-512.png',
+    './icons/attendance-touch.png',
+    './icons/report-192.png',
+    './icons/report-512.png',
+    './icons/report-maskable-512.png',
+    './icons/report-touch.png',
+    './icons/admin-192.png',
+    './icons/admin-512.png',
+    './icons/admin-maskable-512.png',
+    './icons/admin-touch.png',
+    './icons/balances-192.png',
+    './icons/balances-512.png',
+    './icons/balances-maskable-512.png',
+    './icons/balances-touch.png'
 ];
 
 // نطاقات يجب أن تمر إلى الشبكة دائمًا بلا اعتراض ولا تخزين.

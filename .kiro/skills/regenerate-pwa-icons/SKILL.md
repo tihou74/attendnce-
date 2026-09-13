@@ -1,26 +1,60 @@
 ---
 name: regenerate-pwa-icons
-description: Regenerate the PWA app icons for the Al Sheikha attendance system from the group logo. Use when the logo changes, when an icon size is missing, or when the installed app icon looks wrong or blurry.
+description: Regenerate the PWA app icons for the Al Sheikha attendance system. Four apps each have their OWN icon (colour + shape). Use when adding a fifth app, when an icon size is missing, or when an installed app icon looks wrong or blurry.
 ---
 
-# إعادة توليد أيقونات التطبيق
+# إعادة توليد أيقونات التطبيقات
+
+## ⚠️ أربعة تطبيقات، أربع أيقونات — لا أيقونة واحدة
+
+النظام يُثبَّت كأربعة تطبيقات منفصلة على الهاتف. كانت الأربعة تتشارك
+`icons/icon-192.png` نفسه، فظهرت **متشابهة تمامًا** على الشاشة ولم يعرف
+المستخدم أيّها يفتح — وقد أبلغت الإدارة عن ذلك.
+
+التمييز الآن **بأمرين معًا** لا بأمر واحد: لون الخلفية **و** شكل الرمز. اللون
+وحده لا يكفي لمن لا يميّز الألوان جيدًا، والشكل وحده لا يكفي في حجم ٤٨ بكسل.
+
+| التطبيق | الملفات | الخلفية | الرمز |
+|---|---|---|---|
+| كيوسك الموظفين | `attendance-*` | كحلي `#1a252f` | ساعة ذهبية |
+| تقرير المديرين | `report-*` | أزرق `#1864ab` | أعمدة بيانية |
+| لوحة الإدارة | `admin-*` | بنفسجي `#4338ca` | شبكة ٢×٢ |
+| الأرصدة | `balances-*` | أخضر `#15803d` | ثلاث عملات |
 
 ## التشغيل
 
 ```bash
+# أيقونات التطبيقات الأربعة (المستخدمة فعلًا)
+python3 .kiro/skills/regenerate-pwa-icons/scripts/make_app_icons.py
+
+# النسخة القديمة المبنية على شعار المجموعة — لم تبقَ مرجعًا لأي صفحة
 python3 .kiro/skills/regenerate-pwa-icons/scripts/make_icons.py
 ```
 
-يُنفَّذ من جذر المستودع. يجلب الشعار تلقائيًا إن لم يكن موجودًا، ويكتب فوق الملفات في `icons/`.
+يُنفَّذان من جذر المستودع ويكتبان في `icons/`.
 
-## المخرجات
+## المخرجات لكل تطبيق
 
-| الملف | المقاس | الغرض |
+| النمط | المقاس | الغرض |
 |---|---|---|
-| `icons/icon-192.png` | 192×192 | أيقونة أندرويد الأساسية |
-| `icons/icon-512.png` | 512×512 | شاشة البداية ومتجر التطبيقات |
-| `icons/icon-maskable-512.png` | 512×512 | `purpose: maskable` — النظام يقصّها دائرةً |
-| `icons/apple-touch-icon.png` | 180×180 | iOS (لا يقرأ manifest للتثبيت) |
+| `<slug>-192.png` | 192×192 | أيقونة أندرويد الأساسية |
+| `<slug>-512.png` | 512×512 | شاشة البداية |
+| `<slug>-maskable-512.png` | 512×512 | `purpose: maskable` — نسبة محتوى **0.46** لأن النظام يقصّها دائرةً |
+| `<slug>-touch.png` | 180×180 | iOS (لا يقرأ manifest للتثبيت) |
+
+## عند التعديل — ثلاثة أماكن معًا
+
+تغيير الأيقونات وحده لا يكفي. يجب تحديث الثلاثة أو ظهرت أيقونة قديمة أو مفقودة:
+
+1. **الـmanifests الأربعة** — `manifest.json` · `manifest-report.json` · `manifest-admin.json` · `manifest-balances.json`
+2. **وسوم الصفحات** — `<link rel="icon">` و `<link rel="apple-touch-icon">` في `index.html` · `admin.html` · `report.html` · `balances.html` (والصورة الظاهرة في ترويسة `report.html` و `balances.html`)
+3. **`sw.js`** — قائمة `SHELL_FILES`، **ورفع `CACHE_VERSION`** وإلا بقيت الأيقونة القديمة في كاش من ثبّت التطبيق سابقًا
+
+## إضافة تطبيق خامس
+
+أضف سطرًا إلى `APPS` في `make_app_icons.py` (slug، لون خلفية، لون رمز، دالة شكل)، واكتب دالة الشكل بمنطق «هل النقطة داخل الرمز؟» في المجال 0..1. الشكل يُرسم قناعًا بدقة 1024 ثم يُصغَّر بمتوسط صندوقي — وهذا مصدر الحواف الناعمة بلا مكتبة رسم.
+
+**اختر لونًا وشكلًا لا يشتبهان بأي تطبيق قائم**، وتحقّق بعدها أن بصمات الملفات الأربع (أو الخمس) مختلفة فعلًا وأن ألوان الزوايا مختلفة.
 
 ## ⚠️ لا توجد مكتبات صور في هذه البيئة
 
