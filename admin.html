@@ -1732,6 +1732,51 @@
     </div>
 </div>
 
+<!-- Modal: تصحيح تقرير المبيعات اليومي.
+     المديرون الثلاثة يملكونها لأنهم من أرسل التقرير. الحذف ليس هنا: تصحيح رقم
+     خاطئ شيء، وإزالة مال دخل شيء آخر يبقى للمالك والمحاسب. -->
+<div id="salesEditModal" class="modal-overlay">
+    <div class="modal-card modal-sm">
+        <div class="modal-header">
+            <h2><span data-icon="edit"></span> Correct the daily report</h2>
+            <button class="close-modal" onclick="closeSalesEditModal()"><span data-icon="x"></span> Close</button>
+        </div>
+
+        <input type="hidden" id="salesEditId">
+        <div style="background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 18px; font-size: 13.5px; line-height: 1.9;">
+            <div><b id="salesEditBranch">—</b></div>
+            <div style="color: var(--text-dim);" id="salesEditMeta">—</div>
+        </div>
+
+        <div class="edit-profile-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+            <div><label for="salesEditCash">Cash</label><input type="number" id="salesEditCash" step="0.01" min="0" oninput="recalcSalesEditTotal()"></div>
+            <div><label for="salesEditCard">Card</label><input type="number" id="salesEditCard" step="0.01" min="0" oninput="recalcSalesEditTotal()"></div>
+            <div><label for="salesEditSnoonu">Snoonu</label><input type="number" id="salesEditSnoonu" step="0.01" min="0" oninput="recalcSalesEditTotal()"></div>
+            <div><label for="salesEditTalabat">Talabat</label><input type="number" id="salesEditTalabat" step="0.01" min="0" oninput="recalcSalesEditTotal()"></div>
+            <div><label for="salesEditKeeta">Keeta</label><input type="number" id="salesEditKeeta" step="0.01" min="0" oninput="recalcSalesEditTotal()"></div>
+        </div>
+
+        <!-- المجموع يُحسب هنا لحظيًّا ويُخزَّن محسوبًا، فلا يعتمد أي تقرير مالي
+             على جمعٍ يُعاد في مكان آخر. -->
+        <div class="total" style="margin: 4px 0 18px; padding: 14px 16px; background: var(--accent-soft); border: 1px solid var(--accent); border-radius: var(--radius-sm);">
+            <div style="font-size: 12px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: .08em;">New total sales</div>
+            <div class="money-col" style="font-size: 22px; font-weight: 700; text-align: start;" id="salesEditTotal">0.00 QAR</div>
+            <div style="font-size: 12px; color: var(--text-dim); margin-top: 4px;" id="salesEditDiff"></div>
+        </div>
+
+        <p class="card-sub" style="margin: 0 0 16px;">
+            Correcting a report changes the Monthly Financial Report and the three balances for that day.
+            Every correction is written to the audit log with the old and the new figure.
+        </p>
+
+        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 14px; flex-wrap: wrap;">
+            <span id="salesEditStatus" style="font-weight: 600; font-size: 13px;"></span>
+            <button class="btn-ghost" onclick="closeSalesEditModal()"><span data-icon="x"></span> Cancel</button>
+            <button class="btn-success" onclick="saveSalesReportEdit()"><span data-icon="save"></span> Save correction</button>
+        </div>
+    </div>
+</div>
+
 <!-- Modal: Global Search (Ctrl+K) -->
 <div id="globalSearchModal" class="modal-overlay">
     <div class="modal-card modal-sm" style="max-width: 560px;">
@@ -2174,8 +2219,11 @@
         [ROLE_SECRETARY]: ['tab-home', 'tab-employees', 'tab-requests',
                            'tab-applications', 'tab-warnings', 'tab-former'],
         // البروفايل + الحضور + الطلبات + طلبات التسجيل الجديدة.
+        // tab-sales أُضيف بقرار الإدارة: المديرون الثلاثة هم من يُرسل التقرير
+        // اليومي، فهم أول من يلاحظ رقمًا خاطئًا. يرون ويصحّحون ويُعيدون الإرسال،
+        // ولا يحذفون — القاعدة في firestore.rules تمنع الحذف عنهم أيضًا.
         [ROLE_SUPERVISOR]: ['tab-home', 'tab-employees', 'tab-attendance', 'tab-shifts',
-                            'tab-requests', 'tab-applications', 'tab-former']
+                            'tab-requests', 'tab-applications', 'tab-sales', 'tab-former']
     };
 
     let currentRole = ROLE_ADMIN;
@@ -4257,6 +4305,206 @@
     // visible. Loaded on demand when the tab is opened, like the Audit Log.
     let allSalesReports = [];
     const SALES_FIELDS = ['cash', 'card', 'snoonu', 'talabat', 'keeta'];
+    // نفس التسميات المستخدمة في شاشة المديرين (REPORT_LABELS في index.html)،
+    // فرسالة الواتساب المُعاد إرسالها من هنا تخرج مطابقة للأصلية حرفًا بحرف.
+    const SALES_LABELS = { cash: 'Cash', card: 'Card', snoonu: 'Snoonu', talabat: 'Talabat', keeta: 'Keeta' };
+
+    /** من يملك تصحيح تقرير يومي: المالك والمحاسب والمديرون الثلاثة. */
+    function canEditSalesReports() {
+        return currentRole === ROLE_ADMIN || currentRole === ROLE_ACCOUNTANT
+            || currentRole === ROLE_SUPERVISOR;
+    }
+    /** الحذف يُزيل مالًا دخل فعلًا — للمالك والمحاسب وحدهما (وكذلك القاعدة). */
+    function canDeleteSalesReports() {
+        return currentRole === ROLE_ADMIN || currentRole === ROLE_ACCOUNTANT;
+    }
+
+    // 2026-09-11 → 11-09-2026 (صيغة الإدارة، نفسها في شاشة المديرين)
+    function salesDateLabel(iso) {
+        return iso ? `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}` : '';
+    }
+    function salesMoney(n) {
+        return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    /**
+     * نص واتساب مطابق حرفيًّا لِما تبنيه شاشة المديرين
+     * (buildReportWhatsAppText في index.html). التطابق مقصود: المدير الذي
+     * أرسل التقرير أولًا يجب أن يرى نفس الشكل عند إعادة الإرسال، وإلا ظنّ
+     * المستقبِل أنه تقرير مختلف.
+     * النجمتان تجعلان السطر عريضًا في واتساب.
+     */
+    function salesReportWhatsAppText(r, corrected) {
+        const lines = [
+            `*Sales Report - ${salesDateLabel(r.date)}*`,
+            `*Branch:* ${r.branch || '-'}`,
+            '',
+            ...SALES_FIELDS.map(k => `${SALES_LABELS[k]}: ${salesMoney(r[k])} QAR`),
+            '',
+            `*Total Sales: ${salesMoney(r.totalSales)} QAR*`,
+            '',
+            `Submitted by: ${r.managerName || r.managerId || '-'}`
+        ];
+        // التقرير المُصحَّح يُقال إنه مُصحَّح: إرسال أرقام جديدة بلا إشارة يجعل
+        // المستقبِل يظن أن الأولى كانت خطأه في القراءة.
+        if (corrected) {
+            lines.push('', `_Corrected report — replaces the figures sent earlier._`);
+        }
+        return lines.join('\n');
+    }
+
+    /** يفتح واتساب بنص التقرير — تطبيقًا على الهاتف، وويبًا على الحاسوب. */
+    window.sendSalesReportWhatsApp = function(reportId) {
+        const r = allSalesReports.find(x => x.id === reportId);
+        if (!r) return;
+        const text = salesReportWhatsAppText(r, !!r.editedAt);
+        const encoded = encodeURIComponent(text);
+        const isPhone = /android|iphone|ipad|ipod|iemobile|blackberry|opera mini|webos/i.test(navigator.userAgent || '');
+        // وسم <a> لا window.open: متصفحات الهاتف تحجب النوافذ المنبثقة ولا تحجب
+        // الروابط. ننشئه ونضغطه برمجيًّا لأن الزر في صف جدول.
+        const a = document.createElement('a');
+        a.href = isPhone ? `whatsapp://send?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+        if (!isPhone) { a.target = '_blank'; a.rel = 'noopener'; }
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => a.remove(), 0);
+    };
+
+    // =====================================================================
+    // تصحيح تقرير مبيعات يومي
+    // ---------------------------------------------------------------------
+    // ⚠️ هذا يمسّ المال: أرقام التقرير تُغذّي التقرير المالي الشهري والأرصدة
+    // الثلاثة. لذلك: حارس الشهر المُغلق، وتأكيد يُظهر القديم والجديد، وسجل
+    // تدقيق لكل تصحيح، ووسمٌ على المستند بمن صحّح ومتى وما كان الرقم قبله.
+    // =====================================================================
+    const SALES_EDIT_IDS = {
+        cash: 'salesEditCash', card: 'salesEditCard', snoonu: 'salesEditSnoonu',
+        talabat: 'salesEditTalabat', keeta: 'salesEditKeeta'
+    };
+
+    window.recalcSalesEditTotal = function() {
+        let total = 0;
+        SALES_FIELDS.forEach(k => {
+            const el = document.getElementById(SALES_EDIT_IDS[k]);
+            total += el ? (Number(el.value) || 0) : 0;
+        });
+        const el = document.getElementById('salesEditTotal');
+        if (el) el.innerText = `${salesMoney(total)} QAR`;
+
+        // فرق المجموع عن الأصل: الرقم الذي سيتحرّك في التقرير المالي.
+        const r = allSalesReports.find(x => x.id === document.getElementById('salesEditId').value);
+        const diffEl = document.getElementById('salesEditDiff');
+        if (diffEl && r) {
+            const was = Number(r.totalSales) || 0;
+            const d = total - was;
+            diffEl.innerText = Math.abs(d) < 0.005
+                ? `Same as the current total (${salesMoney(was)} QAR) — nothing will change.`
+                : `Was ${salesMoney(was)} QAR · ${d > 0 ? 'increase' : 'decrease'} of ${salesMoney(Math.abs(d))} QAR.`;
+            diffEl.style.color = Math.abs(d) < 0.005 ? 'var(--text-dim)' : 'var(--warning)';
+        }
+        return total;
+    };
+
+    window.openSalesEditModal = function(reportId) {
+        if (!canEditSalesReports()) { alert('You do not have permission to correct a daily report.'); return; }
+        const r = allSalesReports.find(x => x.id === reportId);
+        if (!r) return;
+
+        // شهر مُغلق: لقطته المالية مجمَّدة، فتغيير مبيعات فيه يجعل الشاشة
+        // تخالف اللقطة. يُعاد فتح الشهر أولًا.
+        const month = String(r.date || '').slice(0, 7);
+        if (month && !guardFinanceMonthOpen(month, null)) return;
+
+        document.getElementById('salesEditId').value = reportId;
+        document.getElementById('salesEditBranch').innerText =
+            `${r.branch || '—'} · ${salesDateLabel(r.date)}`;
+        document.getElementById('salesEditMeta').innerText =
+            `Submitted by ${r.managerName || r.managerId || '—'}`
+            + (r.editedAt ? ` · already corrected once by ${r.editedBy || 'unknown'}` : '');
+
+        SALES_FIELDS.forEach(k => {
+            const el = document.getElementById(SALES_EDIT_IDS[k]);
+            if (el) el.value = Number(r[k]) || 0;
+        });
+        const st = document.getElementById('salesEditStatus');
+        if (st) st.innerText = '';
+        recalcSalesEditTotal();
+        document.getElementById('salesEditModal').style.display = 'flex';
+        paintIcons(document.getElementById('salesEditModal'));
+    };
+
+    window.closeSalesEditModal = function() {
+        document.getElementById('salesEditModal').style.display = 'none';
+    };
+
+    window.saveSalesReportEdit = async function() {
+        const st = document.getElementById('salesEditStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        const id = document.getElementById('salesEditId').value;
+        const r = allSalesReports.find(x => x.id === id);
+        if (!r) { show('This report is no longer available.', 'var(--danger)'); return; }
+        if (!canEditSalesReports()) { show('You do not have permission for this.', 'var(--danger)'); return; }
+
+        const month = String(r.date || '').slice(0, 7);
+        if (month && !guardFinanceMonthOpen(month, st)) return;
+
+        // كل خانة رقم صالح غير سالب — مبيعات سالبة لا معنى لها وتُفسد الأرصدة.
+        const next = {};
+        for (const k of SALES_FIELDS) {
+            const raw = document.getElementById(SALES_EDIT_IDS[k]).value;
+            const v = raw === '' ? 0 : Number(raw);
+            if (!isFinite(v) || v < 0) {
+                show(`${SALES_LABELS[k]} must be a number of zero or more.`, 'var(--danger)');
+                return;
+            }
+            next[k] = v;
+        }
+        const newTotal = SALES_FIELDS.reduce((a, k) => a + next[k], 0);
+        const oldTotal = Number(r.totalSales) || 0;
+
+        const changed = SALES_FIELDS.filter(k => Math.abs((Number(r[k]) || 0) - next[k]) >= 0.005);
+        if (!changed.length && Math.abs(newTotal - oldTotal) < 0.005) {
+            show('Nothing was changed.', 'var(--text-dim)');
+            return;
+        }
+
+        const detail = changed.map(k =>
+            `${SALES_LABELS[k]}: ${salesMoney(r[k])} -> ${salesMoney(next[k])}`).join('\n');
+        if (!confirm(
+            `Correct the report for ${r.branch || '—'} on ${salesDateLabel(r.date)}?\n\n`
+            + `${detail}\n\n`
+            + `Total: ${salesMoney(oldTotal)} -> ${salesMoney(newTotal)} QAR\n\n`
+            + `This changes the Monthly Financial Report and that day's balances. `
+            + `The correction is recorded in the audit log.`
+        )) return;
+
+        show('Saving...', 'var(--warning)');
+        try {
+            await updateDoc(doc(db, "sales_reports", id), {
+                ...next,
+                totalSales: newTotal,
+                // أثرٌ على المستند نفسه: من صحّح ومتى وما كان المجموع قبله.
+                // لا نلمس managerName ولا timestamp — من أرسل التقرير أصلًا يبقى
+                // مسجَّلًا، والتصحيح حقل منفصل عنه.
+                editedBy: (currentUser && currentUser.email) || 'unknown',
+                editedAt: serverTimestamp(),
+                previousTotalSales: oldTotal
+            });
+            logAudit("Daily Sales Report Corrected",
+                `${r.branch || '—'} ${r.date || '—'}: ${detail.replace(/\n/g, ' · ')} `
+                + `| total ${salesMoney(oldTotal)} -> ${salesMoney(newTotal)} QAR`);
+            await loadSalesReports();
+            closeSalesEditModal();
+            // نُقدّم إرسال الرسالة المُصحَّحة فورًا: الغرض من التصحيح أن يصل
+            // الرقم الصحيح لمن استلم الخطأ، وتأجيله يُنسيه.
+            if (confirm('Correction saved.\n\nSend the corrected report on WhatsApp now?')) {
+                sendSalesReportWhatsApp(id);
+            }
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
 
     window.loadSalesReports = async function() {
         const body = document.getElementById("salesReportsTableBody");
@@ -4336,14 +4584,36 @@
             const cells = SALES_FIELDS.map(f =>
                 `<td class="money-col">${(Number(r[f]) || 0).toFixed(2)}</td>`
             ).join('');
+
+            // تقرير صُحّح: يُقال ذلك صريحًا مع المجموع السابق، فلا يُقرأ الرقم
+            // الحالي كأنه ما أرسله المدير أصلًا.
+            const correctedTag = r.editedAt
+                ? `<br><small title="Corrected after it was first submitted${r.previousTotalSales != null ? ' — was ' + salesMoney(r.previousTotalSales) + ' QAR' : ''}" style="color: var(--warning); font-weight: 800; font-size: 11px;">CORRECTED${r.previousTotalSales != null ? ' · was ' + salesMoney(r.previousTotalSales) : ''}</small>`
+                : '';
+
+            // الأزرار بحسب الدور: التصحيح وإعادة الإرسال للمديرين الثلاثة أيضًا،
+            // والحذف للمالك والمحاسب وحدهما — نُخفيه عن غيرهم بدل أن نُظهر زرًّا
+            // ترفضه القاعدة فيرى المدير خطأ صلاحيات بلا سبب مفهوم.
+            const sid = escapeJsAttr(r.id);
+            let actions = `<button class="btn-success btn-sm" title="Send this report on WhatsApp"
+                onclick="sendSalesReportWhatsApp('${sid}')">${iconSvg('plane','ic-sm')}</button>`;
+            if (canEditSalesReports()) {
+                actions += ` <button class="btn-ghost btn-sm" title="Correct a wrong figure"
+                onclick="openSalesEditModal('${sid}')">${iconSvg('edit','ic-sm')}</button>`;
+            }
+            if (canDeleteSalesReports()) {
+                actions += ` <button class="btn-danger btn-sm" title="Delete this report"
+                onclick="deleteSalesReport('${sid}')">${iconSvg('trash','ic-sm')}</button>`;
+            }
+
             return `<tr>
                 <td><b>${escapeHtml(shownDate)}</b></td>
                 <td>${escapeHtml(r.branch || '-')}</td>
                 ${cells}
                 <td class="money-col"><strong style="color: var(--accent); font-size: 14.5px;">${(Number(r.totalSales) || 0).toFixed(2)}</strong></td>
-                <td>${escapeHtml(r.managerName || r.managerId || '-')}</td>
+                <td>${escapeHtml(r.managerName || r.managerId || '-')}${correctedTag}</td>
                 <td style="font-size: 12px; color: var(--text-dim);">${escapeHtml(submitted)}</td>
-                <td><button class="btn-danger btn-sm" onclick="deleteSalesReport('${escapeJsAttr(r.id)}')">${iconSvg('trash','ic-sm')}</button></td>
+                <td style="white-space: nowrap;">${actions}</td>
             </tr>`;
         }).join('');
 

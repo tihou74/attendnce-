@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v9   (2026-09-13)  <<<
+//   >>>  RULES REVISION: v10   (2026-09-14)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,9 +12,9 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       petty_cash_requests
+//       isSupervisor() || isViewer()
 //
-//   FOUND     -> v9 is live. Good.
+//   FOUND     -> v10 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -33,6 +33,12 @@ rules_version = '2';
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
 //
+//  v10  2026-09-14    sales_reports: the three branch supervisors may now READ
+//                     and UPDATE a daily report so they can correct their own
+//                     mistyped figure and resend it. DELETE was deliberately
+//                     NOT granted to them and is now a separate line from
+//                     update — removing money that came in stays with the owner
+//                     and the accountant.
 //   v9  2026-09-13  + petty_cash_requests, warning_requests — branch managers
 //                     submit blind from the managers screen; the accountant
 //                     approves cash, the secretary issues warnings. deductions
@@ -402,9 +408,15 @@ service cloud.firestore {
     // malicious anonymous caller cannot overwrite a real report it cannot read.
     // Viewers may READ these (money coming in is part of the balance) but can
     // never submit, change or delete a report.
+    // v10: the three branch supervisors (Bilal, Ashraf, Vikas) may now READ and
+    // CORRECT a daily report, by management's decision — they are the ones who
+    // submitted it and who notice a wrong figure first. They may NOT delete one:
+    // a mistyped report is fixed by correcting it, and deleting the money that
+    // came in is a different act reserved for the owner and the accountant.
     match /sales_reports/{reportId} {
-      allow read: if isAdmin() || isAccountant() || isViewer();
-      allow update, delete: if isAdmin() || isAccountant();
+      allow read: if isAdmin() || isAccountant() || isViewer() || isSupervisor();
+      allow update: if isAdmin() || isAccountant() || isSupervisor();
+      allow delete: if isAdmin() || isAccountant();
       allow create: if isKiosk() || isAdmin();
     }
 
