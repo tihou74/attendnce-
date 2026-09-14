@@ -367,7 +367,8 @@
 
     <div class="nav-tabs">
         <button class="nav-tab-btn active" data-tab="tab-home"><span class="ic-slot" data-icon="home"></span> Home</button>
-        <button class="nav-tab-btn" data-tab="tab-employees"><span class="ic-slot" data-icon="users"></span> Employees &amp; Payroll</button>
+        <button class="nav-tab-btn" data-tab="tab-employees"><span class="ic-slot" data-icon="users"></span> Employee Profiles</button>
+        <button class="nav-tab-btn" data-tab="tab-payroll"><span class="ic-slot" data-icon="dollar"></span> Payroll</button>
         <button class="nav-tab-btn" data-tab="tab-attendance"><span class="ic-slot" data-icon="calendar"></span> Attendance Logs</button>
         <button class="nav-tab-btn" data-tab="tab-shifts"><span class="ic-slot" data-icon="clock"></span> Shifts</button>
         <button class="nav-tab-btn" data-tab="tab-requests">
@@ -470,6 +471,9 @@
                 <div style="width: 90px;"><label>PIN Code</label><input type="text" id="newEmpPinInput" placeholder="1234"></div>
                 <!-- تاريخ الالتحاق بالعمل: مطلوب. كل حساب الموظف يبدأ منه. -->
                 <div style="width: 165px;"><label for="newEmpJoinDate" title="First working day — the salary of that month is paid only from this date onwards">Joining Date <span style="color: var(--danger);">*</span></label><input type="date" id="newEmpJoinDate"></div>
+                <!-- الهوية القطرية: الرقم وتاريخ الانتهاء. التنبيه يبدأ قبل 10 أيام. -->
+                <div style="width: 165px;"><label for="newEmpQidNumber" title="Qatar ID number — 11 digits">Qatar ID Number</label><input type="text" id="newEmpQidNumber" inputmode="numeric" maxlength="11" placeholder="11 digits"></div>
+                <div style="width: 165px;"><label for="newEmpQidExpiry" title="Qatar ID expiry date — an alert appears 10 days before">QID Expiry Date</label><input type="date" id="newEmpQidExpiry"></div>
                 <div style="flex: 1; min-width: 180px;"><label>Assigned Branch</label>
                     <select id="newEmpBranch">
                         <option value="GAIMER W KAHI WEST WALK">GAIMER W KAHI - WEST WALK</option>
@@ -508,6 +512,52 @@
             <span id="empActionStatus" style="font-weight: 600; display: block; margin-top: 10px; font-size: 13px;"></span>
         </div>
 
+        <!-- تنبيه انتهاء الهوية القطرية — يظهر فقط عند وجود ما يستحقّ التنبيه -->
+        <div class="card" id="qidAlertCard" style="display: none; border-left: 4px solid var(--danger);">
+            <h3><span data-icon="alertTriangle"></span> Qatar ID expiring or expired <span id="qidAlertCount" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
+            <p class="card-sub">An employee whose Qatar ID has expired cannot legally work. The alert starts <b>10 days</b> before the expiry date so there is time to renew.</p>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Employee</th><th>Branch</th><th>Qatar ID</th><th>Expiry</th><th>Status</th><th></th></tr></thead>
+                    <tbody id="qidAlertBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- دليل الموظفين — ملفات لا رواتب. لا عمود مال واحد هنا عن قصد:
+             دمج الاثنين في جدول واحد كان يجعل من يبحث عن رقم هوية يمرّ على
+             صافي الراتب، ومن يراجع راتبًا يمرّ على المستندات. -->
+        <div class="card">
+            <div class="controls" style="justify-content: space-between; margin-bottom: 18px;">
+                <h3 style="margin: 0;"><span data-icon="users"></span> Employee Directory</h3>
+                <div><input type="text" id="empDirSearchInput" placeholder="Search name, job title or QID..." onkeyup="filterEmployeeDirectory()" style="width: 280px;"></div>
+            </div>
+
+            <div class="table-container">
+                <table class="mobile-cards">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Employee Name</th>
+                            <th>Branch &amp; Shift</th>
+                            <th>Joined</th>
+                            <th>Qatar ID</th>
+                            <th>QID Expiry</th>
+                            <th>Housing</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="empDirTableBody">
+                        <tr><td colspan="8" style="text-align: center;">Loading employees...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="card-sub" style="margin: 14px 0 0;" id="empDirNote"></p>
+        </div>
+    </div>
+
+    <!-- 2ب. الرواتب — نافذة مستقلّة عن ملفات الموظفين -->
+    <div id="tab-payroll" class="tab-content">
         <div class="filter-section">
             <h3><span data-icon="dollar"></span> Automated Payroll Calculation (Daily 10h/2h-grace overtime, earned rest days)</h3>
             <div class="date-group">
@@ -555,8 +605,8 @@
 
         <div class="card">
             <div class="controls" style="justify-content: space-between; margin-bottom: 18px;">
-                <h3 style="margin: 0;"><span data-icon="fileText"></span> Payroll &amp; Employee Directory</h3>
-                <div><input type="text" id="employeeSearchInput" placeholder="Quick search employee name..." onkeyup="filterEmployeesList()" style="width: 260px;"></div>
+                <h3 style="margin: 0;"><span data-icon="fileText"></span> Payroll</h3>
+                <div><input type="text" id="payrollSearchInput" placeholder="Quick search employee name..." onkeyup="filterEmployeesList()" style="width: 260px;"></div>
             </div>
 
             <div class="table-container">
@@ -1499,6 +1549,14 @@
                 <input type="date" id="editEmpJoinDate">
                 <small id="editEmpServiceInfo" style="display: block; margin-top: 5px; color: var(--text-dim); font-size: 11.5px;"></small>
             </div>
+            <!-- الهوية القطرية: الرقم وتاريخ الانتهاء -->
+            <div><label for="editEmpQidNumber" title="Qatar ID number — 11 digits">Qatar ID Number</label>
+                <input type="text" id="editEmpQidNumber" inputmode="numeric" maxlength="11" placeholder="11 digits">
+            </div>
+            <div><label for="editEmpQidExpiry" title="Qatar ID expiry date — an alert appears 10 days before">QID Expiry Date</label>
+                <input type="date" id="editEmpQidExpiry">
+                <small id="editEmpQidInfo" style="display: block; margin-top: 5px; font-size: 11.5px;"></small>
+            </div>
             <div class="money-field money-only"><label>Total Monthly Salary (QAR)</label><input type="number" id="editEmpSalary"></div>
             <div class="money-field money-only"><label>Basic Salary (fixed, QAR)</label><input type="number" id="editEmpBasicDisplay" value="1000" disabled style="opacity:0.7;"></div>
             <div><label>Shift</label>
@@ -2212,17 +2270,20 @@
         // خصمًا 21 يومًا وبدلين 750+750 في كشف الرواتب، فلا يمكن للمحاسب
         // مراجعة راتب دون رؤيتها.
         // نافذتا المدفوعات جزء من عمله المالي، فتُدرجان معه.
-        [ROLE_ACCOUNTANT]: ['tab-home', 'tab-employees', 'tab-attendance', 'tab-shifts',
+        [ROLE_ACCOUNTANT]: ['tab-home', 'tab-employees', 'tab-payroll', 'tab-attendance', 'tab-shifts',
                             'tab-leaves', 'tab-sales', 'tab-finance', 'tab-fixed', 'tab-variable',
                             'tab-former'],
         // بروفايلات الموظفين + الإنذارات + طلبات التسجيل الجديدة + الطلبات.
-        [ROLE_SECRETARY]: ['tab-home', 'tab-employees', 'tab-requests',
+        // ⚠️ tab-payroll مُدرج للسكرتيرة **حفاظًا على وضعها الحالي بالضبط**: قبل
+        // فصل النافذتين كان جدول الرواتب داخل tab-employees فكانت تراه. الفصل
+        // صار يُتيح منعها عنه لو أرادت الإدارة — سؤالٌ مطروح لا قرارٌ اتُّخذ.
+        [ROLE_SECRETARY]: ['tab-home', 'tab-employees', 'tab-payroll', 'tab-requests',
                            'tab-applications', 'tab-warnings', 'tab-former'],
         // البروفايل + الحضور + الطلبات + طلبات التسجيل الجديدة.
         // tab-sales أُضيف بقرار الإدارة: المديرون الثلاثة هم من يُرسل التقرير
         // اليومي، فهم أول من يلاحظ رقمًا خاطئًا. يرون ويصحّحون ويُعيدون الإرسال،
         // ولا يحذفون — القاعدة في firestore.rules تمنع الحذف عنهم أيضًا.
-        [ROLE_SUPERVISOR]: ['tab-home', 'tab-employees', 'tab-attendance', 'tab-shifts',
+        [ROLE_SUPERVISOR]: ['tab-home', 'tab-employees', 'tab-payroll', 'tab-attendance', 'tab-shifts',
                             'tab-requests', 'tab-applications', 'tab-sales', 'tab-former']
     };
 
@@ -2453,6 +2514,8 @@
         document.querySelectorAll('.nav-tab-btn').forEach(el => el.classList.remove('active'));
         document.getElementById(tabId).classList.add('active');
         document.querySelector(`.nav-tab-btn[data-tab="${tabId}"]`)?.classList.add('active');
+        if (tabId === 'tab-employees') filterEmployeeDirectory();
+        if (tabId === 'tab-payroll') { renderPayrollMonthLabel(); filterEmployeesList(); }
         if (tabId === 'tab-shifts') renderShiftsTable();
         if (tabId === 'tab-warnings') { renderWarningsTable(); loadManagerRequests(); }
         if (tabId === 'tab-former') renderFormerEmployees();
@@ -2841,7 +2904,9 @@
 
             // العدد المعروض هو العاملون فعلًا — وهذا ما كان ينفخ رقم الرواتب.
             document.getElementById("homeEmpCount").innerText = activeEmployees().length;
+            // النافذتان تُرسمان معًا: الفصل بصري لا في البيانات، ومصدرهما واحد.
             filterEmployeesList();
+            filterEmployeeDirectory();
         } catch (error) {
             console.error(error);
         }
@@ -3155,8 +3220,158 @@
         return { absentDays, extraWorkedDays };
     }
 
+    // =====================================================================
+    // الهوية القطرية — الرقم وتاريخ الانتهاء والتنبيه قبل 10 أيام
+    // ---------------------------------------------------------------------
+    // الهوية المنتهية تعني أن الموظف لا يجوز تشغيله قانونًا، فالتنبيه ليس
+    // تذكيرًا إداريًّا بل وقاية من مخالفة. يبدأ قبل 10 أيام بقرار الإدارة.
+    // =====================================================================
+    const QID_EXPIRY_ALERT_DAYS = 10;
+    const QID_DIGITS = 11;   // الهوية القطرية 11 رقمًا
+
+    /**
+     * حالة الهوية: { state, days, expiry }
+     *   state: 'none' لا تاريخ · 'expired' منتهية · 'soon' تنتهي خلال 10 أيام
+     *          · 'ok' سليمة
+     *   days: الأيام المتبقية (سالبة إن انتهت)
+     */
+    function qidStatus(emp, asOfISO) {
+        const expiry = emp && emp.qidExpiry ? String(emp.qidExpiry) : '';
+        if (!expiry) return { state: 'none', days: null, expiry: '' };
+        const today = asOfISO || todayISO();
+        const days = daysBetweenInclusive(today, expiry) - 1;   // 0 = تنتهي اليوم
+        if (expiry < today) {
+            return { state: 'expired', days: -(daysBetweenInclusive(expiry, today) - 1), expiry };
+        }
+        return { state: days <= QID_EXPIRY_ALERT_DAYS ? 'soon' : 'ok', days, expiry };
+    }
+
+    function qidLabel(st) {
+        if (st.state === 'none') return 'Not recorded';
+        if (st.state === 'expired') return `EXPIRED ${Math.abs(st.days)} day(s) ago`;
+        if (st.state === 'soon') return st.days === 0 ? 'Expires TODAY' : `${st.days} day(s) left`;
+        return `${st.days} day(s) left`;
+    }
+    function qidColor(st) {
+        if (st.state === 'expired') return 'var(--danger)';
+        if (st.state === 'soon') return 'var(--warning)';
+        if (st.state === 'none') return 'var(--text-dim)';
+        return 'var(--text-dim)';
+    }
+
+    /** الموظفون العاملون الذين تستحقّ هويّتهم تنبيهًا — منتهية أو تنتهي قريبًا. */
+    function qidAlertList() {
+        return activeEmployees()
+            .map(e => ({ emp: e, st: qidStatus(e) }))
+            .filter(x => x.st.state === 'expired' || x.st.state === 'soon')
+            .sort((a, b) => a.st.days - b.st.days);   // المنتهية أولًا
+    }
+
+    function renderQidAlert() {
+        const card = document.getElementById('qidAlertCard');
+        const body = document.getElementById('qidAlertBody');
+        if (!card || !body) return;
+        const rows = qidAlertList();
+        if (!rows.length) { card.style.display = 'none'; return; }
+        card.style.display = 'block';
+        const badge = document.getElementById('qidAlertCount');
+        if (badge) { badge.innerText = rows.length; badge.style.display = 'inline-block'; }
+
+        body.innerHTML = rows.map(({ emp, st }) => `
+            <tr${st.state === 'expired' ? ' style="background: rgba(185,28,28,0.07);"' : ''}>
+                <td><span class="emp-link" onclick="openProfileModal('${escapeJsAttr(emp.id)}')">${escapeHtml(emp.name || emp.id)}</span>
+                    <br><small style="color: var(--text-dim);">${escapeHtml(emp.role || '')}</small></td>
+                <td>${escapeHtml(emp.branch || '—')}</td>
+                <td class="money-col">${escapeHtml(emp.qidNumber || '—')}</td>
+                <td><b>${escapeHtml(st.expiry)}</b></td>
+                <td style="color: ${qidColor(st)}; font-weight: 800;">${escapeHtml(qidLabel(st))}</td>
+                <td><button class="btn-ghost btn-sm" onclick="openProfileModal('${escapeJsAttr(emp.id)}')">${iconSvg('edit','ic-sm')} Open file</button></td>
+            </tr>`).join('');
+        paintIcons(card);
+    }
+
+    /** سطر توضيحي تحت حقل تاريخ انتهاء الهوية في ملف الموظف. */
+    function renderQidInfo(emp) {
+        const el = document.getElementById('editEmpQidInfo');
+        if (!el) return;
+        if (!emp || !emp.qidExpiry) {
+            el.innerText = 'Not recorded — no expiry alert can be raised for this employee.';
+            el.style.color = 'var(--text-dim)';
+            return;
+        }
+        const st = qidStatus(emp);
+        el.innerText = qidLabel(st) + (st.state === 'ok' ? '' : ' — renewal needed');
+        el.style.color = qidColor(st);
+    }
+
+    /** التحقق من رقم الهوية: 11 رقمًا. فارغ مسموح، وغير ذلك مرفوض. */
+    function qidNumberError(v) {
+        const s = String(v || '').trim();
+        if (!s) return '';                                  // فارغ مسموح
+        if (!/^\d+$/.test(s)) return 'The Qatar ID number must contain digits only.';
+        if (s.length !== QID_DIGITS) return `The Qatar ID number must be exactly ${QID_DIGITS} digits (you entered ${s.length}).`;
+        return '';
+    }
+
+    // =====================================================================
+    // دليل الموظفين — جدول الملفات، بلا أي عمود مال
+    // =====================================================================
+    window.filterEmployeeDirectory = function() {
+        const q = (document.getElementById('empDirSearchInput')?.value || '').toLowerCase().trim();
+        const list = activeEmployees().filter(e =>
+            !q || (e.name || '').toLowerCase().includes(q)
+               || (e.role || '').toLowerCase().includes(q)
+               || String(e.qidNumber || '').includes(q));
+        renderEmployeeDirectory(list);
+    };
+
+    window.renderEmployeeDirectory = function(list) {
+        const body = document.getElementById('empDirTableBody');
+        if (!body) return;
+        const rows = list.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        if (!rows.length) {
+            body.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--text-faint);">No employee matches this search.</td></tr>`;
+        } else {
+            body.innerHTML = rows.map((emp, i) => {
+                const safeId = escapeJsAttr(emp.id);
+                const st = qidStatus(emp);
+                const shiftColor = emp.shift === 'Morning' ? 'var(--info-600)'
+                    : (emp.shift === 'Evening' ? 'var(--ink-600)' : 'var(--success-600)');
+                const hire = getEmploymentStartISO(emp);
+                return `<tr${st.state === 'expired' ? ' style="background: rgba(185,28,28,0.06);"' : ''}>
+                    <td data-label="#">${i + 1}</td>
+                    <td data-label="Employee"><span class="emp-link" onclick="openProfileModal('${safeId}')">${escapeHtml(emp.name || emp.id)}</span>
+                        <br><small style="color:var(--text-dim);">${escapeHtml(emp.role || '')}</small>${joinBadge(emp)}</td>
+                    <td data-label="Branch &amp; Shift">${escapeHtml(emp.branch || '-')}<br><span class="shift-pill" style="background:${shiftColor};">${escapeHtml(emp.shift || 'Morning')}</span></td>
+                    <td data-label="Joined">${escapeHtml(hire || '—')}${!emp.joinDate && hire ? '<br><small style="color: var(--text-dim);">estimated</small>' : ''}</td>
+                    <td data-label="Qatar ID" class="money-col">${escapeHtml(emp.qidNumber || '—')}</td>
+                    <td data-label="QID Expiry">${escapeHtml(st.expiry || '—')}
+                        ${st.state !== 'none' && st.state !== 'ok' ? `<br><small style="color: ${qidColor(st)}; font-weight: 800;">${escapeHtml(qidLabel(st))}</small>` : ''}</td>
+                    <td data-label="Housing">${emp.housingType === 'company' ? 'Company' : 'External'}</td>
+                    <td data-label="Actions">
+                        <button class="btn-ghost btn-sm" onclick="openProfileModal('${safeId}')">${iconSvg('edit','ic-sm')} Profile</button>
+                        ${currentRole === ROLE_ADMIN ? `<button class="btn-danger btn-sm" onclick="deleteEmployee('${safeId}')">${iconSvg('trash','ic-sm')}</button>` : ''}
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        // ملاحظة تحت الجدول: كم ملفًا بلا رقم هوية أو بلا تاريخ انتهاء.
+        const note = document.getElementById('empDirNote');
+        if (note) {
+            const all = activeEmployees();
+            const noNum = all.filter(e => !e.qidNumber).length;
+            const noExp = all.filter(e => !e.qidExpiry).length;
+            const bits = [`${all.length} active employee file(s).`];
+            if (noNum) bits.push(`${noNum} without a Qatar ID number.`);
+            if (noExp) bits.push(`${noExp} without a QID expiry date — no alert can be raised for those.`);
+            note.innerText = bits.join(' ');
+        }
+        renderQidAlert();
+    };
+
     window.filterEmployeesList = function() {
-        const queryText = document.getElementById("employeeSearchInput").value.toLowerCase();
+        const queryText = (document.getElementById("payrollSearchInput")?.value || '').toLowerCase();
         // العاملون فقط — من انتهت خدمته ملفه في نافذة «Former Employees».
         let filtered = activeEmployees().filter(emp => emp.name.toLowerCase().includes(queryText) || (emp.role && emp.role.toLowerCase().includes(queryText)));
         renderPayrollTable(filtered);
@@ -7806,6 +8021,8 @@
         const shift = document.getElementById("newEmpShift").value;
         const housingType = document.getElementById("newEmpHousingType").value; // 'company' or 'external'
         const joinDate = document.getElementById("newEmpJoinDate").value;
+        const qidNumber = document.getElementById("newEmpQidNumber").value.trim();
+        const qidExpiry = document.getElementById("newEmpQidExpiry").value;
         // الراتب لا يُرسل إلا ممّن يملك تعديله؛ غيره يُنشئ الموظف براتب صفر
         // ويضبطه المدير أو المحاسب بعد ذلك. القواعد ترفض غير ذلك على الخادم.
         const salary = hasFinanceAccess()
@@ -7822,6 +8039,15 @@
         // تاريخ التحاقه الحقيقي، فيُدفع أو يُخصم على أساس خاطئ.
         if (!joinDate) { statusEl.innerText = "Please choose the joining date — the whole salary calculation starts from it."; statusEl.style.color = "var(--danger)"; return; }
         if (!/^\d{4}-\d{2}-\d{2}$/.test(joinDate)) { statusEl.innerText = "The joining date is not a valid date."; statusEl.style.color = "var(--danger)"; return; }
+        // رقم الهوية: فارغ مسموح، لكن رقمًا غير صحيح لا. رقم خاطئ في ملف رسمي
+        // أسوأ من خانة فارغة، لأنه يُقرأ كأنه مؤكَّد.
+        const qidErr = qidNumberError(qidNumber);
+        if (qidErr) { statusEl.innerText = qidErr; statusEl.style.color = "var(--danger)"; return; }
+        // هوية منتهية سلفًا: تُقبل (قد يكون الملف قديمًا) لكن بتأكيد صريح.
+        if (qidExpiry && qidExpiry < todayISO() && !confirm(
+            `The Qatar ID expiry date ${qidExpiry} is already in the past.\n\n`
+            + `The employee will be registered and will appear immediately in the expired-ID alert. Continue?`
+        )) { statusEl.innerText = "Cancelled — check the QID expiry date."; statusEl.style.color = "var(--warning)"; return; }
         // تاريخ في المستقبل مسموح (تسجيل مسبق) لكنه يُؤكَّد حتى لا يكون خطأ سنة.
         if (joinDate > todayISO() && !confirm(
             `The joining date ${joinDate} is in the future.\n\n` +
@@ -7841,6 +8067,7 @@
             const id = generateEmployeeId(name);
             await setDoc(doc(db, "employees", id), {
                 name, role, phone, branch, shift, housingType, salary, joinDate,
+                qidNumber, qidExpiry,
                 qidFront, qidBack, healthCard, contract, healthCert,
                 createdAt: serverTimestamp()
             });
@@ -7852,7 +8079,7 @@
             // نُفرّغ النموذج: تركُ تاريخ الالتحاق واسم الموظف السابقين يجعل
             // الموظف التالي يُسجَّل بتاريخ غير تاريخه، وهو خطأ مالي صامت.
             ["newEmpNameInput", "newEmpRoleInput", "newEmpPhoneInput", "newEmpPinInput",
-             "newEmpJoinDate", "newEmpSalary"].forEach(id => {
+             "newEmpJoinDate", "newEmpSalary", "newEmpQidNumber", "newEmpQidExpiry"].forEach(id => {
                 const el = document.getElementById(id); if (el) el.value = '';
             });
             ["qidFrontInput", "qidBackInput", "healthCardInput", "contractInput", "healthCertInput"]
@@ -8070,6 +8297,9 @@
             // الملف الاحتياطي، وإلا حوّلَ مجرّد فتح الملف تخمينًا إلى رقم مثبَّت.
             document.getElementById("editEmpJoinDate").value = emp.joinDate || "";
             renderJoinDateInfo(emp);
+            document.getElementById("editEmpQidNumber").value = emp.qidNumber || "";
+            document.getElementById("editEmpQidExpiry").value = emp.qidExpiry || "";
+            renderQidInfo(emp);
             // الحقل غائب عن الموظفين المنشَئين قبل هذه الميزة، فالغياب = غير مفعّل.
             document.getElementById("editEmpCanSubmitSalesReport").checked = emp.canSubmitSalesReport === true;
             document.getElementById("editEmpEndType").value = emp.endType === 'termination' ? 'termination' : 'resignation';
@@ -8279,12 +8509,16 @@
         const shift = document.getElementById("editEmpShift").value;
         const housingType = document.getElementById("editEmpHousingType").value; // 'company' or 'external'
         const joinDate = document.getElementById("editEmpJoinDate").value;
+        const qidNumber = document.getElementById("editEmpQidNumber").value.trim();
+        const qidExpiry = document.getElementById("editEmpQidExpiry").value;
         const canSubmitSalesReport = document.getElementById("editEmpCanSubmitSalesReport").checked;
         const statusEl = document.getElementById("editProfileStatus");
 
         if (!canEditProfiles()) { statusEl.innerText = "You do not have permission to edit profiles."; statusEl.style.color = "var(--danger)"; return; }
         if (!name) { statusEl.innerText = "Name cannot be empty."; statusEl.style.color = "var(--danger)"; return; }
         if (pin && !/^\d{4,8}$/.test(pin)) { statusEl.innerText = "PIN must be 4-8 digits."; statusEl.style.color = "var(--danger)"; return; }
+        const qidErrEdit = qidNumberError(qidNumber);
+        if (qidErrEdit) { statusEl.innerText = qidErrEdit; statusEl.style.color = "var(--danger)"; return; }
 
         const empBefore = allEmployees.find(e => e.id === originalId) || {};
         // تاريخ التحاق بعد آخر يوم عمل مستحيل، ولو حُفظ لَتداخل خصم ما قبل
@@ -8330,7 +8564,7 @@
             let healthCert = await readFileIfPresent(document.getElementById("editHealthCertInput"), emp.healthCert || "");
 
             // Base fields any signed-in admin (Accountant OR Secretary) may edit.
-            const payload = { name, role, branch, phone, shift, housingType, joinDate, canSubmitSalesReport, qidFront, qidBack, healthCard, contract, healthCert };
+            const payload = { name, role, branch, phone, shift, housingType, joinDate, qidNumber, qidExpiry, canSubmitSalesReport, qidFront, qidBack, healthCard, contract, healthCert };
             // Salary / OT rate are only ever sent for Accountants — Secretaries
             // never include these fields in the update at all, and
             // firestore.rules independently rejects them server-side too if a
