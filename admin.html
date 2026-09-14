@@ -1079,6 +1079,11 @@
                 <a id="targetWhatsAppLink" class="btn-accent" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;"><span data-icon="plane"></span> Send target report on WhatsApp</a>
             </div>
             <p class="card-sub" style="margin: 10px 0 0;" id="targetWhatsAppFallback"></p>
+            <!-- معاينة الرسالة قبل إرسالها: قصيرة، فتُقرأ كاملة بنظرة واحدة -->
+            <div style="margin-top: 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px;">
+                <div style="font-size: 11px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px;">The WhatsApp message that will be sent</div>
+                <pre id="targetWhatsAppPreview" style="margin: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12.5px; line-height: 1.75; color: var(--text); white-space: pre-wrap; word-break: break-word;"></pre>
+            </div>
         </div>
 
         <div class="stats">
@@ -5513,6 +5518,10 @@
     }
     /** معرّف خانة الإدخال — بالفهرس لا باسم الفرع (الأسماء فيها مسافات). */
     function targetInputId(i) { return `targetIn${i}`; }
+    /** 12/09/2026 — بالشرطة المائلة، كما في نموذج الإدارة لرسالة الواتساب. */
+    function targetSlashDate(iso) {
+        return iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '';
+    }
 
     window.shiftTargetDay = function(delta) {
         const el = document.getElementById('targetDate');
@@ -5615,11 +5624,16 @@
 
     const TARGET_STATE_COLOR = {
         above: 'var(--success)', on: 'var(--success)', below: 'var(--danger)',
-        noreport: 'var(--text-dim)', notarget: 'var(--text-dim)'
+        pending: 'var(--warning)', noreport: 'var(--text-dim)', notarget: 'var(--text-dim)'
     };
     const TARGET_STATE_MARK = {
-        above: '\u2705', on: '\u2705', below: '\u26A0\uFE0F',
-        noreport: '\u2014', notarget: '\u2014'
+        above: '\u2705', on: '\u2705', below: '\u274C',
+        pending: '\u23F3', noreport: '\u2014', notarget: '\u2014'
+    };
+    // كلمات الحالة في رسالة الواتساب — بالصيغة التي كتبها المالك في نموذجه.
+    const TARGET_STATE_WORD = {
+        above: 'POSITIVE \u2705', on: 'ON TARGET \u2705', below: 'NEGATIVE \u274C',
+        pending: 'PENDING \u23F3', notarget: 'NO TARGET SET'
     };
 
     /** خانات الإدخال — تُبنى من FINANCE_BRANCHES لا من قائمة ثابتة مكرّرة. */
@@ -5663,28 +5677,46 @@
     function targetTotals(rows) {
         const reported = rows.filter(r => r.hasReport);
         const missing = rows.filter(r => !r.hasReport);
-        const totalTarget = rows.filter(r => r.hasTarget).reduce((a, r) => a + r.target, 0);
-        const comparableTarget = reported.filter(r => r.hasTarget).reduce((a, r) => a + r.target, 0);
+        // الهدف = هدف الشركة الكامل دائمًا. طلب المالك أن تُظهر الرسالة
+        // «التارجيت الإجمالي الخاص بالشركة»، فلا يجوز أن يتقلّص الرقم بهدوء
+        // كلما تأخّر فرع عن الإرسال — والشاشة تستخدم نفس الرقم فلا تختلف عنها.
+        const fullTarget = rows.filter(r => r.hasTarget).reduce((a, r) => a + r.target, 0);
         const totalSales = reported.reduce((a, r) => a + r.sales.netRevenue, 0);
         const totalGross = reported.reduce((a, r) => a + r.sales.grossTotal, 0);
         const totalFees = reported.reduce((a, r) => a + r.sales.totalFees, 0);
         const complete = missing.length === 0;
-        const canJudge = reported.length > 0 && comparableTarget > 0;
-        const totalDiff = canJudge ? totalSales - comparableTarget : null;
+        const totalDiff = fullTarget > 0 ? totalSales - fullTarget : null;
 
-        let state, label;
-        if (!reported.length) { state = 'noreport'; label = 'No reports yet'; }
-        else if (!comparableTarget) { state = 'notarget'; label = 'No target set'; }
-        else if (Math.abs(totalDiff) < 0.005) { state = 'on'; label = 'On target'; }
-        else if (totalDiff > 0) { state = 'above'; label = 'Above target'; }
-        else { state = 'below'; label = 'Below target'; }
-        if (canJudge && !complete) label += ` (${reported.length} of ${rows.length} branches)`;
+        // =================================================================
+        // الحكم — وقاعدة دقيقة تمنع تقريرًا كاذبًا
+        // -----------------------------------------------------------------
+        // بما أن الهدف هو هدف الشركة الكامل، فالمبيعات الناقصة (فرع لم يُرسل)
+        // تُظهر فرقًا سالبًا لا وجود له. ولذلك:
+        //  • فرق موجب → POSITIVE دائمًا، مكتملة كانت التقارير أو لا. تجاوزُ
+        //    الهدف بمبيعات فرعين حقيقةٌ لا يُغيّرها وصول الفرعين الباقيين.
+        //  • فرق سالب والتقارير ناقصة → PENDING لا NEGATIVE. هذا هو الفخ:
+        //    إرسال «سالب» في التاسعة صباحًا لأن الفروع لم تُرسل بعد.
+        //  • فرق سالب والتقارير مكتملة → NEGATIVE، وهو حكم صحيح حينها.
+        // =================================================================
+        let state;
+        if (!reported.length) state = 'pending';
+        else if (!fullTarget) state = 'notarget';
+        else if (totalDiff > 0.005) state = 'above';
+        else if (!complete) state = 'pending';
+        else if (Math.abs(totalDiff) <= 0.005) state = 'on';
+        else state = 'below';
+
+        const label = {
+            above: 'Above target', on: 'On target', below: 'Below target',
+            notarget: 'No target set',
+            pending: reported.length
+                ? `Waiting for ${missing.length} of ${rows.length} branches`
+                : 'No reports yet'
+        }[state];
 
         return {
             reported: reported.length, branches: rows.length, missing, complete,
-            // الهدف المعروض: الكامل عند اكتمال التقارير، والمقابل عند نقصها
-            totalTarget: complete ? totalTarget : comparableTarget,
-            fullTarget: totalTarget, comparableTarget,
+            totalTarget: fullTarget, fullTarget,
             totalSales, totalGross, totalFees, totalDiff, state, label
         };
     }
@@ -5734,7 +5766,7 @@
         const foot = document.getElementById('targetTableFoot');
         if (foot) {
             foot.innerHTML = `<tr style="background: var(--surface-2); font-weight: 800;">
-                <td>TOTAL${tot.complete ? '' : ` — ${tot.reported} of ${tot.branches} branches reported`}</td>
+                <td>COMPANY TOTAL${tot.complete ? '' : ` — ${tot.reported} of ${tot.branches} branches reported`}</td>
                 <td class="money-col">${money(tot.totalTarget)}</td>
                 <td class="money-col">${money(tot.totalSales)}</td>
                 <td class="money-col"><strong style="color: ${tot.totalDiff === null ? 'var(--text-dim)' : (tot.totalDiff >= 0 ? 'var(--success)' : 'var(--danger)')};">${tot.totalDiff === null ? '—' : (tot.totalDiff >= 0 ? '+' : '-') + money(Math.abs(tot.totalDiff))}</strong></td>
@@ -5763,7 +5795,8 @@
         if (tot.missing.length) {
             warn.push(`<b style="color: var(--warning);">${tot.missing.length} branch(es) have not sent a daily report for ${escapeHtml(salesDateLabel(dateISO))} yet:</b> `
                 + tot.missing.map(r => escapeHtml(r.branch)).join(' · ')
-                + `. They are left out of the total instead of being counted as zero sales, so the total above is not a full-day verdict yet.`);
+                + `. The company target stays the full amount, so the difference will look negative until they report.`
+                + ` That is why the status says <b>Waiting</b> and not <b>Below target</b> — and the WhatsApp message says PENDING, never NEGATIVE, while a branch is still missing.`);
         }
         const dups = rows.filter(r => r.sales.reports > 1);
         if (dups.length) {
@@ -5783,10 +5816,14 @@
         const warnEl = document.getElementById('targetWarnings');
         if (warnEl) warnEl.innerHTML = warn.join('<br><br>');
 
+        const waText = buildTargetWhatsAppText(dateISO, rows, tot);
         wireWhatsappLink(
             document.getElementById('targetWhatsAppLink'),
             document.getElementById('targetWhatsAppFallback'),
-            buildTargetWhatsAppText(dateISO, rows, tot));
+            waText);
+        // innerText لا innerHTML: النص خام ويجب أن يظهر كما يُرسل حرفيًّا.
+        const prev = document.getElementById('targetWhatsAppPreview');
+        if (prev) prev.innerText = waText;
     };
 
     window.saveDailyTargets = async function() {
@@ -5835,36 +5872,37 @@
      * النجمتان تجعلان السطر عريضًا في واتساب، وهي نفس صيغة بقية رسائل النظام.
      */
     function buildTargetWhatsAppText(dateISO, rows, tot) {
+        // ريالات صحيحة بلا فواصل ولا كسور، والوحدة ملتصقة — نموذج المالك: 32000QAR
+        const amount = (n) => `${Math.abs(Math.round(Number(n) || 0))}QAR`;
+        // ⚠️ الفرق يُحسب من الرقمين **المقرَّبين** لا من الخام. لو قُرِّب كلٌّ
+        // على حدة لظهرت رسالة لا تتوازن حسابيًّا (36360 − 32000 = 4359)، وتقريرٌ
+        // أرقامه لا تُجمع يُفقد الثقة فيه كله.
+        const target = Math.round(tot.fullTarget);
+        const actual = Math.round(tot.totalSales);
+        const variance = actual - target;
+
         const L = [];
-        L.push(`*Daily Target Report - ${salesDateLabel(dateISO)}*`);
-        L.push('Al Sheikha Group');
+        L.push('*SALES TARGET \u2014 COMPANY*');
+        L.push(targetSlashDate(dateISO));
         L.push('');
-        rows.forEach(r => {
-            L.push(`*${r.branch}*`);
-            L.push(`Target: ${r.hasTarget ? money(r.target) + ' QAR' : 'not set'}`);
-            if (r.hasReport) {
-                L.push(`Sales: ${money(r.sales.netRevenue)} QAR`);
-                L.push(`Difference: ${r.diff === null ? '-' : (r.diff >= 0 ? '+' : '-') + money(Math.abs(r.diff)) + ' QAR'}`);
-                L.push(`Status: ${r.label}${r.pct !== null ? ` (${r.pct.toFixed(1)}%)` : ''}`);
-            } else {
-                // لا نكتب «0.00» ولا «below target»: الفرع لم يُرسل، ولم يفشل.
-                L.push('Sales: no report received yet');
-                L.push('Difference: -');
-                L.push(`Status: ${r.label}`);
-            }
+        L.push(`TARGET : ${amount(target)}`);
+        L.push(`ACTUAL : ${amount(actual)}`);
+        L.push('');
+        L.push(`VARIANCE : *${variance < 0 ? '-' : ''}${amount(variance)}*`);
+        L.push('');
+        L.push(`STATUS : ${TARGET_STATE_WORD[tot.state]}`);
+
+        // سطرٌ واحد، وعند الحاجة وحدها. الرسالة القصيرة لا تعني رسالة تكتم
+        // ما يُبطل قراءتها: رقمٌ مبنيّ على فرعين من أربعة يجب أن يقول ذلك.
+        if (tot.missing.length && tot.branches) {
             L.push('');
-        });
-        L.push(`*TOTAL${tot.complete ? ` - ALL ${tot.branches} BRANCHES` : ` - ${tot.reported} OF ${tot.branches} BRANCHES`}*`);
-        L.push(`Target: ${money(tot.totalTarget)} QAR`);
-        L.push(`Sales: ${money(tot.totalSales)} QAR`);
-        L.push(`Difference: ${tot.totalDiff === null ? '-' : (tot.totalDiff >= 0 ? '+' : '-') + money(Math.abs(tot.totalDiff)) + ' QAR'}`);
-        L.push(`*Status: ${tot.label}*`);
-        if (tot.missing.length) {
-            L.push('');
-            L.push(`_Still waiting for: ${tot.missing.map(r => r.branch).join(', ')}. Those branches are not counted in the total above._`);
+            L.push(`_${tot.missing.length} of ${tot.branches} branches have not sent their report yet._`);
         }
-        L.push('');
-        L.push(`_Sales are after the ${financialRates.cardFeePercent}% bank charge and the ${financialRates.deliveryCommissionPercent}% delivery commission._`);
+        const dups = rows.filter(r => r.sales.reports > 1);
+        if (dups.length) {
+            L.push('');
+            L.push(`_Warning: ${dups.length} branch(es) sent more than one report for this day, so ACTUAL may be double-counted._`);
+        }
         return L.join('\n');
     }
 
