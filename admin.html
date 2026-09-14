@@ -354,6 +354,7 @@
         <button class="nav-tab-btn" data-tab="tab-finance">
             <span class="ic-slot" data-icon="dollar"></span> Monthly Financial
         </button>
+        <button class="nav-tab-btn" data-tab="tab-former"><span class="ic-slot" data-icon="users"></span> Former Employees</button>
         <button class="nav-tab-btn" data-tab="tab-fixed"><span class="ic-slot" data-icon="inbox"></span> Fixed Payments</button>
         <button class="nav-tab-btn" data-tab="tab-variable"><span class="ic-slot" data-icon="inbox"></span> Variable Payments</button>
         <button class="nav-tab-btn" data-tab="tab-settings"><span class="ic-slot" data-icon="settings"></span> Settings</button>
@@ -1132,6 +1133,35 @@
     </div>
 
     <!-- نافذة المدفوعات الثابتة — مستقلة بذاتها -->
+    <!-- الموظفون السابقون — أرشيف دائم، لا يُحذف منه أحد -->
+    <div id="tab-former" class="tab-content">
+        <div class="filter-section">
+            <h3><span data-icon="users"></span> Former Employees</h3>
+            <p class="card-sub">Everyone whose service has ended. Their files are kept here permanently as a reference &mdash; nothing is deleted, so attendance history, documents and past payroll all remain. They no longer appear in attendance, payroll, warnings, leaves or any dropdown.</p>
+            <div class="date-group">
+                <div style="flex: 1; min-width: 220px;"><label for="formerSearchInput">Search by name</label><input type="text" id="formerSearchInput" placeholder="Name or role" oninput="renderFormerEmployees()"></div>
+                <div style="width: 190px;"><label for="formerTypeFilter">Type</label>
+                    <select id="formerTypeFilter" onchange="renderFormerEmployees()">
+                        <option value="">All</option>
+                        <option value="resignation">Resignation</option>
+                        <option value="termination">End of service</option>
+                    </select>
+                </div>
+                <button class="btn-ghost" onclick="renderFormerEmployees()"><span data-icon="refresh"></span> Refresh</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Employee</th><th>Branch / role</th><th>Last working day</th><th>Type</th><th>Reason</th><th class="money-only">Salary was</th><th></th></tr></thead>
+                    <tbody id="formerTableBody"></tbody>
+                </table>
+            </div>
+            <p class="card-sub" style="margin: 14px 0 0;" id="formerCountNote"></p>
+        </div>
+    </div>
+
     <div id="tab-fixed" class="tab-content">
         <div class="filter-section">
             <h3><span data-icon="inbox"></span> Fixed Payments</h3>
@@ -1365,7 +1395,31 @@
             </div>
         </div>
 
-        <h3 style="font-size: 15px; margin-bottom: 14px;"><span data-icon="fileText"></span> Employee Official Documents</h3>
+        <!-- إنهاء الخدمة / الاستقالة -->
+        <h3 style="font-size: 15px; margin: 24px 0 6px;"><span data-icon="logout"></span> End of service / Resignation</h3>
+        <p class="card-sub" style="margin: 0 0 14px;">Enter the <b>last working day</b>. The final month's salary is then paid only for the days actually worked, and from the day after that date the employee disappears from attendance, payroll and every list &mdash; while the full file stays permanently in the <b>Former Employees</b> tab.</p>
+        <div id="endServiceActive" style="background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px;">
+            <div class="controls" style="flex-wrap: wrap; align-items: flex-end; gap: 10px;">
+                <div style="width: 180px;"><label for="editEmpEndType">Type</label>
+                    <select id="editEmpEndType">
+                        <option value="resignation">Resignation</option>
+                        <option value="termination">End of service</option>
+                    </select>
+                </div>
+                <div style="width: 170px;"><label for="editEmpEndDate">Last working day</label><input type="date" id="editEmpEndDate"></div>
+                <div style="flex: 1; min-width: 200px;"><label for="editEmpEndReason">Reason / note</label><input type="text" id="editEmpEndReason" placeholder="—" dir="auto"></div>
+                <button class="btn-danger" onclick="saveEndOfService()"><span data-icon="check"></span> Record it</button>
+            </div>
+            <div class="status" id="endServiceStatus" style="min-height: 18px; font-size: 13px; font-weight: 700; margin-top: 10px;"></div>
+        </div>
+        <div id="endServiceRecorded" style="display: none; background: var(--danger-soft); border: 1px solid var(--danger); border-radius: var(--radius-sm); padding: 14px;">
+            <div style="font-weight: 800; font-size: 13.5px; color: var(--danger);" id="endServiceSummary"></div>
+            <p class="card-sub" style="margin: 8px 0 12px;" id="endServiceNote"></p>
+            <button class="btn-ghost" onclick="undoEndOfService()"><span data-icon="refresh"></span> Cancel it &mdash; the employee is still working</button>
+            <div class="status" id="endServiceStatus2" style="min-height: 18px; font-size: 13px; font-weight: 700; margin-top: 10px;"></div>
+        </div>
+
+        <h3 style="font-size: 15px; margin: 24px 0 14px;"><span data-icon="fileText"></span> Employee Official Documents</h3>
         <div class="qid-container">
             <div class="qid-box"><strong>QID Front</strong><div id="qidFrontContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="qidFrontDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('qidFront', 'QID_Front')"><span data-icon="download"></span> Download</button><input type="file" id="editQidFrontInput" accept="image/*" style="font-size: 10px;"></div>
             <div class="qid-box"><strong>QID Back</strong><div id="qidBackContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="qidBackDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('qidBack', 'QID_Back')"><span data-icon="download"></span> Download</button><input type="file" id="editQidBackInput" accept="image/*" style="font-size: 10px;"></div>
@@ -1769,6 +1823,12 @@
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
+    /** اليوم التالي لتاريخ ISO — يعبر نهاية الشهر والسنة والكبيسة بأمان. */
+    function nextDayISO(iso) {
+        const [y, m, d] = String(iso).split('-').map(Number);
+        const t = new Date(y, m - 1, d + 1);
+        return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    }
     function firstDayOfCurrentMonthISO() {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
@@ -1964,16 +2024,60 @@
         // مراجعة راتب دون رؤيتها.
         // نافذتا المدفوعات جزء من عمله المالي، فتُدرجان معه.
         [ROLE_ACCOUNTANT]: ['tab-home', 'tab-employees', 'tab-attendance', 'tab-shifts',
-                            'tab-leaves', 'tab-sales', 'tab-finance', 'tab-fixed', 'tab-variable'],
+                            'tab-leaves', 'tab-sales', 'tab-finance', 'tab-fixed', 'tab-variable',
+                            'tab-former'],
         // بروفايلات الموظفين + الإنذارات + طلبات التسجيل الجديدة + الطلبات.
         [ROLE_SECRETARY]: ['tab-home', 'tab-employees', 'tab-requests',
-                           'tab-applications', 'tab-warnings'],
+                           'tab-applications', 'tab-warnings', 'tab-former'],
         // البروفايل + الحضور + الطلبات + طلبات التسجيل الجديدة.
         [ROLE_SUPERVISOR]: ['tab-home', 'tab-employees', 'tab-attendance', 'tab-shifts',
-                            'tab-requests', 'tab-applications']
+                            'tab-requests', 'tab-applications', 'tab-former']
     };
 
     let currentRole = ROLE_ADMIN;
+
+    // =====================================================================
+    // إنهاء الخدمة / الاستقالة
+    // ---------------------------------------------------------------------
+    // تُخزَّن على مستند الموظف نفسه لا في مجموعة منفصلة، لسببين:
+    //   • كل مسار قراءة (الرواتب، القوائم، الكيوسك) يحتاج معرفة الحالة فورًا،
+    //     ومجموعة منفصلة كانت ستُلزمنا بضمّ بيانات في كل موضع.
+    //   • المستند نفسه هو الأرشيف المطلوب: «يبقى ملفه محفوظًا كمرجع».
+    //
+    // الحقول: endDate (آخر يوم عمل) · endType ('resignation'|'termination')
+    //         endReason · endedBy · endedAt
+    //
+    // ⚠️ لا يُحذف الموظف أبدًا عند إنهاء الخدمة. الحذف يمحو معه سجل الحضور
+    // والرواتب والمستندات، وهو نقيض المطلوب.
+    // =====================================================================
+    const END_TYPE_LABEL = { resignation: 'Resignation', termination: 'End of service' };
+
+    /** هل انتهت خدمة الموظف بالنسبة لتاريخ معيّن (افتراضه اليوم)؟ */
+    function isFormerEmployee(emp, asOfISO) {
+        if (!emp || !emp.endDate) return false;
+        return String(emp.endDate) < String(asOfISO || todayISO());
+    }
+    /** الموظفون العاملون حاليًا — القوائم والإحصاءات كلها تمرّ من هنا. */
+    function activeEmployees(asOfISO) {
+        return allEmployees.filter(e => !isFormerEmployee(e, asOfISO));
+    }
+    /** الموظفون السابقون — لنافذة الأرشيف. */
+    function formerEmployees() {
+        return allEmployees.filter(e => isFormerEmployee(e));
+    }
+    /**
+     * أيام الفترة التي تلي آخر يوم عمل — لا يستحق عنها راتبًا ولا تُحسب غيابًا.
+     * تُستخدم لتناسب راتب الشهر الأخير: من عمل 10 أيام من 30 يأخذ 10/30.
+     */
+    function daysAfterEmploymentEnd(emp, startISO, endISO) {
+        if (!emp || !emp.endDate) return 0;
+        const end = String(emp.endDate);
+        if (end >= String(endISO)) return 0;           // ما زال على رأس عمله طول الفترة
+        const from = end < String(startISO) ? String(startISO) : nextDayISO(end);
+        let n = 0;
+        for (let d = from; d <= String(endISO); d = nextDayISO(d)) n++;
+        return n;
+    }
 
     function roleForEmail(email) {
         return ROLE_BY_EMAIL[String(email || '').trim().toLowerCase()] || ROLE_ADMIN;
@@ -2100,6 +2204,7 @@
         document.querySelector(`.nav-tab-btn[data-tab="${tabId}"]`)?.classList.add('active');
         if (tabId === 'tab-shifts') renderShiftsTable();
         if (tabId === 'tab-warnings') { renderWarningsTable(); loadManagerRequests(); }
+        if (tabId === 'tab-former') renderFormerEmployees();
         if (tabId === 'tab-leaves') renderLeavesTable();
         if (tabId === 'tab-training') { loadTrainingContentForAdmin(); loadTrainingRecords(); }
         if (tabId === 'tab-audit') loadAuditLog();
@@ -2472,7 +2577,8 @@
                 return;
             }
 
-            document.getElementById("homeEmpCount").innerText = allEmployees.length;
+            // العدد المعروض هو العاملون فعلًا — وهذا ما كان ينفخ رقم الرواتب.
+            document.getElementById("homeEmpCount").innerText = activeEmployees().length;
             filterEmployeesList();
         } catch (error) {
             console.error(error);
@@ -2748,11 +2854,17 @@
         // worked vs. not worked (excluding pre-hire/leave/manually-deducted
         // days, which are handled by other mechanisms and never enter this
         // ratio at all).
+        // آخر يوم عمل: ما بعده ليس غيابًا بل انقطاع علاقة عمل، ويُخصم مرة
+        // واحدة بمعدل اليوم في computePayroll (تناسب الشهر الأخير). لو تُرك
+        // هنا لحُسب غيابًا غير مبرَّر فخُصم مرتين.
+        const endedISO = emp && emp.endDate ? String(emp.endDate) : '';
+
         let workedCount = 0, restCount = 0;
         let cursor = new Date(startD);
         while (cursor <= endD) {
             const iso = isoFromDate(cursor);
             if (createdISO && iso < createdISO) { cursor.setDate(cursor.getDate() + 1); continue; }
+            if (endedISO && iso > endedISO) { cursor.setDate(cursor.getDate() + 1); continue; }
             if (leaveSet.has(iso) || deductedSet.has(iso)) { cursor.setDate(cursor.getDate() + 1); continue; } // handled elsewhere
             if (workedSet.has(iso)) workedCount++;
             else restCount++;
@@ -2771,7 +2883,8 @@
 
     window.filterEmployeesList = function() {
         const queryText = document.getElementById("employeeSearchInput").value.toLowerCase();
-        let filtered = allEmployees.filter(emp => emp.name.toLowerCase().includes(queryText) || (emp.role && emp.role.toLowerCase().includes(queryText)));
+        // العاملون فقط — من انتهت خدمته ملفه في نافذة «Former Employees».
+        let filtered = activeEmployees().filter(emp => emp.name.toLowerCase().includes(queryText) || (emp.role && emp.role.toLowerCase().includes(queryText)));
         renderPayrollTable(filtered);
     };
 
@@ -2899,6 +3012,13 @@
         const auto = computeMonthlyAttendanceAdjustment(emp, sessions, startDate, endDate);
         let autoAbsenceDays = auto.absentDays;
         let autoAbsenceAmount = autoAbsenceDays * dailyRate;
+
+        // تناسب الشهر الأخير: الراتب يُدفع شهريًا كاملًا، فمن انتهت خدمته في
+        // منتصف الشهر لا يستحق إلا أيام عمله. نخصم أيام ما بعد آخر يوم عمل
+        // بمعدل اليوم (الراتب ÷ 30)، فمن عمل 10 أيام من 30 يأخذ 10/30 بالضبط.
+        // وهذه الأيام مُستثناة من محرك الغياب أعلاه فلا تُخصم مرتين.
+        let notEmployedDays = daysAfterEmploymentEnd(emp, startDate, endDate);
+        let notEmployedAmount = notEmployedDays * dailyRate;
         let extraWorkedDays = auto.extraWorkedDays;
         let extraWorkedAmount = extraWorkedDays * basicHourlyRate * STANDARD_DAILY_HOURS * OT_DAY_MULTIPLIER;
 
@@ -2927,7 +3047,8 @@
         // minus all deductions (manual + automatic absence + housing + other
         // amounts) dated within this exact period.
         let netSalary = totalSalary + otAmount + allowancesPaidThisPeriod + extraWorkedAmount
-            - totalDeductionAmount - autoAbsenceAmount - housingDeductionAmount - otherAmountDeducted;
+            - totalDeductionAmount - autoAbsenceAmount - housingDeductionAmount - otherAmountDeducted
+            - notEmployedAmount;
         if (netSalary < 0) netSalary = 0;
 
         return {
@@ -2936,6 +3057,7 @@
             deductionDays, deductionAmountDirect, totalDeductionAmount,
             autoAbsenceDays, autoAbsenceAmount, extraWorkedDays, extraWorkedAmount,
             housingDeductionAmount, otherAmountDeducted,
+            notEmployedDays, notEmployedAmount,
             allowancesPaidThisPeriod, netSalary, empLogs, sessions
         };
     }
@@ -2981,7 +3103,7 @@
     window.renderShiftsTable = function() {
         const queryText = document.getElementById("shiftSearchInput").value.toLowerCase();
         const filterShift = document.getElementById("filterShiftType").value;
-        let filtered = allEmployees.filter(emp => {
+        let filtered = activeEmployees().filter(emp => {
             let matchText = emp.name.toLowerCase().includes(queryText) || (emp.role && emp.role.toLowerCase().includes(queryText));
             let matchShift = !filterShift || emp.shift === filterShift;
             return matchText && matchShift;
@@ -3964,7 +4086,8 @@
     function financePayrollTotal(month, branch) {
         const { start, end } = financeMonthRange(month);
         let gross = 0, bonus = 0, total = 0, count = 0;
-        allEmployees.forEach(emp => {
+        // العاملون فقط: راتب من انتهت خدمته لا يُحمَّل على مصروف الشهر.
+        activeEmployees().forEach(emp => {
             // فرع فارغ = الشركة كلها، فتُحتسب رواتب المكتب الرئيسي أيضًا.
             if (branch && emp.branch !== branch) return;
             const p = computePayroll(emp, start, end);
@@ -5397,7 +5520,7 @@
         const sum = (f) => rows.reduce((t, r) => t + f(r.s), 0);
         const company = financeSummary(month, '');
         const profitDiff = company.netProfit - sum(s => s.netProfit);
-        const unassigned = allEmployees.filter(e =>
+        const unassigned = activeEmployees().filter(e =>
             !FINANCE_BRANCHES.includes(e.branch) && e.branch !== FINANCE_COMPANY).length;
 
         const diffRow = Math.abs(profitDiff) < 0.01 ? '' : `
@@ -5900,7 +6023,7 @@
         const endDate = document.getElementById("payrollEndDate").value;
         if (!startDate || !endDate) { alert("Please select a From/To date range first."); return; }
 
-        const rows = allEmployees.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(emp => {
+        const rows = activeEmployees().slice().sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(emp => {
             const p = computePayroll(emp, startDate, endDate);
             return {
                 "Employee": emp.name || '-',
@@ -6111,6 +6234,143 @@
         }
     };
 
+    // =====================================================================
+    // إنهاء الخدمة / الاستقالة — تسجيل وتراجع وأرشيف
+    // ---------------------------------------------------------------------
+    // السكرتيرة تملك هذا: القاعدة تسمح لها بتحديث ملف الموظف ما لم يُمسّ حقل
+    // الراتب، وهذه الحقول لا تمسّه.
+    // =====================================================================
+    window.saveEndOfService = async function() {
+        const empId = document.getElementById("editEmpOriginalId").value;
+        const endType = document.getElementById("editEmpEndType").value === 'termination' ? 'termination' : 'resignation';
+        const endDate = document.getElementById("editEmpEndDate").value;
+        const endReason = document.getElementById("editEmpEndReason").value.trim();
+        const st = document.getElementById("endServiceStatus");
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+
+        if (!canEditProfiles()) { show("You do not have permission for this.", "var(--danger)"); return; }
+        if (!empId) { show("Open an employee profile first.", "var(--danger)"); return; }
+        if (!endDate) { show("Choose the last working day.", "var(--danger)"); return; }
+
+        const emp = allEmployees.find(e => e.id === empId) || {};
+        const label = END_TYPE_LABEL[endType];
+        if (!confirm(
+            `${label} for ${emp.name || empId}?\n\n` +
+            `Last working day: ${endDate}\n\n` +
+            `• The final month's salary will be paid only for the days worked up to that date.\n` +
+            `• From the next day the employee disappears from attendance, payroll and every list.\n` +
+            `• The full file is KEPT in the Former Employees tab — nothing is deleted.\n\n` +
+            `You can cancel this later if it was a mistake.`
+        )) return;
+
+        show("Saving...", "var(--warning)");
+        try {
+            await updateDoc(doc(db, "employees", empId), {
+                endDate, endType, endReason: endReason || '',
+                endedBy: (currentUser && currentUser.email) || 'unknown',
+                endedAt: serverTimestamp()
+            });
+            logAudit("End Of Service Recorded",
+                `${emp.name || empId} — ${label}, last day ${endDate}${endReason ? ' (' + endReason + ')' : ''}`);
+            await loadEmployees();
+            renderEndServicePanel(empId);
+            renderFormerEmployees();
+            show(`Recorded. ${emp.name || empId} is counted as working up to ${endDate}.`, "var(--success)");
+        } catch (e) {
+            show("Error: " + e.message, "var(--danger)");
+        }
+    };
+
+    window.undoEndOfService = async function() {
+        const empId = document.getElementById("editEmpOriginalId").value;
+        const st = document.getElementById("endServiceStatus2");
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        if (!canEditProfiles()) { show("You do not have permission for this.", "var(--danger)"); return; }
+        const emp = allEmployees.find(e => e.id === empId) || {};
+        if (!confirm(`Cancel the end of service for ${emp.name || empId}? The employee goes back to being active and their full salary resumes.`)) return;
+
+        show("Saving...", "var(--warning)");
+        try {
+            // نُفرّغ الحقول ولا نحذفها، فيبقى أثر أن قرارًا كان قد سُجّل ثم أُلغي.
+            await updateDoc(doc(db, "employees", empId), {
+                endDate: '', endType: '', endReason: '',
+                endedBy: (currentUser && currentUser.email) || 'unknown',
+                endedAt: serverTimestamp()
+            });
+            logAudit("End Of Service Cancelled", `${emp.name || empId}`);
+            await loadEmployees();
+            renderEndServicePanel(empId);
+            renderFormerEmployees();
+            show(`${emp.name || empId} is active again.`, "var(--success)");
+        } catch (e) {
+            show("Error: " + e.message, "var(--danger)");
+        }
+    };
+
+    /** يعرض لوحة إنهاء الخدمة بحالتها الصحيحة عند فتح ملف موظف. */
+    function renderEndServicePanel(empId) {
+        const emp = allEmployees.find(e => e.id === empId) || {};
+        const activeBox = document.getElementById('endServiceActive');
+        const doneBox = document.getElementById('endServiceRecorded');
+        if (!activeBox || !doneBox) return;
+
+        const has = !!emp.endDate;
+        activeBox.style.display = has ? 'none' : 'block';
+        doneBox.style.display = has ? 'block' : 'none';
+        ['endServiceStatus', 'endServiceStatus2'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.innerText = '';
+        });
+
+        if (has) {
+            const label = END_TYPE_LABEL[emp.endType] || 'End of service';
+            const former = isFormerEmployee(emp);
+            document.getElementById('endServiceSummary').innerText =
+                `${label} — last working day ${emp.endDate}` + (former ? ' (already ended)' : ' (still working until then)');
+            document.getElementById('endServiceNote').innerText =
+                (emp.endReason ? `Reason: ${emp.endReason}. ` : '')
+                + (former
+                    ? 'This employee no longer appears in attendance, payroll or any list. The file is kept as a reference.'
+                    : 'The employee is still active until that date, and the final salary will cover only the days up to it.');
+        } else {
+            const dEl = document.getElementById('editEmpEndDate');
+            if (dEl) dEl.value = '';
+            const rEl = document.getElementById('editEmpEndReason');
+            if (rEl) rEl.value = '';
+        }
+    }
+
+    window.renderFormerEmployees = function() {
+        const body = document.getElementById('formerTableBody');
+        if (!body) return;
+        const q = (document.getElementById('formerSearchInput')?.value || '').toLowerCase();
+        const type = document.getElementById('formerTypeFilter')?.value || '';
+
+        const rows = formerEmployees()
+            .filter(e => !type || (e.endType || 'resignation') === type)
+            .filter(e => !q || (e.name || '').toLowerCase().includes(q) || (e.role || '').toLowerCase().includes(q))
+            .sort((a, b) => String(b.endDate || '').localeCompare(String(a.endDate || '')));
+
+        body.innerHTML = rows.length ? rows.map(e => `
+            <tr>
+                <td><b>${escapeHtml(e.name || e.id)}</b></td>
+                <td>${escapeHtml(e.branch || '—')}<br><small style="color: var(--text-dim);">${escapeHtml(e.role || '')}</small></td>
+                <td><b>${escapeHtml(e.endDate || '—')}</b></td>
+                <td>${escapeHtml(END_TYPE_LABEL[e.endType] || 'End of service')}</td>
+                <td style="max-width: 260px; white-space: pre-wrap;" dir="auto">${escapeHtml(e.endReason || '—')}</td>
+                <td class="money-col money-only">${money(e.salary)}</td>
+                <td><button class="btn-ghost btn-sm" onclick="openProfileModal('${escapeJsAttr(e.id)}')">${iconSvg('eye','ic-sm')} Open file</button></td>
+            </tr>`).join('')
+            : `<tr><td colspan="7" style="text-align:center; color: var(--text-faint);">No former employees recorded.</td></tr>`;
+
+        const note = document.getElementById('formerCountNote');
+        if (note) {
+            const total = formerEmployees().length;
+            note.innerText = total
+                ? `${total} former employee file(s) kept. They are excluded from payroll and from the Monthly Financial Report, so their salaries no longer inflate this month's cost.`
+                : 'Nobody has left yet. When someone does, record it from their profile — never delete an employee, or their attendance history and documents go with them.';
+        }
+    };
+
     window.deleteEmployee = async function(id) {
         // الحذف نهائي ويأخذ معه سجل الموظف كله، فهو للمالك وحده.
         if (currentRole !== ROLE_ADMIN) { alert("Only the owner can delete an employee."); return; }
@@ -6144,6 +6404,8 @@
             document.getElementById("editEmpHousingType").value = emp.housingType || "external";
             // الحقل غائب عن الموظفين المنشَئين قبل هذه الميزة، فالغياب = غير مفعّل.
             document.getElementById("editEmpCanSubmitSalesReport").checked = emp.canSubmitSalesReport === true;
+            document.getElementById("editEmpEndType").value = emp.endType === 'termination' ? 'termination' : 'resignation';
+            renderEndServicePanel(empId);
 
             document.getElementById("qidFrontContainer").innerHTML = emp.qidFront ? `<img src="${emp.qidFront}">` : "<span class='no-img'>No Image</span>";
             document.getElementById("qidBackContainer").innerHTML = emp.qidBack ? `<img src="${emp.qidBack}">` : "<span class='no-img'>No Image</span>";
@@ -6677,7 +6939,7 @@
     window.openWarningModal = function() {
         const select = document.getElementById("warningEmployeeSelect");
         select.innerHTML = '<option value="">-- Select Employee --</option>' +
-            allEmployees.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+            activeEmployees().slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''))
                 .map(e => `<option value="${escapeJsAttr(e.id)}">${escapeHtml(e.name)}</option>`).join('');
         document.getElementById("warningDate").value = todayISO();
         document.getElementById("warningDeductionDays").value = "";
@@ -6886,7 +7148,7 @@
         const netEl = document.getElementById("homeNetPayroll");
         if (netEl) {
             let totalNet = 0;
-            allEmployees.forEach(emp => { totalNet += computePayroll(emp, start, end).netSalary; });
+            activeEmployees().forEach(emp => { totalNet += computePayroll(emp, start, end).netSalary; });
             netEl.innerText = `${totalNet.toFixed(0)} QAR`;
         }
 
@@ -6967,7 +7229,7 @@
         const windowEnd = new Date(today); windowEnd.setDate(windowEnd.getDate() + LEAVE_UPCOMING_WINDOW_DAYS);
 
         const rows = [];
-        allEmployees.forEach(emp => {
+        activeEmployees().forEach(emp => {
             const info = getExactLeaveEligibilityDate(emp);
             if (!info) return; // no hire date and no leave history to base it on
             if (info.eligibleDate > windowEnd) return; // still more than 30 days away — don't show yet
@@ -7002,7 +7264,7 @@
     window.openLeaveModal = function() {
         const select = document.getElementById("leaveEmployeeSelect");
         select.innerHTML = '<option value="">-- Select Employee --</option>' +
-            allEmployees.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+            activeEmployees().slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''))
                 .map(e => `<option value="${escapeJsAttr(e.id)}">${escapeHtml(e.name)}</option>`).join('');
         document.getElementById("leaveStartDate").value = todayISO();
         document.getElementById("leaveReturnDate").value = "";

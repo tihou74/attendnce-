@@ -1019,8 +1019,14 @@
         try {
             const querySnapshot = await getDocs(collection(db, "employees"));
             employees = [];
+            // من انتهت خدمته يُستبعد من هذه الصفحة كلها: لا يسجّل حضورًا، ولا
+            // يطلب إجازة، ولا يظهر في قائمة المديرين، ولا في قائمة الإنذارات.
+            // الشرط `endDate < اليوم` وليس مجرد وجود التاريخ، فمن قدّم استقالته
+            // بإشعار مسبق يبقى يعمل عادةً حتى آخر يوم عمله.
+            const todayStr = formatDateEnglish(new Date());
             querySnapshot.forEach(docSnap => {
                 const d = docSnap.data();
+                if (d.endDate && String(d.endDate) < todayStr) return;
                 // canSubmitSalesReport يُفعّله المشرف من ملف الموظف في لوحة
                 // الإدارة، وهو ما يحدّد من يظهر في قائمة مديري التقرير اليومي.
                 employees.push({
