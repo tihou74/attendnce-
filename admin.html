@@ -394,6 +394,9 @@
         <button class="nav-tab-btn" data-tab="tab-sales">
             <span class="ic-slot" data-icon="dollar"></span> Daily Report
         </button>
+        <button class="nav-tab-btn" data-tab="tab-target">
+            <span class="ic-slot" data-icon="check"></span> Daily Target
+        </button>
         <button class="nav-tab-btn" data-tab="tab-finance">
             <span class="ic-slot" data-icon="dollar"></span> Monthly Financial
         </button>
@@ -1055,6 +1058,74 @@
                     <tfoot id="salesReportsTableFoot"></tfoot>
                 </table>
             </div>
+        </div>
+    </div>
+
+    <!-- ==================================================================
+         التارقت اليومي — الهدف المتوقع لكل فرع مقابل ما تحقق فعلًا
+         ------------------------------------------------------------------
+         المقارنة تكون مع المبيعات **بعد خصم** رسوم البنك وعمولة التوصيل،
+         بطلب الإدارة: هذا هو المال الذي يصل فعلًا لا الرقم المعلن.
+         ================================================================== -->
+    <div id="tab-target" class="tab-content">
+        <div class="filter-section">
+            <h3><span data-icon="dollar"></span> Daily Target — all branches</h3>
+            <div class="date-group">
+                <div><label for="targetDate">Day</label><input type="date" id="targetDate" onchange="renderDailyTargets()"></div>
+                <button class="btn-ghost" onclick="shiftTargetDay(-1)" title="Previous day">&#9664; Previous day</button>
+                <button class="btn-ghost" onclick="goToTargetToday()"><span data-icon="calendar"></span> Today</button>
+                <button class="btn-ghost" onclick="shiftTargetDay(1)" title="Next day">Next day &#9654;</button>
+                <button class="btn-ghost" onclick="loadDailyTargetData()"><span data-icon="refresh"></span> Refresh</button>
+                <a id="targetWhatsAppLink" class="btn-accent" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;"><span data-icon="plane"></span> Send target report on WhatsApp</a>
+            </div>
+            <p class="card-sub" style="margin: 10px 0 0;" id="targetWhatsAppFallback"></p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box money-only"><div class="stat-icon" data-icon="dollar"></div><div><h3>Total Target</h3><p id="targetTotalTarget">0 QAR</p></div></div>
+            <div class="stat-box money-only"><div class="stat-icon" data-icon="dollar"></div><div><h3>Total Sales (after charges)</h3><p id="targetTotalSales">0 QAR</p></div></div>
+            <div class="stat-box money-only"><div class="stat-icon" data-icon="dollar"></div><div><h3>Difference</h3><p id="targetTotalDiff">0 QAR</p></div></div>
+            <div class="stat-box"><div class="stat-icon" data-icon="check"></div><div><h3>Status</h3><p id="targetTotalStatus" style="font-size: 17px;">—</p></div></div>
+        </div>
+
+        <!-- الهدف يُسجَّل مرة واحدة ويبقى ساريًا كل يوم -->
+        <div class="card money-only">
+            <h3><span data-icon="edit"></span> The daily target you expect, per branch</h3>
+            <p class="card-sub">Type the amount you expect each branch to make <b>in one day</b> and press Save. You only do this once — every day after that is compared automatically. Leave a branch empty if you do not want to set a target for it. Change a number any time and the comparison below updates as you type, but nothing is stored until you press Save.</p>
+            <div class="edit-profile-grid" id="targetInputsGrid" style="grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));"></div>
+            <div style="display: flex; justify-content: flex-end; align-items: center; gap: 14px; flex-wrap: wrap;">
+                <span id="targetSaveStatus" style="font-weight: 600; font-size: 13px;"></span>
+                <button class="btn-success" id="btnSaveTargets" onclick="saveDailyTargets()"><span data-icon="save"></span> Save targets</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3><span data-icon="fileText"></span> Target vs actual — <span id="targetDayLabel">—</span></h3>
+            <p class="card-sub">
+                <b>Sales (after charges)</b> is what actually reaches you: cash in full, card minus the
+                <b id="targetCardPctNote">1.5</b>% bank charge, and delivery minus the
+                <b id="targetDeliveryPctNote">21.5</b>% commission. It is therefore <b>lower</b> than the
+                figure on the Daily Report tab, which shows the announced total before any charge.
+                Both percentages come from the Monthly Financial tab.
+            </p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Branch</th>
+                            <th class="money-col">Expected target</th>
+                            <th class="money-col">Sales (after charges)</th>
+                            <th class="money-col">Difference</th>
+                            <th>Status</th>
+                            <th class="money-col">Announced total</th>
+                            <th class="money-col">Charges removed</th>
+                        </tr>
+                    </thead>
+                    <tbody id="targetTableBody"></tbody>
+                    <tfoot id="targetTableFoot"></tfoot>
+                </table>
+            </div>
+            <p class="card-sub" style="margin: 12px 0 0;" id="targetWarnings"></p>
         </div>
     </div>
 
@@ -2433,9 +2504,11 @@
         // خصمًا 21 يومًا وبدلين 750+750 في كشف الرواتب، فلا يمكن للمحاسب
         // مراجعة راتب دون رؤيتها.
         // نافذتا المدفوعات جزء من عمله المالي، فتُدرجان معه.
+        // tab-target: يرى التارقت ولا يُعدّله (canEditDailyTargets للمالك وحده).
+        // الهدف توقّعُ المالك، لكن المحاسب يحتاج رؤيته ليقرأ أرقام الشهر عليه.
         [ROLE_ACCOUNTANT]: ['tab-home', 'tab-employees', 'tab-payroll', 'tab-attendance', 'tab-shifts',
-                            'tab-leaves', 'tab-sales', 'tab-finance', 'tab-fixed', 'tab-variable',
-                            'tab-former'],
+                            'tab-leaves', 'tab-sales', 'tab-target', 'tab-finance', 'tab-fixed',
+                            'tab-variable', 'tab-former'],
         // السكرتيرة: ملفات الموظفين (رؤية وتعديل وإضافة) + الإنذارات + طلبات
         // التسجيل + الطلبات. **بلا رواتب** بقرار الإدارة — وهذا ما أتاحه فصل
         // النافذتين، فقبله كان جدول الرواتب داخل نافذة الملفات فلا سبيل لمنعه.
@@ -2704,6 +2777,7 @@
         if (tabId === 'tab-training') { loadTrainingContentForAdmin(); loadTrainingRecords(); }
         if (tabId === 'tab-audit') loadAuditLog();
         if (tabId === 'tab-sales') loadSalesReports();
+        if (tabId === 'tab-target') loadDailyTargetData();
         // النوافذ الثلاث تتغذّى من نفس البيانات، فتحميلها واحد.
         if (tabId === 'tab-finance' || tabId === 'tab-fixed' || tabId === 'tab-variable') {
             syncFinScopePickers();
@@ -2723,6 +2797,9 @@
         ["payrollEndDate", "endDate", "attReportEnd", "salesEndDate"].forEach(id => { const el = document.getElementById(id); if (el) el.value = end; });
         const dd = document.getElementById('newDeductionDate');
         if (dd) dd.value = todayISO();
+        // التارقت يبدأ على اليوم الحالي.
+        const tgtDate = document.getElementById('targetDate');
+        if (tgtDate) tgtDate.value = todayISO();
         // التقرير المالي يعمل بالشهر لا بمدى تواريخ.
         const finMonthEl = document.getElementById('finMonth');
         if (finMonthEl) finMonthEl.value = todayISO().slice(0, 7);
@@ -5338,6 +5415,11 @@
                 <td colspan="3"></td>
             </tr>`;
         }
+
+        // التارقت يقرأ نفس المبيعات، فتصحيح رقم أو حذف تقرير يجب أن ينعكس عليه
+        // فورًا. بلا هذا كان المالك يصحّح تقريرًا ويبقى صف التارقت على الرقم
+        // القديم حتى يُغيّر التبويب — أي رقمان متعارضان على الشاشة نفسها.
+        if (dailyTargetsLoaded) renderDailyTargets();
     };
 
     window.deleteSalesReport = async function(reportId) {
@@ -5394,6 +5476,397 @@
         XLSX.writeFile(wb, `Daily_Sales_Report_${start}_to_${end}.xlsx`);
         logAudit("Daily Sales Reports Exported", `${rows.length} report(s), period ${start} to ${end}`);
     };
+
+    /* =========================================================================
+       التارقت اليومي — الهدف المتوقع لكل فرع مقابل ما تحقق فعلًا
+       -------------------------------------------------------------------------
+       قرار الإدارة: المقارنة تكون مع المبيعات **بعد** خصم رسوم البنك (على
+       الكارد) وعمولة التوصيل (سنونو/طلبات/كيتا) — لأن ذلك هو المال الذي يصل
+       فعلًا، لا الرقم المعلن في التقرير اليومي.
+
+       ⚠️ ملاحظة جوهرية: لا يوجد في مستند المبيعات أي حقل مخزَّن للبنك شارج أو
+       الديليفري شارج. النسبتان تُحسبان من settings/financial_rates (1.5% و
+       21.5% افتراضًا)، وهما نفس النسبتين المستخدمتين في التقرير المالي الشهري.
+       فأي تعديل للنسبة هناك ينعكس هنا تلقائيًا، ولا يوجد رقمان يتعارضان.
+
+       الهدف يُسجَّل **مرة واحدة لكل فرع** ويبقى ساريًا كل يوم — لأن المالك طلب
+       أن تكون المقارنة «أوتوماتيكيا» بعد التسجيل، لا إدخالًا يوميًا.
+
+       ⚠️ الثوابت المستخدمة (FINANCE_BRANCHES و FINANCE_DELIVERY_FIELDS و
+       financialRates و money) مُعرَّفة أسفل هذا الموضع في الملف. لا يقع خطأ
+       لأن هذه الدوال لا تُنفَّذ إلا بعد تحميل الصفحة كاملة، لكن أي نداء لها
+       أثناء تقييم السكربت نفسه سيفشل — فلا تُنادَ من المستوى الأعلى.
+       ========================================================================= */
+
+    // branch -> الهدف اليومي بالريال. يُخزَّن في settings/daily_targets
+    let dailyTargets = {};
+    let dailyTargetsLoaded = false;
+
+    /** الهدف تعبير عن توقّع المالك، فتعديله له وحده. المحاسب يرى ولا يُعدّل. */
+    function canEditDailyTargets() {
+        return currentRole === ROLE_ADMIN;
+    }
+
+    function currentTargetDate() {
+        const el = document.getElementById('targetDate');
+        return (el && el.value) || todayISO();
+    }
+    /** معرّف خانة الإدخال — بالفهرس لا باسم الفرع (الأسماء فيها مسافات). */
+    function targetInputId(i) { return `targetIn${i}`; }
+
+    window.shiftTargetDay = function(delta) {
+        const el = document.getElementById('targetDate');
+        if (!el) return;
+        const cur = el.value || todayISO();
+        el.value = delta < 0 ? prevDayISO(cur) : nextDayISO(cur);
+        renderDailyTargets();
+    };
+    window.goToTargetToday = function() {
+        const el = document.getElementById('targetDate');
+        if (el) el.value = todayISO();
+        renderDailyTargets();
+    };
+
+    window.loadDailyTargets = async function() {
+        try {
+            const snap = await getDoc(doc(db, "settings", "daily_targets"));
+            const t = (snap.exists() && snap.data().targets) ? snap.data().targets : {};
+            dailyTargets = {};
+            // الفروع المعروفة فقط: فرعٌ حُذف من القائمة لا يظهر كصف بلا اسم
+            FINANCE_BRANCHES.forEach(b => {
+                const v = Number(t[b]);
+                if (isFinite(v) && v > 0) dailyTargets[b] = v;
+            });
+            dailyTargetsLoaded = true;
+        } catch (e) {
+            console.error("Error loading the daily targets:", e);
+            const st = document.getElementById('targetSaveStatus');
+            if (st) { st.innerText = "Could not load the saved targets: " + e.message; st.style.color = "var(--danger)"; }
+        }
+    };
+
+    window.loadDailyTargetData = async function() {
+        // المبيعات والنسبتان قد لا تكون محمَّلة إن فُتح هذا التبويب أولًا.
+        if (!allSalesReports.length) await loadSalesReports();
+        await loadFinancialRates();
+        await loadDailyTargets();
+        renderTargetInputs();
+        renderDailyTargets();
+    };
+
+    /**
+     * مبيعات فرع في يوم واحد، بعد خصم رسوم البنك وعمولة التوصيل.
+     *
+     * ⚠️ الصيغة هنا يجب أن تُنتج نفس أرقام financeSalesFor حرفيًّا، وإلا ظهر
+     * للمالك رقمان مختلفان لنفس المبيعات في نافذتين. يحرس ذلك اختبارٌ يقارن
+     * مخرجات الدالتين على نفس البيانات.
+     *
+     * `reports` تُعاد كذلك: أكثر من تقرير لنفس الفرع في نفس اليوم يعني تكرارًا
+     * يُضخّم الرقم، ولا يجوز أن يمرّ بصمت.
+     */
+    function targetSalesFor(dateISO, branch) {
+        const rows = allSalesReports.filter(r =>
+            (r.date || '') === dateISO && r.branch === branch);
+        const t = { cash: 0, card: 0, deliveryGross: 0, reports: rows.length };
+        rows.forEach(r => {
+            t.cash += Number(r.cash) || 0;
+            t.card += Number(r.card) || 0;
+            FINANCE_DELIVERY_FIELDS.forEach(f => { t.deliveryGross += Number(r[f]) || 0; });
+        });
+        const cPct = financialRates.cardFeePercent;
+        const dPct = financialRates.deliveryCommissionPercent;
+        t.grossTotal = t.cash + t.card + t.deliveryGross;
+        t.cardFee = t.card * cPct / 100;
+        t.deliveryFee = t.deliveryGross * dPct / 100;
+        t.totalFees = t.cardFee + t.deliveryFee;
+        t.netRevenue = t.cash + (t.card - t.cardFee) + (t.deliveryGross - t.deliveryFee);
+        return t;
+    }
+
+    /**
+     * صفٌّ واحد للمقارنة. الحالات الأربع مقصودة:
+     *  • لا تقرير بعد     → لا حكم إطلاقًا. صفر مبيعات ليس أداءً سيئًا بل غياب
+     *                       بيانات، وعرضه كنقص هو ما يجعل المالك يظن أن فرعًا
+     *                       خسر يومه وهو لم يُرسل تقريره فقط.
+     *  • لا هدف مسجَّل    → لا فرق ولا نسبة (القسمة على صفر بلا معنى).
+     *  • تحقّق / لم يتحقق → الفرق والنسبة.
+     */
+    function targetRowFor(dateISO, branch, targetValue) {
+        const s = targetSalesFor(dateISO, branch);
+        const target = Number(targetValue) || 0;
+        const hasReport = s.reports > 0;
+        const hasTarget = target > 0;
+        let state, label;
+        if (!hasReport) { state = 'noreport'; label = 'No report yet'; }
+        else if (!hasTarget) { state = 'notarget'; label = 'No target set'; }
+        else {
+            const d = s.netRevenue - target;
+            if (Math.abs(d) < 0.005) { state = 'on'; label = 'On target'; }
+            else if (d > 0) { state = 'above'; label = 'Above target'; }
+            else { state = 'below'; label = 'Below target'; }
+        }
+        return {
+            branch, target, hasTarget, hasReport, sales: s,
+            diff: (hasReport && hasTarget) ? s.netRevenue - target : null,
+            pct: (hasReport && hasTarget) ? (s.netRevenue / target * 100) : null,
+            state, label
+        };
+    }
+
+    const TARGET_STATE_COLOR = {
+        above: 'var(--success)', on: 'var(--success)', below: 'var(--danger)',
+        noreport: 'var(--text-dim)', notarget: 'var(--text-dim)'
+    };
+    const TARGET_STATE_MARK = {
+        above: '\u2705', on: '\u2705', below: '\u26A0\uFE0F',
+        noreport: '\u2014', notarget: '\u2014'
+    };
+
+    /** خانات الإدخال — تُبنى من FINANCE_BRANCHES لا من قائمة ثابتة مكرّرة. */
+    function renderTargetInputs() {
+        const grid = document.getElementById('targetInputsGrid');
+        if (!grid) return;
+        const editable = canEditDailyTargets();
+        grid.innerHTML = FINANCE_BRANCHES.map((b, i) => `
+            <div>
+                <label for="${targetInputId(i)}">${escapeHtml(b)}</label>
+                <input type="number" id="${targetInputId(i)}" step="0.01" min="0" placeholder="0.00"
+                       value="${dailyTargets[b] != null ? dailyTargets[b] : ''}"
+                       oninput="renderDailyTargets()"${editable ? '' : ' readonly style="opacity:.65;"'}>
+            </div>`).join('');
+        const btn = document.getElementById('btnSaveTargets');
+        if (btn) btn.style.display = editable ? '' : 'none';
+        if (!editable) {
+            const st = document.getElementById('targetSaveStatus');
+            if (st) { st.innerText = 'Only the owner can change a target.'; st.style.color = 'var(--text-dim)'; }
+        }
+    }
+
+    /** ما هو مكتوب في الخانات الآن (قد يخالف المحفوظ — معاينة حيّة). */
+    function targetsFromInputs() {
+        const out = {};
+        FINANCE_BRANCHES.forEach((b, i) => {
+            const el = document.getElementById(targetInputId(i));
+            const v = el ? Number(el.value) : NaN;
+            if (isFinite(v) && v > 0) out[b] = v;
+        });
+        return out;
+    }
+
+    /**
+     * حساب سطر المجموع.
+     * ⚠️ الفخ الذي يجب تجنّبه: الهدف يُجمع لكل الفروع، لكن المبيعات لا تُجمع
+     * إلا عن الفروع التي أرسلت تقريرها. لو جُمع الهدف الكامل مقابل مبيعات
+     * فرعين فقط لظهر نقصٌ هائل لا وجود له. فنقارن الهدف **المقابل للفروع
+     * التي أرسلت** ونُعلن صريحًا أن الحكم غير مكتمل.
+     */
+    function targetTotals(rows) {
+        const reported = rows.filter(r => r.hasReport);
+        const missing = rows.filter(r => !r.hasReport);
+        const totalTarget = rows.filter(r => r.hasTarget).reduce((a, r) => a + r.target, 0);
+        const comparableTarget = reported.filter(r => r.hasTarget).reduce((a, r) => a + r.target, 0);
+        const totalSales = reported.reduce((a, r) => a + r.sales.netRevenue, 0);
+        const totalGross = reported.reduce((a, r) => a + r.sales.grossTotal, 0);
+        const totalFees = reported.reduce((a, r) => a + r.sales.totalFees, 0);
+        const complete = missing.length === 0;
+        const canJudge = reported.length > 0 && comparableTarget > 0;
+        const totalDiff = canJudge ? totalSales - comparableTarget : null;
+
+        let state, label;
+        if (!reported.length) { state = 'noreport'; label = 'No reports yet'; }
+        else if (!comparableTarget) { state = 'notarget'; label = 'No target set'; }
+        else if (Math.abs(totalDiff) < 0.005) { state = 'on'; label = 'On target'; }
+        else if (totalDiff > 0) { state = 'above'; label = 'Above target'; }
+        else { state = 'below'; label = 'Below target'; }
+        if (canJudge && !complete) label += ` (${reported.length} of ${rows.length} branches)`;
+
+        return {
+            reported: reported.length, branches: rows.length, missing, complete,
+            // الهدف المعروض: الكامل عند اكتمال التقارير، والمقابل عند نقصها
+            totalTarget: complete ? totalTarget : comparableTarget,
+            fullTarget: totalTarget, comparableTarget,
+            totalSales, totalGross, totalFees, totalDiff, state, label
+        };
+    }
+
+    window.renderDailyTargets = function() {
+        const body = document.getElementById('targetTableBody');
+        if (!body) return;
+        const dateISO = currentTargetDate();
+        const live = targetsFromInputs();
+        const rows = FINANCE_BRANCHES.map(b => targetRowFor(dateISO, b, live[b]));
+        const tot = targetTotals(rows);
+
+        const dayEl = document.getElementById('targetDayLabel');
+        if (dayEl) dayEl.innerText = salesDateLabel(dateISO) || '—';
+        const cn = document.getElementById('targetCardPctNote');
+        if (cn) cn.innerText = financialRates.cardFeePercent;
+        const dn = document.getElementById('targetDeliveryPctNote');
+        if (dn) dn.innerText = financialRates.deliveryCommissionPercent;
+
+        body.innerHTML = rows.map(r => {
+            const salesCell = r.hasReport
+                ? `<b>${money(r.sales.netRevenue)}</b>`
+                : `<span style="color: var(--text-faint);">—</span>`;
+            const targetCell = r.hasTarget
+                ? money(r.target)
+                : `<span style="color: var(--text-faint);">not set</span>`;
+            const diffCell = r.diff === null
+                ? `<span style="color: var(--text-faint);">—</span>`
+                : `<strong style="color: ${r.diff >= 0 ? 'var(--success)' : 'var(--danger)'};">${r.diff >= 0 ? '+' : '-'}${money(Math.abs(r.diff))}</strong>`;
+            const pctTag = r.pct === null ? ''
+                : ` <small style="color: var(--text-dim);">(${r.pct.toFixed(1)}%)</small>`;
+            // تقريران لنفس الفرع في نفس اليوم = تكرار يُضخّم الرقم
+            const dupTag = r.sales.reports > 1
+                ? ` <span title="This branch sent ${r.sales.reports} reports for this same day. The figure shown is their sum, which is almost certainly double-counted — delete the wrong one on the Daily Report tab." style="color: var(--danger); font-size: 11px; font-weight: 800; white-space: nowrap;">${r.sales.reports} reports!</span>`
+                : '';
+            return `<tr${r.state === 'below' ? ' style="background: rgba(220,38,38,0.05);"' : ''}>
+                <td><b>${escapeHtml(r.branch)}</b>${dupTag}</td>
+                <td class="money-col">${targetCell}</td>
+                <td class="money-col">${salesCell}</td>
+                <td class="money-col">${diffCell}${pctTag}</td>
+                <td style="color: ${TARGET_STATE_COLOR[r.state]}; font-weight: 800; white-space: nowrap;">${TARGET_STATE_MARK[r.state]} ${escapeHtml(r.label)}</td>
+                <td class="money-col" style="color: var(--text-dim);">${r.hasReport ? money(r.sales.grossTotal) : '—'}</td>
+                <td class="money-col" style="color: var(--danger);">${r.hasReport ? '-' + money(r.sales.totalFees) : '—'}</td>
+            </tr>`;
+        }).join('');
+
+        const foot = document.getElementById('targetTableFoot');
+        if (foot) {
+            foot.innerHTML = `<tr style="background: var(--surface-2); font-weight: 800;">
+                <td>TOTAL${tot.complete ? '' : ` — ${tot.reported} of ${tot.branches} branches reported`}</td>
+                <td class="money-col">${money(tot.totalTarget)}</td>
+                <td class="money-col">${money(tot.totalSales)}</td>
+                <td class="money-col"><strong style="color: ${tot.totalDiff === null ? 'var(--text-dim)' : (tot.totalDiff >= 0 ? 'var(--success)' : 'var(--danger)')};">${tot.totalDiff === null ? '—' : (tot.totalDiff >= 0 ? '+' : '-') + money(Math.abs(tot.totalDiff))}</strong></td>
+                <td style="color: ${TARGET_STATE_COLOR[tot.state]}; white-space: nowrap;">${TARGET_STATE_MARK[tot.state]} ${escapeHtml(tot.label)}</td>
+                <td class="money-col" style="color: var(--text-dim);">${money(tot.totalGross)}</td>
+                <td class="money-col" style="color: var(--danger);">-${money(tot.totalFees)}</td>
+            </tr>`;
+        }
+
+        const set = (id, txt) => { const el = document.getElementById(id); if (el) el.innerText = txt; };
+        set('targetTotalTarget', `${money(tot.totalTarget)} QAR`);
+        set('targetTotalSales', `${money(tot.totalSales)} QAR`);
+        set('targetTotalDiff', tot.totalDiff === null
+            ? '—' : `${tot.totalDiff >= 0 ? '+' : '-'}${money(Math.abs(tot.totalDiff))} QAR`);
+        const stEl = document.getElementById('targetTotalStatus');
+        if (stEl) {
+            stEl.innerText = `${TARGET_STATE_MARK[tot.state]} ${tot.label}`;
+            stEl.style.color = TARGET_STATE_COLOR[tot.state];
+        }
+        const diffEl = document.getElementById('targetTotalDiff');
+        if (diffEl) diffEl.style.color = tot.totalDiff === null
+            ? '' : (tot.totalDiff >= 0 ? 'var(--success)' : 'var(--danger)');
+
+        // تحذيرات صريحة: ما ينقص، وما تكرّر، وما لم يُحفظ بعد.
+        const warn = [];
+        if (tot.missing.length) {
+            warn.push(`<b style="color: var(--warning);">${tot.missing.length} branch(es) have not sent a daily report for ${escapeHtml(salesDateLabel(dateISO))} yet:</b> `
+                + tot.missing.map(r => escapeHtml(r.branch)).join(' · ')
+                + `. They are left out of the total instead of being counted as zero sales, so the total above is not a full-day verdict yet.`);
+        }
+        const dups = rows.filter(r => r.sales.reports > 1);
+        if (dups.length) {
+            warn.push(`<b style="color: var(--danger);">Duplicate reports:</b> `
+                + dups.map(r => `${escapeHtml(r.branch)} (${r.sales.reports})`).join(' · ')
+                + ` sent more than one report for this day. Their figures are added together, which almost certainly double-counts the sales. Delete the wrong one on the Daily Report tab.`);
+        }
+        if (dailyTargetsLoaded) {
+            const changed = FINANCE_BRANCHES.filter(b =>
+                (Number(live[b]) || 0) !== (Number(dailyTargets[b]) || 0));
+            if (changed.length) {
+                warn.push(`<b style="color: var(--warning);">Not saved yet:</b> the figures shown are what you just typed for `
+                    + changed.map(b => escapeHtml(b)).join(' · ')
+                    + `. Press <b>Save targets</b> to keep them for every day.`);
+            }
+        }
+        const warnEl = document.getElementById('targetWarnings');
+        if (warnEl) warnEl.innerHTML = warn.join('<br><br>');
+
+        wireWhatsappLink(
+            document.getElementById('targetWhatsAppLink'),
+            document.getElementById('targetWhatsAppFallback'),
+            buildTargetWhatsAppText(dateISO, rows, tot));
+    };
+
+    window.saveDailyTargets = async function() {
+        const st = document.getElementById('targetSaveStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        if (!canEditDailyTargets()) { show('Only the owner can change a target.', 'var(--danger)'); return; }
+
+        // كل خانة رقم صالح غير سالب. الفارغة تعني «لا هدف لهذا الفرع».
+        const next = {};
+        for (let i = 0; i < FINANCE_BRANCHES.length; i++) {
+            const b = FINANCE_BRANCHES[i];
+            const el = document.getElementById(targetInputId(i));
+            const raw = el ? el.value : '';
+            if (raw === '') { next[b] = 0; continue; }
+            const v = Number(raw);
+            if (!isFinite(v) || v < 0) {
+                show(`${b}: the target must be a number of zero or more.`, 'var(--danger)');
+                return;
+            }
+            next[b] = v;
+        }
+
+        show('Saving...', 'var(--warning)');
+        try {
+            // الخريطة كاملة داخل merge: الفروع الأربعة كلها موجودة في `next`
+            // (الفارغ = 0)، فلا يبقى هدف قديم لفرع أُفرغت خانته.
+            await setDoc(doc(db, "settings", "daily_targets"), {
+                targets: next,
+                updatedAt: serverTimestamp(),
+                updatedBy: (currentUser && currentUser.email) || 'unknown'
+            }, { merge: true });
+            logAudit("Daily Targets Updated",
+                FINANCE_BRANCHES.map(b => `${b}: ${money(next[b])}`).join(' · '));
+            await loadDailyTargets();
+            renderTargetInputs();
+            renderDailyTargets();
+            show('Saved. Every day is now compared against these targets automatically.', 'var(--success)');
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    /**
+     * نص واتساب للتارقت — بالترتيب الذي طلبته الإدارة:
+     * التاريخ · التارقت المتوقع · مبيعات اليوم · الفرق · الحالة.
+     * النجمتان تجعلان السطر عريضًا في واتساب، وهي نفس صيغة بقية رسائل النظام.
+     */
+    function buildTargetWhatsAppText(dateISO, rows, tot) {
+        const L = [];
+        L.push(`*Daily Target Report - ${salesDateLabel(dateISO)}*`);
+        L.push('Al Sheikha Group');
+        L.push('');
+        rows.forEach(r => {
+            L.push(`*${r.branch}*`);
+            L.push(`Target: ${r.hasTarget ? money(r.target) + ' QAR' : 'not set'}`);
+            if (r.hasReport) {
+                L.push(`Sales: ${money(r.sales.netRevenue)} QAR`);
+                L.push(`Difference: ${r.diff === null ? '-' : (r.diff >= 0 ? '+' : '-') + money(Math.abs(r.diff)) + ' QAR'}`);
+                L.push(`Status: ${r.label}${r.pct !== null ? ` (${r.pct.toFixed(1)}%)` : ''}`);
+            } else {
+                // لا نكتب «0.00» ولا «below target»: الفرع لم يُرسل، ولم يفشل.
+                L.push('Sales: no report received yet');
+                L.push('Difference: -');
+                L.push(`Status: ${r.label}`);
+            }
+            L.push('');
+        });
+        L.push(`*TOTAL${tot.complete ? ` - ALL ${tot.branches} BRANCHES` : ` - ${tot.reported} OF ${tot.branches} BRANCHES`}*`);
+        L.push(`Target: ${money(tot.totalTarget)} QAR`);
+        L.push(`Sales: ${money(tot.totalSales)} QAR`);
+        L.push(`Difference: ${tot.totalDiff === null ? '-' : (tot.totalDiff >= 0 ? '+' : '-') + money(Math.abs(tot.totalDiff)) + ' QAR'}`);
+        L.push(`*Status: ${tot.label}*`);
+        if (tot.missing.length) {
+            L.push('');
+            L.push(`_Still waiting for: ${tot.missing.map(r => r.branch).join(', ')}. Those branches are not counted in the total above._`);
+        }
+        L.push('');
+        L.push(`_Sales are after the ${financialRates.cardFeePercent}% bank charge and the ${financialRates.deliveryCommissionPercent}% delivery commission._`);
+        return L.join('\n');
+    }
 
     /* =========================================================================
        Monthly Financial Report tab
