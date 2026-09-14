@@ -1208,7 +1208,9 @@
                 <div style="width: 120px;"><label for="fxPct" title="Extra rent calculated as a percentage of this branch's monthly sales">% of sales</label><input type="number" id="fxPct" step="0.1" min="0" max="100" placeholder="—"></div>
                 <div style="width: 150px;"><label for="fxThreshold" title="Only the part of the percentage above this figure is paid">% paid above</label><input type="number" id="fxThreshold" step="0.01" min="0" placeholder="0"></div>
                 <div style="flex: 1; min-width: 150px;"><label for="fxNote">Note (optional)</label><input type="text" id="fxNote" placeholder="—"></div>
-                <button class="btn-accent" onclick="addFinancialPayment('fixed')"><span data-icon="check"></span> Add</button>
+                <button class="btn-accent" id="fxAddBtn" onclick="addFinancialPayment('fixed')"><span data-icon="check"></span> Add</button>
+                <button class="btn-success" id="fxUpdateBtn" onclick="saveEditedPayment()" style="display: none;"><span data-icon="save"></span> Save changes</button>
+                <button class="btn-ghost" id="fxCancelEditBtn" onclick="cancelEditPayment()" style="display: none;"><span data-icon="x"></span> Cancel</button>
                 <button class="btn-warning" onclick="seedStandardFixedPayments()" title="Insert the agreed rent cheques, staff housing, office, company representative and Visa settlement for this month"><span data-icon="sync"></span> Add the standard ones</button>
                 <button class="btn-ghost" onclick="copyFixedPaymentsFromPreviousMonth()" title="Bring last month's fixed payments into this month so you don't retype them"><span data-icon="sync"></span> Copy from previous month</button>
             </div>
@@ -1257,6 +1259,33 @@
             <h3><span data-icon="inbox"></span> Petty cash requests from branch managers <span id="pettyPendingBadge" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
             <p class="card-sub">Approving a request records it as a variable payment for its branch and deducts it from the <b>bank</b> balance on the approval date. Rejecting it leaves no expense behind.</p>
             <div class="status" id="pettyStatus" style="min-height: 18px; font-size: 13px; font-weight: 700; margin-bottom: 10px;"></div>
+
+            <!-- رسالة الواتساب للمدير — تُبنى بعد كل قرار وتُرسل بنقرة -->
+            <div id="pettyMsgBox" style="display: none; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 16px;">
+                <div style="font-size: 12.5px; font-weight: 800; color: var(--text-dim); margin-bottom: 8px;">MESSAGE FOR THE MANAGER</div>
+                <div id="pettyMsgText" dir="auto" style="white-space: pre-wrap; font-size: 14px; line-height: 1.9; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px;"></div>
+                <div class="controls" style="margin-top: 12px; gap: 10px;">
+                    <a id="pettyMsgWa" class="btn-accent" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;" rel="noopener"><span data-icon="plane"></span> Send on WhatsApp</a>
+                    <button class="btn-ghost" onclick="hidePettyMessage()"><span data-icon="x"></span> Close</button>
+                </div>
+                <p class="card-sub" style="margin: 8px 0 0;" id="pettyMsgFallback"></p>
+            </div>
+
+            <!-- لوحة الموافقة: تُتيح مراجعة المبلغ قبل تسجيله. المدير قد يطلب
+                 مبلغًا ونوافق على أقل منه، والرسالة الثالثة التي طلبتها الإدارة
+                 («مع مراجعة المبلغ إلى كذا») تحتاج هذا الحقل. -->
+            <div id="pettyApproveBox" style="display: none; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 16px;">
+                <div style="font-size: 12.5px; font-weight: 800; color: var(--text-dim); margin-bottom: 8px;">APPROVING A REQUEST</div>
+                <div id="pettyApproveWho" dir="auto" style="font-size: 13.5px; line-height: 1.8;"></div>
+                <div class="controls" style="margin-top: 12px; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+                    <div style="width: 180px;"><label for="pettyApproveAmount">Approved amount (QAR)</label>
+                        <input type="number" id="pettyApproveAmount" step="0.01" min="0" placeholder="0.00">
+                    </div>
+                    <button class="btn-success" onclick="confirmPettyApproval()"><span data-icon="check"></span> Approve and record</button>
+                    <button class="btn-ghost" onclick="cancelPettyApproval()"><span data-icon="x"></span> Cancel</button>
+                </div>
+                <p class="card-sub" style="margin: 8px 0 0;">Leave the amount as requested to approve it in full, or change it to approve a different amount. The recorded expense always follows the amount in this box.</p>
+            </div>
             <div class="table-container">
                 <table>
                     <thead><tr><th>Requested</th><th>Branch / by</th><th class="money-col">Amount</th><th>Reason</th><th>Status</th><th></th></tr></thead>
@@ -1290,7 +1319,9 @@
                     </select>
                 </div>
                 <div style="flex: 1; min-width: 150px;"><label for="vrNote">Note (optional)</label><input type="text" id="vrNote" placeholder="—"></div>
-                <button class="btn-accent" onclick="addFinancialPayment('variable')"><span data-icon="check"></span> Add</button>
+                <button class="btn-accent" id="vrAddBtn" onclick="addFinancialPayment('variable')"><span data-icon="check"></span> Add</button>
+                <button class="btn-success" id="vrUpdateBtn" onclick="saveEditedPayment()" style="display: none;"><span data-icon="save"></span> Save changes</button>
+                <button class="btn-ghost" id="vrCancelEditBtn" onclick="cancelEditPayment()" style="display: none;"><span data-icon="x"></span> Cancel</button>
                 <button class="btn-ghost" onclick="copyVariablePaymentsFromPreviousMonth()" title="Bring last month's names across with amounts starting at zero"><span data-icon="sync"></span> Copy last month's names</button>
             </div>
             <p class="card-sub" style="margin: 12px 0 0;">Enter the exact date so the amount leaves the balance on the right day. Leave it empty and it is treated as month-end, which never deducts early.</p>
@@ -4851,23 +4882,37 @@
     window.renderPettyRequests = function() {
         const body = document.getElementById('pettyRequestsBody');
         if (!body) return;
-        const rows = [...allPettyRequests].sort(reqSortDesc);
+        // الطلب المرفوض يُحذف نهائيًّا عند الرفض، فلا يُفترض وجود صفوف مرفوضة.
+        // نُرشّحها هنا أيضًا حتى لا يظهر طلب رُفض قبل هذا التغيير.
+        const rows = [...allPettyRequests].filter(r => r.status !== 'rejected').sort(reqSortDesc);
         const pending = rows.filter(r => r.status === 'pending').length;
         const badge = document.getElementById('pettyPendingBadge');
         if (badge) { badge.innerText = pending; badge.style.display = pending ? 'inline-block' : 'none'; }
 
         if (pettyLoadError) { body.innerHTML = requestLoadErrorRow(pettyLoadError, 6); return; }
-        body.innerHTML = rows.length ? rows.map(r => `
+        body.innerHTML = rows.length ? rows.map(r => {
+            // المبلغ المُعتمد قد يختلف عن المطلوب، فنُظهر الاثنين حتى يُرى القرار.
+            const paid = Number(r.approvedAmount != null ? r.approvedAmount : r.amount) || 0;
+            const amountCell = (r.status === 'approved' && r.amountRevised)
+                ? `<b>${money(paid)}</b><br><small style="color: var(--text-dim); text-decoration: line-through;">${money(r.amount)}</small>`
+                : `<b>${money(r.amount)}</b>`;
+            // بعد الموافقة لا يبقى قرار يُتخذ، لكن الرسالة قد تحتاج إعادة إرسال
+            // (لم تُرسَل، أو ضاعت من المدير) — لذلك زر إعادة الإرسال فقط.
+            const actions = r.status === 'pending'
+                ? `<button class="btn-success btn-sm" title="Approve" onclick="startPettyApproval('${escapeJsAttr(r.id)}')">${iconSvg('check','ic-sm')}</button>
+                   <button class="btn-danger btn-sm" title="Reject and remove" onclick="rejectPettyCash('${escapeJsAttr(r.id)}')">${iconSvg('x','ic-sm')}</button>`
+                : (r.status === 'approved'
+                    ? `<button class="btn-ghost btn-sm" title="Show the WhatsApp message again" onclick="resendPettyMessage('${escapeJsAttr(r.id)}')">${iconSvg('plane','ic-sm')}</button>`
+                    : '');
+            return `
             <tr>
                 <td>${escapeHtml(reqWhen(r))}</td>
                 <td>${escapeHtml(r.branch || '—')}<br><small style="color: var(--text-dim);">${escapeHtml(r.managerName || '')}</small></td>
-                <td class="money-col"><b>${money(r.amount)}</b></td>
+                <td class="money-col">${amountCell}</td>
                 <td style="max-width: 320px; white-space: pre-wrap;" dir="auto">${escapeHtml(r.reason || '—')}</td>
                 <td>${statusPill(r.status)}${r.decidedBy ? `<br><small style="color: var(--text-dim);">${escapeHtml(r.decidedBy)}</small>` : ''}</td>
-                <td>${r.status === 'pending' ? `
-                    <button class="btn-success btn-sm" onclick="approvePettyCash('${escapeJsAttr(r.id)}')">${iconSvg('check','ic-sm')}</button>
-                    <button class="btn-danger btn-sm" onclick="rejectPettyCash('${escapeJsAttr(r.id)}')">${iconSvg('x','ic-sm')}</button>` : ''}</td>
-            </tr>`).join('')
+                <td>${actions}</td>
+            </tr>`; }).join('')
             : `<tr><td colspan="6" style="text-align:center; color: var(--text-faint);">No petty cash requests.</td></tr>`;
     };
 
@@ -4895,19 +4940,128 @@
             : `<tr><td colspan="7" style="text-align:center; color: var(--text-faint);">No warning letter requests.</td></tr>`;
     };
 
-    window.approvePettyCash = async function(id) {
+    // =====================================================================
+    // رسائل واتساب لقرار البيتي كاش — الثلاث التي حدّدتها الإدارة
+    // ---------------------------------------------------------------------
+    // بالعربية لأن المديرين عرب، وبها المبلغ حتى لا يحتاج المدير سؤالًا ثانيًا.
+    // =====================================================================
+    function pettyDecisionMessage(kind, r, amount) {
+        const amt = `${money(amount)} ريال`;
+        const who = r.managerName ? `${r.managerName}` : '';
+        const head = who ? `${who}،\n` : '';
+        if (kind === 'approved') {
+            return head + `تم قبول طلبك بخصوص البيتي كاش بمبلغ ${amt}، وهو قيد التنفيذ.`;
+        }
+        if (kind === 'revised') {
+            return head + `تم قبول طلبك بخصوص البيتي كاش مع مراجعة المبلغ إلى ${amt}.`;
+        }
+        return head + `تم رفض الطلب لأمور حسابية.`;
+    }
+
+    /**
+     * يُظهر الرسالة جاهزة مع زر واتساب.
+     * نبني وسم <a> بـ href مُعَدّ مسبقًا ولا نستخدم window.open: متصفحات الهاتف
+     * تحجب النوافذ المنبثقة ولا تحجب الروابط. وعلى الهاتف نستخدم المخطط الأصلي
+     * whatsapp:// لأن wa.me يمرّ بصفحة تحويل قد تنتهي في واتساب الويب. وبلا رقم
+     * حتى تظهر قائمة المشاركة فيختار المالك المدير أو المجموعة.
+     */
+    function showPettyMessage(kind, r, amount) {
+        const box = document.getElementById('pettyMsgBox');
+        const txtEl = document.getElementById('pettyMsgText');
+        const link = document.getElementById('pettyMsgWa');
+        if (!box || !txtEl || !link) return;
+
+        const text = pettyDecisionMessage(kind, r, amount);
+        txtEl.innerText = text;
+        const encoded = encodeURIComponent(text);
+        const webUrl = `https://wa.me/?text=${encoded}`;
+        const isPhone = /android|iphone|ipad|ipod|iemobile|blackberry|opera mini|webos/i.test(navigator.userAgent);
+        if (isPhone) {
+            link.href = `whatsapp://send?text=${encoded}`;
+            link.removeAttribute('target'); // مخطط مخصص في تبويب جديد يترك تبويبًا فارغًا
+        } else {
+            link.href = webUrl;
+            link.target = '_blank';
+        }
+        const fb = document.getElementById('pettyMsgFallback');
+        if (fb) {
+            fb.innerHTML = isPhone
+                ? `Nothing happens when you tap? <a href="${escapeHtml(webUrl)}" target="_blank" rel="noopener">open WhatsApp in the browser</a>.`
+                : '';
+        }
+        box.style.display = 'block';
+        box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    window.hidePettyMessage = function() {
+        const box = document.getElementById('pettyMsgBox');
+        if (box) box.style.display = 'none';
+    };
+    /** إعادة إظهار رسالة القبول لطلب مُعتمد سابقًا. */
+    window.resendPettyMessage = function(id) {
+        const r = allPettyRequests.find(x => x.id === id);
+        if (!r) return;
+        const paid = Number(r.approvedAmount != null ? r.approvedAmount : r.amount) || 0;
+        showPettyMessage(r.amountRevised ? 'revised' : 'approved', r, paid);
+    };
+
+    // ---------------------------------------------------------------------
+    // الموافقة على خطوتين: نفتح لوحةً بها المبلغ المطلوب قابلًا للتعديل، لأن
+    // الإدارة قد توافق على مبلغ أقل. لا نستخدم prompt() لأنها لا تُحترم دائمًا
+    // في تطبيق الشاشة الرئيسية على iOS ولا تدعم الاتجاه العربي.
+    // ---------------------------------------------------------------------
+    let pettyApprovalId = '';
+
+    window.startPettyApproval = function(id) {
         const st = document.getElementById('pettyStatus');
         const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
         const r = allPettyRequests.find(x => x.id === id);
         if (!r || r.status !== 'pending') { show('This request is no longer pending.', 'var(--warning)'); return; }
+        // شهر مُغلق لا يُقبل مصروفًا جديدًا، وإلا خالف المصروف اللقطة المجمّدة.
+        if (!guardFinanceMonthOpen(todayISO().slice(0, 7), st)) return;
+
+        pettyApprovalId = id;
+        const box = document.getElementById('pettyApproveBox');
+        const who = document.getElementById('pettyApproveWho');
+        const amt = document.getElementById('pettyApproveAmount');
+        if (who) {
+            who.innerHTML = `<b>${escapeHtml(r.branch || '—')}</b> — requested by ${escapeHtml(r.managerName || '—')}`
+                + `<br>Requested: <b>${money(r.amount)}</b> QAR`
+                + `<br><span style="color: var(--text-dim);">${escapeHtml(r.reason || '—')}</span>`
+                + `<br><span style="color: var(--text-dim);">Will be recorded as a variable payment dated ${escapeHtml(todayISO())} and deducted from the bank.</span>`;
+        }
+        if (amt) { amt.value = Number(r.amount) || 0; }
+        if (box) { box.style.display = 'block'; box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+        if (amt) { amt.focus(); amt.select && amt.select(); }
+        show('', 'var(--text-dim)');
+    };
+
+    window.cancelPettyApproval = function() {
+        pettyApprovalId = '';
+        const box = document.getElementById('pettyApproveBox');
+        if (box) box.style.display = 'none';
+    };
+
+    window.confirmPettyApproval = async function() {
+        const st = document.getElementById('pettyStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        const r = allPettyRequests.find(x => x.id === pettyApprovalId);
+        if (!r || r.status !== 'pending') { show('This request is no longer pending.', 'var(--warning)'); window.cancelPettyApproval(); return; }
+
+        const requested = Number(r.amount) || 0;
+        const approved = Number(document.getElementById('pettyApproveAmount').value);
+        if (!isFinite(approved) || approved <= 0) { show('Enter an approved amount greater than zero.', 'var(--danger)'); return; }
 
         const today = todayISO();
         const month = today.slice(0, 7);
-        // شهر مُغلق لا يُقبل مصروفًا جديدًا، وإلا خالف المصروف اللقطة المجمّدة.
         if (!guardFinanceMonthOpen(month, st)) return;
+        // نقارن بالفلس الصحيح لا بالفرق العشري: Math.abs(500 - 500.01) يساوي
+        // 0.00999999… في الحساب العائم فيفوته فرق فلس واحد.
+        const revised = Math.round(approved * 100) !== Math.round(requested * 100);
         if (!confirm(
-            `Approve ${money(r.amount)} QAR petty cash for ${r.branch}?\n\n` +
+            `Approve ${money(approved)} QAR petty cash for ${r.branch}?\n\n` +
             `Requested by: ${r.managerName || '—'}\n` +
+            `Requested amount: ${money(requested)} QAR\n` +
+            (revised ? `Approved amount: ${money(approved)} QAR (revised)\n` : '') +
             `Reason: ${r.reason || '—'}\n\n` +
             `It will be recorded as a variable payment dated ${today} and deducted from the BANK balance.`
         )) return;
@@ -4918,45 +5072,72 @@
                 month, branch: r.branch || FINANCE_COMPANY,
                 name: `Petty cash — ${(r.reason || '').slice(0, 60)}`.trim(),
                 type: 'variable',
-                amount: Number(r.amount) || 0,
-                note: `Requested by ${r.managerName || '—'}`,
+                amount: approved,
+                note: `Requested by ${r.managerName || '—'}`
+                    + (revised ? ` — requested ${money(requested)}, approved ${money(approved)}` : ''),
                 dayOfMonth: null, paymentDate: today, paidFrom: 'bank',
                 salesPercent: 0, salesPercentThreshold: 0,
+                // وسمُ المصدر: هذه الحقول هي ما يقرأه paymentActions ليقفل الحذف.
+                // مصروف نشأ عن موافقة لا يُحذف، وإلا بقيت موافقة بلا مصروف.
+                sourceRequestId: r.id,
+                sourceType: 'petty_cash',
                 createdAt: serverTimestamp()
             });
-            await updateDoc(doc(db, "petty_cash_requests", id), {
+            await updateDoc(doc(db, "petty_cash_requests", pettyApprovalId), {
                 status: 'approved',
                 decidedBy: (currentUser && currentUser.email) || 'unknown',
                 decidedAt: serverTimestamp(),
                 linkedPaymentId: payRef.id,
+                approvedAmount: approved,
+                amountRevised: revised,
                 paymentMonth: month, paymentDate: today
             });
-            logAudit("Petty Cash Approved", `${r.amount} QAR for ${r.branch} — requested by ${r.managerName || '—'}`);
+            logAudit("Petty Cash Approved",
+                `${money(approved)} QAR for ${r.branch} — requested by ${r.managerName || '—'}`
+                + (revised ? ` (requested ${money(requested)})` : ''));
+            window.cancelPettyApproval();
             await loadFinancialPayments();
             await loadManagerRequests();
             renderFinancialReport();
-            show(`Approved. ${money(r.amount)} QAR recorded as a variable payment on ${today} and deducted from the bank.`, 'var(--success)');
+            show(`Approved. ${money(approved)} QAR recorded as a variable payment on ${today} and deducted from the bank.`, 'var(--success)');
+            // نبني الرسالة من نسخة محلية: المستند بعد إعادة التحميل هو نفسه،
+            // لكن هذا يعمل حتى لو تعثّرت إعادة القراءة.
+            showPettyMessage(revised ? 'revised' : 'approved',
+                { managerName: r.managerName, amount: requested }, approved);
         } catch (e) {
             show('Error: ' + e.message, 'var(--danger)');
         }
     };
 
+    // الاسم القديم يبقى مُصدَّرًا: كان مربوطًا بأزرار في نسخة مخزَّنة من الصفحة.
+    window.approvePettyCash = function(id) { window.startPettyApproval(id); };
+
+    /**
+     * الرفض يمسح الطلب نهائيًّا — طلبت الإدارة ألّا يبقى المرفوض ظاهرًا.
+     * نُظهر رسالة الرفض قبل الحذف لأن الرسالة تُبنى من بيانات الطلب.
+     */
     window.rejectPettyCash = async function(id) {
         const st = document.getElementById('pettyStatus');
         const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
         const r = allPettyRequests.find(x => x.id === id);
         if (!r || r.status !== 'pending') { show('This request is no longer pending.', 'var(--warning)'); return; }
-        if (!confirm(`Reject the ${money(r.amount)} QAR request from ${r.managerName || '—'}? No expense will be recorded.`)) return;
+        if (!confirm(
+            `Reject the ${money(r.amount)} QAR request from ${r.managerName || '—'}?\n\n` +
+            `No expense will be recorded and the request will be deleted, so it will not stay on the screen. ` +
+            `The rejection message for the manager will be shown so you can send it.`
+        )) return;
+        if (pettyApprovalId === id) window.cancelPettyApproval();
         show('Saving...', 'var(--warning)');
+        // نحتفظ ببيانات الرسالة قبل الحذف
+        const snapshotForMessage = { managerName: r.managerName, amount: r.amount };
         try {
-            await updateDoc(doc(db, "petty_cash_requests", id), {
-                status: 'rejected',
-                decidedBy: (currentUser && currentUser.email) || 'unknown',
-                decidedAt: serverTimestamp()
-            });
-            logAudit("Petty Cash Rejected", `${r.amount} QAR for ${r.branch}`);
+            await deleteDoc(doc(db, "petty_cash_requests", id));
+            // سجل التدقيق هو الأثر الدائم للطلب المرفوض بعد حذف المستند.
+            logAudit("Petty Cash Rejected and Deleted",
+                `${money(r.amount)} QAR for ${r.branch || '—'} — requested by ${r.managerName || '—'} — reason: ${r.reason || '—'}`);
             await loadManagerRequests();
-            show('Request rejected.', 'var(--warning)');
+            show('Request rejected and removed.', 'var(--warning)');
+            showPettyMessage('rejected', snapshotForMessage, r.amount);
         } catch (e) {
             show('Error: ' + e.message, 'var(--danger)');
         }
@@ -5169,6 +5350,28 @@
 
         // ---- المدفوعات
         const monthClosed = financeMonthIsClosed(month);
+
+        /**
+         * أزرار سطر المدفوع.
+         *
+         * قراران من الإدارة:
+         *  • بند نشأ عن **طلب بيتي كاش مُعتمد** لا يُحذف. الطلب مسجَّل «مُعتمد»،
+         *    فحذف المصروف يترك موافقةً بلا مصروف — تناقض في الدفاتر. يظهر مكان
+         *    الزر وسمُ approved.
+         *  • البنود الثابتة تُعدَّل ولا تُحذف وتُعاد: زر تعديل يفتحها في النموذج.
+         */
+        const paymentActions = (p) => {
+            if (p.sourceRequestId) {
+                return `<span title="Created from an approved petty cash request — it cannot be deleted"
+                        style="font-size: 11px; font-weight: 800; color: var(--success);">approved</span>`;
+            }
+            const edit = `<button class="btn-ghost btn-sm" title="Edit this payment"
+                onclick="startEditPayment('${escapeJsAttr(p.id)}')">${iconSvg('edit','ic-sm')}</button>`;
+            const del = `<button class="btn-danger btn-sm" title="Delete"
+                onclick="deleteFinancialPayment('${escapeJsAttr(p.id)}')">${iconSvg('trash','ic-sm')}</button>`;
+            return edit + ' ' + del;
+        };
+
         const payRow = (p) => {
             // في شهر مُغلق نعرض المبلغ المُثبَّت في اللقطة، لا حسابًا جديدًا:
             // إيجارات النسبة من المبيعات تتغيّر لو عُدِّل تقرير مبيعات قديم.
@@ -5200,7 +5403,7 @@
                 <td>${escapeHtml(p.branch || 'All')}${p.dayOfMonth ? `<br><small style="color: var(--text-dim);">day ${escapeHtml(p.dayOfMonth)}</small>` : ''}</td>
                 <td class="money-col"><b>${money(eff.total)}</b></td>
                 <td style="color: var(--text-dim); font-size: 12.5px;">${escapeHtml(p.note || '—')}</td>
-                <td><button class="btn-danger btn-sm" onclick="deleteFinancialPayment('${escapeJsAttr(p.id)}')">${iconSvg('trash','ic-sm')}</button></td>
+                <td>${paymentActions(p)}</td>
             </tr>`;
         };
 
@@ -5667,6 +5870,135 @@
             await loadFinancialPayments();
             renderFinancialReport();
             show(`Added ${queue.length} standard fixed payment(s) for ${month}.`, 'var(--success)');
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    // =====================================================================
+    // تعديل بند مدفوع بدل حذفه وإعادة إضافته
+    // ---------------------------------------------------------------------
+    // يُحمَّل البند في نموذج نافذته نفسها، ويتحوّل زر «Add» إلى «Save changes».
+    // بند نشأ عن طلب بيتي كاش مُعتمد لا يُعدَّل من هنا — مبلغه قرار موثَّق.
+    // =====================================================================
+    let editingPaymentId = '';
+
+    function paymentFormIds(type) {
+        return type === 'fixed'
+            ? { name: 'fxName', branch: 'fxBranch', amount: 'fxAmount', note: 'fxNote', day: 'fxDay',
+                date: null, from: 'fxFrom', pct: 'fxPct', thr: 'fxThreshold', status: 'fxStatus',
+                add: 'fxAddBtn', upd: 'fxUpdateBtn', cancel: 'fxCancelEditBtn' }
+            : { name: 'vrName', branch: 'vrBranch', amount: 'vrAmount', note: 'vrNote', day: null,
+                date: 'vrDate', from: 'vrFrom', pct: null, thr: null, status: 'vrStatus',
+                add: 'vrAddBtn', upd: 'vrUpdateBtn', cancel: 'vrCancelEditBtn' };
+    }
+    function setEditButtons(type, editing) {
+        const P = paymentFormIds(type);
+        const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
+        show(P.add, !editing); show(P.upd, editing); show(P.cancel, editing);
+    }
+
+    window.startEditPayment = function(paymentId) {
+        const p = allFinancialPayments.find(x => x.id === paymentId);
+        if (!p) return;
+        const type = p.type === 'fixed' ? 'fixed' : 'variable';
+        const P = paymentFormIds(type);
+        const st = document.getElementById(P.status);
+        if (!guardFinanceMonthOpen(p.month || currentFinMonth(), st)) return;
+        if (p.sourceRequestId) {
+            if (st) { st.innerText = 'This line came from an approved petty cash request and cannot be edited.'; st.style.color = 'var(--danger)'; }
+            return;
+        }
+
+        const set = (key, val) => { const el = P[key] && document.getElementById(P[key]); if (el) el.value = val; };
+        set('name', p.name || '');
+        set('branch', p.branch || '');
+        set('amount', Number(p.amount) || 0);
+        set('note', p.note || '');
+        set('day', p.dayOfMonth || '');
+        set('date', p.paymentDate || '');
+        set('from', p.paidFrom === 'cash' ? 'cash' : 'bank');
+        set('pct', Number(p.salesPercent) || '');
+        set('thr', Number(p.salesPercentThreshold) || '');
+
+        editingPaymentId = paymentId;
+        setEditButtons(type, true);
+        if (st) { st.innerText = `Editing "${p.name || '-'}" — change what you need, then press Save changes.`; st.style.color = 'var(--warning)'; }
+        const nameEl = document.getElementById(P.name);
+        if (nameEl) { nameEl.focus(); nameEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    };
+
+    window.cancelEditPayment = function() {
+        const p = allFinancialPayments.find(x => x.id === editingPaymentId);
+        const type = (p && p.type === 'fixed') ? 'fixed' : 'variable';
+        const P = paymentFormIds(type);
+        ['name', 'amount', 'note', 'day', 'date', 'pct', 'thr'].forEach(k => {
+            const el = P[k] && document.getElementById(P[k]); if (el) el.value = '';
+        });
+        editingPaymentId = '';
+        setEditButtons('fixed', false); setEditButtons('variable', false);
+        const st = document.getElementById(P.status);
+        if (st) { st.innerText = 'Edit cancelled — nothing was changed.'; st.style.color = 'var(--text-dim)'; }
+    };
+
+    window.saveEditedPayment = async function() {
+        const p = allFinancialPayments.find(x => x.id === editingPaymentId);
+        if (!p) return;
+        const type = p.type === 'fixed' ? 'fixed' : 'variable';
+        const P = paymentFormIds(type);
+        const st = document.getElementById(P.status);
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        const val = (k) => { const el = P[k] && document.getElementById(P[k]); return el ? el.value : ''; };
+
+        if (!guardFinanceMonthOpen(p.month || currentFinMonth(), st)) return;
+
+        const name = val('name').trim();
+        const amount = Number(val('amount'));
+        const dayRaw = val('day');
+        const paymentDate = val('date');
+        const pctRaw = val('pct');
+        const thrRaw = val('thr');
+
+        if (!name) { show('Please enter the payment name.', 'var(--danger)'); return; }
+        if (!isFinite(amount) || amount < 0) { show('Please enter a valid amount.', 'var(--danger)'); return; }
+        const dayOfMonth = dayRaw === '' ? null : Number(dayRaw);
+        if (dayOfMonth !== null && (!Number.isInteger(dayOfMonth) || dayOfMonth < 1 || dayOfMonth > 31)) {
+            show('Pay-on day must be between 1 and 31.', 'var(--danger)'); return;
+        }
+        const salesPercent = pctRaw === '' ? 0 : Number(pctRaw);
+        if (!isFinite(salesPercent) || salesPercent < 0 || salesPercent > 100) {
+            show('% of sales must be between 0 and 100.', 'var(--danger)'); return;
+        }
+        const salesPercentThreshold = thrRaw === '' ? 0 : Number(thrRaw);
+        if (!isFinite(salesPercentThreshold) || salesPercentThreshold < 0) {
+            show('The threshold must be zero or more.', 'var(--danger)'); return;
+        }
+        if (amount === 0 && !salesPercent) { show('Enter an amount, a % of sales, or both.', 'var(--danger)'); return; }
+        if (paymentDate && paymentDate.slice(0, 7) !== (p.month || '')) {
+            show(`The exact date must stay inside ${p.month}.`, 'var(--danger)'); return;
+        }
+
+        show('Saving...', 'var(--warning)');
+        try {
+            await updateDoc(doc(db, "financial_payments", editingPaymentId), {
+                name, branch: val('branch'), amount, note: val('note').trim(),
+                dayOfMonth, paymentDate: paymentDate || null,
+                paidFrom: val('from') === 'cash' ? 'cash' : 'bank',
+                salesPercent, salesPercentThreshold,
+                updatedAt: serverTimestamp(),
+                updatedBy: (currentUser && currentUser.email) || 'unknown'
+            });
+            logAudit("Financial Payment Edited",
+                `${p.name || '-'} -> ${name}, ${p.amount} -> ${amount} QAR, ${p.month}`);
+            const wasName = p.name;
+            editingPaymentId = '';
+            setEditButtons(type, false);
+            ['name', 'amount', 'note', 'day', 'date', 'pct', 'thr'].forEach(k => {
+                const el = P[k] && document.getElementById(P[k]); if (el) el.value = '';
+            });
+            await loadFinancialPayments();
+            renderFinancialReport();
+            show(`Updated "${wasName || name}".`, 'var(--success)');
         } catch (e) {
             show('Error: ' + e.message, 'var(--danger)');
         }
