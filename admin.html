@@ -1262,13 +1262,27 @@
 
             <!-- رسالة الواتساب للمدير — تُبنى بعد كل قرار وتُرسل بنقرة -->
             <div id="pettyMsgBox" style="display: none; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 16px;">
-                <div style="font-size: 12.5px; font-weight: 800; color: var(--text-dim); margin-bottom: 8px;">MESSAGE FOR THE MANAGER — READY TO SEND</div>
+                <div style="font-size: 12.5px; font-weight: 800; color: var(--text-dim); margin-bottom: 8px;">1 — MESSAGE FOR THE BRANCH MANAGER</div>
                 <div id="pettyMsgText" dir="auto" style="white-space: pre-wrap; font-size: 14px; line-height: 1.9; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px;"></div>
                 <div class="controls" style="margin-top: 12px; gap: 10px;">
-                    <a id="pettyMsgWa" class="btn-accent" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;" rel="noopener"><span data-icon="plane"></span> Send on WhatsApp</a>
-                    <button class="btn-ghost" onclick="hidePettyMessage()"><span data-icon="x"></span> Close</button>
+                    <a id="pettyMsgWa" class="btn-accent" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;" rel="noopener"><span data-icon="plane"></span> Send to the manager</a>
                 </div>
                 <p class="card-sub" style="margin: 8px 0 0;" id="pettyMsgFallback"></p>
+
+                <!-- الرسالة الثانية: طلب الموافقة على التحويل من صاحبة الحساب.
+                     تظهر مع الطلبات المقبولة فقط — لا مبلغ يُحوَّل في المرفوض. -->
+                <div id="pettyTransferWrap" style="display: none; margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--border);">
+                    <div style="font-size: 12.5px; font-weight: 800; color: var(--text-dim); margin-bottom: 8px;">2 — TRANSFER APPROVAL — MRS. FATIMA ESSA S ALRUMAIHI</div>
+                    <div id="pettyTransferText" dir="auto" style="white-space: pre-wrap; font-size: 14px; line-height: 1.9; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px;"></div>
+                    <div class="controls" style="margin-top: 12px; gap: 10px;">
+                        <a id="pettyTransferWa" class="btn-accent" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;" rel="noopener"><span data-icon="plane"></span> Send the transfer request</a>
+                    </div>
+                    <p class="card-sub" style="margin: 8px 0 0;" id="pettyTransferFallback"></p>
+                </div>
+
+                <div class="controls" style="margin-top: 16px;">
+                    <button class="btn-ghost" onclick="hidePettyMessage()"><span data-icon="x"></span> Close</button>
+                </div>
             </div>
 
             <!-- لوحة الموافقة: تُتيح مراجعة المبلغ قبل تسجيله. المدير قد يطلب
@@ -4990,21 +5004,52 @@
         return L.join('\n');
     }
 
+    // =====================================================================
+    // الرسالة الثانية: طلب الموافقة على التحويل من صاحبة الحساب
+    // ---------------------------------------------------------------------
+    // تُرسل للطلبات المقبولة فقط. الطلب المرفوض لا مبلغ فيه يُحوَّل، فإرسال
+    // طلب تحويل عنه خطأ محاسبي.
+    // المبلغ المذكور فيها هو المبلغ **المُعتمد** لا المطلوب: هو ما سيُحوَّل
+    // فعلًا. وإن رُوجع المبلغ نُظهر الأصلي أيضًا حتى تعرف صاحبة الحساب أن
+    // التخفيض مقصود ولا تظنّه خطأً في الرقم.
+    // =====================================================================
+    const PETTY_TRANSFER_APPROVER = 'Mrs. Fatima Essa S Alrumaihi';
+
+    function pettyTransferMessage(r, amount, revised) {
+        const requested = `QAR ${money(r.amount)}`;
+        const approved = `QAR ${money(amount)}`;
+        // السبب قد يكون طويلًا؛ نقتصره حتى لا يطول الرابط ويُقتطع النص.
+        const purpose = String(r.reason || '').trim().replace(/\s+/g, ' ').slice(0, 140);
+        const L = [];
+        L.push('*Petty Cash — Request for Transfer Approval*');
+        L.push('');
+        L.push(`Dear ${PETTY_TRANSFER_APPROVER},`);
+        L.push('');
+        L.push(`Kindly grant your approval for the transfer of *${approved}* from your account to settle an approved petty cash request.`);
+        L.push('');
+        if (r.branch) L.push(`Branch: ${r.branch}`);
+        if (r.managerName) L.push(`Requested by: ${r.managerName}`);
+        if (purpose) L.push(`Purpose: ${purpose}`);
+        if (revised) L.push(`Originally requested: ${requested}`);
+        L.push(`Amount to transfer: ${approved}`);
+        L.push(`Approved on: ${r.paymentDate || todayISO()}`);
+        L.push('');
+        L.push('The request has been reviewed and approved by the accounts department. Your kind approval is requested to proceed with the transfer.');
+        L.push('');
+        L.push('With thanks and appreciation,');
+        L.push('Al Sheikha Group — Accounts Department');
+        return L.join('\n');
+    }
+
     /**
-     * يُظهر الرسالة جاهزة مع زر واتساب.
+     * يربط وسم <a> برسالة واتساب جاهزة.
      * نبني وسم <a> بـ href مُعَدّ مسبقًا ولا نستخدم window.open: متصفحات الهاتف
      * تحجب النوافذ المنبثقة ولا تحجب الروابط. وعلى الهاتف نستخدم المخطط الأصلي
      * whatsapp:// لأن wa.me يمرّ بصفحة تحويل قد تنتهي في واتساب الويب. وبلا رقم
-     * حتى تظهر قائمة المشاركة فيختار المالك المدير أو المجموعة.
+     * حتى تظهر قائمة المشاركة فيختار المالك المستقبل أو المجموعة.
      */
-    function showPettyMessage(kind, r, amount) {
-        const box = document.getElementById('pettyMsgBox');
-        const txtEl = document.getElementById('pettyMsgText');
-        const link = document.getElementById('pettyMsgWa');
-        if (!box || !txtEl || !link) return;
-
-        const text = pettyDecisionMessage(kind, r, amount);
-        txtEl.innerText = text;
+    function wireWhatsappLink(link, fallbackEl, text) {
+        if (!link) return;
         const encoded = encodeURIComponent(text);
         const webUrl = `https://wa.me/?text=${encoded}`;
         const isPhone = /android|iphone|ipad|ipod|iemobile|blackberry|opera mini|webos/i.test(navigator.userAgent);
@@ -5015,11 +5060,37 @@
             link.href = webUrl;
             link.target = '_blank';
         }
-        const fb = document.getElementById('pettyMsgFallback');
-        if (fb) {
-            fb.innerHTML = isPhone
+        if (fallbackEl) {
+            fallbackEl.innerHTML = isPhone
                 ? `Nothing happens when you tap? <a href="${escapeHtml(webUrl)}" target="_blank" rel="noopener">open WhatsApp in the browser</a>.`
                 : '';
+        }
+    }
+
+    function showPettyMessage(kind, r, amount) {
+        const box = document.getElementById('pettyMsgBox');
+        const txtEl = document.getElementById('pettyMsgText');
+        const link = document.getElementById('pettyMsgWa');
+        if (!box || !txtEl || !link) return;
+
+        const text = pettyDecisionMessage(kind, r, amount);
+        txtEl.innerText = text;
+        wireWhatsappLink(link, document.getElementById('pettyMsgFallback'), text);
+
+        // الرسالة الثانية تظهر مع القبول فقط، وتُخفى تمامًا عند الرفض.
+        const wrap = document.getElementById('pettyTransferWrap');
+        const approvedKind = kind !== 'rejected';
+        if (wrap) {
+            if (approvedKind) {
+                const tText = pettyTransferMessage(r, amount, kind === 'revised');
+                const tTxtEl = document.getElementById('pettyTransferText');
+                if (tTxtEl) tTxtEl.innerText = tText;
+                wireWhatsappLink(document.getElementById('pettyTransferWa'),
+                    document.getElementById('pettyTransferFallback'), tText);
+                wrap.style.display = 'block';
+            } else {
+                wrap.style.display = 'none';
+            }
         }
         box.style.display = 'block';
         box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
