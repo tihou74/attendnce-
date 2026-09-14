@@ -491,9 +491,9 @@
              شهر سابق تُفسد حساب الشهرين معًا وتمنع الموظف من تسجيل دخول جديد. -->
         <div class="card" id="openShiftsCard" style="display: none; border-left: 4px solid var(--warning);">
             <h3><span data-icon="alertTriangle"></span> Shifts still open (a Check-In with no Check-Out) <span id="openShiftsCount" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
-            <p class="card-sub">A Check-In with no Check-Out is closed <b>automatically at 16 hours</b>, counted as 16 hours, and marked <b>AUTO CHECK-OUT</b> in the attendance logs. This list shows anything still open — usually a shift in progress right now. If one has passed 16 hours and is still here, press the button to close it immediately.</p>
+            <p class="card-sub">A Check-In with no Check-Out is closed <b>automatically after 16 hours</b> and counted as a <b>normal 10-hour day</b> — a forgotten Check-Out never earns overtime. It is marked <b>AUTO CHECK-OUT</b> in the attendance logs. This list shows anything still open, which is usually a shift in progress right now; if one has passed 16 hours and is still here, press the button to close it immediately.</p>
             <div class="controls" style="margin-bottom: 12px;">
-                <button class="btn-warning btn-sm" onclick="autoCloseStaleShifts(false)"><span data-icon="clock"></span> Close everything past 16 hours now</button>
+                <button class="btn-warning btn-sm" onclick="autoCloseStaleShifts(false)"><span data-icon="clock"></span> Close everything past 16 hours now (as 10-hour days)</button>
             </div>
             <div class="table-container">
                 <table>
@@ -3381,9 +3381,12 @@
      * ورديات لم تُغلق. نُظهر ما بقي مفتوحًا أكثر من الحد، لأن وردية مفتوحة
      * من شهر سابق تُسجَّل كلها في يوم دخولها متى أُغلقت، فتُفسد الشهرين.
      */
-    // قرار الإدارة: وردية بلا انصراف تُغلق تلقائيًا بعد 16 ساعة بالضبط.
-    // الرقم نفسه مكتوب في index.html — أي تغيير يجب أن يكون في الملفين.
-    const AUTO_CHECKOUT_AFTER_HOURS = 16;
+    // قرار الإدارة: وردية بلا انصراف تُغلق تلقائيًا بعد 16 ساعة، وتُحتسب
+    // **يومًا عاديًا 10 ساعات** لا 16 — فالنسيان لا يُنتج أوفرتايم.
+    // 10 ساعات = STANDARD_DAILY_HOURS بالضبط، فالفائض صفر ولا أوفرتايم.
+    // الرقمان نفسهما مكتوبان في index.html — أي تغيير يجب أن يكون في الملفين.
+    const AUTO_CHECKOUT_AFTER_HOURS = 16;                            // المُشغِّل
+    const AUTO_CHECKOUT_CREDITED_HOURS = STANDARD_DAILY_HOURS;       // المحتسب = 10
     const OPEN_SHIFT_ALERT_HOURS = AUTO_CHECKOUT_AFTER_HOURS;
 
     /**
@@ -3420,7 +3423,9 @@
         for (const s of stale) {
             const autoId = `auto_${s.checkIn.id}`;
             try {
-                const outAt = new Date(tsToMillis(s.checkIn) + AUTO_CHECKOUT_AFTER_HOURS * 3600000);
+                // الدخول + 10 ساعات (المحتسب) لا + 16 (المُشغِّل): المستند
+                // يجب أن يكون متّسقًا، فالفرق بين وقتَيه يساوي مدته المحتسبة.
+                const outAt = new Date(tsToMillis(s.checkIn) + AUTO_CHECKOUT_CREDITED_HOURS * 3600000);
                 await setDoc(doc(db, "attendance", autoId), {
                     employeeId: s.employeeId,
                     employeeName: s.employeeName || '',
@@ -3429,16 +3434,16 @@
                     timestamp: outAt,
                     date: isoFromDate(outAt),
                     time: timeLabelFromDate(outAt),
-                    duration: `${AUTO_CHECKOUT_AFTER_HOURS}h 0m`,
-                    workMinutes: AUTO_CHECKOUT_AFTER_HOURS * 60,
+                    duration: `${AUTO_CHECKOUT_CREDITED_HOURS}h 0m`,
+                    workMinutes: AUTO_CHECKOUT_CREDITED_HOURS * 60,
                     autoCheckOut: true,
-                    autoReason: `No Check-Out was recorded within ${AUTO_CHECKOUT_AFTER_HOURS} hours of the Check-In on ${s.checkIn.date || '-'}`,
+                    autoReason: `No Check-Out was recorded within ${AUTO_CHECKOUT_AFTER_HOURS} hours of the Check-In on ${s.checkIn.date || '-'} — counted as a normal ${AUTO_CHECKOUT_CREDITED_HOURS}-hour day`,
                     linkedCheckInId: s.checkIn.id,
                     location: null
                 });
                 closed++;
                 logAudit("Automatic Check-Out",
-                    `${s.employeeName || s.employeeId} — Check-In ${s.checkIn.date || '-'} ${s.checkIn.time || ''} closed automatically at ${AUTO_CHECKOUT_AFTER_HOURS}h`);
+                    `${s.employeeName || s.employeeId} — Check-In ${s.checkIn.date || '-'} ${s.checkIn.time || ''} had no Check-Out after ${AUTO_CHECKOUT_AFTER_HOURS}h, counted as a normal ${AUTO_CHECKOUT_CREDITED_HOURS}-hour day`);
             } catch (e) {
                 console.error("Automatic check-out failed for", autoId, e);
             }
@@ -3446,7 +3451,7 @@
         if (closed) {
             await loadAttendanceLogs();
             if (!silent) {
-                alert(`${closed} shift(s) had no Check-Out after ${AUTO_CHECKOUT_AFTER_HOURS} hours and were closed automatically at exactly ${AUTO_CHECKOUT_AFTER_HOURS} hours each.`);
+                alert(`${closed} shift(s) had no Check-Out after ${AUTO_CHECKOUT_AFTER_HOURS} hours and were closed automatically.\n\nEach one is counted as a normal ${AUTO_CHECKOUT_CREDITED_HOURS}-hour day, so no overtime is paid for a forgotten Check-Out.`);
             }
         }
         return closed;
@@ -3772,7 +3777,7 @@
                 ? `<br><span title="Split shift — the employee left between two shifts on the same day and came back. Overtime and absence are calculated on the day's TOTAL, not on this part alone." style="color: #6366f1; font-size: 11px; font-weight: 800;">SPLIT · day total ${Math.floor(dayTotalMins / 60)}h ${dayTotalMins % 60}m</span>`
                 : '';
             const autoTag = isAuto
-                ? `<br><span title="${escapeHtml(s.checkOut.autoReason || 'Closed automatically')}" style="color: var(--warning); font-size: 11px; font-weight: 800;">AUTO CHECK-OUT</span>`
+                ? `<br><span title="${escapeHtml(s.checkOut.autoReason || 'Closed automatically')}" style="color: var(--warning); font-size: 11px; font-weight: 800;">AUTO CHECK-OUT · counted as a normal ${AUTO_CHECKOUT_CREDITED_HOURS}h day</span>`
                 : '';
             const durationHtml = s.checkOut
                 ? `<span class="duration-pill">${escapeHtml(s.durationLabel)}</span>${shortWarn}${splitTag}${autoTag}`

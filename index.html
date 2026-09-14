@@ -1144,22 +1144,33 @@
     }
 
     // =====================================================================
-    // انصراف تلقائي بعد 16 ساعة (قرار الإدارة)
+    // انصراف تلقائي بعد 16 ساعة — يُحتسب يومًا عاديًا 10 ساعات (قرار الإدارة)
     // ---------------------------------------------------------------------
     // من ينسى الانصراف كان يبقى «داخل الدوام» إلى الأبد: لا يستطيع تسجيل
     // دخول جديد، وحين ينصرف أخيرًا تُسجَّل الفجوة كلها ورديةً واحدة هائلة في
-    // يوم دخوله. الآن يُغلق النظام الوردية عند دخوله + 16 ساعة بالضبط.
+    // يوم دخوله.
     //
-    // ثلاث نقاط في التنفيذ:
-    //  • المعرّف مشتق من مستند الدخول (`auto_<id>`) لا عشوائي، فلو حدث
-    //    الإغلاق من جهازين معًا كُتب نفس المستند ولم يتكرّر انصرافان —
-    //    وتكرارهما كان سيُضاعف 16 ساعة في الرواتب.
-    //  • وقت الانصراف هو الدخول + 16 ساعة، لا وقت الاكتشاف. فالوردية تبقى
-    //    محسوبة في يومها الصحيح مهما تأخّر الاكتشاف.
-    //  • autoCheckOut: true يميّزه في لوحة الإدارة، فلا يُقرأ كأن الموظف
-    //    سجّل انصرافه بنفسه.
+    // رقمان مختلفان عن قصد:
+    //  • 16 ساعة = **مَتى** يُغلق النظام الوردية (المُشغِّل).
+    //  • 10 ساعات = **كم** تُحتسب (يوم عادي). النسيان لا يُكافأ بأوفرتايم:
+    //    10 ساعات هي الدوام القياسي بالضبط، فالفائض صفر ولا أوفرتايم.
+    //
+    // ووقت الانصراف يُكتب على الدخول + 10 ساعات لا + 16، حتى يكون المستند
+    // متّسقًا مع نفسه: الفرق بين الدخول والخروج يساوي المدة المحتسبة. ولو
+    // كُتب على +16 مع احتساب 10 لَحسبت اللوحة نسبة الساعات الليلية على نافذة
+    // 16 ساعة بينما الدقائق 600 — رقمان متناقضان في مستند واحد.
+    //
+    // وبما أن الإغلاق لا يقع إلا بعد 16 ساعة، فوقت الانصراف (+10) يسبق
+    // اللحظة الحالية بست ساعات على الأقل، فلا يمكن أن يأتي بعد تسجيل جديد
+    // فيختل ترتيب السجلات.
+    //
+    // والمعرّف مشتق من مستند الدخول (`auto_<id>`) لا عشوائي: لو أُغلقت من
+    // جهازين معًا كُتب نفس المستند ولم يتكرّر انصرافان — وتكرارهما كان
+    // سيُضاعف الساعات في الرواتب.
+    // autoCheckOut: true يميّزه في اللوحة فلا يُقرأ كأن الموظف انصرف بنفسه.
     // =====================================================================
-    const AUTO_CHECKOUT_AFTER_HOURS = 16;
+    const AUTO_CHECKOUT_AFTER_HOURS = 16;    // المُشغِّل: بعد كم ساعة يُغلق
+    const AUTO_CHECKOUT_CREDITED_HOURS = 10; // المحتسب: يوم عادي
 
     async function autoCloseStaleCheckIn(last, empId, empName, empBranch) {
         if (!last || last.type !== 'Check-In' || !last.when) return false;
@@ -1173,8 +1184,8 @@
             const existing = await getDoc(doc(db, "attendance", autoId));
             if (existing.exists()) return true;
 
-            const outAt = new Date(last.when.getTime() + AUTO_CHECKOUT_AFTER_HOURS * 3600000);
-            const mins = AUTO_CHECKOUT_AFTER_HOURS * 60;
+            const outAt = new Date(last.when.getTime() + AUTO_CHECKOUT_CREDITED_HOURS * 3600000);
+            const mins = AUTO_CHECKOUT_CREDITED_HOURS * 60;
             await setDoc(doc(db, "attendance", autoId), {
                 employeeId: empId,
                 employeeName: empName,
@@ -1183,10 +1194,10 @@
                 timestamp: outAt,
                 date: formatDateEnglish(outAt),
                 time: formatTimeEnglish(outAt),
-                duration: `${AUTO_CHECKOUT_AFTER_HOURS}h 0m`,
+                duration: `${AUTO_CHECKOUT_CREDITED_HOURS}h 0m`,
                 workMinutes: mins,
                 autoCheckOut: true,
-                autoReason: `No Check-Out was recorded within ${AUTO_CHECKOUT_AFTER_HOURS} hours of the Check-In on ${last.date || '-'}`,
+                autoReason: `No Check-Out was recorded within ${AUTO_CHECKOUT_AFTER_HOURS} hours of the Check-In on ${last.date || '-'} — counted as a normal ${AUTO_CHECKOUT_CREDITED_HOURS}-hour day`,
                 linkedCheckInId: last.id,
                 location: null
             });
@@ -1422,7 +1433,7 @@
                         }
                     }
                     if (autoClosedNotice) {
-                        successMessage += ` Note: an earlier shift of yours had no Check-Out, so it was closed automatically at ${AUTO_CHECKOUT_AFTER_HOURS} hours.`;
+                        successMessage += ` Note: an earlier shift of yours had no Check-Out. After ${AUTO_CHECKOUT_AFTER_HOURS} hours it was closed automatically and counted as a normal ${AUTO_CHECKOUT_CREDITED_HOURS}-hour day.`;
                         autoClosedNotice = false;
                     }
 
