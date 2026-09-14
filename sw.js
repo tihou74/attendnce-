@@ -27,7 +27,7 @@
 // تبويبًا جديدًا بعد نشره. v3: أُزيل التحويل التلقائي من report.html (كان يُبطل تثبيت تطبيق المديرين على
 // iOS)، ويجب إبطال
 // الكاش القديم حتى لا يبقى من ثبّت التطبيق سابقًا على النسخة القديمة.
-const CACHE_VERSION = 'v34';
+const CACHE_VERSION = 'v35';
 const SHELL_CACHE = `alsheikha-shell-${CACHE_VERSION}`;
 const ASSET_CACHE = `alsheikha-assets-${CACHE_VERSION}`;
 
@@ -201,4 +201,57 @@ self.addEventListener('fetch', (event) => {
         event.respondWith(cacheFirst(request));
     }
     // غير ذلك: نتركه للمتصفح.
+});
+
+
+/* =============================================================================
+   التنبيهات
+   -----------------------------------------------------------------------------
+   الضغط على التنبيه يجب أن يفتح اللوحة لا نسخة ثانية منها: نبحث أولًا عن نافذة
+   مفتوحة ونُركّز عليها، ولا نفتح نافذة جديدة إلا إن لم تكن هناك واحدة. ونُمرّر
+   التبويب المطلوب عبر postMessage حتى تنتقل الصفحة المفتوحة إليه.
+
+   ⚠️ معالج `push` أدناه لا يعمل بلا مُرسِل. Web Push يحتاج طرفًا يملك مفتاحًا
+   سريًّا (service account) ولا يجوز وضعه في صفحة ثابتة — أي زائر سيقرؤه
+   ويُرسل تنبيهات لكل الأجهزة. فهو مكتوب جاهزًا حتى إذا أُضيفت Cloud Function
+   لاحقًا عمل التنبيه والتطبيق مُغلق تمامًا بلا تعديل هنا.
+   وللتوضيح: تنبيهات الويب لا تقبل ملفًا صوتيًّا مخصَّصًا لا على iOS ولا على
+   أندرويد — تستخدم صوت النظام. الرنّة المميّزة تُشغَّل من داخل اللوحة نفسها.
+   ============================================================================= */
+
+self.addEventListener('notificationclick', (event) => {
+    const data = (event.notification && event.notification.data) || {};
+    const tab = data.tab || '';
+    const target = data.url || './admin.html';
+    event.notification.close();
+
+    event.waitUntil((async () => {
+        const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        const open = all.find(c => c.url.includes('admin.html'));
+        if (open) {
+            try { await open.focus(); } catch (e) { /* بعض المتصفحات تمنع التركيز */ }
+            if (tab) { try { open.postMessage({ type: 'OPEN_TAB', tab }); } catch (e) {} }
+            return;
+        }
+        const url = tab ? `${target}#${tab}` : target;
+        try { await self.clients.openWindow(url); } catch (e) {}
+    })());
+});
+
+self.addEventListener('push', (event) => {
+    let payload = {};
+    try { payload = event.data ? event.data.json() : {}; } catch (e) {
+        payload = { title: 'Al Sheikha Group', body: event.data ? event.data.text() : '' };
+    }
+    const title = payload.title || 'Al Sheikha Group';
+    event.waitUntil(self.registration.showNotification(title, {
+        body: payload.body || '',
+        tag: payload.tag || 'alsheikha-push',
+        renotify: true,
+        requireInteraction: true,
+        icon: './icons/admin-192.png',
+        badge: './icons/admin-192.png',
+        vibrate: [200, 100, 200, 100, 400],
+        data: { tab: payload.tab || 'tab-variable', url: './admin.html' }
+    }));
 });

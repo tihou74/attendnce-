@@ -317,6 +317,24 @@
         </div>
     </div>
 
+    <!-- شريط تفعيل التنبيهات — يظهر فقط ما لم تُفعَّل بعد على هذا الجهاز.
+         الإذن لا يُطلب تلقائيًا: المتصفحات ترفض الطلب بلا ضغطة من المستخدم،
+         وتُعاقب الموقع الذي يطلبه بمجرّد الفتح. -->
+    <div id="notifSetupBar" style="display: none; margin: 0 0 16px; padding: 14px 16px; border-radius: var(--radius-sm); background: var(--accent-soft); border: 1px solid var(--accent);">
+        <div class="controls" style="justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center;">
+            <div style="flex: 1; min-width: 240px; font-size: 13.5px; font-weight: 600; line-height: 1.7;">
+                <span data-icon="bell"></span>
+                Turn on alerts to get a notification with a sound the moment a manager sends a request.
+                <br><small id="notifSetupHint" style="font-weight: 500; color: var(--text-dim);"></small>
+            </div>
+            <div class="controls" style="gap: 8px;">
+                <button class="btn-accent btn-sm" onclick="enableAlerts()"><span data-icon="bell"></span> Turn on alerts</button>
+                <button class="btn-ghost btn-sm" onclick="testAlert()"><span data-icon="plane"></span> Test</button>
+                <button class="btn-ghost btn-sm" onclick="dismissNotifSetup()"><span data-icon="x"></span> Later</button>
+            </div>
+        </div>
+    </div>
+
     <div class="brand-logos">
         <img src="https://raw.githubusercontent.com/tihou74/alsheikha-attendance-admin/main/gaimer-w-kahi-logo.png.png" alt="Gaimer W Kahi">
         <img src="https://raw.githubusercontent.com/tihou74/alsheikha-attendance-admin/main/al-sheikha-group-logo.png.png" alt="Al Sheikha Group" class="main-logo">
@@ -1831,7 +1849,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import {
         getFirestore, collection, addDoc, getDoc, getDocs, deleteDoc, doc, setDoc, updateDoc,
-        query, orderBy, where, limit, writeBatch, serverTimestamp
+        query, orderBy, where, limit, writeBatch, serverTimestamp, onSnapshot
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import {
         getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut
@@ -2588,6 +2606,11 @@
         // تُحمَّل عند الإقلاع لا عند فتح التبويب فقط، وإلا لم يظهر الجرس حتى
         // يفتح المستخدم النافذة — وهو عكس الغرض من التنبيه.
         await loadManagerRequests();
+        // ثم نُسلّم المتابعة لمستمعين حيّين: الطلب الجديد يرنّ لحظة وصوله بلا
+        // أن يفتح المالك أي تبويب. القراءة الأولى أعلاه تكفي لبناء الشاشة.
+        startRequestListeners();
+        renderNotifSetupBar();
+        openTabFromHash();   // فُتحت من تنبيه على تبويب معيّن
         renderLeaveEligibilityAlerts();
         renderHomeExtraStats();
         renderRecentActivity();
@@ -5394,6 +5417,246 @@
     // «القواعد غير منشورة» — وهما شيئان مختلفان تمامًا. إخفاء الثاني وراء
     // الأول هو ما جعل مشكلة صلاحيات سابقة تبقى بلا تشخيص لوقت طويل.
     let pettyLoadError = '', warningLoadError = '';
+
+    // =====================================================================
+    // تنبيه فوري برنّة عند وصول طلب من مدير
+    // ---------------------------------------------------------------------
+    // ⚠️ حدود حقيقية يجب أن تكون مكتوبة هنا حتى لا يُوعَد المالك بما لا يحدث:
+    //
+    // 1) هذا التنبيه يعمل ما دامت اللوحة **حيّة** — مفتوحة، أو في الخلف، أو
+    //    الشاشة مقفلة والتطبيق ما زال في الذاكرة. لا يعمل إذا أُغلق التطبيق
+    //    تمامًا أو أخرجه النظام من الذاكرة.
+    // 2) التنبيه والتطبيق مُغلق كليًا يحتاج Web Push، وهو يحتاج مُرسِلًا يملك
+    //    مفتاحًا سريًّا. ولا يجوز وضع ذلك المفتاح في صفحة ثابتة لأن أي شخص
+    //    سيقرؤه ويُرسل تنبيهات لكل الأجهزة. فيحتاج خادمًا صغيرًا (Cloud
+    //    Function) — قرار للمالك.
+    // 3) الرنّة الخاصة **لا يمكن** أن تُرفق بتنبيه Web Push على iOS ولا على
+    //    أندرويد: تنبيهات الويب تستخدم صوت النظام ولا تقبل ملفًا صوتيًّا.
+    //    فالرنّة المميّزة ممكنة فقط من داخل الصفحة الحيّة — وهي ما يفعله
+    //    playAlertChime أدناه. لهذا بُنيت الرنّة هنا لا في التنبيه.
+    //
+    // الرنّة مُولَّدة بـWeb Audio لا ملف صوت: لا تحميل، لا كاش، تعمل بلا شبكة.
+    // =====================================================================
+    const NOTIF_DISMISS_KEY = 'alsheikha_notif_bar_dismissed';
+    let audioCtx = null;
+    let alertsUnlocked = false;      // المتصفح يمنع الصوت قبل أول ضغطة
+    let requestUnsubs = [];
+    let seenPettyIds = null;         // null = لم تُبنَ القائمة الأولى بعد
+    let seenWarnIds = null;
+
+    /** فتح قناة الصوت — يجب أن يحدث داخل ضغطة مستخدم. */
+    function unlockAudio() {
+        try {
+            if (!audioCtx) {
+                const AC = window.AudioContext || window.webkitAudioContext;
+                if (!AC) return false;
+                audioCtx = new AC();
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            alertsUnlocked = true;
+            return true;
+        } catch (e) { return false; }
+    }
+
+    /**
+     * رنّة مميّزة: ثلاث نغمات صاعدة تتكرّر مرتين — مختلفة عن كل أصوات
+     * النظام حتى تُعرف بلا نظر إلى الشاشة.
+     */
+    function playAlertChime() {
+        if (!audioCtx || audioCtx.state !== 'running') return false;
+        const now = audioCtx.currentTime;
+        const notes = [880, 1108.73, 1318.51];   // A5 · C#6 · E6
+        [0, 0.75].forEach(rep => {
+            notes.forEach((f, i) => {
+                const t = now + rep + i * 0.16;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = f;
+                // مُنحنى صاعد/هابط سريع: نغمة نظيفة بلا نقرة في البداية
+                gain.gain.setValueAtTime(0.0001, t);
+                gain.gain.exponentialRampToValueAtTime(0.35, t + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(t); osc.stop(t + 0.34);
+            });
+        });
+        return true;
+    }
+
+    /** تنبيه النظام — يظهر والصفحة في الخلف أو الشاشة مقفلة. */
+    async function showLocalNotification(title, body, tag, tab) {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+        const opts = {
+            body,
+            tag,                     // نفس الوسم يستبدل التنبيه بدل تكديسه
+            renotify: true,
+            requireInteraction: true, // يبقى حتى يراه، لا يختفي بعد ثوانٍ
+            icon: './icons/admin-192.png',
+            badge: './icons/admin-192.png',
+            vibrate: [200, 100, 200, 100, 400], // نبض مميّز على أندرويد (يُهمل على iOS)
+            data: { tab: tab || 'tab-variable', url: './admin.html' }
+        };
+        try {
+            // عبر الـservice worker: هذا ما يعمل على أندرويد والصفحة في الخلف.
+            if ('serviceWorker' in navigator) {
+                const reg = await navigator.serviceWorker.ready;
+                if (reg && reg.showNotification) { await reg.showNotification(title, opts); return true; }
+            }
+            new Notification(title, opts);
+            return true;
+        } catch (e) { console.error('Notification failed:', e); return false; }
+    }
+
+    function renderNotifSetupBar() {
+        const bar = document.getElementById('notifSetupBar');
+        const hint = document.getElementById('notifSetupHint');
+        if (!bar) return;
+        const supported = ('Notification' in window);
+        const granted = supported && Notification.permission === 'granted';
+        const denied = supported && Notification.permission === 'denied';
+        const dismissed = localStorage.getItem(NOTIF_DISMISS_KEY) === '1';
+
+        // مُفعَّل والصوت مفتوح = لا داعي للشريط.
+        if (granted && alertsUnlocked) { bar.style.display = 'none'; return; }
+        if (dismissed && !denied) { bar.style.display = 'none'; return; }
+        bar.style.display = 'block';
+
+        if (!supported) {
+            hint.innerText = 'This browser does not support notifications. Alerts will still play a sound while the dashboard is open.';
+        } else if (denied) {
+            hint.innerText = 'Notifications are blocked for this site. Allow them from the browser/site settings, then press Turn on alerts again.';
+        } else if (granted && !alertsUnlocked) {
+            hint.innerText = 'Notifications are on. Press Test once so the browser allows the alert sound too.';
+        } else {
+            hint.innerText = 'On iPhone this works only when the dashboard has been added to the Home Screen (iOS 16.4 or later). The alert works while the dashboard is open or in the background — see the note in the Settings tab.';
+        }
+        paintIcons(bar);
+    }
+
+    window.dismissNotifSetup = function() {
+        try { localStorage.setItem(NOTIF_DISMISS_KEY, '1'); } catch (e) {}
+        const bar = document.getElementById('notifSetupBar');
+        if (bar) bar.style.display = 'none';
+    };
+
+    window.enableAlerts = async function() {
+        unlockAudio();                       // داخل ضغطة المستخدم
+        if (!('Notification' in window)) { renderNotifSetupBar(); return; }
+        try {
+            const res = await Notification.requestPermission();
+            if (res === 'granted') {
+                playAlertChime();
+                await showLocalNotification(
+                    'Alerts are on',
+                    'You will get this notification with a sound when a manager sends a request.',
+                    'alsheikha-test', 'tab-variable');
+            }
+        } catch (e) { console.error(e); }
+        renderNotifSetupBar();
+    };
+
+    window.testAlert = async function() {
+        unlockAudio();
+        const soundOk = playAlertChime();
+        const notifOk = await showLocalNotification(
+            'Test alert', 'This is exactly how a new request will sound and look.',
+            'alsheikha-test', 'tab-variable');
+        renderNotifSetupBar();
+        alert(`Sound: ${soundOk ? 'played' : 'blocked by the browser — press this button once more'}\n`
+            + `Notification: ${notifOk ? 'shown' : (('Notification' in window) ? 'permission not granted yet' : 'not supported on this browser')}`);
+    };
+
+    /**
+     * إشعار فوري بطلب جديد: رنّة + تنبيه نظام + تحديث الجرس والجدول.
+     * يُنادى من مُستمع Firestore الحيّ، فلا يحتاج المالك فتح التبويب.
+     */
+    function announceNewRequests(kind, docs) {
+        if (!docs.length) return;
+        playAlertChime();
+        const isPetty = kind === 'petty';
+        const tab = isPetty ? 'tab-variable' : 'tab-warnings';
+        if (docs.length === 1) {
+            const r = docs[0];
+            showLocalNotification(
+                isPetty ? 'New petty cash request' : 'New warning letter request',
+                isPetty
+                    ? `${money(r.amount)} QAR — ${r.managerName || 'a manager'}${r.branch ? ' · ' + r.branch : ''}`
+                    : `${r.employeeName || r.employeeId || 'An employee'} — ${r.deductionDays || 0} day(s) — ${r.managerName || 'a manager'}`,
+                `alsheikha-${kind}-${r.id}`, tab);
+        } else {
+            showLocalNotification(
+                isPetty ? `${docs.length} new petty cash requests` : `${docs.length} new warning requests`,
+                'Open the dashboard to review them.', `alsheikha-${kind}-many`, tab);
+        }
+    }
+
+    /**
+     * مُستمعان حيّان على مجموعتَي الطلبات.
+     * قبل هذا لم يكن هناك أي متابعة حيّة: الطلبات تُقرأ مرة عند فتح التبويب
+     * فقط، فقد يمرّ الطلب ساعاتٍ بلا أن يراه أحد.
+     * أول لقطة تُستخدم لبناء قائمة «المعروف» بلا رنّة، وإلا رنّ الجهاز لكل
+     * طلب قديم عند كل فتح للصفحة.
+     */
+    function startRequestListeners() {
+        requestUnsubs.forEach(u => { try { u(); } catch (e) {} });
+        requestUnsubs = [];
+        seenPettyIds = null; seenWarnIds = null;
+
+        const watch = (coll, kind, mayRead) => {
+            if (!mayRead) return;
+            const unsub = onSnapshot(collection(db, coll), (snap) => {
+                const rows = [];
+                snap.forEach(d => rows.push({ id: d.id, ...d.data() }));
+                if (kind === 'petty') { allPettyRequests = rows; pettyLoadError = ''; }
+                else { allWarningRequests = rows; warningLoadError = ''; }
+
+                const seenRef = kind === 'petty' ? seenPettyIds : seenWarnIds;
+                const pendingIds = rows.filter(r => r.status === 'pending').map(r => r.id);
+                if (seenRef === null) {
+                    // اللقطة الأولى: نعرفها ولا نرنّ.
+                    if (kind === 'petty') seenPettyIds = new Set(pendingIds);
+                    else seenWarnIds = new Set(pendingIds);
+                } else {
+                    const fresh = rows.filter(r => r.status === 'pending' && !seenRef.has(r.id));
+                    pendingIds.forEach(id => seenRef.add(id));
+                    if (fresh.length) announceNewRequests(kind, fresh);
+                }
+                if (kind === 'petty') renderPettyRequests(); else renderWarningRequests();
+                renderNotifDropdown();
+            }, (err) => {
+                // دور بلا صلاحية قراءة يصل هنا — وهو سلوك صحيح لا عطل.
+                console.error(`Live listener on ${coll} stopped:`, err);
+                if (kind === 'petty') pettyLoadError = err.message; else warningLoadError = err.message;
+            });
+            requestUnsubs.push(unsub);
+        };
+
+        watch('petty_cash_requests', 'petty', currentRole === ROLE_ADMIN || currentRole === ROLE_ACCOUNTANT);
+        watch('warning_requests', 'warn', currentRole === ROLE_ADMIN || currentRole === ROLE_SECRETARY);
+    }
+
+    // أول ضغطة في أي مكان تفتح قناة الصوت — بلا هذا تُكتم أول رنّة.
+    document.addEventListener('click', () => {
+        if (!alertsUnlocked) { unlockAudio(); renderNotifSetupBar(); }
+    }, { once: false });
+
+    // الضغط على التنبيه: الـservice worker يُركّز النافذة المفتوحة ويُرسل
+    // التبويب المطلوب، أو يفتح admin.html#tab-... إن لم تكن مفتوحة.
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', (ev) => {
+            const d = ev.data || {};
+            if (d.type === 'OPEN_TAB' && d.tab && typeof switchTab === 'function') {
+                try { switchTab(d.tab); } catch (e) {}
+            }
+        });
+    }
+    function openTabFromHash() {
+        const h = String(location.hash || '').replace('#', '');
+        if (h.startsWith('tab-') && typeof switchTab === 'function') {
+            try { switchTab(h); } catch (e) {}
+        }
+    }
 
     window.loadManagerRequests = async function() {
         // كل قائمة في try خاصّ: المحاسب لا يقرأ طلبات الإنذار والسكرتيرة لا تقرأ
