@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Al Sheikha Group — Visual Identity / الهوية البصرية</title>
+<link rel="icon" href="../icons/admin-192.png">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./design-tokens.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--color-bg); color: var(--color-text);
+    font-family: var(--font-sans); font-size: var(--text-base);
+    line-height: var(--leading-normal);
+    -webkit-font-smoothing: antialiased;
+    transition: background var(--dur-base) var(--ease), color var(--dur-base) var(--ease);
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: var(--space-8) var(--space-5) var(--space-10); }
+
+  /* ---- رأس الصفحة ---- */
+  .top {
+    display: flex; justify-content: space-between; align-items: center; gap: var(--space-4);
+    flex-wrap: wrap; padding-bottom: var(--space-5);
+    border-bottom: 2px solid var(--color-primary);
+  }
+  .lockup { display: flex; align-items: center; gap: var(--space-4); }
+  .lockup img { height: 54px; width: auto; display: block; }
+  .lockup-txt h1 { margin: 0; font-size: var(--text-xl); font-weight: 700; letter-spacing: -.01em; }
+  .lockup-txt p { margin: 2px 0 0; font-size: var(--text-xs); color: var(--color-text-muted);
+    text-transform: uppercase; letter-spacing: .14em; font-weight: 600; }
+
+  /* ---- الأقسام ---- */
+  section { margin-top: var(--space-10); }
+  .sec-head { display: flex; align-items: baseline; gap: var(--space-3); margin-bottom: var(--space-5); }
+  .sec-num {
+    font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 600;
+    color: var(--color-brand-text); border: 1px solid var(--color-brand);
+    border-radius: var(--radius-sm); padding: 2px 7px; flex-shrink: 0;
+  }
+  .sec-head h2 { margin: 0; font-size: var(--text-lg); font-weight: 700; letter-spacing: -.01em; }
+  .sec-head span.ar { font-size: var(--text-sm); color: var(--color-text-muted); }
+  .note { font-size: var(--text-sm); color: var(--color-text-muted); margin: 0 0 var(--space-5); max-width: 78ch; }
+
+  /* ---- الشبكة ---- */
+  .grid { display: grid; gap: var(--space-4); }
+  .g2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .g3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .g4 { grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); }
+
+  .card {
+    background: var(--card-bg); border: var(--card-border);
+    border-radius: var(--card-radius); padding: var(--card-padding);
+    box-shadow: var(--shadow-xs);
+  }
+  .card h3 { margin: 0 0 var(--space-3); font-size: var(--text-sm); font-weight: 700;
+    text-transform: uppercase; letter-spacing: .1em; color: var(--color-text-muted); }
+
+  /* ---- بطاقات الألوان ---- */
+  .swatch { border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden;
+    background: var(--color-surface); }
+  .swatch .chip { height: 84px; display: flex; align-items: flex-end; padding: var(--space-2) var(--space-3); }
+  .swatch .chip b { font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 600; }
+  .swatch .meta { padding: var(--space-3); border-top: 1px solid var(--color-border); }
+  .swatch .meta .nm { font-size: var(--text-sm); font-weight: 600; }
+  .swatch .meta .use { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 3px; line-height: 1.5; }
+  .ratio { font-family: var(--font-mono); font-size: 11px; font-weight: 600; margin-top: var(--space-2);
+    display: flex; flex-direction: column; gap: 2px; }
+  .pass { color: var(--color-success); }
+  .fail { color: var(--color-danger); }
+
+  /* ---- نموذج الخط ---- */
+  .specimen { border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+    background: var(--color-surface); overflow: hidden; }
+  .specimen > div { padding: var(--space-5); border-bottom: 1px solid var(--color-border); }
+  .specimen > div:last-child { border-bottom: 0; }
+  .specimen .lbl { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-muted);
+    margin-bottom: var(--space-2); }
+  .ar-block { direction: rtl; text-align: right; line-height: var(--leading-arabic); }
+  .rule { height: 1px; background: var(--color-border); margin: var(--space-4) 0; border: 0; }
+
+  /* ---- المكوّنات ---- */
+  .btn {
+    height: var(--btn-height); padding: 0 var(--btn-padding-x); border-radius: var(--btn-radius);
+    font-family: inherit; font-size: var(--btn-font-size); font-weight: var(--btn-font-weight);
+    border: 1px solid transparent; cursor: pointer; display: inline-flex; align-items: center;
+    gap: var(--space-2); transition: background var(--dur-fast) var(--ease),
+      border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+  }
+  .btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+  .btn-primary { background: var(--color-primary); color: var(--color-on-primary); }
+  .btn-primary:hover { background: var(--ink-700); }
+  html[data-theme='dark'] .btn-primary:hover { background: var(--gold-400); }
+  .btn-brand { background: var(--color-brand); color: var(--color-on-brand); }
+  .btn-brand:hover { background: var(--gold-500); }
+  .btn-outline { background: transparent; color: var(--color-text); border-color: var(--color-border-strong); }
+  .btn-outline:hover { background: var(--color-surface-2); }
+  .btn-danger { background: var(--color-danger); color: #fff; }
+  .btn-ghost { background: transparent; color: var(--color-text-muted); }
+  .btn-ghost:hover { background: var(--color-surface-2); color: var(--color-text); }
+  .btn[disabled] { opacity: .45; cursor: not-allowed; }
+
+  .badge { display: inline-flex; align-items: center; gap: 5px; border-radius: var(--badge-radius);
+    padding: 3px 10px; font-size: var(--badge-font-size); font-weight: 700; line-height: 1.6; }
+  .b-ok   { background: color-mix(in srgb, var(--color-success) 14%, transparent); color: var(--color-success); }
+  .b-warn { background: color-mix(in srgb, var(--color-warning) 16%, transparent); color: var(--color-warning); }
+  .b-bad  { background: color-mix(in srgb, var(--color-danger) 14%, transparent);  color: var(--color-danger); }
+  .b-brand{ background: color-mix(in srgb, var(--color-brand) 22%, transparent);   color: var(--color-brand-text); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+  /* ---- بطاقة مؤشّر ---- */
+  .kpi { background: var(--card-bg); border: var(--card-border); border-radius: var(--card-radius);
+    padding: var(--space-5); border-top: 3px solid var(--color-brand); }
+  .kpi .lab { font-size: var(--kpi-label-size); font-weight: 700; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--color-text-muted); }
+  .kpi .val { font-family: var(--font-mono); font-size: var(--kpi-value-size); font-weight: 600;
+    letter-spacing: -.02em; margin-top: var(--space-2); font-variant-numeric: tabular-nums; }
+  .kpi .sub { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: var(--space-1); }
+
+  /* ---- الجدول ---- */
+  .tbl-wrap { border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+    overflow: hidden; background: var(--color-surface); }
+  table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+  thead th { background: var(--table-header-bg); text-align: start; font-size: var(--text-xs);
+    text-transform: uppercase; letter-spacing: .08em; color: var(--color-text-muted);
+    padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); font-weight: 700; }
+  tbody td { padding: 0 var(--space-4); height: var(--table-row-height);
+    border-bottom: 1px solid var(--color-border); }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: var(--color-surface-2); }
+  /* أعمدة المال: أرقام مُتراصفة عموديًّا — الفارق الحقيقي في جدول رواتب */
+  .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: end; font-weight: 500; }
+
+  /* ---- صواب / خطأ ---- */
+  .dd { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .do, .dont { border-radius: var(--radius-md); padding: var(--space-4);
+    border: 1px solid var(--color-border); background: var(--color-surface); }
+  .do { border-inline-start: 3px solid var(--color-success); }
+  .dont { border-inline-start: 3px solid var(--color-danger); }
+  .do h4, .dont h4 { margin: 0 0 var(--space-2); font-size: var(--text-sm); }
+  .do ul, .dont ul { margin: 0; padding-inline-start: 18px; font-size: var(--text-sm);
+    color: var(--color-text-muted); line-height: 1.75; }
+
+  .brandbar { height: 4px; border-radius: var(--radius-pill); margin-bottom: var(--space-3); }
+  .mono { font-family: var(--font-mono); }
+  .toggle { display: flex; gap: var(--space-2); align-items: center; }
+  footer { margin-top: var(--space-10); padding-top: var(--space-5);
+    border-top: 1px solid var(--color-border); font-size: var(--text-xs); color: var(--color-text-muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div class="lockup">
+      <img src="https://raw.githubusercontent.com/tihou74/alsheikha-attendance-admin/main/al-sheikha-group-logo.png.png" alt="Al Sheikha Group">
+      <div class="lockup-txt">
+        <h1>Al Sheikha Group</h1>
+        <p>Visual Identity · الهوية البصرية</p>
+      </div>
+    </div>
+    <div class="toggle">
+      <button class="btn btn-outline" onclick="toggleMode()" id="modeBtn">Dark mode</button>
+    </div>
+  </div>
+
+  <p class="note" style="margin-top: var(--space-5);">
+    This is a <b>proposal</b>. Nothing in the live system has changed. Every colour below was
+    <b>extracted from your own logo files</b>, with the percentage of the logo it occupies, and every
+    contrast ratio is calculated with the WCAG formula — not judged by eye.
+    <br><span dir="rtl" style="display:inline-block; margin-top:6px;">هذا <b>اقتراح</b>. لم يتغيّر شيء في النظام. كل لون أدناه <b>مُستخرج من ملفات شعاراتكم</b> ومعه نسبته من الشعار، وكل نسبة تباين محسوبة بمعادلة WCAG لا بالنظر.</span>
+  </p>
+
+  <!-- ══ 1 · الألوان ══ -->
+  <section>
+    <div class="sec-head"><span class="sec-num">01</span><h2>Colour</h2><span class="ar">الألوان</span></div>
+    <p class="note">
+      The group's colour is <b class="mono">#A89060</b> — it fills <b>86.3%</b> of the Al Sheikha logo.
+      Its contrast on white is only <b>3.08:1</b>, so it <b>cannot be used for text on white</b>
+      (4.5:1 is required). It stays the identity colour for surfaces, rules and the logo; a darker step
+      carries it into text.
+    </p>
+    <div class="grid g4">
+      <div class="swatch">
+        <div class="chip" style="background: var(--gold-600); color: var(--ink-800);"><b>#A89060</b></div>
+        <div class="meta"><div class="nm">Gold 600 ⭐</div>
+          <div class="use">The identity colour. 86.3% of the logo. Surfaces, rules, top borders, the logo itself.</div>
+          <div class="ratio"><span class="fail">✕ on white 3.08:1 — not for text</span><span class="pass">✓ navy on it 5.80:1</span></div>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: var(--gold-800); color: #fff;"><b>#65563A</b></div>
+        <div class="meta"><div class="nm">Gold 800</div>
+          <div class="use">Gold when it must be text on white: links, section numbers, emphasis.</div>
+          <div class="ratio"><span class="pass">✓ on white 7.13:1 (AAA)</span></div>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: var(--ink-800); color: #fff;"><b>#0F172A</b></div>
+        <div class="meta"><div class="nm">Ink 800 ⭐</div>
+          <div class="use">The corporate anchor. Body text, primary buttons, headers, dark surfaces.</div>
+          <div class="ratio"><span class="pass">✓ white on it 17.85:1 (AAA)</span></div>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: var(--ink-500); color: #fff;"><b>#475569</b></div>
+        <div class="meta"><div class="nm">Ink 500</div>
+          <div class="use">Secondary text, labels, table headers, helper lines.</div>
+          <div class="ratio"><span class="pass">✓ on white 7.40:1 (AAA)</span></div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="rule">
+    <h3 style="font-size: var(--text-sm); text-transform: uppercase; letter-spacing:.1em; color: var(--color-text-muted); margin: 0 0 var(--space-4);">The two restaurant brands · لون كل مطعم</h3>
+    <div class="grid g2">
+      <div class="card">
+        <div class="brandbar" style="background: var(--gwk-600);"></div>
+        <h3 style="margin-bottom: var(--space-2);">Gaimer W Kahi · قيمر وكاهي</h3>
+        <p class="mono" style="margin:0; font-size: var(--text-sm);">#903030 — 17.9% of its logo</p>
+        <p class="note" style="margin: var(--space-3) 0 0;">Deep maroon. Passes AAA on white (7.92:1), so it can be text, a badge or a button.</p>
+      </div>
+      <div class="card">
+        <div class="brandbar" style="background: var(--sbh-600);"></div>
+        <h3 style="margin-bottom: var(--space-2);">Shai Bu Hamad · شاي بو حمد</h3>
+        <p class="mono" style="margin:0; font-size: var(--text-sm);">#603018 — 100% of its logo</p>
+        <p class="note" style="margin: var(--space-3) 0 0;">Coffee brown. Passes AAA on white (10.86:1). Uses: branch tags, per-brand report headers.</p>
+      </div>
+    </div>
+    <p class="note" style="margin-top: var(--space-4);">
+      Each brand keeps its own colour so a branch row, a report header or a WhatsApp summary is
+      identifiable at a glance — but the <b>chrome of the app stays navy + gold</b>, because the
+      dashboard belongs to the group, not to one restaurant.
+    </p>
+  </section>
+
+  <!-- ══ 2 · الخط ══ -->
+  <section>
+    <div class="sec-head"><span class="sec-num">02</span><h2>Typography</h2><span class="ar">الخطوط</span></div>
+    <p class="note">
+      <b>IBM Plex Sans Arabic</b> — one family carrying <b>Arabic and Latin together</b>. This matters
+      here specifically: every training guide in your system is an Arabic line above an English line in
+      the same section. With two separate fonts those two lines never sit on the same rhythm. With one
+      family they do. <b>IBM Plex Mono</b> handles all money and time figures.
+    </p>
+    <div class="specimen">
+      <div>
+        <div class="lbl">H1 · 34px / 700</div>
+        <div style="font-size: var(--text-3xl); font-weight: 700; letter-spacing: -.02em; line-height: var(--leading-tight);">Monthly Financial Report</div>
+        <div class="ar-block" style="font-size: var(--text-3xl); font-weight: 700; margin-top: 6px;">التقرير المالي الشهري</div>
+      </div>
+      <div>
+        <div class="lbl">H2 · 22px / 600</div>
+        <div style="font-size: var(--text-xl); font-weight: 600;">Payroll &amp; Employee Directory</div>
+        <div class="ar-block" style="font-size: var(--text-xl); font-weight: 600; margin-top: 4px;">الرواتب ودليل الموظفين</div>
+      </div>
+      <div>
+        <div class="lbl">Body · 16px / 400 · line-height 1.55 (Latin) &amp; 1.85 (Arabic)</div>
+        <div style="max-width: 68ch;">An employee who forgets to Check-Out is closed automatically after 16 hours and counted as a normal 10-hour day, so a forgotten Check-Out never earns overtime.</div>
+        <div class="ar-block" style="max-width: 68ch; margin-top: var(--space-3);">الموظف الذي ينسى تسجيل الانصراف تُغلق ورديته تلقائيًّا بعد ١٦ ساعة وتُحتسب يومًا عاديًّا ١٠ ساعات، فلا يُكسب الانصراف المنسيّ أي أوفرتايم.</div>
+      </div>
+      <div>
+        <div class="lbl">Numbers · IBM Plex Mono · tabular-nums — digits align in a column</div>
+        <div class="num" style="font-size: var(--text-lg); text-align: start;">1,000.00 &nbsp; 12,500.50 &nbsp; 141,282.31 &nbsp; 9h 57m</div>
+      </div>
+      <div>
+        <div class="lbl">Caption · 12px / 600 · uppercase · tracking .1em</div>
+        <div style="font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--color-text-muted);">Net salary this period</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 3 · المكوّنات ══ -->
+  <section>
+    <div class="sec-head"><span class="sec-num">03</span><h2>Components</h2><span class="ar">المكوّنات</span></div>
+    <p class="note">Same components you already have, rebuilt on the tokens. Every clickable target is at least 44×44px on a touch screen, and every one has a visible keyboard focus ring — press <span class="mono">Tab</span> to see it.</p>
+
+    <div class="card" style="margin-bottom: var(--space-4);">
+      <h3>Buttons</h3>
+      <div style="display:flex; gap: var(--space-3); flex-wrap: wrap; align-items:center;">
+        <button class="btn btn-primary">Calculate Payroll</button>
+        <button class="btn btn-brand">Close the month</button>
+        <button class="btn btn-outline">Export Excel</button>
+        <button class="btn btn-danger">Delete</button>
+        <button class="btn btn-ghost">Cancel</button>
+        <button class="btn btn-primary" disabled>Saving…</button>
+      </div>
+      <p class="note" style="margin: var(--space-4) 0 0;">
+        One primary action per screen. Gold is the <b>brand</b> button, navy the <b>primary</b> — gold
+        never carries white text because that pairing fails contrast; it carries navy text.
+      </p>
+    </div>
+
+    <div class="grid g2" style="margin-bottom: var(--space-4);">
+      <div class="card">
+        <h3>Status badges</h3>
+        <div style="display:flex; gap: var(--space-2); flex-wrap: wrap;">
+          <span class="badge b-ok"><span class="dot"></span>Approved</span>
+          <span class="badge b-warn"><span class="dot"></span>Pending</span>
+          <span class="badge b-bad"><span class="dot"></span>Not approved</span>
+          <span class="badge b-brand"><span class="dot"></span>Split · 2 parts</span>
+        </div>
+        <p class="note" style="margin: var(--space-4) 0 0;">Every badge carries <b>a word, not only a colour</b> — required so it still reads for a colour-blind user.</p>
+      </div>
+      <div class="card">
+        <h3>Inputs</h3>
+        <label style="display:block; font-size: var(--text-xs); font-weight:700; text-transform:uppercase; letter-spacing:.08em; color: var(--color-text-muted); margin-bottom: 6px;">Joining date</label>
+        <input type="date" style="height: var(--input-height); width: 100%; max-width: 220px; border: var(--input-border); border-radius: var(--input-radius); background: var(--color-surface); color: var(--color-text); font-family: inherit; font-size: var(--text-sm); padding: 0 var(--space-3);">
+        <p class="note" style="margin: var(--space-3) 0 0;">Label always <b>above</b> the field and always visible — never a placeholder used as the label.</p>
+      </div>
+    </div>
+
+    <div class="grid g3" style="margin-bottom: var(--space-4);">
+      <div class="kpi"><div class="lab">Net payroll</div><div class="val">141,282</div><div class="sub">QAR · this month</div></div>
+      <div class="kpi" style="border-top-color: var(--color-success);"><div class="lab">In the bank</div><div class="val">86,410</div><div class="sub">QAR · after settlement</div></div>
+      <div class="kpi" style="border-top-color: var(--color-warning);"><div class="lab">Open requests</div><div class="val">7</div><div class="sub">4 petty cash · 3 leave</div></div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Employee</th><th>Date</th><th>Check-In</th><th>Check-Out</th><th class="num">Day total</th><th class="num">Net salary</th></tr></thead>
+        <tbody>
+          <tr><td><b>BILLEL ABDESSAMAD</b></td><td class="mono">2026-09-14</td><td class="mono">3:57 PM · 6:09 PM</td><td class="mono">6:07 PM · Open</td><td class="num">2h 09m</td><td class="num">3,200.00</td></tr>
+          <tr><td><b>TAHA SAYEH</b></td><td class="mono">2026-09-14</td><td class="mono">6:10 AM</td><td class="mono">4:07 PM</td><td class="num">9h 57m</td><td class="num">2,850.00</td></tr>
+          <tr><td><b>RIADH GHDERI</b></td><td class="mono">2026-09-13</td><td class="mono">4:16 PM</td><td class="mono">6:32 AM <span class="badge b-brand" style="padding:1px 6px;">+1d</span></td><td class="num">14h 16m</td><td class="num">12,500.50</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note" style="margin-top: var(--space-3);">
+      Money and duration columns use tabular figures and align to the end of the cell, so
+      <span class="mono">2,850.00</span> and <span class="mono">12,500.50</span> line up digit under digit
+      and a wrong figure is visible without reading it.
+    </p>
+  </section>
+
+  <!-- ══ 4 · صواب وخطأ ══ -->
+  <section>
+    <div class="sec-head"><span class="sec-num">04</span><h2>Rules</h2><span class="ar">قواعد الاستخدام</span></div>
+    <div class="dd">
+      <div class="do">
+        <h4>✓ Do</h4>
+        <ul>
+          <li>Gold for surfaces, rules and the logo; <b>Gold 800</b> when gold must be text.</li>
+          <li>Navy for body text and the primary button.</li>
+          <li>One primary action per screen.</li>
+          <li>Numbers in mono with tabular figures.</li>
+          <li>Each brand's own colour for branch/brand tags only.</li>
+          <li>Arabic line-height 1.85, Latin 1.55.</li>
+        </ul>
+      </div>
+      <div class="dont">
+        <h4>✕ Don't</h4>
+        <ul>
+          <li>Gold text on white — <b>3.08:1, fails</b>.</li>
+          <li>White text on gold — 3.08:1, fails.</li>
+          <li>Emoji as icons; use SVG.</li>
+          <li>Colour alone to signal status without a word.</li>
+          <li>Gradients, glows, or soft large shadows.</li>
+          <li>A brand colour on the app chrome — the dashboard is the group's.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Style direction: <b>Minimalism &amp; Swiss</b> — matched by the UI/UX Pro Max skill to enterprise dashboards
+    (density 8/10, variance 3/10, motion 2/10). Colours measured from
+    <span class="mono">al-sheikha-group-logo.png</span>, <span class="mono">gaimer-w-kahi-logo.png</span>,
+    <span class="mono">shai-bu-hamad-logo.png</span>. Contrast per WCAG 2.1.
+  </footer>
+</div>
+
+<script>
+  // الوضع الداكن للمعاينة فقط — الهوية تعمل في الوضعين
+  function toggleMode() {
+    var html = document.documentElement;
+    var dark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', dark ? 'light' : 'dark');
+    document.getElementById('modeBtn').innerText = dark ? 'Dark mode' : 'Light mode';
+  }
+</script>
+</body>
+</html>

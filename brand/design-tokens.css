@@ -1,0 +1,198 @@
+/* =============================================================================
+   مجموعة الشيخة — الهوية البصرية · متغيّرات التصميم
+   Al Sheikha Group — Visual Identity · Design Tokens
+   -----------------------------------------------------------------------------
+   ثلاث طبقات: قيمة خام (primitive) ← غرض (semantic) ← مكوّن (component).
+   لا يُكتب لون خام في أي مكوّن — دائمًا var().
+
+   ⚠️ ألوان الهوية ليست مُختارة بالذوق: استُخرجت من ملفات الشعارات نفسها،
+   ونسبة كل لون من بكسلات الشعار مكتوبة بجانبه. وكل نسبة تباين أدناه محسوبة
+   بمعادلة WCAG لا مُقدَّرة بالنظر.
+   ============================================================================= */
+
+/* ---------------------------------------------------------------------------
+   1) الطبقة الخام — PRIMITIVES
+   --------------------------------------------------------------------------- */
+:root {
+  /* --- ذهب مجموعة الشيخة: #A89060 = 86.3% من بكسلات الشعار --------------
+     الذهب الأصلي تباينه على الأبيض 3.08:1 — لا يجوز للنص العادي (يحتاج 4.5).
+     لذلك سلّم كامل: الأصلي للأسطح والحدود، والأغمق للنص، والأفتح للكحلي. */
+  --gold-300: #DABB7D;   /* نص على كحلي — 10.09:1 */
+  --gold-400: #CAAD73;   /* نص على كحلي — 8.63:1  */
+  --gold-500: #B99E6A;   /* نص على كحلي — 7.23:1  */
+  --gold-600: #A89060;   /* ⭐ لون الهوية الأصلي — أسطح وحدود وشعار */
+  --gold-700: #86734D;   /* نص على أبيض — 4.59:1 (AA) */
+  --gold-800: #65563A;   /* نص على أبيض — 7.13:1 (AAA) */
+
+  /* --- كحلي مؤسسي: مرساة الهوية، من أسود الشعار مرفوعًا إلى كحلي قابل للقراءة */
+  --ink-900: #0B1226;    /* أغمق سطح */
+  --ink-800: #0F172A;    /* ⭐ اللون الأساسي — أبيض عليه 17.85:1 */
+  --ink-700: #1E293B;
+  --ink-600: #334155;
+  --ink-500: #475569;    /* نص ثانوي على أبيض — 7.4:1 */
+
+  /* --- رماديات محايدة (سلّم Swiss نظيف) */
+  --neutral-0:   #FFFFFF;
+  --neutral-50:  #F8FAFC;
+  --neutral-100: #F1F5F9;
+  --neutral-200: #E2E8F0;
+  --neutral-300: #CBD5E1;
+
+  /* --- ألوان البراندين — مستخرجة من شعاريهما */
+  --gwk-600: #903030;    /* قيمر وكاهي — 17.9% من الشعار · على أبيض 7.92:1 */
+  --gwk-700: #783030;
+  --sbh-600: #603018;    /* شاي بو حمد — 100% من الشعار · على أبيض 10.86:1 */
+  --sbh-700: #4C260F;
+
+  /* --- ألوان الحالة (وظيفية لا هوية — تبقى معيارية ليفهمها أي مستخدم) */
+  --success-600: #15803D;   /* على أبيض 4.68:1 */
+  --warning-600: #B45309;   /* على أبيض 4.60:1 */
+  --danger-600:  #B91C1C;   /* على أبيض 6.19:1 */
+  --info-600:    #0369A1;   /* على أبيض 5.17:1 */
+
+  /* --- سلّم المسافات: كثافة 8/10 (لوحة تحكّم) = 4→32px */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* --- سلّم الخطوط: قاعدة 16px، نسبة 1.25 */
+  --text-xs:   12px;
+  --text-sm:   13.5px;
+  --text-base: 16px;
+  --text-lg:   18px;
+  --text-xl:   22px;
+  --text-2xl:  28px;
+  --text-3xl:  34px;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.55;
+  --leading-arabic: 1.85;   /* العربية تحتاج فراغًا أكبر: التشكيل والنقاط تحت السطر */
+
+  /* --- الحدود والزوايا: Swiss = حدّ رفيع وزاوية صغيرة، لا انحناء كبير */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-pill: 999px;
+  --border-hairline: 1px;
+
+  /* --- الظل: حادّ وخفيف. لا ظلال ناعمة كبيرة (تُشبه التطبيقات الترفيهية) */
+  --shadow-xs: 0 1px 2px rgba(11, 18, 38, .06);
+  --shadow-sm: 0 1px 3px rgba(11, 18, 38, .10), 0 1px 2px rgba(11, 18, 38, .06);
+  --shadow-md: 0 4px 12px rgba(11, 18, 38, .10);
+
+  /* --- الحركة: خفيفة (2/10). الحركة تُفهِم لا تُبهر */
+  --ease: cubic-bezier(.4, 0, .2, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+
+  /* --- الخطوط: عائلة واحدة تحمل العربية واللاتينية معًا -----------------
+     IBM Plex Sans Arabic: نفس البناء الهندسي في الحرفين، فسطر عربي فوق سطر
+     إنجليزي في نفس القسم لا يبدو خطَّين مختلفَين — وهذا شكل كل دليل تدريب
+     في النظام. ومونو للأرقام لأن أعمدة المال يجب أن تتراصف عموديًّا. */
+  --font-sans: 'IBM Plex Sans Arabic', 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+
+/* ---------------------------------------------------------------------------
+   2) طبقة الغرض — SEMANTIC (الوضع الفاتح)
+   --------------------------------------------------------------------------- */
+:root {
+  --color-bg:            var(--neutral-50);
+  --color-surface:       var(--neutral-0);
+  --color-surface-2:     var(--neutral-100);
+  --color-border:        var(--neutral-200);
+  --color-border-strong: var(--neutral-300);
+
+  --color-text:          var(--ink-800);
+  --color-text-muted:    var(--ink-500);
+  --color-text-inverse:  var(--neutral-0);
+
+  --color-primary:       var(--ink-800);      /* المؤسسي: كحلي */
+  --color-on-primary:    var(--neutral-0);
+  --color-brand:         var(--gold-600);     /* الهوية: ذهب — أسطح لا نص */
+  --color-brand-text:    var(--gold-800);     /* الذهب حين يكون نصًّا */
+  --color-on-brand:      var(--ink-800);      /* كحلي على ذهب — 5.80:1 */
+  --color-focus:         var(--info-600);     /* حلقة التركيز لا تكون ذهبًا: يجب أن تُرى */
+
+  --color-success: var(--success-600);
+  --color-warning: var(--warning-600);
+  --color-danger:  var(--danger-600);
+  --color-info:    var(--info-600);
+}
+
+/* --- الوضع الداكن: الذهب هنا يتحرّر ويصبح لون النص المميّز */
+html[data-theme='dark'] {
+  --color-bg:            var(--ink-900);
+  --color-surface:       var(--ink-800);
+  --color-surface-2:     var(--ink-700);
+  --color-border:        #24314B;
+  --color-border-strong: #33425F;
+
+  --color-text:          #E8EDF6;
+  --color-text-muted:    #9FB0CA;
+  --color-text-inverse:  var(--ink-900);
+
+  --color-primary:       var(--gold-500);     /* على الكحلي الذهب هو الأبرز */
+  --color-on-primary:    var(--ink-900);
+  --color-brand:         var(--gold-600);
+  --color-brand-text:    var(--gold-400);     /* 8.63:1 على الكحلي */
+  --color-on-brand:      var(--ink-900);
+
+  --color-success: #4ADE80;
+  --color-warning: #FBBF24;
+  --color-danger:  #F87171;
+  --color-info:    #60A5FA;
+
+  --shadow-xs: none;
+  --shadow-sm: 0 1px 0 rgba(255,255,255,.04);
+  --shadow-md: 0 8px 24px rgba(0,0,0,.45);
+}
+
+/* ---------------------------------------------------------------------------
+   3) طبقة المكوّنات — COMPONENT
+   --------------------------------------------------------------------------- */
+:root {
+  --btn-height: 40px;              /* ≥ 44px لمس على الجوال — انظر media أدناه */
+  --btn-padding-x: var(--space-4);
+  --btn-radius: var(--radius-md);
+  --btn-font-size: var(--text-sm);
+  --btn-font-weight: 600;
+
+  --card-bg: var(--color-surface);
+  --card-border: var(--border-hairline) solid var(--color-border);
+  --card-radius: var(--radius-lg);
+  --card-padding: var(--space-6);
+
+  --table-row-height: 44px;
+  --table-header-bg: var(--color-surface-2);
+  --table-border: var(--border-hairline) solid var(--color-border);
+
+  --input-height: 40px;
+  --input-radius: var(--radius-sm);
+  --input-border: var(--border-hairline) solid var(--color-border-strong);
+
+  --badge-radius: var(--radius-pill);
+  --badge-font-size: var(--text-xs);
+
+  --kpi-value-size: var(--text-3xl);
+  --kpi-label-size: var(--text-xs);
+}
+
+/* الجوال: هدف اللمس لا يقلّ عن 44×44 — قاعدة حرجة في اللوحة التي تُستخدم بالهاتف */
+@media (pointer: coarse) {
+  :root {
+    --btn-height: 44px;
+    --input-height: 44px;
+    --table-row-height: 48px;
+  }
+}
+
+/* من يطلب تقليل الحركة يحصل على صفر حركة، لا حركة أسرع */
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 0ms; --dur-base: 0ms; }
+}
