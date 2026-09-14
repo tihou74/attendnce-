@@ -974,21 +974,70 @@
         if (tab === 'training') resetTrainingFlow();
     };
 
-    function formatDateEnglish(dateObj) {
-        const yyyy = dateObj.getFullYear();
-        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const dd = String(dateObj.getDate()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
+    // =====================================================================
+    // التوقيت المحلي القطري — لا توقيت هاتف الموظف
+    // ---------------------------------------------------------------------
+    // ⚠️ كان تاريخ التسجيل ووقته يُحسبان بالمنطقة الزمنية المضبوطة على الجهاز.
+    // فجهاز مضبوط على منطقة أخرى (أو موظف يسجّل من هاتفه وهو مسافر، أو تابلت
+    // ضُبط يدويًّا بالخطأ) كان يكتب يومًا أو ساعة خاطئة — وهذا يحرّك الوردية بين
+    // يومين، ويحرّك يومًا بين شهرين عند حدّ الشهر، ويغيّر نسبة الساعات الليلية.
+    //
+    // الآن يُحوَّل نفس اللحظة إلى منطقة قطر صراحةً (Asia/Qatar) مهما كانت منطقة
+    // الجهاز. قطر UTC+3 ثابتة بلا توقيت صيفي، فالتحويل قطعيّ لا اجتهاد فيه.
+    //
+    // ⚠️ ما لا يُصلحه هذا: **ساعة** الجهاز نفسها إن كانت غلطًا (لا منطقتها).
+    // لذلك يُكتب مع كل سجل serverTime من خادم فايربيس، وهو المرجع الذي تعتمده
+    // لوحة الإدارة، وتُنبّه إن اختلف عن ساعة الجهاز اختلافًا يُذكر.
+    // =====================================================================
+    const QATAR_TZ = 'Asia/Qatar';
+
+    /** أجزاء التاريخ والوقت في توقيت قطر لأي لحظة. */
+    function qatarParts(dateObj) {
+        try {
+            const parts = {};
+            new Intl.DateTimeFormat('en-GB', {
+                timeZone: QATAR_TZ, hour12: false,
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            }).formatToParts(dateObj).forEach(p => {
+                if (p.type !== 'literal') parts[p.type] = p.value;
+            });
+            // بعض المتصفحات تُخرج 24 لمنتصف الليل في نمط h23
+            if (parts.hour === '24') parts.hour = '00';
+            if (parts.year && parts.hour) return parts;
+        } catch (e) { /* نسقط للاحتياط */ }
+        // احتياط بلا Intl: قطر UTC+3 ثابتة
+        const t = new Date(dateObj.getTime() + 3 * 3600000);
+        return {
+            year: String(t.getUTCFullYear()),
+            month: String(t.getUTCMonth() + 1).padStart(2, '0'),
+            day: String(t.getUTCDate()).padStart(2, '0'),
+            hour: String(t.getUTCHours()).padStart(2, '0'),
+            minute: String(t.getUTCMinutes()).padStart(2, '0'),
+            second: String(t.getUTCSeconds()).padStart(2, '0')
+        };
     }
 
+    /** التاريخ في قطر — YYYY-MM-DD. يحمل نفس اسم الدالة القديمة فلا يتغيّر أي نداء. */
+    function formatDateEnglish(dateObj) {
+        const p = qatarParts(dateObj);
+        return `${p.year}-${p.month}-${p.day}`;
+    }
+
+    /** الوقت في قطر — h:mm:ss AM/PM. */
     function formatTimeEnglish(dateObj) {
-        let hours = dateObj.getHours();
-        const minutes = String(dateObj.getMinutes()).padStart(2, '0');
-        const seconds = String(dateObj.getSeconds()).padStart(2, '0');
+        const p = qatarParts(dateObj);
+        let hours = Number(p.hour);
         const ampm = hours >= 12 ? 'PM' : 'AM';
         hours = hours % 12;
         hours = hours ? hours : 12;
-        return `${hours}:${minutes}:${seconds} ${ampm}`;
+        return `${hours}:${p.minute}:${p.second} ${ampm}`;
+    }
+
+    /** منطقة الجهاز كما يراها هو — تُخزَّن لتشخيص أي خلاف لاحقًا. */
+    function deviceTimeZoneName() {
+        try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; }
+        catch (e) { return ''; }
     }
 
     // Distance Calculation in Meters for GPS Geofencing
@@ -1211,8 +1260,12 @@
                 branch: empBranch,
                 type: 'Check-Out',
                 timestamp: outAt,
+                // لا serverTimestamp هنا: هذا انصراف **مُحتسب** لحظةً ماضية
+                // (الدخول + 10 ساعات)، ووقت الخادم الآن ليس وقته. ولو كُتب
+                // لَاعتبرته اللوحة المرجع فانتقلت الوردية إلى يوم الاكتشاف.
                 date: formatDateEnglish(outAt),
                 time: formatTimeEnglish(outAt),
+                deviceTz: deviceTimeZoneName(),
                 duration: `${AUTO_CHECKOUT_CREDITED_HOURS}h 0m`,
                 workMinutes: mins,
                 autoCheckOut: true,
@@ -1427,8 +1480,16 @@
                         branch: empBranch,
                         type: type,
                         timestamp: now,
+                        // ⭐ المرجع الزمني الموثوق: ساعة خادم فايربيس لا ساعة
+                        // الجهاز. لوحة الإدارة تعتمده، وتُنبّه إن خالف ساعة
+                        // الجهاز — فتابلت بساعة مغلوطة يُكتشف لا يمرّ بصمت.
+                        serverTime: serverTimestamp(),
+                        // التاريخ والوقت بتوقيت قطر مهما كانت منطقة الجهاز
                         date: formatDateEnglish(now),
                         time: formatTimeEnglish(now),
+                        // منطقة الجهاز وفارقها — للتشخيص لا للحساب
+                        deviceTz: deviceTimeZoneName(),
+                        deviceTzOffsetMin: now.getTimezoneOffset(),
                         duration: durationStr,
                         workMinutes: workMins,
                         // فترة من دوام مقسوم لا نهاية يوم. علامةٌ للعرض فقط —
