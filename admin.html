@@ -426,6 +426,8 @@
                 <div style="flex: 1; min-width: 140px;"><label>Job Title</label><input type="text" id="newEmpRoleInput" placeholder="Job Title"></div>
                 <div style="flex: 1; min-width: 130px;"><label>WhatsApp Phone</label><input type="text" id="newEmpPhoneInput" placeholder="+974..."></div>
                 <div style="width: 90px;"><label>PIN Code</label><input type="text" id="newEmpPinInput" placeholder="1234"></div>
+                <!-- تاريخ الالتحاق بالعمل: مطلوب. كل حساب الموظف يبدأ منه. -->
+                <div style="width: 165px;"><label for="newEmpJoinDate" title="First working day — the salary of that month is paid only from this date onwards">Joining Date <span style="color: var(--danger);">*</span></label><input type="date" id="newEmpJoinDate"></div>
                 <div style="flex: 1; min-width: 180px;"><label>Assigned Branch</label>
                     <select id="newEmpBranch">
                         <option value="GAIMER W KAHI WEST WALK">GAIMER W KAHI - WEST WALK</option>
@@ -1154,7 +1156,7 @@
         <div class="card">
             <div class="table-container">
                 <table>
-                    <thead><tr><th>Employee</th><th>Branch / role</th><th>Last working day</th><th>Type</th><th>Reason</th><th class="money-only">Salary was</th><th></th></tr></thead>
+                    <thead><tr><th>Employee</th><th>Branch / role</th><th>Joined</th><th>Last working day</th><th>Service</th><th>Type</th><th>Reason</th><th class="money-only">Salary was</th><th></th></tr></thead>
                     <tbody id="formerTableBody"></tbody>
                 </table>
             </div>
@@ -1415,6 +1417,11 @@
             </div>
             <div><label>WhatsApp Phone</label><input type="text" id="editEmpPhone" placeholder="+974..."></div>
             <div><label>PIN Code</label><input type="text" id="editEmpPin" placeholder="Leave blank to keep current PIN"></div>
+            <!-- تاريخ الالتحاق — تغييره يُعيد حساب الرواتب والغياب والإجازة -->
+            <div><label for="editEmpJoinDate" title="First working day — payroll, absence and annual-leave eligibility all start from this date">Joining Date</label>
+                <input type="date" id="editEmpJoinDate">
+                <small id="editEmpServiceInfo" style="display: block; margin-top: 5px; color: var(--text-dim); font-size: 11.5px;"></small>
+            </div>
             <div class="money-field money-only"><label>Total Monthly Salary (QAR)</label><input type="number" id="editEmpSalary"></div>
             <div class="money-field money-only"><label>Basic Salary (fixed, QAR)</label><input type="number" id="editEmpBasicDisplay" value="1000" disabled style="opacity:0.7;"></div>
             <div><label>Shift</label>
@@ -1562,6 +1569,8 @@
                     <tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Automatic Absence Deduction (unearned rest days, 1 earned per 6 worked):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #dc2626; font-weight: 600;" id="repAutoAbsence">-</td></tr>
                     <tr><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Housing Deduction (Company Housing accommodation):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #dc2626; font-weight: 600;" id="repHousingDeduction">-</td></tr>
                     <tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Other Amounts Deducted (this period only):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #dc2626; font-weight: 600;" id="repOtherAmountDeducted">-</td></tr>
+                    <!-- تناسب الشهر الأول والأخير — كان يُخصم بلا سطر يُبيّنه -->
+                    <tr><td style="padding: 11px; border: 1px solid #e2e8f0;"><b>Part-month (before joining / after last working day):</b></td><td style="padding: 11px; border: 1px solid #e2e8f0; color: #dc2626; font-weight: 600;" id="repPartMonth">-</td></tr>
                     <tr style="background: #e2e8f0; font-size: 14px;"><td style="padding: 13px; border: 1px solid #cbd5e1;"><b>Final Net Salary:</b></td><td style="padding: 13px; border: 1px solid #cbd5e1; color: #4f46e5; font-weight: 800;" id="repNetSalary">-</td></tr>
                 </table>
             </div>
@@ -1874,6 +1883,19 @@
         const t = new Date(y, m - 1, d + 1);
         return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
     }
+    /** عدد أيام المدى شاملًا الطرفين — 0 إذا كان المدى مقلوبًا أو ناقصًا. */
+    function daysBetweenInclusive(startISO, endISO) {
+        if (!startISO || !endISO || String(endISO) < String(startISO)) return 0;
+        let n = 0;
+        for (let d = String(startISO); d <= String(endISO); d = nextDayISO(d)) n++;
+        return n;
+    }
+    /** اليوم السابق لتاريخ ISO — نظير nextDayISO ويعبر بداية الشهر والسنة. */
+    function prevDayISO(iso) {
+        const [y, m, d] = String(iso).split('-').map(Number);
+        const t = new Date(y, m - 1, d - 1);
+        return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    }
     function firstDayOfCurrentMonthISO() {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
@@ -2122,6 +2144,65 @@
         let n = 0;
         for (let d = from; d <= String(endISO); d = nextDayISO(d)) n++;
         return n;
+    }
+
+    // =====================================================================
+    // تاريخ الالتحاق بالعمل — مبدأ حساب الموظف
+    // ---------------------------------------------------------------------
+    // كل ما يتعلق بالموظف يبدأ من هذا اليوم: الراتب يتناسب في شهر التحاقه،
+    // والأيام التي تسبقه لا تُحسب غيابًا، واستحقاق الإجازة السنوية يُعدّ منه.
+    //
+    // ⚠️ الملفات القديمة (المسجَّلة قبل إضافة هذا الحقل) لا تحمل joinDate.
+    // لها احتياطٌ واحد: تاريخ إنشاء المستند createdAt — وهو ما كان النظام
+    // يستخدمه ضمنًا أصلًا لاستثناء ما قبل التسجيل. فلا يتغيّر حساب أي موظف
+    // قديم بمجرّد إضافة الحقل، ولا يُخصم منه شيء بأثر رجعي.
+    // =====================================================================
+    /** تاريخ بدء العمل: الحقل الصريح أولًا، ثم تاريخ إنشاء الملف احتياطًا. */
+    function getEmploymentStartISO(emp) {
+        if (emp && emp.joinDate) return String(emp.joinDate);
+        return getEmployeeCreatedDateISO(emp);
+    }
+    /** هل تاريخ التحاقه لم يأتِ بعد؟ (تسجيل مسبق لموظف يبدأ الشهر القادم) */
+    function isNotYetEmployed(emp, asOfISO) {
+        const s = getEmploymentStartISO(emp);
+        return !!s && s > String(asOfISO || todayISO());
+    }
+    /**
+     * أيام الفترة التي تسبق تاريخ الالتحاق — نظير daysAfterEmploymentEnd
+     * تمامًا. من التحق يوم 20 من شهر مدّته 30 يومًا يستحق 11/30 من الراتب،
+     * فنخصم الـ19 يومًا السابقة بمعدل اليوم. وهي مُستثناة من محرك الغياب
+     * فلا تُخصم مرتين.
+     */
+    function daysBeforeEmploymentStart(emp, startISO, endISO) {
+        const start = getEmploymentStartISO(emp);
+        if (!start) return 0;                          // لا تاريخ معروف — لا خصم
+        if (start <= String(startISO)) return 0;       // كان على رأس عمله طول الفترة
+        const to = start > String(endISO) ? String(endISO) : prevDayISO(start);
+        let n = 0;
+        for (let d = String(startISO); d <= to; d = nextDayISO(d)) n++;
+        return n;
+    }
+    /** مدة الخدمة بالشهور حتى تاريخ (أو اليوم) — للعرض واستحقاق الإجازة. */
+    function serviceMonths(emp, asOfISO) {
+        const s = getEmploymentStartISO(emp);
+        if (!s) return null;
+        const from = new Date(`${s}T00:00:00`);
+        const to = new Date(`${asOfISO || todayISO()}T00:00:00`);
+        if (isNaN(from.getTime()) || isNaN(to.getTime())) return null;
+        let m = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
+        if (to.getDate() < from.getDate()) m--;         // الشهر لم يكتمل بعد
+        return m;
+    }
+    /** نص مقروء لمدة الخدمة: «1 year 3 months». */
+    function serviceLengthText(emp, asOfISO) {
+        const m = serviceMonths(emp, asOfISO);
+        if (m === null) return '—';
+        if (m < 0) return 'not started yet';
+        const y = Math.floor(m / 12), mo = m % 12;
+        const parts = [];
+        if (y) parts.push(`${y} year${y > 1 ? 's' : ''}`);
+        if (mo) parts.push(`${mo} month${mo > 1 ? 's' : ''}`);
+        return parts.length ? parts.join(' ') : 'less than a month';
     }
 
     function roleForEmail(email) {
@@ -2893,7 +2974,10 @@
         const workedSet = getWorkedDateSet(sessions);
         const deductedSet = getManuallyDeductedDateSet(emp.id);
         const leaveSet = getLeaveCoveredDateSet(emp.id);
-        const createdISO = getEmployeeCreatedDateISO(emp);
+        // تاريخ الالتحاق بالعمل: ما قبله ليس غيابًا. كان هذا يعتمد على تاريخ
+        // إنشاء الملف، وصار يعتمد على الحقل الصريح joinDate إن وُجد، ويرجع
+        // لتاريخ الإنشاء في الملفات القديمة التي لا تحمله.
+        const createdISO = getEmploymentStartISO(emp);
 
         // First pass: count how many days in the period were actually
         // worked vs. not worked (excluding pre-hire/leave/manually-deducted
@@ -3058,11 +3142,18 @@
         let autoAbsenceDays = auto.absentDays;
         let autoAbsenceAmount = autoAbsenceDays * dailyRate;
 
-        // تناسب الشهر الأخير: الراتب يُدفع شهريًا كاملًا، فمن انتهت خدمته في
-        // منتصف الشهر لا يستحق إلا أيام عمله. نخصم أيام ما بعد آخر يوم عمل
-        // بمعدل اليوم (الراتب ÷ 30)، فمن عمل 10 أيام من 30 يأخذ 10/30 بالضبط.
+        // تناسب الشهر الأول والشهر الأخير: الراتب يُدفع شهريًا كاملًا، فمن
+        // التحق أو انتهت خدمته في منتصف الشهر لا يستحق إلا أيام عمله. نخصم
+        // أيام ما قبل الالتحاق وأيام ما بعد آخر يوم عمل بمعدل اليوم
+        // (الراتب ÷ 30)، فمن التحق يوم 20 من شهر ثلاثينيّ يأخذ 11/30 بالضبط.
         // وهذه الأيام مُستثناة من محرك الغياب أعلاه فلا تُخصم مرتين.
-        let notEmployedDays = daysAfterEmploymentEnd(emp, startDate, endDate);
+        let preHireDays = daysBeforeEmploymentStart(emp, startDate, endDate);
+        let postEndDays = daysAfterEmploymentEnd(emp, startDate, endDate);
+        let notEmployedDays = preHireDays + postEndDays;
+        // حارس: لو أُدخل تاريخ انتهاء أسبقَ من تاريخ الالتحاق (خطأ إدخال) لَتداخل
+        // المداران وزاد المجموع على طول الفترة نفسها، فيصبح الخصم أكبر من الراتب.
+        const periodDayCount = daysBetweenInclusive(startDate, endDate);
+        if (periodDayCount && notEmployedDays > periodDayCount) notEmployedDays = periodDayCount;
         let notEmployedAmount = notEmployedDays * dailyRate;
         let extraWorkedDays = auto.extraWorkedDays;
         let extraWorkedAmount = extraWorkedDays * basicHourlyRate * STANDARD_DAILY_HOURS * OT_DAY_MULTIPLIER;
@@ -3102,9 +3193,33 @@
             deductionDays, deductionAmountDirect, totalDeductionAmount,
             autoAbsenceDays, autoAbsenceAmount, extraWorkedDays, extraWorkedAmount,
             housingDeductionAmount, otherAmountDeducted,
-            notEmployedDays, notEmployedAmount,
+            notEmployedDays, notEmployedAmount, preHireDays, postEndDays,
             allowancesPaidThisPeriod, netSalary, empLogs, sessions
         };
+    }
+
+    /**
+     * وسم صغير تحت اسم الموظف في جدول الرواتب.
+     * ثلاث حالات تُغيّر راتب الشهر ويجب أن تُرى من الجدول بلا فتح الملف:
+     * التحاقٌ لم يبدأ بعد، والتحاقٌ داخل هذا الشهر، وملفٌ بلا تاريخ التحاق.
+     */
+    function joinBadge(emp) {
+        const hire = getEmploymentStartISO(emp);
+        if (!hire) {
+            return `<br><small title="No joining date recorded and no file creation date either — the joining month cannot be prorated" style="color: var(--danger); font-weight: 700;">no joining date</small>`;
+        }
+        if (isNotYetEmployed(emp)) {
+            return `<br><small title="The joining date has not arrived yet — no salary is earned before it" style="color: var(--warning); font-weight: 700;">starts ${escapeHtml(hire)}</small>`;
+        }
+        const start = document.getElementById("payrollStartDate")?.value || '';
+        const end = document.getElementById("payrollEndDate")?.value || '';
+        if (start && end && hire > start && hire <= end) {
+            return `<br><small title="Joined inside this period — the salary is prorated from the joining date" style="color: var(--warning); font-weight: 700;">joined ${escapeHtml(hire)}</small>`;
+        }
+        if (!emp.joinDate) {
+            return `<br><small title="No explicit joining date — the file creation date is being used instead. Open the profile and enter the real first working day." style="color: var(--warning);">joining date estimated</small>`;
+        }
+        return '';
     }
 
     window.renderPayrollTable = function(employeesArray) {
@@ -3127,12 +3242,12 @@
 
             payrollHtml += `<tr${rowStyle}>
                 <td data-label="#">${index + 1}</td>
-                <td data-label="Employee"><span class="emp-link" onclick="openProfileModal('${safeId}')">${escapeHtml(emp.name)}</span><br><small style="color:var(--text-dim);">${escapeHtml(emp.role || '')}</small></td>
+                <td data-label="Employee"><span class="emp-link" onclick="openProfileModal('${safeId}')">${escapeHtml(emp.name)}</span><br><small style="color:var(--text-dim);">${escapeHtml(emp.role || '')}</small>${joinBadge(emp)}</td>
                 <td data-label="Branch &amp; Shift">${escapeHtml(emp.branch || '-')}<br><span class="shift-pill" style="background:${shiftBadgeColor};">${escapeHtml(emp.shift || 'Morning')}</span></td>
                 <td class="money-col" data-label="Total Salary">${p.totalSalary} QAR<br><small style="color:var(--text-dim);">Basic ${p.basicSalary} + Allow. ${p.otherAllowances}</small></td>
                 <td data-label="Total Hours"><b>${p.totalHours.toFixed(1)} hrs</b></td>
                 <td data-label="OT Hours" style="color: var(--success);"><b>+${p.otHours.toFixed(1)} hrs</b><br><small>(${p.otAmount.toFixed(1)} QAR)</small>${p.extraWorkedDays > 0 ? `<br><small title="Worked more days this period than the earned rest-day balance (1 earned per 6 worked) implied were needed" style="color: var(--success);">+${escapeHtml(p.extraWorkedDays)} extra day(s) (+${p.extraWorkedAmount.toFixed(1)} QAR)</small>` : ''}</td>
-                <td class="money-col" data-label="Deductions" style="color: var(--danger);"><b>${p.deductionDays > 0 ? escapeHtml(p.deductionDays) + ' Days' : ''}${p.deductionAmountDirect > 0 ? (p.deductionDays > 0 ? ' + ' : '') + escapeHtml(p.deductionAmountDirect) + ' QAR' : ''}${(!p.deductionDays && !p.deductionAmountDirect) ? '-' : ''} (-${p.totalDeductionAmount.toFixed(1)} QAR)</b>${p.autoAbsenceDays > 0 ? `<br><small title="Unworked days beyond the earned rest-day balance (1 earned per 6 worked), with no leave or manual deduction covering them">Absence: ${escapeHtml(p.autoAbsenceDays)} day(s) (-${p.autoAbsenceAmount.toFixed(1)} QAR)</small>` : ''}${p.housingDeductionAmount > 0 ? `<br><small title="Company Housing accommodation deduction">Housing: -${p.housingDeductionAmount.toFixed(1)} QAR</small>` : ''}${p.otherAmountDeducted > 0 ? `<br><small title="Other Amounts Deducted, this period only">Other: -${p.otherAmountDeducted.toFixed(1)} QAR</small>` : ''}</td>
+                <td class="money-col" data-label="Deductions" style="color: var(--danger);"><b>${p.deductionDays > 0 ? escapeHtml(p.deductionDays) + ' Days' : ''}${p.deductionAmountDirect > 0 ? (p.deductionDays > 0 ? ' + ' : '') + escapeHtml(p.deductionAmountDirect) + ' QAR' : ''}${(!p.deductionDays && !p.deductionAmountDirect) ? '-' : ''} (-${p.totalDeductionAmount.toFixed(1)} QAR)</b>${p.autoAbsenceDays > 0 ? `<br><small title="Unworked days beyond the earned rest-day balance (1 earned per 6 worked), with no leave or manual deduction covering them">Absence: ${escapeHtml(p.autoAbsenceDays)} day(s) (-${p.autoAbsenceAmount.toFixed(1)} QAR)</small>` : ''}${p.housingDeductionAmount > 0 ? `<br><small title="Company Housing accommodation deduction">Housing: -${p.housingDeductionAmount.toFixed(1)} QAR</small>` : ''}${p.otherAmountDeducted > 0 ? `<br><small title="Other Amounts Deducted, this period only">Other: -${p.otherAmountDeducted.toFixed(1)} QAR</small>` : ''}${p.preHireDays > 0 ? `<br><small title="Days in this period before the employee's joining date — the first month is paid only from the joining date onwards">Before joining: ${escapeHtml(p.preHireDays)} day(s) (-${(p.preHireDays * (p.totalSalary / PAYROLL_DAYS_PER_MONTH)).toFixed(1)} QAR)</small>` : ''}${p.postEndDays > 0 ? `<br><small title="Days in this period after the last working day — the final month is paid only up to that date">After last day: ${escapeHtml(p.postEndDays)} day(s) (-${(p.postEndDays * (p.totalSalary / PAYROLL_DAYS_PER_MONTH)).toFixed(1)} QAR)</small>` : ''}</td>
                 <td class="money-col" data-label="Net Salary"><strong style="color: var(--accent); font-size: 14.5px;">${p.netSalary.toFixed(2)} QAR</strong></td>
                 <td data-label="Actions">
                     <button class="btn-ghost btn-sm" onclick="openProfileModal('${safeId}')">${iconSvg('edit', 'ic-sm')} Profile</button>
@@ -6465,6 +6580,8 @@
                 "Role": emp.role || '-',
                 "Branch": emp.branch || '-',
                 "Shift": emp.shift || '-',
+                "Joining Date": getEmploymentStartISO(emp) || '-',
+                "Length of Service": serviceLengthText(emp),
                 "Housing": emp.housingType === 'company' ? 'Company' : 'External',
                 "Total Salary (QAR)": p.totalSalary,
                 "Basic Salary (QAR)": p.basicSalary,
@@ -6481,7 +6598,12 @@
                 "Automatic Absence Deduction (QAR)": Number(p.autoAbsenceAmount.toFixed(2)),
                 "Housing Deduction (QAR)": Number(p.housingDeductionAmount.toFixed(2)),
                 "Other Amounts Deducted (QAR)": Number(p.otherAmountDeducted.toFixed(2)),
-                "Total Deductions (QAR)": Number((p.totalDeductionAmount + p.autoAbsenceAmount + p.housingDeductionAmount + p.otherAmountDeducted).toFixed(2)),
+                // تناسب الشهر الأول/الأخير كان غائبًا عن هذا العمود، فكان مجموع
+                // الخصومات لا يُطابق الصافي في نفس الصف.
+                "Days Before Joining": p.preHireDays,
+                "Days After Last Working Day": p.postEndDays,
+                "Part-Month Deduction (QAR)": Number(p.notEmployedAmount.toFixed(2)),
+                "Total Deductions (QAR)": Number((p.totalDeductionAmount + p.autoAbsenceAmount + p.housingDeductionAmount + p.otherAmountDeducted + p.notEmployedAmount).toFixed(2)),
                 "NET SALARY (QAR)": Number(p.netSalary.toFixed(2))
             };
         });
@@ -6628,6 +6750,7 @@
         const branch = document.getElementById("newEmpBranch").value;
         const shift = document.getElementById("newEmpShift").value;
         const housingType = document.getElementById("newEmpHousingType").value; // 'company' or 'external'
+        const joinDate = document.getElementById("newEmpJoinDate").value;
         // الراتب لا يُرسل إلا ممّن يملك تعديله؛ غيره يُنشئ الموظف براتب صفر
         // ويضبطه المدير أو المحاسب بعد ذلك. القواعد ترفض غير ذلك على الخادم.
         const salary = hasFinanceAccess()
@@ -6640,6 +6763,15 @@
         if (!canCreateEmployees()) { statusEl.innerText = "The accountant reviews payroll but does not create employees."; statusEl.style.color = "var(--danger)"; return; }
         if (!name) { statusEl.innerText = "Please enter name."; statusEl.style.color = "var(--danger)"; return; }
         if (!/^\d{4,8}$/.test(pin)) { statusEl.innerText = "PIN must be 4-8 digits."; statusEl.style.color = "var(--danger)"; return; }
+        // تاريخ الالتحاق مطلوب: بدونه يرجع الحساب لتاريخ إنشاء الملف، وهو ليس
+        // تاريخ التحاقه الحقيقي، فيُدفع أو يُخصم على أساس خاطئ.
+        if (!joinDate) { statusEl.innerText = "Please choose the joining date — the whole salary calculation starts from it."; statusEl.style.color = "var(--danger)"; return; }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(joinDate)) { statusEl.innerText = "The joining date is not a valid date."; statusEl.style.color = "var(--danger)"; return; }
+        // تاريخ في المستقبل مسموح (تسجيل مسبق) لكنه يُؤكَّد حتى لا يكون خطأ سنة.
+        if (joinDate > todayISO() && !confirm(
+            `The joining date ${joinDate} is in the future.\n\n` +
+            `The employee will be registered now but will earn no salary until that date. Continue?`
+        )) { statusEl.innerText = "Cancelled — the joining date was not confirmed."; statusEl.style.color = "var(--warning)"; return; }
 
         statusEl.innerText = "Uploading documents & saving...";
         statusEl.style.color = "var(--warning)";
@@ -6653,15 +6785,23 @@
 
             const id = generateEmployeeId(name);
             await setDoc(doc(db, "employees", id), {
-                name, role, phone, branch, shift, housingType, salary,
+                name, role, phone, branch, shift, housingType, salary, joinDate,
                 qidFront, qidBack, healthCard, contract, healthCert,
                 createdAt: serverTimestamp()
             });
             await setDoc(doc(db, "employee_pins", id), { pin, employeeName: name });
-            logAudit("Employee Added", `${name} (${role || 'Staff'}, ${branch}, Total Salary ${salary} QAR)`);
+            logAudit("Employee Added", `${name} (${role || 'Staff'}, ${branch}, joined ${joinDate}, Total Salary ${salary} QAR)`);
 
-            statusEl.innerText = "Employee added successfully!";
+            statusEl.innerText = `Employee added successfully — joined ${joinDate}.`;
             statusEl.style.color = "var(--success)";
+            // نُفرّغ النموذج: تركُ تاريخ الالتحاق واسم الموظف السابقين يجعل
+            // الموظف التالي يُسجَّل بتاريخ غير تاريخه، وهو خطأ مالي صامت.
+            ["newEmpNameInput", "newEmpRoleInput", "newEmpPhoneInput", "newEmpPinInput",
+             "newEmpJoinDate", "newEmpSalary"].forEach(id => {
+                const el = document.getElementById(id); if (el) el.value = '';
+            });
+            ["qidFrontInput", "qidBackInput", "healthCardInput", "contractInput", "healthCertInput"]
+                .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
             await loadEmployees();
         } catch (error) {
             statusEl.innerText = "Error: " + error.message;
@@ -6688,9 +6828,17 @@
         if (!endDate) { show("Choose the last working day.", "var(--danger)"); return; }
 
         const emp = allEmployees.find(e => e.id === empId) || {};
+        // آخر يوم عمل قبل تاريخ الالتحاق مستحيل، ولو حُفظ لَتداخل الخصمان
+        // (ما قبل الالتحاق + ما بعد الانتهاء) وانهار حساب ذلك الشهر.
+        const hireISO = getEmploymentStartISO(emp);
+        if (hireISO && endDate < hireISO) {
+            show(`The last working day (${endDate}) cannot be before the joining date (${hireISO}).`, "var(--danger)");
+            return;
+        }
         const label = END_TYPE_LABEL[endType];
         if (!confirm(
             `${label} for ${emp.name || empId}?\n\n` +
+            `Joining date: ${hireISO || 'not recorded'}\n` +
             `Last working day: ${endDate}\n\n` +
             `• The final month's salary will be paid only for the days worked up to that date.\n` +
             `• From the next day the employee disappears from attendance, payroll and every list.\n` +
@@ -6774,6 +6922,30 @@
         }
     }
 
+    /**
+     * سطر توضيحي تحت حقل تاريخ الالتحاق.
+     * الملف القديم بلا تاريخ صريح يُقال له ذلك صراحةً مع التاريخ الاحتياطي
+     * المستخدم فعلًا، حتى لا يُظنّ أن الخانة الفارغة تعني «بلا حساب».
+     */
+    function renderJoinDateInfo(emp) {
+        const el = document.getElementById('editEmpServiceInfo');
+        if (!el) return;
+        if (!emp) { el.innerText = ''; return; }
+        if (emp.joinDate) {
+            const notYet = isNotYetEmployed(emp);
+            el.innerText = notYet
+                ? `Starts on ${emp.joinDate} — no salary is earned before that day.`
+                : `Length of service: ${serviceLengthText(emp)}.`;
+            el.style.color = notYet ? 'var(--warning)' : 'var(--text-dim)';
+            return;
+        }
+        const fallback = getEmployeeCreatedDateISO(emp);
+        el.innerText = fallback
+            ? `Not recorded — the system is using the file creation date (${fallback}) for now. Enter the real first working day.`
+            : 'Not recorded, and there is no file creation date either — payroll cannot prorate the joining month for this employee.';
+        el.style.color = 'var(--warning)';
+    }
+
     window.renderFormerEmployees = function() {
         const body = document.getElementById('formerTableBody');
         if (!body) return;
@@ -6789,13 +6961,15 @@
             <tr>
                 <td><b>${escapeHtml(e.name || e.id)}</b></td>
                 <td>${escapeHtml(e.branch || '—')}<br><small style="color: var(--text-dim);">${escapeHtml(e.role || '')}</small></td>
+                <td>${escapeHtml(getEmploymentStartISO(e) || '—')}${!e.joinDate && getEmploymentStartISO(e) ? '<br><small style="color: var(--text-dim);">estimated</small>' : ''}</td>
                 <td><b>${escapeHtml(e.endDate || '—')}</b></td>
+                <td>${escapeHtml(serviceLengthText(e, e.endDate))}</td>
                 <td>${escapeHtml(END_TYPE_LABEL[e.endType] || 'End of service')}</td>
                 <td style="max-width: 260px; white-space: pre-wrap;" dir="auto">${escapeHtml(e.endReason || '—')}</td>
                 <td class="money-col money-only">${money(e.salary)}</td>
                 <td><button class="btn-ghost btn-sm" onclick="openProfileModal('${escapeJsAttr(e.id)}')">${iconSvg('eye','ic-sm')} Open file</button></td>
             </tr>`).join('')
-            : `<tr><td colspan="7" style="text-align:center; color: var(--text-faint);">No former employees recorded.</td></tr>`;
+            : `<tr><td colspan="9" style="text-align:center; color: var(--text-faint);">No former employees recorded.</td></tr>`;
 
         const note = document.getElementById('formerCountNote');
         if (note) {
@@ -6837,6 +7011,10 @@
             document.getElementById("editEmpSalary").value = emp.salary || 0;
             document.getElementById("editEmpShift").value = emp.shift || "Morning";
             document.getElementById("editEmpHousingType").value = emp.housingType || "external";
+            // تاريخ الالتحاق: نُظهر الحقل الصريح فقط. لا نكتب فيه تاريخ إنشاء
+            // الملف الاحتياطي، وإلا حوّلَ مجرّد فتح الملف تخمينًا إلى رقم مثبَّت.
+            document.getElementById("editEmpJoinDate").value = emp.joinDate || "";
+            renderJoinDateInfo(emp);
             // الحقل غائب عن الموظفين المنشَئين قبل هذه الميزة، فالغياب = غير مفعّل.
             document.getElementById("editEmpCanSubmitSalesReport").checked = emp.canSubmitSalesReport === true;
             document.getElementById("editEmpEndType").value = emp.endType === 'termination' ? 'termination' : 'resignation';
@@ -7005,6 +7183,17 @@
         document.getElementById("repOtherAmountDeducted").innerText = p.otherAmountDeducted > 0
             ? `-${p.otherAmountDeducted.toFixed(2)} QAR`
             : "None this period";
+        // تناسب الشهر الأول والأخير: نُسمّي السبب صريحًا (التحاق أو انتهاء خدمة)
+        // ونذكر التاريخ، فلا يرى المالك خصمًا لا يعرف مصدره.
+        const partMonthEl = document.getElementById("repPartMonth");
+        if (partMonthEl) {
+            const bits = [];
+            if (p.preHireDays > 0) bits.push(`${p.preHireDays} day(s) before joining on ${getEmploymentStartISO(emp) || '—'}`);
+            if (p.postEndDays > 0) bits.push(`${p.postEndDays} day(s) after the last working day ${(emp && emp.endDate) || '—'}`);
+            partMonthEl.innerText = bits.length
+                ? `${bits.join(' + ')} (-${p.notEmployedAmount.toFixed(2)} QAR)`
+                : "None — employed for the whole period";
+        }
         document.getElementById("repNetSalary").innerText = `${p.netSalary.toFixed(2)} QAR`;
 
         let profHtml = "";
@@ -7034,12 +7223,45 @@
         const pin = document.getElementById("editEmpPin").value.trim();
         const shift = document.getElementById("editEmpShift").value;
         const housingType = document.getElementById("editEmpHousingType").value; // 'company' or 'external'
+        const joinDate = document.getElementById("editEmpJoinDate").value;
         const canSubmitSalesReport = document.getElementById("editEmpCanSubmitSalesReport").checked;
         const statusEl = document.getElementById("editProfileStatus");
 
         if (!canEditProfiles()) { statusEl.innerText = "You do not have permission to edit profiles."; statusEl.style.color = "var(--danger)"; return; }
         if (!name) { statusEl.innerText = "Name cannot be empty."; statusEl.style.color = "var(--danger)"; return; }
         if (pin && !/^\d{4,8}$/.test(pin)) { statusEl.innerText = "PIN must be 4-8 digits."; statusEl.style.color = "var(--danger)"; return; }
+
+        const empBefore = allEmployees.find(e => e.id === originalId) || {};
+        // تاريخ التحاق بعد آخر يوم عمل مستحيل، ولو حُفظ لَتداخل خصم ما قبل
+        // الالتحاق مع خصم ما بعد الانتهاء وانهار حساب الشهر.
+        if (joinDate && empBefore.endDate && joinDate > String(empBefore.endDate)) {
+            statusEl.innerText = `The joining date (${joinDate}) cannot be after the recorded last working day (${empBefore.endDate}).`;
+            statusEl.style.color = "var(--danger)"; return;
+        }
+        // تغيير تاريخ الالتحاق يُعيد حساب كل شهر — لا يُمرَّر بصمت.
+        const joinBefore = empBefore.joinDate ? String(empBefore.joinDate) : '';
+        const joinChanged = joinDate !== joinBefore;
+        if (joinChanged) {
+            // حضورٌ مسجَّل قبل تاريخ الالتحاق يعني أن أحد الرقمين خطأ: تلك
+            // الأيام لن تُحسب عملًا وستُخصم كأيام ما قبل الالتحاق.
+            let earlyLogs = 0, earliest = '';
+            if (joinDate) {
+                (allAttendance || []).forEach(l => {
+                    if (l.employeeId !== originalId) return;
+                    const d = String(l.date || '');
+                    if (d && d < joinDate) { earlyLogs++; if (!earliest || d < earliest) earliest = d; }
+                });
+            }
+            if (!confirm(
+                `Change the joining date${joinBefore ? ` from ${joinBefore}` : ''} to ${joinDate || '(empty)'}?\n\n` +
+                `This recalculates the salary of the joining month, the absence count and the annual-leave eligibility date for this employee. ` +
+                `Existing attendance records are not touched.` +
+                (earlyLogs
+                    ? `\n\n⚠️ WARNING: this employee already has ${earlyLogs} attendance record(s) BEFORE that date (earliest ${earliest}). ` +
+                      `Those days will not be counted as worked and will be deducted as days before joining. Check which date is wrong.`
+                    : '')
+            )) { statusEl.innerText = "Cancelled — nothing was saved."; statusEl.style.color = "var(--warning)"; return; }
+        }
 
         statusEl.innerText = "Saving profile...";
         statusEl.style.color = "var(--warning)";
@@ -7053,7 +7275,7 @@
             let healthCert = await readFileIfPresent(document.getElementById("editHealthCertInput"), emp.healthCert || "");
 
             // Base fields any signed-in admin (Accountant OR Secretary) may edit.
-            const payload = { name, role, branch, phone, shift, housingType, canSubmitSalesReport, qidFront, qidBack, healthCard, contract, healthCert };
+            const payload = { name, role, branch, phone, shift, housingType, joinDate, canSubmitSalesReport, qidFront, qidBack, healthCard, contract, healthCert };
             // Salary / OT rate are only ever sent for Accountants — Secretaries
             // never include these fields in the update at all, and
             // firestore.rules independently rejects them server-side too if a
@@ -7069,6 +7291,11 @@
                 await setDoc(doc(db, "employee_pins", originalId), { employeeName: name }, { merge: true });
             }
 
+            // تاريخ الالتحاق يُغيّر أرقام الرواتب، فتغييره يُسجَّل في سجل التدقيق.
+            if (joinChanged) {
+                logAudit("Joining Date Changed",
+                    `${name}: ${joinBefore || '(none)'} -> ${joinDate || '(none)'}`);
+            }
             statusEl.innerText = "Changes saved successfully!";
             statusEl.style.color = "var(--success)";
             await loadEmployees();
@@ -7545,13 +7772,25 @@
     // ago. Returns { eligible, lastLeave, monthsAgo }.
     function checkLeaveEligibility(empId, asOfDateStr) {
         const empLeaves = allAnnualLeaves.filter(l => l.employeeId === empId).sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
-        if (!empLeaves.length) return { eligible: true, lastLeave: null };
+        // من لم يأخذ إجازة قبلًا: المدة تُعدّ من تاريخ الالتحاق بالعمل، لا
+        // «مستحق فورًا». هذا ما كان مُطبَّقًا أصلًا في تنبيه الصفحة الرئيسية
+        // (getExactLeaveEligibilityDate) فصار الاثنان على قاعدة واحدة.
+        // ولمن لا تاريخ التحاق له ولا إجازة سابقة يبقى الحكم «مستحق»، لأن
+        // منعه بناءً على لا شيء أسوأ من السماح.
+        if (!empLeaves.length) {
+            const emp = allEmployees.find(e => e.id === empId);
+            const hire = getEmploymentStartISO(emp);
+            if (!hire) return { eligible: true, lastLeave: null, monthsDiff: null, basis: 'unknown' };
+            const months = serviceMonths(emp, asOfDateStr);
+            if (months === null) return { eligible: true, lastLeave: null, monthsDiff: null, basis: 'unknown' };
+            return { eligible: months >= LEAVE_ELIGIBILITY_MONTHS, lastLeave: null, monthsDiff: months, basis: 'hire', hireDate: hire };
+        }
         const lastLeave = empLeaves[0];
         const asOf = asOfDateStr ? new Date(`${asOfDateStr}T00:00:00`) : new Date();
         const lastStart = new Date(`${lastLeave.startDate}T00:00:00`);
-        if (isNaN(asOf.getTime()) || isNaN(lastStart.getTime())) return { eligible: true, lastLeave };
+        if (isNaN(asOf.getTime()) || isNaN(lastStart.getTime())) return { eligible: true, lastLeave, basis: 'leave' };
         const monthsDiff = (asOf.getFullYear() - lastStart.getFullYear()) * 12 + (asOf.getMonth() - lastStart.getMonth());
-        return { eligible: monthsDiff >= LEAVE_ELIGIBILITY_MONTHS, lastLeave, monthsDiff };
+        return { eligible: monthsDiff >= LEAVE_ELIGIBILITY_MONTHS, lastLeave, monthsDiff, basis: 'leave' };
     }
 
     // ---- Home tab: proactive "Upcoming Annual Leave Eligibility" alert -----
@@ -7564,7 +7803,7 @@
     const LEAVE_UPCOMING_WINDOW_DAYS = 30;
     function getExactLeaveEligibilityDate(emp) {
         const empLeaves = allAnnualLeaves.filter(l => l.employeeId === emp.id).sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
-        let baseDateStr = empLeaves.length ? empLeaves[0].startDate : getEmployeeCreatedDateISO(emp);
+        let baseDateStr = empLeaves.length ? empLeaves[0].startDate : getEmploymentStartISO(emp);
         if (!baseDateStr) return null;
         const base = new Date(`${baseDateStr}T00:00:00`);
         if (isNaN(base.getTime())) return null;
@@ -7746,15 +7985,21 @@
             banner.style.display = "block";
             banner.style.background = "rgba(34,197,94,0.12)";
             banner.style.color = "var(--success)";
+            // ثلاث حالات استحقاق مختلفة، ولكلٍّ سببها الصريح: إجازة سابقة مضى
+            // عليها الحد، أو مدة خدمة كافية من تاريخ الالتحاق، أو لا تاريخ
+            // التحاق معروف أصلًا (ملف قديم) فلا يُمنع بناءً على لا شيء.
             banner.innerHTML = elig.lastLeave
                 ? `${iconSvg('check', 'ic-sm')} Eligible — last leave started on ${escapeHtml(elig.lastLeave.startDate)} (${elig.monthsDiff}+ months ago).`
-                : `${iconSvg('check', 'ic-sm')} Eligible — this will be this employee's first recorded annual leave.`;
+                : (elig.basis === 'hire'
+                    ? `${iconSvg('check', 'ic-sm')} Eligible — first annual leave, joined on ${escapeHtml(elig.hireDate)} (${elig.monthsDiff} month(s) of service, needs ${LEAVE_ELIGIBILITY_MONTHS}).`
+                    : `${iconSvg('check', 'ic-sm')} Eligible — first recorded annual leave. <b>No joining date is recorded for this employee</b>, so length of service could not be checked — enter the joining date in their profile.`);
         } else {
             banner.style.display = "block";
             banner.style.background = "rgba(239,68,68,0.12)";
             banner.style.color = "var(--danger)";
-            const monthsLeft = LEAVE_ELIGIBILITY_MONTHS - elig.monthsDiff;
-            banner.innerHTML = `${iconSvg('alertTriangle', 'ic-sm')} NOT yet eligible for a new leave allowance/ticket allowance — last leave started ${escapeHtml(elig.lastLeave.startDate)} (only ${elig.monthsDiff} month(s) ago, needs ${LEAVE_ELIGIBILITY_MONTHS}). Use the override checkbox below only if management explicitly approves an early leave.`;
+            banner.innerHTML = elig.lastLeave
+                ? `${iconSvg('alertTriangle', 'ic-sm')} NOT yet eligible for a new leave allowance/ticket allowance — last leave started ${escapeHtml(elig.lastLeave.startDate)} (only ${elig.monthsDiff} month(s) ago, needs ${LEAVE_ELIGIBILITY_MONTHS}). Use the override checkbox below only if management explicitly approves an early leave.`
+                : `${iconSvg('alertTriangle', 'ic-sm')} NOT yet eligible — joined on ${escapeHtml(elig.hireDate || '—')}, only ${elig.monthsDiff} month(s) of service out of ${LEAVE_ELIGIBILITY_MONTHS}. Use the override checkbox below only if management explicitly approves an early leave.`;
         }
     };
 
@@ -7774,7 +8019,9 @@
 
         const elig = checkLeaveEligibility(empId, startDate);
         if (!elig.eligible && !forceOverride) {
-            statusEl.innerText = `Blocked: this employee is not yet eligible (last leave was ${elig.monthsDiff} month(s) ago, needs ${LEAVE_ELIGIBILITY_MONTHS}). Check the override box if management approves an early leave anyway.`;
+            statusEl.innerText = elig.lastLeave
+                ? `Blocked: this employee is not yet eligible (last leave was ${elig.monthsDiff} month(s) ago, needs ${LEAVE_ELIGIBILITY_MONTHS}). Check the override box if management approves an early leave anyway.`
+                : `Blocked: this employee joined on ${elig.hireDate || '—'} and has only ${elig.monthsDiff} month(s) of service out of ${LEAVE_ELIGIBILITY_MONTHS}. Check the override box if management approves an early leave anyway.`;
             statusEl.style.color = "var(--danger)";
             return;
         }
