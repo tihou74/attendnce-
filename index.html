@@ -2428,6 +2428,28 @@
 
     authReady.then(() => loadData());
 
+    // =====================================================================
+    // يوم جديد / شهر جديد على جهاز لا يُغلق
+    // ---------------------------------------------------------------------
+    // تاريخ ووقت كل تسجيل يُحسبان لحظة الضغط على الزر، لا لحظة فتح الصفحة،
+    // فالجهاز المتروك مفتوحًا من سبتمبر يسجّل 1 أكتوبر بتاريخه الصحيح. لكن
+    // قائمة الموظفين تُحمَّل مرة واحدة، وترشيحُ من انتهت خدمته يُقارن بتاريخ
+    // ذلك التحميل. فجهاز التابلت المتروك أسابيع كان يُبقي موظفًا انتهت خدمته
+    // قابلًا للاختيار، ولا تظهر فيه أسماء الموظفين الجدد.
+    //
+    // نُعيد التحميل عند تغيّر اليوم فقط، لا كل دقيقة: البيانات لا تتغيّر
+    // بالدقيقة، وإعادة التحميل تقرأ من فايربيس.
+    // ونتجنّب إعادة التحميل أثناء عملية تسجيل جارية حتى لا تتبدّل القائمة
+    // تحت يد الموظف.
+    let kioskLastSeenDay = formatDateEnglish(new Date());
+    setInterval(() => {
+        const today = formatDateEnglish(new Date());
+        if (today === kioskLastSeenDay) return;
+        if (isProcessingAttendance) return; // نُعيد المحاولة بعد دقيقة
+        kioskLastSeenDay = today;
+        loadData();
+    }, 60000);
+
     // ---- Rotating background photo slideshow --------------------------------
     // Cross-fades between the 3 background layers automatically. Respects
     // prefers-reduced-motion by simply leaving the first photo showing as a

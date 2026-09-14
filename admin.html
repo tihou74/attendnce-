@@ -474,6 +474,38 @@
                 <button class="btn-accent" onclick="loadPayrollData()"><span data-icon="filter"></span> Calculate Payroll</button>
                 <button class="btn-success money-only" onclick="exportAllPayrollExcel()"><span data-icon="download"></span> Export All Payroll (Excel)</button>
             </div>
+            <!-- تنقّل سريع بين الشهور: كل شهر مضى محفوظ ويُفتح بنقرة واحدة.
+                 المدى From/To يبقى موجودًا لمن يريد مدى غير الشهر الكامل. -->
+            <div class="controls" style="margin-top: 12px; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+                <button class="btn-ghost btn-sm" onclick="shiftPayrollMonth(-1)" title="Previous month">&#9664; Previous month</button>
+                <div style="width: 165px;"><label for="payrollMonthPick">Jump to month</label>
+                    <input type="month" id="payrollMonthPick" onchange="applyPayrollMonthPick()">
+                </div>
+                <button class="btn-ghost btn-sm" onclick="shiftPayrollMonth(1)" title="Next month">Next month &#9654;</button>
+                <button class="btn-ghost btn-sm" onclick="goToCurrentPayrollMonth()"><span data-icon="clock"></span> This month</button>
+                <span id="payrollMonthLabel" style="font-weight: 800; font-size: 13px; color: var(--text-dim);"></span>
+            </div>
+        </div>
+
+        <!-- ورديات لم تُغلق: تسجيل دخول بلا خروج. تُعرض لأن وردية مفتوحة من
+             شهر سابق تُفسد حساب الشهرين معًا وتمنع الموظف من تسجيل دخول جديد. -->
+        <div class="card" id="openShiftsCard" style="display: none; border-left: 4px solid var(--warning);">
+            <h3><span data-icon="alertTriangle"></span> Shifts still open (a Check-In with no Check-Out) <span id="openShiftsCount" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
+            <p class="card-sub">An employee who forgets to Check-Out stays "inside" — the system will not let them Check-In again, and when they finally Check-Out the whole gap is recorded as one enormous shift on the day they checked in. Fix these from the Attendance Logs tab before closing the month.</p>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Employee</th><th>Branch</th><th>Checked in</th><th>Open for</th><th></th></tr></thead>
+                    <tbody id="openShiftsBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- أرشيف الشهور: كل شهر فيه سجلات حضور، بعدد سجلاته. دليلٌ مرئي أن
+             لا شيء يُمسح عند بداية شهر جديد، ونقرة واحدة تفتح أي شهر مضى. -->
+        <div class="card" id="monthArchiveCard" style="display: none;">
+            <h3><span data-icon="inbox"></span> Saved months (attendance archive)</h3>
+            <p class="card-sub">Every month that has attendance records, kept permanently. Nothing is deleted when a new month begins — click any month to open its payroll.</p>
+            <div id="monthArchiveList" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
         </div>
 
         <div class="card">
@@ -2373,6 +2405,12 @@
         });
         const vrDateEl = document.getElementById('vrDate');
         if (vrDateEl) vrDateEl.value = todayISO();
+        // منتقي شهر الرواتب يبدأ على الشهر الحالي، ويُراقَب تغيّر الشهر بعد ذلك.
+        const payMonthPick = document.getElementById('payrollMonthPick');
+        if (payMonthPick) payMonthPick.value = todayISO().slice(0, 7);
+        renderPayrollMonthLabel();
+        // كل دقيقة: يكفي ليوم/شهر جديد، ولا يُحمّل الصفحة شيئًا يُذكر.
+        setInterval(watchMonthRollover, 60000);
         applySavedTheme();
     });
 
@@ -3222,6 +3260,181 @@
         return '';
     }
 
+    // =====================================================================
+    // بداية شهر جديد — التنقّل والتحديث التلقائي
+    // ---------------------------------------------------------------------
+    // لا شيء يُمسح عند انتهاء الشهر: كل سجل حضور مستندٌ مستقل يحمل تاريخه،
+    // والشهر مجرّد مُرشِّح على المدى From/To. الشهر الجديد يبدأ فارغًا لأن
+    // مُرشِّحه لا يجد فيه سجلات بعد، والشهر القديم يبقى كما هو إلى الأبد.
+    //
+    // ما كان ناقصًا: المدى يُضبط مرة واحدة عند فتح الصفحة. فلوحةٌ تُركت مفتوحة
+    // من 30 سبتمبر تبقى تعرض سبتمبر في 1 أكتوبر، فيظن المالك أن الشهر الجديد
+    // لم يبدأ. الآن تنتبه الصفحة لتغيّر الشهر وتنتقل إليه.
+    // =====================================================================
+    function monthBoundsISO(ym) {
+        const [y, m] = String(ym).split('-').map(Number);
+        if (!y || !m) return null;
+        const last = new Date(y, m, 0).getDate();
+        return { start: `${ym}-01`, end: `${ym}-${String(last).padStart(2, '0')}` };
+    }
+    function currentPayrollMonth() {
+        const s = document.getElementById("payrollStartDate")?.value || '';
+        return s ? s.slice(0, 7) : todayISO().slice(0, 7);
+    }
+    /** يضبط المدى على شهر كامل ويُعيد الحساب. */
+    function setPayrollMonth(ym, recalc) {
+        const b = monthBoundsISO(ym);
+        if (!b) return;
+        const s = document.getElementById("payrollStartDate");
+        const e = document.getElementById("payrollEndDate");
+        if (s) s.value = b.start;
+        if (e) e.value = b.end;
+        const pick = document.getElementById("payrollMonthPick");
+        if (pick) pick.value = ym;
+        renderPayrollMonthLabel();
+        if (recalc !== false && typeof loadPayrollData === 'function') loadPayrollData();
+    }
+    function renderPayrollMonthLabel() {
+        const el = document.getElementById("payrollMonthLabel");
+        if (!el) return;
+        const ym = currentPayrollMonth();
+        const thisMonth = todayISO().slice(0, 7);
+        const b = monthBoundsISO(ym);
+        const s = document.getElementById("payrollStartDate")?.value || '';
+        const e = document.getElementById("payrollEndDate")?.value || '';
+        // مدى مخصَّص (ليس شهرًا كاملًا) يُقال صريحًا حتى لا يُقرأ كأنه الشهر.
+        const isWholeMonth = b && s === b.start && e === b.end;
+        if (!isWholeMonth) { el.innerText = `Custom range ${s} → ${e}`; el.style.color = 'var(--warning)'; return; }
+        if (ym === thisMonth) { el.innerText = `${ym} — current month (in progress)`; el.style.color = 'var(--text-dim)'; }
+        else if (ym < thisMonth) { el.innerText = `${ym} — closed month (saved)`; el.style.color = 'var(--success)'; }
+        else { el.innerText = `${ym} — future month`; el.style.color = 'var(--warning)'; }
+    }
+    window.shiftPayrollMonth = function(delta) {
+        const [y, m] = currentPayrollMonth().split('-').map(Number);
+        const d = new Date(y, m - 1 + delta, 1);
+        setPayrollMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    };
+    window.applyPayrollMonthPick = function() {
+        const v = document.getElementById("payrollMonthPick")?.value;
+        if (v) setPayrollMonth(v);
+    };
+    window.goToCurrentPayrollMonth = function() { setPayrollMonth(todayISO().slice(0, 7)); };
+
+    /**
+     * مراقب بداية الشهر: يفحص التاريخ كل دقيقة، فإن تغيّر الشهر بينما اللوحة
+     * مفتوحة انتقل إلى الشهر الجديد وأعاد تحميل البيانات، وأخبر المالك بذلك.
+     * يفحص كل دقيقة لا كل ثانية: الدقة المطلوبة يومٌ لا لحظة.
+     */
+    let lastSeenMonth = todayISO().slice(0, 7);
+    let lastSeenDay = todayISO();
+    function watchMonthRollover() {
+        const nowDay = todayISO();
+        if (nowDay === lastSeenDay) return;
+        const nowMonth = nowDay.slice(0, 7);
+        const monthChanged = nowMonth !== lastSeenMonth;
+        const wasOnLastSeenMonth = currentPayrollMonth() === lastSeenMonth;
+        lastSeenDay = nowDay;
+        lastSeenMonth = nowMonth;
+
+        if (!monthChanged) {
+            // يوم جديد داخل نفس الشهر: الغياب يتوقف عند اليوم، فالأرقام تغيّرت.
+            if (typeof loadAttendanceData === 'function') loadAttendanceData();
+            return;
+        }
+        // ننتقل تلقائيًّا فقط إن كان المعروض هو الشهر الذي انتهى للتوّ. ولو كان
+        // المالك يستعرض شهرًا قديمًا بنفسه فلا نسحب الشاشة من تحت يده.
+        if (wasOnLastSeenMonth) {
+            setPayrollMonth(nowMonth, false);
+            ["startDate", "attReportStart", "salesStartDate"].forEach(id => {
+                const el = document.getElementById(id); if (el) el.value = `${nowMonth}-01`;
+            });
+            const b = monthBoundsISO(nowMonth);
+            ["endDate", "attReportEnd", "salesEndDate"].forEach(id => {
+                const el = document.getElementById(id); if (el && b) el.value = b.end;
+            });
+            ['finMonth', 'fxMonth', 'vrMonth'].forEach(id => {
+                const el = document.getElementById(id); if (el) el.value = nowMonth;
+            });
+            if (typeof loadEmployees === 'function') loadEmployees();
+            if (typeof loadAttendanceData === 'function') loadAttendanceData();
+            alert(
+                `A new month has started (${nowMonth}).\n\n` +
+                `The screen has moved to the new month, which begins with no attendance records yet.\n` +
+                `${lastSeenMonth} is saved and unchanged — open it any time with "Previous month".`
+            );
+        }
+    }
+
+    /**
+     * ورديات لم تُغلق. نُظهر ما بقي مفتوحًا أكثر من الحد، لأن وردية مفتوحة
+     * من شهر سابق تُسجَّل كلها في يوم دخولها متى أُغلقت، فتُفسد الشهرين.
+     */
+    const OPEN_SHIFT_ALERT_HOURS = 16; // أطول وردية معقولة (وردية 10 ساعات + تأخير)
+    function renderOpenShifts() {
+        const card = document.getElementById('openShiftsCard');
+        const body = document.getElementById('openShiftsBody');
+        if (!card || !body) return;
+        const nowMs = Date.now();
+        const open = buildSessions(allAttendance || [])
+            .filter(s => s.checkIn && !s.checkOut)
+            .map(s => ({ s, hours: (nowMs - tsToMillis(s.checkIn)) / 3600000 }))
+            .filter(x => x.hours >= OPEN_SHIFT_ALERT_HOURS)
+            .sort((a, b) => b.hours - a.hours);
+
+        if (!open.length) { card.style.display = 'none'; return; }
+        card.style.display = 'block';
+        const badge = document.getElementById('openShiftsCount');
+        if (badge) { badge.innerText = open.length; badge.style.display = 'inline-block'; }
+
+        const thisMonth = todayISO().slice(0, 7);
+        body.innerHTML = open.map(({ s, hours }) => {
+            const days = Math.floor(hours / 24);
+            const crossesMonth = String(s.checkIn.date || '').slice(0, 7) !== thisMonth;
+            return `<tr${crossesMonth ? ' style="background: rgba(220,38,38,0.07);"' : ''}>
+                <td><b>${escapeHtml(s.employeeName || s.employeeId || '—')}</b></td>
+                <td>${escapeHtml(s.branch || '—')}</td>
+                <td>${escapeHtml(s.checkIn.date || '—')} ${escapeHtml(s.checkIn.time || '')}</td>
+                <td style="color: ${crossesMonth ? 'var(--danger)' : 'var(--warning)'}; font-weight: 700;">
+                    ${days >= 1 ? `${days} day(s) ` : ''}${Math.floor(hours % 24)}h
+                    ${crossesMonth ? '<br><small>from a previous month</small>' : ''}
+                </td>
+                <td><button class="btn-ghost btn-sm" onclick="switchTab('tab-attendance')">${iconSvg('eye','ic-sm')} Attendance logs</button></td>
+            </tr>`;
+        }).join('');
+        paintIcons(card);
+    }
+
+    /**
+     * أرشيف الشهور — كل شهر له سجلات حضور، بعدد سجلاته.
+     * الغرض منه طمأنة بصرية: الشهر القديم موجود ويُفتح بنقرة، ولا يعتمد
+     * المالك على تذكُّر التواريخ في خانتَي From/To.
+     */
+    function renderMonthArchive() {
+        const card = document.getElementById('monthArchiveCard');
+        const list = document.getElementById('monthArchiveList');
+        if (!card || !list) return;
+        const counts = new Map();
+        (allAttendance || []).forEach(l => {
+            const ym = String(l.date || '').slice(0, 7);
+            if (/^\d{4}-\d{2}$/.test(ym)) counts.set(ym, (counts.get(ym) || 0) + 1);
+        });
+        if (!counts.size) { card.style.display = 'none'; return; }
+        card.style.display = 'block';
+        const thisMonth = todayISO().slice(0, 7);
+        list.innerHTML = [...counts.keys()].sort().reverse().map(ym => {
+            const isNow = ym === thisMonth;
+            return `<button class="btn-ghost btn-sm" onclick="setPayrollMonthFromArchive('${escapeJsAttr(ym)}')"
+                style="${isNow ? 'border-color: var(--accent); font-weight: 800;' : ''}">
+                ${escapeHtml(ym)} <span style="color: var(--text-dim);">· ${counts.get(ym)} record(s)</span>${isNow ? ' · now' : ''}
+            </button>`;
+        }).join('');
+    }
+    window.setPayrollMonthFromArchive = function(ym) {
+        setPayrollMonth(ym);
+        const card = document.getElementById('monthArchiveCard');
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
+
     window.renderPayrollTable = function(employeesArray) {
         const startDate = document.getElementById("payrollStartDate").value;
         const endDate = document.getElementById("payrollEndDate").value;
@@ -3258,7 +3471,11 @@
         document.getElementById("payrollTableBody").innerHTML = payrollHtml || `<tr><td colspan="9" style="text-align: center;">No employees found</td></tr>`;
     };
 
-    window.loadPayrollData = function() { filterEmployeesList(); };
+    window.loadPayrollData = function() {
+        renderPayrollMonthLabel();
+        renderOpenShifts();
+        filterEmployeesList();
+    };
 
     window.renderShiftsTable = function() {
         const queryText = document.getElementById("shiftSearchInput").value.toLowerCase();
@@ -3393,6 +3610,8 @@
             querySnapshot.forEach((docSnap) => allAttendance.push({ id: docSnap.id, ...docSnap.data() }));
             document.getElementById("homeLogCount").innerText = allAttendance.length;
             filterData();
+            renderOpenShifts();
+            renderMonthArchive();
         } catch (error) {
             try {
                 const querySnapshot = await getDocs(collection(db, "attendance"));
@@ -3400,6 +3619,8 @@
                 querySnapshot.forEach((docSnap) => allAttendance.push({ id: docSnap.id, ...docSnap.data() }));
                 document.getElementById("homeLogCount").innerText = allAttendance.length;
                 filterData();
+                renderOpenShifts();
+                renderMonthArchive();
             } catch (err) {
                 console.error(err);
             }
