@@ -3739,16 +3739,94 @@
     };
 
     window.renderAttendanceTable = function(sessions) {
-        // مجموع دقائق كل موظف في كل تاريخ — نفس التجميع الذي يستخدمه محرّك
-        // الرواتب (byDate في computePayroll)، حتى يرى المشرف الرقم الذي يُحسب
-        // عليه الأوفرتايم فعلًا لا رقم فترة واحدة من يوم مقسوم.
-        const dayTotals = new Map();
+        // =================================================================
+        // اليوم المقسوم = سطر واحد
+        // -----------------------------------------------------------------
+        // كانت كل فترة سطرًا، فيظهر الموظف مرتين في نفس اليوم كأنه يومان.
+        // نجمع فترات الموظف الواحد في التاريخ الواحد في سطر واحد، تُعرض فيه
+        // الفترات جنبًا إلى جنب ومجموع اليوم واحد — وهو نفس التجميع الذي
+        // يستخدمه محرّك الرواتب (byDate في computePayroll)، فما يراه المشرف
+        // هو الرقم الذي يُحسب عليه الأوفرتايم والغياب فعلًا.
+        // =================================================================
+        const groups = [];             // نحفظ ترتيب الظهور (الأحدث أولًا)
+        const byKey = new Map();
         sessions.forEach(s => {
             const k = `${s.employeeId}|${s.date}`;
-            dayTotals.set(k, (dayTotals.get(k) || 0) + (Number(s.workMinutes) || 0));
+            let g = byKey.get(k);
+            if (!g) {
+                g = { key: k, employeeId: s.employeeId, employeeName: s.employeeName,
+                      branch: s.branch, date: s.date, parts: [] };
+                byKey.set(k, g);
+                groups.push(g);
+            }
+            g.parts.push(s);
         });
+        // ترتيب الفترات داخل اليوم زمنيًا (الأولى أولًا) حتى يتقابل كل دخول
+        // مع انصرافه في نفس الموضع من العمودين.
+        groups.forEach(g => g.parts.sort((a, b) =>
+            tsToMillis(a.checkIn || a.checkOut) - tsToMillis(b.checkIn || b.checkOut)));
+
         let html = "";
-        sessions.forEach((s) => {
+        groups.forEach((g) => {
+            const multi = g.parts.length > 1;
+            const dayTotalMins = g.parts.reduce((a, p) => a + (Number(p.workMinutes) || 0), 0);
+            const anySplit = g.parts.some(p => p.checkOut && p.checkOut.splitBreak);
+            const anyAuto = g.parts.some(p => p.checkOut && p.checkOut.autoCheckOut);
+            const anyOpen = g.parts.some(p => !p.checkOut);
+
+            // ---- سطر واحد لليوم المقسوم -----------------------------------
+            if (multi) {
+                const sep = ' <span style="color: var(--text-faint);">·</span> ';
+                const insHtml = g.parts.map(p => p.checkIn
+                    ? escapeHtml(p.checkIn.time || '-')
+                    : '<span style="color:var(--text-faint);" title="لا يوجد تسجيل دخول مقابل / no matching check-in">missing</span>'
+                ).join(sep);
+                const outsHtml = g.parts.map(p => {
+                    if (!p.checkOut) return '<span style="color:var(--warning); font-weight:800;">Open</span>';
+                    let t = escapeHtml(p.checkOut.time || '-');
+                    if (p.crossesMidnight) t += ` <span title="انتهت بعد منتصف الليل في اليوم التالي / ended after midnight, next day" style="color: var(--accent); font-size: 11px; font-weight: 700;">+1d</span>`;
+                    if (p.checkOut.splitBreak) t += ` <span title="Split Break — غادر بين فترتَي دوامه وعاد في نفس اليوم" style="color: #6366f1; font-size: 11px; font-weight: 800;">split</span>`;
+                    if (p.checkOut.autoCheckOut) t += ` <span title="${escapeHtml(p.checkOut.autoReason || 'Closed automatically')}" style="color: var(--warning); font-size: 11px; font-weight: 800;">auto</span>`;
+                    return t;
+                }).join(sep);
+
+                // كل شيء على سطر واحد: المدة ثم الوسم بجانبها لا تحته.
+                const label = `${Math.floor(dayTotalMins / 60)}h ${dayTotalMins % 60}m`;
+                const tagText = anySplit
+                    ? `SPLIT · ${g.parts.length} parts`
+                    : `${g.parts.length} shifts`;
+                const durationHtml =
+                    `<span class="duration-pill"${anyOpen ? ' style="opacity:.85;"' : ''}>${escapeHtml(label)}</span>`
+                    + ` <span title="${anySplit
+                        ? 'Split shift — one working day made of ' + g.parts.length + ' parts. Overtime and absence are calculated on this combined total.'
+                        : g.parts.length + ' separate shifts on the same day. Overtime and absence are calculated on this combined total.'}" style="color: #6366f1; font-size: 11px; font-weight: 800; white-space: nowrap;">${escapeHtml(tagText)}</span>`
+                    + (anyOpen ? ` <span title="One part has no Check-Out yet, so it adds no minutes" style="color: var(--warning); font-size: 11px; font-weight: 800; white-space: nowrap;">1 still open</span>` : '')
+                    + (anyAuto ? ` <span style="color: var(--warning); font-size: 11px; font-weight: 800; white-space: nowrap;">auto ${AUTO_CHECKOUT_CREDITED_HOURS}h</span>` : '');
+
+                const lat0 = g.parts[0].checkIn?.location?.latitude || g.parts[0].checkOut?.location?.latitude;
+                const lng0 = g.parts[0].checkIn?.location?.longitude || g.parts[0].checkOut?.location?.longitude;
+                let locHtml = escapeHtml(g.branch || '-');
+                if (lat0 && lng0) locHtml += `<br><a href="https://maps.google.com/?q=${lat0},${lng0}" target="_blank" style="color: var(--accent); font-size: 12px; font-weight: 600;">${iconSvg('gps','ic-sm')} Map</a>`;
+
+                // الحذف يأخذ مستندات اليوم كلها — عددها يُذكر في رسالة التأكيد.
+                const allIds = g.parts.flatMap(p => [p.checkIn?.id, p.checkOut?.id])
+                    .filter(Boolean).map(escapeJsAttr).join(',');
+
+                html += `<tr>
+                <td><span class="emp-link" onclick="openAttReportModal('${escapeJsAttr(g.employeeId)}')">${escapeHtml(g.employeeName || 'Unknown')}</span></td>
+                <td>${escapeHtml(g.date)}</td>
+                <td><b style="white-space: nowrap;">${insHtml}</b></td>
+                <td><b style="white-space: nowrap;">${outsHtml}</b></td>
+                <td style="white-space: nowrap;">${durationHtml}</td>
+                <td>${locHtml}</td>
+                <td><button class="btn-danger btn-sm" title="Deletes all ${g.parts.length} parts of this day" onclick="deleteAttendanceSession('${allIds}')">${iconSvg('trash','ic-sm')}</button></td>
+            </tr>`;
+                return;
+            }
+
+            // ---- يوم بفترة واحدة: كما كان بلا تغيير -----------------------
+            const s = g.parts[0];
+            {
             const inTime = s.checkIn
                 ? escapeHtml(s.checkIn.time || '-')
                 : '<span style="color:var(--text-faint);" title="لا يوجد تسجيل دخول مقابل لهذا الانصراف — بيانات ناقصة فعلًا / no matching check-in record exists">missing</span>';
@@ -3766,18 +3844,18 @@
             // جلسة أقصر من دقيقتين مع انصراف مكتمل = ضغط مزدوج بالخطأ على شاشة
             // اللمس، لا وردية حقيقية. نعلّمها ليراجعها المشرف ويحذفها.
             const shortWarn = (s.checkOut && s.workMinutes < 2)
-                ? `<br><span title="جلسة قصيرة جدًا — الأرجح ضغط مزدوج بالخطأ، راجعها واحذفها / suspiciously short, likely an accidental double tap" style="color: var(--warning); font-size: 11px; font-weight: 700;">&#9888; قصيرة</span>`
+                ? ` <span title="جلسة قصيرة جدًا — الأرجح ضغط مزدوج بالخطأ، راجعها واحذفها / suspiciously short, likely an accidental double tap" style="color: var(--warning); font-size: 11px; font-weight: 700; white-space: nowrap;">&#9888; قصيرة</span>`
                 : '';
-            // فترة من دوام مقسوم: نُظهر مجموع ساعات اليوم كله بجانبها، فالفترة
-            // وحدها لا تعني شيئًا — الأوفرتايم والغياب يُحسبان على مجموع اليوم.
+            // فترة واحدة في اليوم. الوسوم بجانب المدة على نفس السطر لا تحتها.
             const isSplit = !!(s.checkOut && s.checkOut.splitBreak);
             const isAuto = !!(s.checkOut && s.checkOut.autoCheckOut);
-            const dayTotalMins = (dayTotals.get(`${s.employeeId}|${s.date}`) || 0);
+            // سبليت بفترة واحدة فقط = غادر ولم يعد بعد. نقولها صريحًا بدل أن
+            // نعرض «مجموع اليوم» ونحن نعرف أن اليوم لم يكتمل.
             const splitTag = isSplit
-                ? `<br><span title="Split shift — the employee left between two shifts on the same day and came back. Overtime and absence are calculated on the day's TOTAL, not on this part alone." style="color: #6366f1; font-size: 11px; font-weight: 800;">SPLIT · day total ${Math.floor(dayTotalMins / 60)}h ${dayTotalMins % 60}m</span>`
+                ? ` <span title="Split Break — the employee left between two shifts on the same day and has not come back yet. When they Check-In again this becomes one line with the day's total." style="color: #6366f1; font-size: 11px; font-weight: 800; white-space: nowrap;">SPLIT · not back yet</span>`
                 : '';
             const autoTag = isAuto
-                ? `<br><span title="${escapeHtml(s.checkOut.autoReason || 'Closed automatically')}" style="color: var(--warning); font-size: 11px; font-weight: 800;">AUTO CHECK-OUT · counted as a normal ${AUTO_CHECKOUT_CREDITED_HOURS}h day</span>`
+                ? ` <span title="${escapeHtml(s.checkOut.autoReason || 'Closed automatically')}" style="color: var(--warning); font-size: 11px; font-weight: 800; white-space: nowrap;">AUTO ${AUTO_CHECKOUT_CREDITED_HOURS}h day</span>`
                 : '';
             const durationHtml = s.checkOut
                 ? `<span class="duration-pill">${escapeHtml(s.durationLabel)}</span>${shortWarn}${splitTag}${autoTag}`
@@ -3794,10 +3872,11 @@
                 <td>${escapeHtml(s.date)}</td>
                 <td><b>${inTime}</b></td>
                 <td><b>${outTime}</b></td>
-                <td>${durationHtml}</td>
+                <td style="white-space: nowrap;">${durationHtml}</td>
                 <td>${locationHtml}</td>
                 <td><button class="btn-danger btn-sm" onclick="deleteAttendanceSession('${delIds}')">${iconSvg('trash','ic-sm')}</button></td>
             </tr>`;
+            }
         });
         document.getElementById("attendanceTableBody").innerHTML = html || `<tr><td colspan="7" style="text-align: center;">No attendance sessions found for this period/filter</td></tr>`;
     };
@@ -3825,15 +3904,40 @@
 
     // ---- Excel export (real .xlsx via SheetJS, replaces the old raw-CSV
     // "Export Excel" button which was really just a renamed CSV file). ------
+    // سطر واحد لكل موظف في كل تاريخ — نفس ما تعرضه الشاشة، حتى لا يقرأ من
+    // يفتح الملف يومًا مقسومًا كأنه يومان.
     function sessionsToRows(sessions) {
-        return sessions.map(s => ({
-            "Employee": s.employeeName || 'Unknown',
-            "Date": s.date || '-',
-            "Check-In": s.checkIn ? (s.checkIn.time || '-') : 'Missing',
-            "Check-Out": s.checkOut ? (s.checkOut.time || '-') : 'Open',
-            "Duration": s.durationLabel,
-            "Branch": s.branch || '-'
-        }));
+        const groups = [];
+        const byKey = new Map();
+        sessions.forEach(s => {
+            const k = `${s.employeeId}|${s.date}`;
+            let g = byKey.get(k);
+            if (!g) { g = { employeeName: s.employeeName, date: s.date, branch: s.branch, parts: [] };
+                      byKey.set(k, g); groups.push(g); }
+            g.parts.push(s);
+        });
+        groups.forEach(g => g.parts.sort((a, b) =>
+            tsToMillis(a.checkIn || a.checkOut) - tsToMillis(b.checkIn || b.checkOut)));
+
+        return groups.map(g => {
+            const mins = g.parts.reduce((a, p) => a + (Number(p.workMinutes) || 0), 0);
+            const anySplit = g.parts.some(p => p.checkOut && p.checkOut.splitBreak);
+            const anyAuto = g.parts.some(p => p.checkOut && p.checkOut.autoCheckOut);
+            const anyOpen = g.parts.some(p => !p.checkOut);
+            return {
+                "Employee": g.employeeName || 'Unknown',
+                "Date": g.date || '-',
+                "Parts": g.parts.length,
+                "Check-In": g.parts.map(p => p.checkIn ? (p.checkIn.time || '-') : 'Missing').join(' · '),
+                "Check-Out": g.parts.map(p => p.checkOut ? (p.checkOut.time || '-') : 'Open').join(' · '),
+                "Day Total": `${Math.floor(mins / 60)}h ${mins % 60}m`,
+                "Day Total (minutes)": mins,
+                "Split Shift": anySplit ? 'Yes' : '',
+                "Auto Check-Out": anyAuto ? 'Yes' : '',
+                "Still Open": anyOpen ? 'Yes' : '',
+                "Branch": g.branch || '-'
+            };
+        });
     }
 
     // ---- Employee Training: content editor + acknowledgment records ------
