@@ -491,7 +491,10 @@
              شهر سابق تُفسد حساب الشهرين معًا وتمنع الموظف من تسجيل دخول جديد. -->
         <div class="card" id="openShiftsCard" style="display: none; border-left: 4px solid var(--warning);">
             <h3><span data-icon="alertTriangle"></span> Shifts still open (a Check-In with no Check-Out) <span id="openShiftsCount" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
-            <p class="card-sub">An employee who forgets to Check-Out stays "inside" — the system will not let them Check-In again, and when they finally Check-Out the whole gap is recorded as one enormous shift on the day they checked in. Fix these from the Attendance Logs tab before closing the month.</p>
+            <p class="card-sub">A Check-In with no Check-Out is closed <b>automatically at 16 hours</b>, counted as 16 hours, and marked <b>AUTO CHECK-OUT</b> in the attendance logs. This list shows anything still open — usually a shift in progress right now. If one has passed 16 hours and is still here, press the button to close it immediately.</p>
+            <div class="controls" style="margin-bottom: 12px;">
+                <button class="btn-warning btn-sm" onclick="autoCloseStaleShifts(false)"><span data-icon="clock"></span> Close everything past 16 hours now</button>
+            </div>
             <div class="table-container">
                 <table>
                     <thead><tr><th>Employee</th><th>Branch</th><th>Checked in</th><th>Open for</th><th></th></tr></thead>
@@ -2926,6 +2929,15 @@
     //     overtime day rate — e.g. working 28 of 31 days in October (took
     //     only 3 rest days despite the 4 they'd have earned from ~24-29
     //     worked days) pays for 1 extra worked day.
+    /** نفس صيغة الوقت التي يكتبها الكشك: "h:mm:ss AM/PM". */
+    function timeLabelFromDate(d) {
+        let h = d.getHours();
+        const m = String(d.getMinutes()).padStart(2, '0');
+        const s = String(d.getSeconds()).padStart(2, '0');
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12; h = h ? h : 12;
+        return `${h}:${m}:${s} ${ampm}`;
+    }
     function isoFromDate(d) {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
@@ -3369,7 +3381,76 @@
      * ورديات لم تُغلق. نُظهر ما بقي مفتوحًا أكثر من الحد، لأن وردية مفتوحة
      * من شهر سابق تُسجَّل كلها في يوم دخولها متى أُغلقت، فتُفسد الشهرين.
      */
-    const OPEN_SHIFT_ALERT_HOURS = 16; // أطول وردية معقولة (وردية 10 ساعات + تأخير)
+    // قرار الإدارة: وردية بلا انصراف تُغلق تلقائيًا بعد 16 ساعة بالضبط.
+    // الرقم نفسه مكتوب في index.html — أي تغيير يجب أن يكون في الملفين.
+    const AUTO_CHECKOUT_AFTER_HOURS = 16;
+    const OPEN_SHIFT_ALERT_HOURS = AUTO_CHECKOUT_AFTER_HOURS;
+
+    /**
+     * يُغلق كل وردية مفتوحة تجاوزت 16 ساعة.
+     * ينفّذه الكشك أيضًا عند أول تفاعل للموظف، لكن من لا يعود إلى العمل لا
+     * يُغلقها أحد — فتُغلق من هنا عند فتح اللوحة.
+     *
+     * المعرّف مشتق من مستند الدخول (`auto_<id>`) لا عشوائي: لو أغلقها الكشك
+     * واللوحة معًا كُتب نفس المستند، ولم يُسجَّل انصرافان يُضاعفان 16 ساعة.
+     * ووقت الانصراف هو الدخول + 16 ساعة لا وقت الاكتشاف، فتبقى الوردية في
+     * يومها الصحيح مهما تأخّر الاكتشاف.
+     *
+     * القواعد تسمح بإنشاء سجل حضور للمالك والكشك فقط، فلا يُستدعى لغيرهما.
+     */
+    // مرة واحدة لكل فتح للصفحة: الإغلاق التلقائي يُعيد تحميل السجلات، وهو
+    // يُنادى من داخل تحميلها — فبلا هذا الحارس لَدارت الحلقة بلا نهاية.
+    let autoCloseRan = false;
+    function maybeAutoCloseOnce() {
+        if (autoCloseRan) return;
+        autoCloseRan = true;
+        if (currentRole !== ROLE_ADMIN) return;
+        window.autoCloseStaleShifts(true).catch(e => console.error(e));
+    }
+
+    window.autoCloseStaleShifts = async function(silent) {
+        if (currentRole !== ROLE_ADMIN) return 0;
+        const nowMs = Date.now();
+        const stale = buildSessions(allAttendance || [])
+            .filter(s => s.checkIn && !s.checkOut && s.checkIn.id)
+            .filter(s => (nowMs - tsToMillis(s.checkIn)) / 3600000 >= AUTO_CHECKOUT_AFTER_HOURS);
+        if (!stale.length) return 0;
+
+        let closed = 0;
+        for (const s of stale) {
+            const autoId = `auto_${s.checkIn.id}`;
+            try {
+                const outAt = new Date(tsToMillis(s.checkIn) + AUTO_CHECKOUT_AFTER_HOURS * 3600000);
+                await setDoc(doc(db, "attendance", autoId), {
+                    employeeId: s.employeeId,
+                    employeeName: s.employeeName || '',
+                    branch: s.branch || '',
+                    type: 'Check-Out',
+                    timestamp: outAt,
+                    date: isoFromDate(outAt),
+                    time: timeLabelFromDate(outAt),
+                    duration: `${AUTO_CHECKOUT_AFTER_HOURS}h 0m`,
+                    workMinutes: AUTO_CHECKOUT_AFTER_HOURS * 60,
+                    autoCheckOut: true,
+                    autoReason: `No Check-Out was recorded within ${AUTO_CHECKOUT_AFTER_HOURS} hours of the Check-In on ${s.checkIn.date || '-'}`,
+                    linkedCheckInId: s.checkIn.id,
+                    location: null
+                });
+                closed++;
+                logAudit("Automatic Check-Out",
+                    `${s.employeeName || s.employeeId} — Check-In ${s.checkIn.date || '-'} ${s.checkIn.time || ''} closed automatically at ${AUTO_CHECKOUT_AFTER_HOURS}h`);
+            } catch (e) {
+                console.error("Automatic check-out failed for", autoId, e);
+            }
+        }
+        if (closed) {
+            await loadAttendanceLogs();
+            if (!silent) {
+                alert(`${closed} shift(s) had no Check-Out after ${AUTO_CHECKOUT_AFTER_HOURS} hours and were closed automatically at exactly ${AUTO_CHECKOUT_AFTER_HOURS} hours each.`);
+            }
+        }
+        return closed;
+    };
     function renderOpenShifts() {
         const card = document.getElementById('openShiftsCard');
         const body = document.getElementById('openShiftsBody');
@@ -3612,6 +3693,7 @@
             filterData();
             renderOpenShifts();
             renderMonthArchive();
+            maybeAutoCloseOnce();
         } catch (error) {
             try {
                 const querySnapshot = await getDocs(collection(db, "attendance"));
@@ -3621,6 +3703,7 @@
                 filterData();
                 renderOpenShifts();
                 renderMonthArchive();
+                maybeAutoCloseOnce();
             } catch (err) {
                 console.error(err);
             }
@@ -3651,6 +3734,14 @@
     };
 
     window.renderAttendanceTable = function(sessions) {
+        // مجموع دقائق كل موظف في كل تاريخ — نفس التجميع الذي يستخدمه محرّك
+        // الرواتب (byDate في computePayroll)، حتى يرى المشرف الرقم الذي يُحسب
+        // عليه الأوفرتايم فعلًا لا رقم فترة واحدة من يوم مقسوم.
+        const dayTotals = new Map();
+        sessions.forEach(s => {
+            const k = `${s.employeeId}|${s.date}`;
+            dayTotals.set(k, (dayTotals.get(k) || 0) + (Number(s.workMinutes) || 0));
+        });
         let html = "";
         sessions.forEach((s) => {
             const inTime = s.checkIn
@@ -3672,8 +3763,19 @@
             const shortWarn = (s.checkOut && s.workMinutes < 2)
                 ? `<br><span title="جلسة قصيرة جدًا — الأرجح ضغط مزدوج بالخطأ، راجعها واحذفها / suspiciously short, likely an accidental double tap" style="color: var(--warning); font-size: 11px; font-weight: 700;">&#9888; قصيرة</span>`
                 : '';
+            // فترة من دوام مقسوم: نُظهر مجموع ساعات اليوم كله بجانبها، فالفترة
+            // وحدها لا تعني شيئًا — الأوفرتايم والغياب يُحسبان على مجموع اليوم.
+            const isSplit = !!(s.checkOut && s.checkOut.splitBreak);
+            const isAuto = !!(s.checkOut && s.checkOut.autoCheckOut);
+            const dayTotalMins = (dayTotals.get(`${s.employeeId}|${s.date}`) || 0);
+            const splitTag = isSplit
+                ? `<br><span title="Split shift — the employee left between two shifts on the same day and came back. Overtime and absence are calculated on the day's TOTAL, not on this part alone." style="color: #6366f1; font-size: 11px; font-weight: 800;">SPLIT · day total ${Math.floor(dayTotalMins / 60)}h ${dayTotalMins % 60}m</span>`
+                : '';
+            const autoTag = isAuto
+                ? `<br><span title="${escapeHtml(s.checkOut.autoReason || 'Closed automatically')}" style="color: var(--warning); font-size: 11px; font-weight: 800;">AUTO CHECK-OUT</span>`
+                : '';
             const durationHtml = s.checkOut
-                ? `<span class="duration-pill">${escapeHtml(s.durationLabel)}</span>${shortWarn}`
+                ? `<span class="duration-pill">${escapeHtml(s.durationLabel)}</span>${shortWarn}${splitTag}${autoTag}`
                 : `<span class="duration-pill open">Open</span>`;
             const lat = s.checkIn?.location?.latitude || s.checkOut?.location?.latitude;
             const lng = s.checkIn?.location?.longitude || s.checkOut?.location?.longitude;

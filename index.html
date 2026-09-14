@@ -221,6 +221,9 @@
         .btn-in:hover { background-color: #218838; }
         .btn-out { background-color: #dc3545; }
         .btn-out:hover { background-color: #c82333; }
+        /* الدوام المقسوم — لون مختلف عن الانصراف حتى لا يُخلط بينهما */
+        .btn-split { background-color: #6366f1; }
+        .btn-split:hover { background-color: #4f46e5; }
         .btn-submit { background-color: #fd7e14; }
         .btn-submit:hover { background-color: #e86803; }
 
@@ -411,6 +414,16 @@
             <button class="action-btn btn-in" id="btnCheckIn" onclick="processAttendance('Check-In')">Check-In 🟢</button>
             <button class="action-btn btn-out" id="btnCheckOut" onclick="processAttendance('Check-Out')">Check-Out 🔴</button>
         </div>
+        <!-- الدوام المقسوم (سبليت): من يغادر بين فترتَي دوامه في نفس اليوم
+             يضغط هذا الزر لا زر الانصراف. الحساب يتوقف الآن ويستأنف عند
+             عودته بزر الدخول، والفترتان تُجمعان في يوم واحد. -->
+        <div class="btn-group" style="margin-top: 10px;">
+            <button class="action-btn btn-split" id="btnSplit" onclick="processAttendance('Split')">Split Break ⏸️<br><span style="font-size: 12px; font-weight: 500; opacity: 0.9;">دوام مقسوم — سأعود اليوم / I will return today</span></button>
+        </div>
+        <p style="margin: 10px 0 0; font-size: 12.5px; line-height: 1.8; color: #4b5563; text-align: center;">
+            Leaving between two shifts on the same day? Press <b>Split Break</b>, not Check-Out.<br>
+            <span dir="rtl">تغادر بين فترتَي دوامك في نفس اليوم؟ اضغط <b>Split Break</b> لا Check-Out.</span>
+        </p>
     </div>
 
     <!-- Section 2: Employee Requests (Leave, Advances, Certificates) -->
@@ -864,7 +877,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import {
-        getFirestore, collection, addDoc, doc, getDoc, getDocs, query, where, orderBy, limit, serverTimestamp
+        getFirestore, collection, addDoc, doc, setDoc, getDoc, getDocs, query, where, orderBy, limit, serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
@@ -1093,7 +1106,12 @@
     // in/out alternation: an employee can never Check-In twice in a row
     // without a Check-Out in between, and can never Check-Out twice in a row
     // without a Check-In in between — no matter how much time has passed.
-    async function getLastAttendanceType(empId) {
+    async function getLastAttendanceRecord(empId) {
+        const pick = (docSnap) => {
+            const d = docSnap.data();
+            const t = d.timestamp ? d.timestamp.toDate() : (d.date ? new Date(d.date) : null);
+            return { id: docSnap.id, type: d.type || null, when: t, date: d.date || '' };
+        };
         try {
             const q = query(
                 collection(db, "attendance"),
@@ -1102,9 +1120,9 @@
                 limit(1)
             );
             const snap = await getDocs(q);
-            let lastType = null;
-            snap.forEach(docSnap => { lastType = docSnap.data().type || null; });
-            return lastType;
+            let last = null;
+            snap.forEach(docSnap => { last = pick(docSnap); });
+            return last;
         } catch (e) {
             // Likely a missing composite index the first time this query runs
             // (Firestore logs a console link to create it) — fall back to an
@@ -1112,17 +1130,70 @@
             console.error("Error checking last attendance type (composite index may be missing): ", e);
             try {
                 const fallbackSnap = await getDocs(query(collection(db, "attendance"), where("employeeId", "==", empId)));
-                let lastType = null, lastTime = null;
+                let last = null;
                 fallbackSnap.forEach(docSnap => {
-                    const d = docSnap.data();
-                    const t = d.timestamp ? d.timestamp.toDate() : new Date(d.date);
-                    if (!lastTime || t > lastTime) { lastTime = t; lastType = d.type || null; }
+                    const r = pick(docSnap);
+                    if (!last || (r.when && last.when && r.when > last.when)) last = r;
                 });
-                return lastType;
+                return last;
             } catch (fallbackErr) {
                 console.error("Fallback last-attendance-type lookup also failed:", fallbackErr);
                 return null; // fail open — never block a legitimate action due to a lookup error
             }
+        }
+    }
+
+    // =====================================================================
+    // انصراف تلقائي بعد 16 ساعة (قرار الإدارة)
+    // ---------------------------------------------------------------------
+    // من ينسى الانصراف كان يبقى «داخل الدوام» إلى الأبد: لا يستطيع تسجيل
+    // دخول جديد، وحين ينصرف أخيرًا تُسجَّل الفجوة كلها ورديةً واحدة هائلة في
+    // يوم دخوله. الآن يُغلق النظام الوردية عند دخوله + 16 ساعة بالضبط.
+    //
+    // ثلاث نقاط في التنفيذ:
+    //  • المعرّف مشتق من مستند الدخول (`auto_<id>`) لا عشوائي، فلو حدث
+    //    الإغلاق من جهازين معًا كُتب نفس المستند ولم يتكرّر انصرافان —
+    //    وتكرارهما كان سيُضاعف 16 ساعة في الرواتب.
+    //  • وقت الانصراف هو الدخول + 16 ساعة، لا وقت الاكتشاف. فالوردية تبقى
+    //    محسوبة في يومها الصحيح مهما تأخّر الاكتشاف.
+    //  • autoCheckOut: true يميّزه في لوحة الإدارة، فلا يُقرأ كأن الموظف
+    //    سجّل انصرافه بنفسه.
+    // =====================================================================
+    const AUTO_CHECKOUT_AFTER_HOURS = 16;
+
+    async function autoCloseStaleCheckIn(last, empId, empName, empBranch) {
+        if (!last || last.type !== 'Check-In' || !last.when) return false;
+        const ageHours = (Date.now() - last.when.getTime()) / 3600000;
+        if (ageHours < AUTO_CHECKOUT_AFTER_HOURS) return false;
+
+        const autoId = `auto_${last.id}`;
+        try {
+            // لو أغلقها جهاز آخر أو المشرف قبل قليل فلا نكتب شيئًا. والكتابة
+            // فوق مستند قائم ممنوعة على هذه الصفحة بالقواعد أصلًا (إنشاء فقط).
+            const existing = await getDoc(doc(db, "attendance", autoId));
+            if (existing.exists()) return true;
+
+            const outAt = new Date(last.when.getTime() + AUTO_CHECKOUT_AFTER_HOURS * 3600000);
+            const mins = AUTO_CHECKOUT_AFTER_HOURS * 60;
+            await setDoc(doc(db, "attendance", autoId), {
+                employeeId: empId,
+                employeeName: empName,
+                branch: empBranch,
+                type: 'Check-Out',
+                timestamp: outAt,
+                date: formatDateEnglish(outAt),
+                time: formatTimeEnglish(outAt),
+                duration: `${AUTO_CHECKOUT_AFTER_HOURS}h 0m`,
+                workMinutes: mins,
+                autoCheckOut: true,
+                autoReason: `No Check-Out was recorded within ${AUTO_CHECKOUT_AFTER_HOURS} hours of the Check-In on ${last.date || '-'}`,
+                linkedCheckInId: last.id,
+                location: null
+            });
+            return true;
+        } catch (e) {
+            console.error("Auto check-out failed:", e);
+            return false; // نُكمل: لا نمنع الموظف من عمله بسبب فشل إغلاق قديم
         }
     }
 
@@ -1141,15 +1212,24 @@
     // write), and both buttons are visibly disabled for the same window so
     // there's no confusing "nothing happened, let me tap again" moment.
     let isProcessingAttendance = false;
+    // يُرفع عند إغلاق وردية قديمة تلقائيًا، ليُذكر ذلك في رسالة النجاح.
+    let autoClosedNotice = false;
     function setAttendanceButtonsDisabled(disabled) {
-        const inBtn = document.getElementById('btnCheckIn');
-        const outBtn = document.getElementById('btnCheckOut');
-        if (inBtn) inBtn.disabled = disabled;
-        if (outBtn) outBtn.disabled = disabled;
+        ['btnCheckIn', 'btnCheckOut', 'btnSplit'].forEach(id => {
+            const b = document.getElementById(id); if (b) b.disabled = disabled;
+        });
     }
 
-    window.processAttendance = async function(type) {
+    // action: 'Check-In' | 'Check-Out' | 'Split'
+    // 'Split' يُكتب في قاعدة البيانات كـ Check-Out عادي مع علامة splitBreak،
+    // ولذلك لا يتأثّر أي حساب قائم: الاقتران والساعات والأوفرتايم كلها تعمل
+    // كما هي، والعلامة للعرض والتمييز فقط. وفترتا اليوم تُجمعان أصلًا لأن
+    // محرّك الرواتب يجمع ساعات كل جلسات **تاريخ الدخول** الواحد.
+    window.processAttendance = async function(action) {
         if (isProcessingAttendance) return; // ignore duplicate taps entirely
+        const type = (action === 'Split') ? 'Check-Out' : action;
+        const isSplit = (action === 'Split');
+        autoClosedNotice = false;   // لا تُنقل ملاحظة من محاولة سابقة
         const empId = document.getElementById('employeeSelect').value;
         const pinInput = document.getElementById('pinInput').value.trim();
 
@@ -1185,7 +1265,21 @@
         // days), an employee cannot Check-In again while their last action
         // was already a Check-In with no Check-Out in between, and cannot
         // Check-Out again if their last action was already a Check-Out.
-        const lastType = await getLastAttendanceType(empId);
+        const emp0 = employees.find(e => e.id === empId);
+        let last = await getLastAttendanceRecord(empId);
+        let lastType = last ? last.type : null;
+
+        // وردية مفتوحة أكثر من 16 ساعة تُغلق تلقائيًا قبل أي شيء، فلا يبقى
+        // الموظف محجوزًا خارج النظام بسبب نسيانه انصرافًا قديمًا.
+        if (lastType === 'Check-In') {
+            const closed = await autoCloseStaleCheckIn(
+                last, empId, emp0 ? emp0.name : empId, emp0 ? emp0.branch : "");
+            if (closed) {
+                lastType = 'Check-Out';   // صار منصرفًا بالإغلاق التلقائي
+                autoClosedNotice = true;
+            }
+        }
+
         if (type === 'Check-In' && lastType === 'Check-In') {
             showStatus("You are already checked in. Please Check-Out first before checking in again.", "error");
             isProcessingAttendance = false;
@@ -1193,7 +1287,9 @@
             return;
         }
         if (type === 'Check-Out' && (lastType === 'Check-Out' || lastType === null)) {
-            showStatus("You must Check-In first before you can Check-Out.", "error");
+            showStatus(isSplit
+                ? "You must Check-In first before you can take a Split Break."
+                : "You must Check-In first before you can Check-Out.", "error");
             isProcessingAttendance = false;
             setAttendanceButtonsDisabled(false);
             return;
@@ -1206,7 +1302,7 @@
             return;
         }
 
-        const emp = employees.find(e => e.id === empId);
+        const emp = emp0;
         const empName = emp ? emp.name : empId;
         const empBranch = emp ? emp.branch : "";
 
@@ -1305,6 +1401,9 @@
                         time: formatTimeEnglish(now),
                         duration: durationStr,
                         workMinutes: workMins,
+                        // فترة من دوام مقسوم لا نهاية يوم. علامةٌ للعرض فقط —
+                        // الحساب لا يفرّق، وهذا هو المطلوب.
+                        ...(isSplit ? { splitBreak: true } : {}),
                         location: {
                             latitude: lat,
                             longitude: lng,
@@ -1312,9 +1411,19 @@
                         }
                     });
 
-                    let successMessage = `${type} recorded successfully!`;
-                    if (type === 'Check-Out' && durationStr !== '-') {
-                        successMessage += ` (Work Duration: ${durationStr})`;
+                    let successMessage;
+                    if (isSplit) {
+                        successMessage = `Split Break recorded${durationStr !== '-' ? ` — this part: ${durationStr}` : ''}. `
+                            + `Press Check-In when you come back and the same day continues.`;
+                    } else {
+                        successMessage = `${type} recorded successfully!`;
+                        if (type === 'Check-Out' && durationStr !== '-') {
+                            successMessage += ` (Work Duration: ${durationStr})`;
+                        }
+                    }
+                    if (autoClosedNotice) {
+                        successMessage += ` Note: an earlier shift of yours had no Check-Out, so it was closed automatically at ${AUTO_CHECKOUT_AFTER_HOURS} hours.`;
+                        autoClosedNotice = false;
                     }
 
                     showStatus(successMessage, "success");
