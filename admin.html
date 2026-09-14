@@ -579,6 +579,19 @@
             </div>
         </div>
 
+        <!-- ⭐ بطاقة تشخيص: هل وصل إصلاح التوقيت إلى الأجهزة فعلًا؟
+             وُجدت لأن السؤال «هل الإصلاح يعمل؟» كان يُجاب بالتخمين. -->
+        <div class="card" id="serverTimeCard" style="display: none; border-left: 4px solid var(--warning);">
+            <h3><span data-icon="clock"></span> Time source of today's records</h3>
+            <p class="card-sub" id="serverTimeSummary"></p>
+            <div class="table-container" id="serverTimeTableWrap" style="display: none;">
+                <table>
+                    <thead><tr><th>Branch</th><th>Device timezone</th><th>Records without a server time</th><th>Latest</th></tr></thead>
+                    <tbody id="serverTimeBody"></tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- ⭐ ورديات ادّعى فيها الجهاز مدةً غير الحقيقية -->
         <div class="card" id="tamperCard" style="display: none; border-left: 4px solid var(--danger);">
             <h3><span data-icon="alertTriangle"></span> A device claimed a longer shift than it worked <span id="tamperCount" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
@@ -3870,6 +3883,62 @@
         return [...byDevice.values()].sort((a, b) => Math.abs(b.skew) - Math.abs(a.skew));
     }
 
+    /**
+     * تشخيص مصدر الوقت.
+     * ⚠️ وُجدت هذه البطاقة لسبب محدَّد: بعد إصلاح التوقيت بقي السؤال «هل يعمل
+     * فعلًا؟» يُجاب بالتخمين. الآن تُجيب البيانات: كم سجلًّا يحمل طابع خادم وكم
+     * لا، ومن أي فرع وبأي منطقة زمنية. السجل الذي بلا طابع خادم إمّا أُنشئ قبل
+     * الإصلاح، أو جهازه ما زال يعمل بنسخة مخزَّنة قديمة من التطبيق.
+     */
+    function renderServerTimeDiagnostic() {
+        const card = document.getElementById('serverTimeCard');
+        const sum = document.getElementById('serverTimeSummary');
+        const wrap = document.getElementById('serverTimeTableWrap');
+        const body = document.getElementById('serverTimeBody');
+        if (!card || !sum) return;
+
+        // آخر 7 أيام: هي المدى الذي يهمّ للحكم على «هل يعمل الآن؟»
+        const since = (() => { let d = todayISO(); for (let i = 0; i < 6; i++) d = prevDayISO(d); return d; })();
+        const recent = (allAttendance || []).filter(l => String(l.date || '') >= since);
+        if (!recent.length) { card.style.display = 'none'; return; }
+
+        const withSrv = recent.filter(l => logTimeIsServer(l)).length;
+        const without = recent.length - withSrv;
+        card.style.display = 'block';
+
+        if (!without) {
+            sum.innerHTML = `<b style="color: var(--success);">✓ All ${recent.length} record(s) in the last 7 days carry a server time.</b>
+                Times and durations for these come from the Firebase server clock, so changing a phone's clock cannot affect them.`;
+            wrap.style.display = 'none';
+            card.style.borderLeftColor = 'var(--success)';
+            return;
+        }
+
+        card.style.borderLeftColor = 'var(--warning)';
+        sum.innerHTML = `<b style="color: var(--warning);">${without} of ${recent.length} record(s) in the last 7 days have NO server time</b>
+            — those keep the time their own device wrote, and are marked <b>⚠ device</b> in the table below.
+            A record like that was either created before this fix, or the device that made it is still running a
+            cached old copy of the app: have that branch <b>close the attendance app completely and open it again</b>.`;
+
+        const byDev = new Map();
+        recent.filter(l => !logTimeIsServer(l)).forEach(l => {
+            const key = `${l.branch || '—'}|${l.deviceTz || 'unknown'}`;
+            const cur = byDev.get(key) || { branch: l.branch || '—', tz: l.deviceTz || 'unknown', n: 0, last: '' };
+            cur.n++;
+            if (String(l.date || '') > cur.last) cur.last = String(l.date || '');
+            byDev.set(key, cur);
+        });
+        body.innerHTML = [...byDev.values()].sort((a, b) => b.n - a.n).map(d => `
+            <tr>
+                <td><b>${escapeHtml(d.branch)}</b></td>
+                <td style="font-size: 12.5px; color: var(--text-dim);">${escapeHtml(d.tz)}</td>
+                <td class="money-col"><b>${d.n}</b></td>
+                <td>${escapeHtml(d.last || '—')}</td>
+            </tr>`).join('');
+        wrap.style.display = 'block';
+        paintIcons(card);
+    }
+
     /** ورديات ادّعى فيها الجهاز مدةً تختلف عن الحقيقة بساعة الخادم. */
     function renderTamperAlert() {
         const card = document.getElementById('tamperCard');
@@ -4181,10 +4250,16 @@
             let durationLabel = co ? (co.duration || '-') : 'Open';
             let deviceClaimedMinutes = null;
             let tamperMinutes = null;
+            // هل المدة محسوبة من ساعة الخادم أم مأخوذة من الجهاز كما هي؟
+            // ⚠️ الحالة المختلطة خطر حقيقي: دخولٌ سُجِّل بنسخة قديمة من التطبيق
+            // (بلا طابع خادم) وخروجٌ بالنسخة الجديدة — لا يمكن حساب الفرق،
+            // فكانت المدة تُؤخذ من الجهاز **بصمت**. الآن تُعلَّم غير موثوقة.
+            let durationTrusted = false;
 
             const srvIn = tsFieldToDate(ci && ci.serverTime);
             const srvOut = tsFieldToDate(co && co.serverTime);
             if (srvIn && srvOut) {
+                durationTrusted = true;
                 const real = Math.max(0, Math.round((srvOut.getTime() - srvIn.getTime()) / 60000));
                 deviceClaimedMinutes = workMinutes;
                 // فارقٌ يتجاوز الحدّ = الجهاز ادّعى غير الحقيقة. الحدّ يسمح
@@ -4213,6 +4288,10 @@
                 // ما ادّعاه الجهاز وفارقه — للعرض والتنبيه لا للحساب
                 deviceClaimedMinutes,
                 tamperMinutes,
+                durationTrusted,
+                // وقتُ كل طرف: من الخادم أم من الجهاز؟ يُعرض صريحًا في الجدول.
+                inTimeIsServer: logTimeIsServer(ci),
+                outTimeIsServer: logTimeIsServer(co),
                 // true when the shift ran past midnight, so the table can label
                 // the check-out time as belonging to the following day.
                 crossesMidnight: !!(dIn && dOut && dIn !== dOut)
@@ -4277,6 +4356,7 @@
             renderMonthArchive();
             renderClockSkewAlert();
             renderTamperAlert();
+            renderServerTimeDiagnostic();
             maybeAutoCloseOnce();
         } catch (error) {
             try {
@@ -4289,6 +4369,7 @@
                 renderMonthArchive();
                 renderClockSkewAlert();
             renderTamperAlert();
+            renderServerTimeDiagnostic();
                 maybeAutoCloseOnce();
             } catch (err) {
                 console.error(err);
@@ -4318,6 +4399,17 @@
 
         renderAttendanceTable(sessions);
     };
+
+    /**
+     * وسمٌ صغير بجانب أي وقت **غير** مأخوذ من ساعة الخادم.
+     * الغرض تشخيصي بالأساس: بدلًا من التخمين هل وصل الإصلاح إلى الأجهزة أم لا،
+     * يقول كل سجل عن نفسه من أين جاء وقته. الوقت الموثوق يظهر بلا وسم إطلاقًا
+     * حتى لا يزدحم الجدول.
+     */
+    function deviceTimeMark(isServer) {
+        if (isServer) return '';
+        return ` <span title="This time came from the employee's own device, not from the server clock — either the record predates the fix, or that device is still running a cached old version of the app. Ask them to close the app and open it again." style="color: var(--warning); font-size: 10px; font-weight: 800; white-space: nowrap;">⚠ device</span>`;
+    }
 
     window.renderAttendanceTable = function(sessions) {
         // =================================================================
@@ -4359,12 +4451,12 @@
             if (multi) {
                 const sep = ' <span style="color: var(--text-faint);">·</span> ';
                 const insHtml = g.parts.map(p => p.checkIn
-                    ? escapeHtml(logQatarTime(p.checkIn))
+                    ? escapeHtml(logQatarTime(p.checkIn)) + deviceTimeMark(p.inTimeIsServer)
                     : '<span style="color:var(--text-faint);" title="لا يوجد تسجيل دخول مقابل / no matching check-in">missing</span>'
                 ).join(sep);
                 const outsHtml = g.parts.map(p => {
                     if (!p.checkOut) return '<span style="color:var(--warning); font-weight:800;">Open</span>';
-                    let t = escapeHtml(logQatarTime(p.checkOut));
+                    let t = escapeHtml(logQatarTime(p.checkOut)) + deviceTimeMark(p.outTimeIsServer);
                     if (p.crossesMidnight) t += ` <span title="انتهت بعد منتصف الليل في اليوم التالي / ended after midnight, next day" style="color: var(--accent); font-size: 11px; font-weight: 700;">+1d</span>`;
                     if (p.checkOut.splitBreak) t += ` <span title="Split Break — غادر بين فترتَي دوامه وعاد في نفس اليوم" style="color: #6366f1; font-size: 11px; font-weight: 800;">split</span>`;
                     if (p.checkOut.autoCheckOut) t += ` <span title="${escapeHtml(p.checkOut.autoReason || 'Closed automatically')}" style="color: var(--warning); font-size: 11px; font-weight: 800;">auto</span>`;
@@ -4409,13 +4501,13 @@
             const s = g.parts[0];
             {
             const inTime = s.checkIn
-                ? escapeHtml(logQatarTime(s.checkIn))
+                ? escapeHtml(logQatarTime(s.checkIn)) + deviceTimeMark(s.inTimeIsServer)
                 : '<span style="color:var(--text-faint);" title="لا يوجد تسجيل دخول مقابل لهذا الانصراف — بيانات ناقصة فعلًا / no matching check-in record exists">missing</span>';
             // "+1d" يوضّح أن الانصراف حدث بعد منتصف الليل في اليوم التالي، حتى
             // لا يبدو وقت الخروج (1:12 AM) كأنه قبل وقت الدخول (4:00 PM).
             let outTime;
             if (s.checkOut) {
-                outTime = escapeHtml(logQatarTime(s.checkOut));
+                outTime = escapeHtml(logQatarTime(s.checkOut)) + deviceTimeMark(s.outTimeIsServer);
                 if (s.crossesMidnight) {
                     outTime += ` <span title="الوردية انتهت بعد منتصف الليل في اليوم التالي / shift ended after midnight, on the next day" style="color: var(--accent); font-size: 11px; font-weight: 700;">+1d</span>`;
                 }
