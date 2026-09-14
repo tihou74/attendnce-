@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#007bff">
+    <meta name="theme-color" content="#0F172A">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -20,14 +20,25 @@
     <meta name="apple-mobile-web-app-title" content="Attendance">
     <!-- صفحة داخلية للعمل، لا تُفهرس -->
     <meta name="robots" content="noindex, nofollow">
+
+    <!-- الهوية البصرية. الخط يحمل العربية واللاتينية معًا، والمونو للأرقام.
+         display=swap مقصود: هذه شاشة يضغط الموظف فيها زرًّا فورًا، فلا يجوز أن
+         ينتظر النص تحميل خطّ — يظهر بخط النظام ثم يُبدَل. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./brand/design-tokens.css">
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         html, body { margin: 0; padding: 0; }
-        html { background-color: #f0f2f5; }
+        html { background-color: var(--color-bg); }
         body {
             position: relative;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f2f5;
+            /* عائلة واحدة تحمل العربية واللاتينية — وهذه الصفحة أكثر ما يحتاجها
+               في النظام: كل دليل تدريب فيها سطر عربي فوق سطر إنجليزي في نفس
+               القسم، وبخطَّين مختلفَين لا يجلس السطران على إيقاع واحد. */
+            font-family: var(--font-sans, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
+            background-color: var(--color-bg);
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -79,7 +90,7 @@
             .card { padding: 30px; }
         }
 
-        .brand-header { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 18px; border-bottom: 2px solid #f0f2f5; padding-bottom: 15px; }
+        .brand-header { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 18px; border-bottom: 2px solid var(--color-border); padding-bottom: 15px; }
         .brand-header img { max-height: 38px; object-fit: contain; }
         .brand-header img.main-logo { max-height: 46px; }
         @media (min-width: 400px) {
@@ -88,7 +99,7 @@
             .brand-header img.main-logo { max-height: 55px; }
         }
 
-        h2 { margin-top: 0; color: #1a252f; font-size: 20px; }
+        h2 { margin-top: 0; color: var(--color-text); font-size: 20px; }
 
         /* ---- Navigation Tabs -------------------------------------------------
            BUG FIXED: the tabs used `flex: 1` together with `white-space: nowrap`
@@ -105,7 +116,7 @@
             display: flex;
             gap: 5px;
             margin-bottom: 18px;
-            background: #f1f3f5;
+            background: var(--color-surface-2);
             padding: 5px;
             border-radius: 14px;
             overflow: hidden;
@@ -126,7 +137,7 @@
             white-space: nowrap;
             border: none;
             background: transparent;
-            color: #6c757d;
+            color: var(--color-text-muted);
             border-radius: 10px;
             cursor: pointer;
             transition: background-color .18s ease, color .18s ease, box-shadow .18s ease;
@@ -141,18 +152,18 @@
             text-overflow: ellipsis;
         }
         .tab-btn .tab-label-short { display: none; }
-        .tab-btn:hover:not(.active) { background: rgba(0,0,0,0.045); color: #343a40; }
+        .tab-btn:hover:not(.active) { background: rgba(0,0,0,0.045); color: var(--color-text); }
         .tab-btn:active { transform: scale(0.97); }
         .tab-btn.active {
-            background: #ffffff;
-            color: #007bff;
+            background: var(--color-surface);
+            color: var(--color-focus);
             box-shadow: 0 2px 8px rgba(16,24,40,0.10);
         }
         /* الحلقة السوداء التي كانت تظهر حول التبويب بعد النقر بالفأرة كانت
            outline الافتراضي للمتصفح. نُخفيها للفأرة ونُبقي حلقة واضحة لمن
            يتنقّل بالكيبورد فقط (إتاحة صحيحة بدل حذفها كليًا). */
         .tab-btn:focus { outline: none; }
-        .tab-btn:focus-visible { outline: 2px solid #007bff; outline-offset: 2px; }
+        .tab-btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
         .tab-btn .tab-ic { width: 18px; height: 18px; flex-shrink: 0; }
 
         /* هواتف ضيقة جدًا: التسميات المختصرة */
@@ -174,26 +185,26 @@
         }
 
         .form-group { margin-bottom: 15px; text-align: left; }
-        label { font-weight: bold; font-size: 13.5px; color: #495057; display: block; margin-bottom: 6px; }
+        label { font-weight: bold; font-size: 13.5px; color: var(--color-text-muted); display: block; margin-bottom: 6px; }
         select, input, textarea {
             width: 100%;
             padding: 13px 14px;
             font-size: 16px; /* 16px minimum prevents iOS Safari auto-zoom on focus */
             border-radius: 8px;
-            border: 1px solid #ced4da;
+            border: 1px solid var(--color-border-strong);
             font-family: inherit;
             min-height: 48px;
             -webkit-appearance: none;
             appearance: none;
-            background-color: #fff;
+            background-color: var(--color-surface);
         }
         select { background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23495057' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-size: 16px; padding-right: 38px; }
         textarea { resize: vertical; min-height: 90px; -webkit-appearance: auto; }
         input[type="file"] {
             padding: 10px 12px;
             min-height: 44px;
-            background-color: #f8f9fa;
-            border: 1px dashed #ced4da;
+            background-color: var(--color-surface-2);
+            border: 1px dashed var(--color-border-strong);
             font-size: 13.5px;
             cursor: pointer;
         }
@@ -217,20 +228,20 @@
         }
         button.action-btn:active { transform: scale(0.98); }
         button.action-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-        .btn-in { background-color: #28a745; }
-        .btn-in:hover { background-color: #218838; }
-        .btn-out { background-color: #dc3545; }
-        .btn-out:hover { background-color: #c82333; }
+        .btn-in { background-color: var(--success-600); }
+        .btn-in:hover { background-color: var(--success-700); }
+        .btn-out { background-color: var(--danger-600); }
+        .btn-out:hover { background-color: var(--danger-700); }
         /* الدوام المقسوم — لون مختلف عن الانصراف حتى لا يُخلط بينهما */
-        .btn-split { background-color: #6366f1; }
-        .btn-split:hover { background-color: #4f46e5; }
-        .btn-submit { background-color: #fd7e14; }
-        .btn-submit:hover { background-color: #e86803; }
+        .btn-split { background-color: var(--color-primary); }
+        .btn-split:hover { background-color: var(--ink-700); }
+        .btn-submit { background-color: var(--warning-600); }
+        .btn-submit:hover { background-color: var(--warning-700); }
 
         #statusMsg { margin-top: 20px; padding: 12px 14px; border-radius: 8px; font-weight: bold; font-size: 13.5px; line-height: 1.5; display: none; }
-        .status-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .status-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .status-loading { background-color: #cce5ff; color: #004085; border: 1px solid #b8daff; }
+        .status-success { background-color: var(--alert-ok-bg); color: var(--alert-ok-text); border: 1px solid var(--alert-ok-border); }
+        .status-error { background-color: var(--alert-bad-bg); color: var(--alert-bad-text); border: 1px solid var(--alert-bad-border); }
+        .status-loading { background-color: var(--alert-info-bg); color: var(--alert-info-text); border: 1px solid var(--alert-info-border); }
 
         /* (قواعد التسميات المختصرة انتقلت إلى كتلة .tab-btn أعلاه مع إصلاح
            تجاوز الإطار — أُزيلت من هنا لمنع تعارض القواعد.) */
@@ -253,7 +264,7 @@
         }
         .reg-modal-overlay.open { display: flex; }
         .reg-modal-card {
-            background: #fff;
+            background: var(--color-surface);
             width: 100%;
             height: 100%;
             max-width: 560px;
@@ -265,21 +276,21 @@
         @media (min-width: 640px) {
             .reg-modal-card { height: auto; max-height: 90vh; border-radius: 14px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
         }
-        .reg-modal-header { padding: 18px 20px; border-bottom: 2px solid #f0f2f5; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-        .reg-modal-header h2 { margin: 0; font-size: 16px; color: #1a252f; }
-        .reg-modal-close { background: none; border: none; font-size: 22px; line-height: 1; cursor: pointer; color: #6c757d; padding: 4px 8px; }
-        .reg-modal-body { padding: 18px 20px; overflow-y: auto; flex: 1; text-align: left; font-size: 13.5px; line-height: 1.75; color: #343a40; }
-        .reg-modal-body h3 { font-size: 14.5px; color: #1a252f; margin: 18px 0 8px; }
+        .reg-modal-header { padding: 18px 20px; border-bottom: 2px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .reg-modal-header h2 { margin: 0; font-size: 16px; color: var(--color-text); }
+        .reg-modal-close { background: none; border: none; font-size: 22px; line-height: 1; cursor: pointer; color: var(--color-text-muted); padding: 4px 8px; }
+        .reg-modal-body { padding: 18px 20px; overflow-y: auto; flex: 1; text-align: left; font-size: 13.5px; line-height: 1.75; color: var(--color-text); }
+        .reg-modal-body h3 { font-size: 14.5px; color: var(--color-text); margin: 18px 0 8px; }
         .reg-modal-body h3:first-child { margin-top: 0; }
         .reg-modal-body ol { padding-left: 22px; margin: 0 0 4px; }
         .reg-modal-body li { margin-bottom: 8px; }
-        .reg-modal-body hr { border: none; border-top: 1px dashed #ced4da; margin: 20px 0; }
+        .reg-modal-body hr { border: none; border-top: 1px dashed var(--color-border-strong); margin: 20px 0; }
         .reg-modal-lang-block { direction: rtl; text-align: right; }
         .reg-modal-lang-block[lang="en"] { direction: ltr; text-align: left; }
-        .reg-modal-footer { padding: 16px 20px; border-top: 2px solid #f0f2f5; flex-shrink: 0; background: #fafbfc; }
-        .reg-scroll-hint { font-size: 12px; color: #dc3545; font-weight: 700; text-align: center; margin: 0 0 10px; display: none; }
+        .reg-modal-footer { padding: 16px 20px; border-top: 2px solid var(--color-border); flex-shrink: 0; background: var(--color-surface-2); }
+        .reg-scroll-hint { font-size: 12px; color: var(--danger-600); font-weight: 700; text-align: center; margin: 0 0 10px; display: none; }
         .reg-scroll-hint.show { display: block; }
-        #regAgreeBtn:disabled { background-color: #adb5bd; cursor: not-allowed; }
+        #regAgreeBtn:disabled { background-color: var(--color-border-strong); cursor: not-allowed; }
 
         /* ---- Daily Sales Report (managers only) ------------------------------
            The auto-calculated total. Kept visually distinct from the inputs so a
@@ -292,23 +303,23 @@
             gap: 10px;
             margin-top: 18px;
             padding: 14px 16px;
-            background: #e7f5ff;
-            border: 1px solid #a5d8ff;
+            background: var(--brand-tint-bg);
+            border: 1px solid var(--brand-tint-border);
             border-radius: 10px;
             font-size: 14.5px;
             font-weight: 700;
-            color: #1864ab;
+            color: var(--color-brand-text);
         }
         .report-total b { font-size: 19px; }
-        .report-currency-note { text-align: left; color: #6c757d; font-size: 12px; margin: 8px 0 0; }
+        .report-currency-note { text-align: left; color: var(--color-text-muted); font-size: 12px; margin: 8px 0 0; }
 
         /* ---- ملخص التقرير بعد الإرسال + زر واتساب ---------------------------- */
         .report-summary {
             text-align: left;
-            border: 1px solid #dee2e6;
+            border: 1px solid var(--color-border);
             border-radius: 12px;
             padding: 16px;
-            background: #fafbfc;
+            background: var(--color-surface-2);
         }
         .report-summary-head {
             display: flex;
@@ -318,25 +329,33 @@
             flex-wrap: wrap;
             margin-bottom: 4px;
         }
-        .report-summary-head span:first-child { font-size: 16px; font-weight: 800; color: #1a252f; }
+        .report-summary-head span:first-child { font-size: 16px; font-weight: 800; color: var(--color-text); }
         .report-sent-badge {
-            background: #d4edda; color: #155724; border: 1px solid #c3e6cb;
+            background: var(--alert-ok-bg); color: var(--alert-ok-text); border: 1px solid var(--alert-ok-border);
             border-radius: 20px; padding: 3px 11px; font-size: 11.5px; font-weight: 700;
             white-space: nowrap;
         }
-        .report-summary-branch { font-size: 12.5px; font-weight: 700; color: #6c757d; margin-bottom: 12px; }
+        .report-summary-branch { font-size: 12.5px; font-weight: 700; color: var(--color-text-muted); margin-bottom: 12px; }
         .report-summary-row {
             display: flex; justify-content: space-between; gap: 10px;
-            padding: 7px 0; font-size: 13.5px; border-bottom: 1px dashed #e9ecef;
+            padding: 7px 0; font-size: 13.5px; border-bottom: 1px dashed var(--color-border);
         }
-        .report-summary-row span:last-child { font-weight: 700; font-variant-numeric: tabular-nums; }
+        /* مبالغ التقرير بخط المونو: المدير يقرأ أربعة أرقام فوق بعضها
+           (كاش · بطاقة · سنونو · طلبات) فيجب أن تتراصف الفواصل عموديًّا. */
+        .report-summary-row span:last-child {
+            font-family: var(--font-mono, ui-monospace, monospace);
+            font-weight: 600; font-variant-numeric: tabular-nums;
+        }
         .report-summary-total {
             display: flex; justify-content: space-between; align-items: center; gap: 10px;
-            margin-top: 10px; padding-top: 11px; border-top: 2px solid #dee2e6;
-            font-size: 14.5px; font-weight: 800; color: #1864ab;
+            margin-top: 10px; padding-top: 11px; border-top: 2px solid var(--color-border);
+            font-size: 14.5px; font-weight: 800; color: var(--color-brand-text);
         }
-        .report-summary-total b { font-size: 17px; font-variant-numeric: tabular-nums; }
-        .report-summary-by { font-size: 12px; color: #6c757d; margin-top: 12px; }
+        .report-summary-total b {
+            font-family: var(--font-mono, ui-monospace, monospace);
+            font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums;
+        }
+        .report-summary-by { font-size: 12px; color: var(--color-text-muted); margin-top: 12px; }
 
         /* زر الواتساب وسم <a> لا <button>: الوسم <a> لا يُحجب أبدًا بمانع النوافذ
            المنبثقة، بخلاف window.open الذي قد تحجبه المتصفحات على الهاتف. */

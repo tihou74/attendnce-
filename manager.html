@@ -26,7 +26,7 @@
      ============================================================================= -->
 
 <link rel="manifest" href="./manifest-report.json">
-<meta name="theme-color" content="#1864ab">
+<meta name="theme-color" content="#0B1226">
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/report-192.png">
 <link rel="apple-touch-icon" href="./icons/report-touch.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -35,34 +35,75 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="robots" content="noindex, nofollow">
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./brand/design-tokens.css">
+
 <style>
+    /* =========================================================================
+       شاشة دخول المديرين — الهوية على سطح داكن.
+       هنا يتحرّر الذهب: على الكحلي تباينه 8.63:1، فيصير لون العنوان والزر —
+       وهو ما لا يجوز على الأبيض حيث تباينه 3.08:1 فقط.
+
+       ⚠️ كل var() هنا لها قيمة احتياطية بعدها. هذه الصفحة **لا تُسجّل Service
+       Worker** عن قصد (انظر التحذير أعلى الملف) فتُجلب من الشبكة دائمًا؛ ولو
+       تعذّر تحميل ورقة الهوية لأي سبب وجب أن تبقى الشاشة مقروءة لا بيضاء
+       فارغة — فهي الطريق الوحيد للمدير إلى شاشته.
+       ========================================================================= */
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; min-height: 100%; }
     body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background: #1a252f; color: #f1f3f5;
+        font-family: var(--font-sans, 'Segoe UI', Tahoma, sans-serif);
+        background: var(--ink-900, #0B1226);
+        color: #E8EDF6;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
         text-align: center; min-height: 100vh;
-        padding: 28px 20px calc(28px + env(safe-area-inset-bottom));
-        padding-top: calc(28px + env(safe-area-inset-top));
+        -webkit-font-smoothing: antialiased;
+        padding: var(--space-8, 32px) var(--space-5, 20px) calc(var(--space-8, 32px) + env(safe-area-inset-bottom));
+        padding-top: calc(var(--space-8, 32px) + env(safe-area-inset-top));
     }
     .card { width: 100%; max-width: 380px; }
-    img.logo { width: 84px; height: 84px; border-radius: 18px; display: block; margin: 0 auto 18px; }
-    h1 { font-size: 19px; font-weight: 800; margin: 0 0 6px; }
-    .sub { font-size: 13px; color: #9aa5b1; margin: 0 0 24px; line-height: 1.7; }
-    a.btn {
-        display: block; padding: 15px 22px; background: #1864ab; color: #fff;
-        text-decoration: none; border-radius: 11px; font-size: 16px; font-weight: 700;
+    img.logo {
+        width: 84px; height: 84px; border-radius: var(--radius-lg, 10px);
+        display: block; margin: 0 auto var(--space-5, 20px);
     }
+    h1 {
+        font-size: var(--text-xl, 22px); font-weight: 700; margin: 0 0 6px;
+        letter-spacing: -.01em; color: var(--gold-400, #CAAD73);
+    }
+    .sub {
+        font-size: var(--text-xs, 12px); color: #9FB0CA; margin: 0 0 var(--space-6, 24px);
+        line-height: 1.7; text-transform: uppercase; letter-spacing: .14em; font-weight: 600;
+    }
+    /* الزر ذهبي بنصّ كحلي — الاتجاه الوحيد الذي يمرّ التباين مع الذهب */
+    a.btn {
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        min-height: 48px; padding: 0 var(--space-6, 24px);
+        background: var(--gold-600, #A89060); color: var(--ink-800, #0F172A);
+        text-decoration: none; border-radius: var(--radius-md, 6px);
+        font-size: var(--text-base, 16px); font-weight: 700;
+        transition: background var(--dur-fast, 120ms) var(--ease, ease);
+    }
+    a.btn:hover { background: var(--gold-500, #B99E6A); }
+    a.btn:focus-visible { outline: 2px solid var(--gold-300, #DABB7D); outline-offset: 3px; }
     a.btn:active { transform: scale(0.985); }
     .install {
-        margin-top: 26px; background: rgba(255,255,255,0.06);
-        border: 1px solid rgba(255,255,255,0.12); border-radius: 12px;
-        padding: 16px 18px; text-align: left;
+        margin-top: var(--space-8, 32px); background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-inline-start: 3px solid var(--gold-600, #A89060);
+        border-radius: var(--radius-md, 6px);
+        padding: var(--space-4, 16px) var(--space-5, 20px); text-align: start;
     }
-    .install h2 { font-size: 13.5px; margin: 0 0 10px; color: #ffd479; font-weight: 800; }
-    .install ol { margin: 0; padding-left: 20px; font-size: 13px; color: #ced4da; line-height: 1.85; }
-    .note { font-size: 11.5px; color: #8b96a3; margin: 10px 0 0; line-height: 1.6; }
+    .install h2 {
+        font-size: var(--text-sm, 13.5px); margin: 0 0 var(--space-3, 12px);
+        color: var(--gold-400, #CAAD73); font-weight: 700;
+    }
+    .install ol {
+        margin: 0; padding-inline-start: 20px; font-size: var(--text-sm, 13.5px);
+        color: #C7D2E4; line-height: 1.9;
+    }
+    .note { font-size: var(--text-xs, 12px); color: #8B99B3; margin: var(--space-3, 12px) 0 0; line-height: 1.7; }
 </style>
 </head>
 <body>
