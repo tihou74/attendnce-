@@ -2210,6 +2210,23 @@
         return l.date || '';
     }
 
+    /**
+     * وقت السجل المعروض — بتوقيت قطر من ساعة الخادم.
+     * ⚠️ لا يكفي تحويل المنطقة الزمنية: النص المخزَّن `time` بُني من ساعة
+     * **الجهاز**، فلو غيّر الموظف ساعة هاتفه ظهر وقت دخوله وخروجه بساعته
+     * المغيَّرة. المدة صارت تُحسب من الخادم، وهذا يُصلح **العرض** كذلك.
+     * السجل القديم بلا طابع خادم يُعرض بنصّه المخزَّن — بلا أثر رجعي.
+     */
+    function logQatarTime(l) {
+        const srv = tsFieldToDate(l && l.serverTime);
+        if (srv) return qatarTimeLabel(srv);
+        return (l && l.time) || '-';
+    }
+    /** هل وقت هذا السجل موثوق (من الخادم) أم نصٌّ كتبه الجهاز؟ */
+    function logTimeIsServer(l) {
+        return !!tsFieldToDate(l && l.serverTime);
+    }
+
     /** فارق ساعة الجهاز عن ساعة الخادم بالدقائق — null إن تعذّر القياس. */
     function clockSkewMinutes(l) {
         const srv = tsFieldToDate(l && l.serverTime);
@@ -3871,7 +3888,7 @@
             <tr style="background: rgba(185,28,28,0.07);">
                 <td><b>${escapeHtml(s.employeeName || s.employeeId || '—')}</b></td>
                 <td>${escapeHtml(s.branch || '—')}</td>
-                <td>${escapeHtml(s.date || '—')}${s.checkIn ? `<br><small style="color: var(--text-dim);">${escapeHtml(s.checkIn.time || '')}</small>` : ''}</td>
+                <td>${escapeHtml(s.date || '—')}${s.checkIn ? `<br><small style="color: var(--text-dim);">${escapeHtml(logQatarTime(s.checkIn))}</small>` : ''}</td>
                 <td class="money-col" style="text-decoration: line-through; color: var(--text-dim);">${escapeHtml(hm(s.deviceClaimedMinutes))}</td>
                 <td class="money-col"><b>${escapeHtml(hm(s.workMinutes))}</b></td>
                 <td class="money-col" style="color: var(--danger); font-weight: 800;">${s.tamperMinutes > 0 ? '+' : '−'}${escapeHtml(hm(s.tamperMinutes))}</td>
@@ -3958,7 +3975,7 @@
                 });
                 closed++;
                 logAudit("Automatic Check-Out",
-                    `${s.employeeName || s.employeeId} — Check-In ${s.checkIn.date || '-'} ${s.checkIn.time || ''} had no Check-Out after ${AUTO_CHECKOUT_AFTER_HOURS}h, counted as a normal ${AUTO_CHECKOUT_CREDITED_HOURS}-hour day`);
+                    `${s.employeeName || s.employeeId} — Check-In ${logQatarDate(s.checkIn) || '-'} ${logQatarTime(s.checkIn)} had no Check-Out after ${AUTO_CHECKOUT_AFTER_HOURS}h, counted as a normal ${AUTO_CHECKOUT_CREDITED_HOURS}-hour day`);
             } catch (e) {
                 console.error("Automatic check-out failed for", autoId, e);
             }
@@ -3994,7 +4011,7 @@
             return `<tr${crossesMonth ? ' style="background: rgba(220,38,38,0.07);"' : ''}>
                 <td><b>${escapeHtml(s.employeeName || s.employeeId || '—')}</b></td>
                 <td>${escapeHtml(s.branch || '—')}</td>
-                <td>${escapeHtml(s.checkIn.date || '—')} ${escapeHtml(s.checkIn.time || '')}</td>
+                <td>${escapeHtml(logQatarDate(s.checkIn) || '—')} ${escapeHtml(logQatarTime(s.checkIn))}</td>
                 <td style="color: ${crossesMonth ? 'var(--danger)' : 'var(--warning)'}; font-weight: 700;">
                     ${days >= 1 ? `${days} day(s) ` : ''}${Math.floor(hours % 24)}h
                     ${crossesMonth ? '<br><small>from a previous month</small>' : ''}
@@ -4342,12 +4359,12 @@
             if (multi) {
                 const sep = ' <span style="color: var(--text-faint);">·</span> ';
                 const insHtml = g.parts.map(p => p.checkIn
-                    ? escapeHtml(p.checkIn.time || '-')
+                    ? escapeHtml(logQatarTime(p.checkIn))
                     : '<span style="color:var(--text-faint);" title="لا يوجد تسجيل دخول مقابل / no matching check-in">missing</span>'
                 ).join(sep);
                 const outsHtml = g.parts.map(p => {
                     if (!p.checkOut) return '<span style="color:var(--warning); font-weight:800;">Open</span>';
-                    let t = escapeHtml(p.checkOut.time || '-');
+                    let t = escapeHtml(logQatarTime(p.checkOut));
                     if (p.crossesMidnight) t += ` <span title="انتهت بعد منتصف الليل في اليوم التالي / ended after midnight, next day" style="color: var(--accent); font-size: 11px; font-weight: 700;">+1d</span>`;
                     if (p.checkOut.splitBreak) t += ` <span title="Split Break — غادر بين فترتَي دوامه وعاد في نفس اليوم" style="color: #6366f1; font-size: 11px; font-weight: 800;">split</span>`;
                     if (p.checkOut.autoCheckOut) t += ` <span title="${escapeHtml(p.checkOut.autoReason || 'Closed automatically')}" style="color: var(--warning); font-size: 11px; font-weight: 800;">auto</span>`;
@@ -4392,13 +4409,13 @@
             const s = g.parts[0];
             {
             const inTime = s.checkIn
-                ? escapeHtml(s.checkIn.time || '-')
+                ? escapeHtml(logQatarTime(s.checkIn))
                 : '<span style="color:var(--text-faint);" title="لا يوجد تسجيل دخول مقابل لهذا الانصراف — بيانات ناقصة فعلًا / no matching check-in record exists">missing</span>';
             // "+1d" يوضّح أن الانصراف حدث بعد منتصف الليل في اليوم التالي، حتى
             // لا يبدو وقت الخروج (1:12 AM) كأنه قبل وقت الدخول (4:00 PM).
             let outTime;
             if (s.checkOut) {
-                outTime = escapeHtml(s.checkOut.time || '-');
+                outTime = escapeHtml(logQatarTime(s.checkOut));
                 if (s.crossesMidnight) {
                     outTime += ` <span title="الوردية انتهت بعد منتصف الليل في اليوم التالي / shift ended after midnight, on the next day" style="color: var(--accent); font-size: 11px; font-weight: 700;">+1d</span>`;
                 }
@@ -4492,8 +4509,8 @@
                 "Employee": g.employeeName || 'Unknown',
                 "Date": g.date || '-',
                 "Parts": g.parts.length,
-                "Check-In": g.parts.map(p => p.checkIn ? (p.checkIn.time || '-') : 'Missing').join(' · '),
-                "Check-Out": g.parts.map(p => p.checkOut ? (p.checkOut.time || '-') : 'Open').join(' · '),
+                "Check-In": g.parts.map(p => p.checkIn ? logQatarTime(p.checkIn) : 'Missing').join(' · '),
+                "Check-Out": g.parts.map(p => p.checkOut ? logQatarTime(p.checkOut) : 'Open').join(' · '),
                 "Day Total": `${Math.floor(mins / 60)}h ${mins % 60}m`,
                 "Day Total (minutes)": mins,
                 "Split Shift": anySplit ? 'Yes' : '',
@@ -8190,8 +8207,8 @@
             totalMins += s.workMinutes || 0;
             html += `<tr>
                 <td>${escapeHtml(s.date)}</td>
-                <td>${s.checkIn ? escapeHtml(s.checkIn.time) : '<span style="color:var(--text-faint);">missing</span>'}</td>
-                <td>${s.checkOut ? escapeHtml(s.checkOut.time) : '<span style="color:var(--text-faint);">—</span>'}</td>
+                <td>${s.checkIn ? escapeHtml(logQatarTime(s.checkIn)) : '<span style="color:var(--text-faint);">missing</span>'}</td>
+                <td>${s.checkOut ? escapeHtml(logQatarTime(s.checkOut)) : '<span style="color:var(--text-faint);">—</span>'}</td>
                 <td>${s.checkOut ? `<span class="duration-pill">${escapeHtml(s.durationLabel)}</span>` : `<span class="duration-pill open">Open</span>`}</td>
                 <td>${escapeHtml(s.branch || '-')}</td>
             </tr>`;
@@ -8760,8 +8777,8 @@
         p.sessions.forEach(s => {
             profHtml += `<tr>
                 <td>${escapeHtml(s.date)}</td>
-                <td>${s.checkIn ? escapeHtml(s.checkIn.time) : '-'}</td>
-                <td>${s.checkOut ? escapeHtml(s.checkOut.time) : '-'}</td>
+                <td>${s.checkIn ? escapeHtml(logQatarTime(s.checkIn)) : '-'}</td>
+                <td>${s.checkOut ? escapeHtml(logQatarTime(s.checkOut)) : '-'}</td>
                 <td>${escapeHtml(s.durationLabel)}</td>
                 <td>${escapeHtml(s.branch || '-')}</td>
             </tr>`;
