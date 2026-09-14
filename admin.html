@@ -579,6 +579,18 @@
             </div>
         </div>
 
+        <!-- ⭐ ورديات ادّعى فيها الجهاز مدةً غير الحقيقية -->
+        <div class="card" id="tamperCard" style="display: none; border-left: 4px solid var(--danger);">
+            <h3><span data-icon="alertTriangle"></span> A device claimed a longer shift than it worked <span id="tamperCount" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
+            <p class="card-sub">The duration of every shift is calculated from the <b>Firebase server clock</b>, so changing a phone's time can no longer add hours — the payroll below already uses the real figure. This list shows where a device <b>claimed</b> a different duration, which is worth looking into: a large gap means someone changed the clock between checking in and checking out.</p>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Employee</th><th>Branch</th><th>Date</th><th>Claimed</th><th>Actually worked</th><th>Difference</th></tr></thead>
+                    <tbody id="tamperBody"></tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- ساعة جهاز مغلوطة: يُقاس فارقها عن ساعة خادم فايربيس -->
         <div class="card" id="clockSkewCard" style="display: none; border-left: 4px solid var(--danger);">
             <h3><span data-icon="clock"></span> A device clock is wrong</h3>
@@ -3822,6 +3834,9 @@
     // جهازًا يجب ضبطه، وسجلاته حتى ضبطه مشكوك في دقّة وقتها.
     // =====================================================================
     const CLOCK_SKEW_ALERT_MINUTES = 5;
+    // فارق بين ما ادّعاه الجهاز والمدة الحقيقية بساعة الخادم. ثلاث دقائق تسمح
+    // بتأخّر الشبكة بين لحظة الضغط ووصول الكتابة، وما فوقها ليس تأخّرًا.
+    const SHIFT_TAMPER_ALERT_MINUTES = 3;
 
     function clockSkewOffenders() {
         const byDevice = new Map();   // الفرع|المنطقة -> أسوأ فارق
@@ -3836,6 +3851,32 @@
             } else { cur.count++; }
         });
         return [...byDevice.values()].sort((a, b) => Math.abs(b.skew) - Math.abs(a.skew));
+    }
+
+    /** ورديات ادّعى فيها الجهاز مدةً تختلف عن الحقيقة بساعة الخادم. */
+    function renderTamperAlert() {
+        const card = document.getElementById('tamperCard');
+        const body = document.getElementById('tamperBody');
+        if (!card || !body) return;
+        const rows = buildSessions(allAttendance || [])
+            .filter(s => s.tamperMinutes !== null && s.tamperMinutes !== undefined)
+            .sort((a, b) => Math.abs(b.tamperMinutes) - Math.abs(a.tamperMinutes));
+        if (!rows.length) { card.style.display = 'none'; return; }
+        card.style.display = 'block';
+        const badge = document.getElementById('tamperCount');
+        if (badge) { badge.innerText = rows.length; badge.style.display = 'inline-block'; }
+
+        const hm = (m) => `${Math.floor(Math.abs(m) / 60)}h ${Math.abs(m) % 60}m`;
+        body.innerHTML = rows.map(s => `
+            <tr style="background: rgba(185,28,28,0.07);">
+                <td><b>${escapeHtml(s.employeeName || s.employeeId || '—')}</b></td>
+                <td>${escapeHtml(s.branch || '—')}</td>
+                <td>${escapeHtml(s.date || '—')}${s.checkIn ? `<br><small style="color: var(--text-dim);">${escapeHtml(s.checkIn.time || '')}</small>` : ''}</td>
+                <td class="money-col" style="text-decoration: line-through; color: var(--text-dim);">${escapeHtml(hm(s.deviceClaimedMinutes))}</td>
+                <td class="money-col"><b>${escapeHtml(hm(s.workMinutes))}</b></td>
+                <td class="money-col" style="color: var(--danger); font-weight: 800;">${s.tamperMinutes > 0 ? '+' : '−'}${escapeHtml(hm(s.tamperMinutes))}</td>
+            </tr>`).join('');
+        paintIcons(card);
     }
 
     function renderClockSkewAlert() {
@@ -4101,6 +4142,47 @@
     function buildSessions(logs) {
         function makeSession(ci, co) {
             const anchor = ci || co;
+
+            // =============================================================
+            // ⭐ المدة تُحسب من ساعة الخادم، لا من الرقم الذي كتبه الجهاز
+            // -------------------------------------------------------------
+            // ثغرة حقيقية أُبلغ عنها وجُرِّبت: موظف سجّل دخولًا، ثم **غيّر ساعة
+            // هاتفه** إلى ما بعد تسع ساعات، ثم سجّل خروجًا بعد دقيقتين — فسُجِّلت
+            // له 9 ساعات عمل.
+            //
+            // السبب: صفحة الموظفين تحسب المدة على الجهاز
+            // (deviceNow − وقت الدخول المخزَّن) وتكتبها في workMinutes، وكانت
+            // اللوحة تأخذ ذلك الرقم كما هو. جعلُ ساعة الخادم مرجعًا للترتيب
+            // والتاريخ لم يكن كافيًا: المدة نفسها كانت لا تزال من الهاتف.
+            //
+            // الآن: إن حمل الدخول والخروج طابعَي خادم، فالمدة =
+            // serverOut − serverIn. لا يستطيع أي جهاز التأثير عليها.
+            // وإن غاب أحدهما (سجل قديم، أو انصراف تلقائي محتسب عن قصد) نُبقي
+            // الرقم المخزَّن كما هو — بلا أثر رجعي وبلا إفساد الاحتساب المقصود.
+            // =============================================================
+            let workMinutes = co ? Number(co.workMinutes) || 0 : 0;
+            let durationLabel = co ? (co.duration || '-') : 'Open';
+            let deviceClaimedMinutes = null;
+            let tamperMinutes = null;
+
+            const srvIn = tsFieldToDate(ci && ci.serverTime);
+            const srvOut = tsFieldToDate(co && co.serverTime);
+            if (srvIn && srvOut) {
+                const real = Math.max(0, Math.round((srvOut.getTime() - srvIn.getTime()) / 60000));
+                deviceClaimedMinutes = workMinutes;
+                // فارقٌ يتجاوز الحدّ = الجهاز ادّعى غير الحقيقة. الحدّ يسمح
+                // بثوانٍ من تأخّر الشبكة بين لحظة الضغط ولحظة وصول الكتابة.
+                if (Math.abs(real - workMinutes) >= SHIFT_TAMPER_ALERT_MINUTES) {
+                    tamperMinutes = workMinutes - real;
+                }
+                workMinutes = real;
+                durationLabel = `${Math.floor(real / 60)}h ${real % 60}m`;
+            }
+
+            // عبور منتصف الليل يُقاس بتاريخَي قطر الموثوقين لا بالنصّين المخزَّنين
+            const dIn = ci ? logQatarDate(ci) : '';
+            const dOut = co ? logQatarDate(co) : '';
+
             return {
                 employeeId: anchor.employeeId,
                 employeeName: anchor.employeeName,
@@ -4109,11 +4191,14 @@
                 date: logQatarDate(anchor),
                 checkIn: ci || null,
                 checkOut: co || null,
-                durationLabel: co ? (co.duration || '-') : 'Open',
-                workMinutes: co ? Number(co.workMinutes) || 0 : 0,
+                durationLabel,
+                workMinutes,
+                // ما ادّعاه الجهاز وفارقه — للعرض والتنبيه لا للحساب
+                deviceClaimedMinutes,
+                tamperMinutes,
                 // true when the shift ran past midnight, so the table can label
                 // the check-out time as belonging to the following day.
-                crossesMidnight: !!(ci && co && ci.date && co.date && ci.date !== co.date)
+                crossesMidnight: !!(dIn && dOut && dIn !== dOut)
             };
         }
 
@@ -4174,6 +4259,7 @@
             renderOpenShifts();
             renderMonthArchive();
             renderClockSkewAlert();
+            renderTamperAlert();
             maybeAutoCloseOnce();
         } catch (error) {
             try {
@@ -4185,6 +4271,7 @@
                 renderOpenShifts();
                 renderMonthArchive();
                 renderClockSkewAlert();
+            renderTamperAlert();
                 maybeAutoCloseOnce();
             } catch (err) {
                 console.error(err);
