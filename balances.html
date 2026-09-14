@@ -29,7 +29,7 @@
      ============================================================================= -->
 
 <link rel="manifest" href="./manifest-balances.json">
-<meta name="theme-color" content="#f5f1e8">
+<meta name="theme-color" content="#F8FAFC">
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/balances-192.png">
 <link rel="apple-touch-icon" href="./icons/balances-touch.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -38,121 +38,209 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="robots" content="noindex, nofollow">
 
+<!-- الهوية البصرية: عائلة خط واحدة تحمل العربية واللاتينية، ومونو للأرقام.
+     preconnect لأن الخط على نطاق آخر، فبلا تهيئة الاتصال يتأخّر أول رسم. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./brand/design-tokens.css">
+
 <style>
     /* =========================================================================
-       نفس هوية لوحة الإدارة: خلفية بيج فاتحة وبطاقات كريمية وحدود تان ناعمة.
-       كانت هذه الصفحة كحلية داكنة بفيروزي وأصفر وأخضر وأحمر معًا، فبدت غريبة
-       عن باقي النظام وغير متناسقة. القيم أدناه منسوخة حرفيًا من :root في
-       admin.html حتى تكون الصفحتان عائلة واحدة.
+       الهوية البصرية لمجموعة الشيخة — Minimalism & Swiss.
+       كل قيمة أدناه تأتي من ./brand/design-tokens.css. لا لون خام هنا إطلاقًا،
+       فتغيير الهوية لاحقًا يحدث في ملف واحد لا في كل صفحة.
 
-       ضبط الألوان — لون واحد للتمييز فقط:
-         • كل الأرقام بلون النص العادي، لا أخضر ولا أصفر.
-         • الأحمر محجوز للرصيد السالب وحده، لأنه التحذير الحقيقي الوحيد هنا.
-         • الأزرق (--accent) للأزرار وصندوق «الداخل الليلة» فقط.
+       ثلاث قواعد تحكم هذه الصفحة تحديدًا:
+         • الذهب #A89060 لون الهوية لكن تباينه على الأبيض 3.08:1، فلا يحمل نصًّا
+           أبدًا. هو هنا للحدود العلوية والأسطح والشعار فقط.
+         • الأرقام كلها بخط مونو وأرقام مُتراصفة (tabular-nums) — الأرصدة الثلاثة
+           تُقرأ عموديًّا فوق بعضها، فيجب أن تكون الفاصلة تحت الفاصلة.
+         • الأحمر للسالب وحده. لا أخضر ولا أصفر لرقم موجب — الرقم الموجب عادي
+           لا إنجاز، وتلوينه يُفقد الأحمر معناه.
        ========================================================================= */
-    :root {
-        --bg: #f5f1e8;
-        --surface: #fffdf8;
-        --surface-2: #f3ede0;
-        --border: #ddd2b8;
-        --text: #3a3226;
-        --text-dim: #7a6f5a;
-        --text-faint: #a89b7f;
-        --accent: #0284c7;
-        --accent-soft: rgba(2, 132, 199, 0.10);
-        --danger: #dc2626;
-        --radius: 14px;
-        --radius-sm: 10px;
-        --shadow-sm: 0 4px 12px -4px rgba(58, 50, 38, 0.12);
-    }
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; min-height: 100%; }
     body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background: var(--bg);
-        color: var(--text);
-        padding: 20px 16px calc(28px + env(safe-area-inset-bottom));
-        padding-top: calc(20px + env(safe-area-inset-top));
+        font-family: var(--font-sans);
+        font-size: var(--text-base);
+        line-height: var(--leading-normal);
+        background: var(--color-bg);
+        color: var(--color-text);
+        -webkit-font-smoothing: antialiased;
+        padding: var(--space-5) var(--space-4) calc(var(--space-8) + env(safe-area-inset-bottom));
+        padding-top: calc(var(--space-5) + env(safe-area-inset-top));
     }
     .wrap { max-width: 760px; margin: 0 auto; }
-    header { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
-    header img { width: 46px; height: 46px; border-radius: 11px; }
-    header h1 { font-size: 17px; font-weight: 800; margin: 0; }
-    header p { font-size: 12px; color: var(--text-dim); margin: 3px 0 0; }
+
+    /* الترويسة: خط سفلي كحلي بسماكة 2px — توقيع Swiss، يفصل بلا ظل ولا صندوق */
+    header {
+        display: flex; align-items: center; gap: var(--space-4);
+        margin-bottom: var(--space-6); padding-bottom: var(--space-4);
+        border-bottom: 2px solid var(--color-primary);
+    }
+    header img { width: 44px; height: 44px; border-radius: var(--radius-md); display: block; }
+    header h1 {
+        font-size: var(--text-xl); font-weight: 700; margin: 0; letter-spacing: -.01em;
+    }
+    header p {
+        font-size: var(--text-xs); color: var(--color-text-muted); margin: 3px 0 0;
+        text-transform: uppercase; letter-spacing: .14em; font-weight: 600;
+    }
 
     .panel {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 20px;
-        box-shadow: var(--shadow-sm);
+        background: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-border);
+        border-radius: var(--card-radius);
+        padding: var(--card-padding);
+        box-shadow: var(--shadow-xs);
     }
-    label { display: block; font-size: 12px; font-weight: 700; color: var(--text-dim); margin-bottom: 6px; }
+    label {
+        display: block; font-size: var(--text-xs); font-weight: 700;
+        color: var(--color-text-muted); margin-bottom: 6px;
+        text-transform: uppercase; letter-spacing: .08em;
+    }
     input {
-        width: 100%; padding: 13px 14px; font-size: 15px;
-        background: #fff; color: var(--text);
-        border: 1px solid var(--border); border-radius: var(--radius-sm);
-        margin-bottom: 14px;
+        width: 100%; height: var(--input-height); padding: 0 var(--space-3);
+        font-family: inherit; font-size: var(--text-sm);
+        background: var(--color-surface); color: var(--color-text);
+        border: var(--input-border); border-radius: var(--input-radius);
+        margin-bottom: var(--space-4);
+        transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
     }
-    input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+    /* حلقة التركيز لا تكون ذهبًا: يجب أن تُرى بوضوح، والذهب لا يُرى على الأبيض */
+    input:focus-visible {
+        outline: none; border-color: var(--color-focus);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus) 22%, transparent);
+    }
     button {
-        width: 100%; padding: 14px; font-size: 15.5px; font-weight: 700;
-        background: var(--accent); color: #fff; border: 0;
-        border-radius: var(--radius-sm); cursor: pointer;
+        width: 100%; height: var(--btn-height); padding: 0 var(--btn-padding-x);
+        font-family: inherit; font-size: var(--btn-font-size); font-weight: var(--btn-font-weight);
+        background: var(--color-primary); color: var(--color-on-primary);
+        border: 1px solid transparent; border-radius: var(--btn-radius); cursor: pointer;
+        transition: background var(--dur-fast) var(--ease);
     }
-    button:active { transform: scale(0.99); }
-    button.ghost { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+    button:hover { background: var(--ink-700); }
+    button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+    button:active { transform: scale(0.995); }
+    button[disabled] { opacity: .45; cursor: not-allowed; }
+    button.ghost {
+        background: transparent; color: var(--color-text);
+        border-color: var(--color-border-strong);
+    }
+    button.ghost:hover { background: var(--color-surface-2); }
 
-    .cards { display: grid; gap: 14px; grid-template-columns: 1fr; }
+    .cards { display: grid; gap: var(--space-4); grid-template-columns: 1fr; }
     @media (min-width: 640px) { .cards { grid-template-columns: 1fr 1fr 1fr; } }
     .card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius); padding: 18px;
-        box-shadow: var(--shadow-sm);
+        background: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-border);
+        border-top: 3px solid var(--color-brand);      /* الذهب: حدّ لا نص */
+        border-radius: var(--card-radius);
+        padding: var(--space-5);
+        box-shadow: var(--shadow-xs);
     }
-    .card h2 { font-size: 11px; letter-spacing: .6px; text-transform: uppercase; color: var(--text-dim); margin: 0 0 4px; font-weight: 800; }
-    .card .ar { font-size: 12px; color: var(--text-faint); margin: 0 0 12px; }
-    .card .amt { font-size: 25px; font-weight: 800; margin: 0; line-height: 1.25; color: var(--text); }
-    .card .cur { font-size: 13px; font-weight: 700; color: var(--text-faint); margin-left: 4px; }
-    .card .meta { font-size: 11.5px; color: var(--text-dim); margin: 10px 0 0; line-height: 1.7; }
+    .card h2 {
+        font-size: var(--text-xs); letter-spacing: .1em; text-transform: uppercase;
+        color: var(--color-text-muted); margin: 0 0 4px; font-weight: 700;
+    }
+    .card .ar {
+        font-size: var(--text-xs); color: var(--color-text-muted);
+        margin: 0 0 var(--space-4); line-height: var(--leading-arabic);
+    }
+    .card .amt {
+        font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+        font-size: var(--text-2xl); font-weight: 600; margin: 0;
+        line-height: 1.2; letter-spacing: -.02em; color: var(--color-text);
+    }
+    .card .cur {
+        font-family: var(--font-sans); font-size: var(--text-xs); font-weight: 700;
+        color: var(--color-text-muted); margin-left: 5px; letter-spacing: .06em;
+    }
+    .card .meta {
+        font-size: var(--text-xs); color: var(--color-text-muted);
+        margin: var(--space-3) 0 0; line-height: 1.7;
+        font-variant-numeric: tabular-nums;
+    }
     /* الأرقام كلها بلون النص؛ الأحمر للسالب فقط */
-    .pos { color: var(--text); }
-    .neg { color: var(--danger); }
+    .pos { color: var(--color-text); }
+    .neg { color: var(--color-danger); }
 
     .total {
-        margin-top: 16px; padding: 16px 18px;
-        background: var(--surface-2); border: 1px solid var(--border);
-        border-radius: var(--radius-sm);
+        margin-top: var(--space-4); padding: var(--space-4) var(--space-5);
+        background: var(--color-surface-2);
+        border: var(--border-hairline) solid var(--color-border);
+        border-radius: var(--radius-md);
     }
-    .total .k { font-size: 12px; color: var(--text-dim); margin: 0 0 4px; font-weight: 700; }
-    .total .v { font-size: 20px; font-weight: 800; margin: 0; color: var(--text); }
+    .total .k {
+        font-size: var(--text-xs); color: var(--color-text-muted); margin: 0 0 4px;
+        font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+    }
+    .total .v {
+        font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+        font-size: var(--text-xl); font-weight: 600; margin: 0;
+        color: var(--color-text); letter-spacing: -.01em;
+    }
 
+    /* «الداخل الليلة»: معلومة مؤقتة لا حالة خطر — تُميَّز بالذهب لا بلون تحذير،
+       والنص فيها كحلي لأن النص الذهبي على أبيض لا يمرّ التباين. */
     .tonight {
-        margin-top: 16px; padding: 16px 18px;
-        background: var(--accent-soft); border: 1px solid var(--accent);
-        border-radius: var(--radius-sm);
+        margin-top: var(--space-4); padding: var(--space-4) var(--space-5);
+        background: color-mix(in srgb, var(--color-brand) 12%, transparent);
+        border: var(--border-hairline) solid var(--color-brand);
+        border-inline-start: 3px solid var(--color-brand);
+        border-radius: var(--radius-md);
     }
-    .tonight .k { font-size: 12px; color: var(--accent); margin: 0 0 4px; font-weight: 800; }
-    .tonight .v { font-size: 20px; font-weight: 800; margin: 0; color: var(--accent); }
-    .tonight .k2 { font-size: 11.5px; color: var(--text-dim); margin: 8px 0 0; line-height: 1.7; }
+    .tonight .k {
+        font-size: var(--text-xs); color: var(--color-brand-text); margin: 0 0 4px;
+        font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+    }
+    .tonight .v {
+        font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+        font-size: var(--text-xl); font-weight: 600; margin: 0; color: var(--color-text);
+    }
+    .tonight .k2 {
+        font-size: var(--text-xs); color: var(--color-text-muted);
+        margin: var(--space-2) 0 0; line-height: 1.7;
+        font-variant-numeric: tabular-nums;
+    }
 
-    .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 18px; }
-    .bar button { width: auto; padding: 11px 16px; font-size: 13.5px; }
-    .stamp { font-size: 12px; color: var(--text-dim); margin: 14px 0 0; line-height: 1.7; }
-    .err { color: var(--danger); font-size: 13px; font-weight: 700; margin: 0 0 12px; min-height: 18px; }
-    .note { font-size: 11.5px; color: var(--text-dim); line-height: 1.75; margin: 18px 0 0; }
-    .install {
-        margin-top: 22px;
-        background: var(--surface-2);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-sm);
-        padding: 16px 18px;
-        text-align: left;
+    .bar {
+        display: flex; flex-wrap: wrap; gap: var(--space-3);
+        align-items: center; margin-top: var(--space-5);
     }
-    .install h2 { font-size: 13.5px; margin: 0 0 10px; color: var(--accent); font-weight: 800; }
-    .install ol { margin: 0; padding-left: 20px; font-size: 13px; color: var(--text); line-height: 1.85; }
-    .install .note { margin: 10px 0 0; }
+    .bar button { width: auto; }
+    .stamp {
+        font-size: var(--text-xs); color: var(--color-text-muted);
+        margin: var(--space-4) 0 0; line-height: 1.7;
+        font-variant-numeric: tabular-nums;
+    }
+    .err {
+        color: var(--color-danger); font-size: var(--text-sm); font-weight: 700;
+        margin: 0 0 var(--space-3); min-height: 18px;
+    }
+    .note {
+        font-size: var(--text-xs); color: var(--color-text-muted);
+        line-height: 1.8; margin: var(--space-5) 0 0;
+    }
+    .install {
+        margin-top: var(--space-6);
+        background: var(--color-surface-2);
+        border: var(--border-hairline) solid var(--color-border);
+        border-inline-start: 3px solid var(--color-primary);
+        border-radius: var(--radius-md);
+        padding: var(--space-4) var(--space-5);
+        text-align: start;
+    }
+    .install h2 {
+        font-size: var(--text-sm); margin: 0 0 var(--space-3);
+        color: var(--color-text); font-weight: 700;
+    }
+    .install ol {
+        margin: 0; padding-inline-start: 20px; font-size: var(--text-sm);
+        color: var(--color-text); line-height: 1.9;
+    }
+    .install .note { margin: var(--space-3) 0 0; }
     .hidden { display: none !important; }
 </style>
 </head>

@@ -27,7 +27,7 @@
 // تبويبًا جديدًا بعد نشره. v3: أُزيل التحويل التلقائي من report.html (كان يُبطل تثبيت تطبيق المديرين على
 // iOS)، ويجب إبطال
 // الكاش القديم حتى لا يبقى من ثبّت التطبيق سابقًا على النسخة القديمة.
-const CACHE_VERSION = 'v36';
+const CACHE_VERSION = 'v37';
 const SHELL_CACHE = `alsheikha-shell-${CACHE_VERSION}`;
 const ASSET_CACHE = `alsheikha-assets-${CACHE_VERSION}`;
 
@@ -43,6 +43,10 @@ const SHELL_FILES = [
     './manifest-report.json',
     './manifest-admin.json',
     './manifest-balances.json',
+    // ورقة الهوية البصرية: تُخزَّن مع القشرة لا عند أول طلب، وإلا فُتحت الصفحة
+    // بلا أي تنسيق في أول تشغيل بلا شبكة. الخط نفسه من نطاق جوجل ويُخزَّن
+    // بقاعدة CACHEABLE_HOSTS، والنظام يستخدم خطه الاحتياطي لو تعذّر.
+    './brand/design-tokens.css',
     // أيقونة مميّزة لكل تطبيق. كانت الأربعة تتشارك icon-192.png فظهرت متشابهة
     // على شاشة الهاتف ولم يعرف المستخدم أيّها يفتح. الملفات القديمة تُركت في
     // المستودع لمن ثبّت التطبيق قبل التغيير، لكنها لم تبقَ مرجعًا لأي صفحة.
@@ -82,6 +86,9 @@ const CACHEABLE_HOSTS = [
     'www.gstatic.com',          // Firebase SDK v10.8.0
     'cdnjs.cloudflare.com',     // html2canvas, jspdf
     'cdn.jsdelivr.net',         // xlsx
+    // خط الهوية (IBM Plex Sans Arabic + Mono). بلا تخزينه تفتح الصفحة بلا شبكة
+    // بخط النظام، فتختلف أطوال الأسطر والعربية تحديدًا تبدو غريبة. الملفات
+    // ثابتة الإصدار فلا خطر من تخزينها طويلًا.
     'fonts.googleapis.com',
     'fonts.gstatic.com',
     'raw.githubusercontent.com' // شعارات وصور الخلفية
