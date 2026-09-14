@@ -1212,73 +1212,29 @@
     }
 
     // =====================================================================
-    // انصراف تلقائي بعد 16 ساعة — يُحتسب يومًا عاديًا 10 ساعات (قرار الإدارة)
+    // ⛔ الخروج التلقائي أُلغي بالكامل — وكان ثغرة سرقة حقيقية
     // ---------------------------------------------------------------------
-    // من ينسى الانصراف كان يبقى «داخل الدوام» إلى الأبد: لا يستطيع تسجيل
-    // دخول جديد، وحين ينصرف أخيرًا تُسجَّل الفجوة كلها ورديةً واحدة هائلة في
-    // يوم دخوله.
+    // ما كان هنا: إن مرّت 16 ساعة على الدخول بلا انصراف، تُغلق الوردية
+    // تلقائيًا وتُحتسب **يومًا عاديًا 10 ساعات**.
     //
-    // رقمان مختلفان عن قصد:
-    //  • 16 ساعة = **مَتى** يُغلق النظام الوردية (المُشغِّل).
-    //  • 10 ساعات = **كم** تُحتسب (يوم عادي). النسيان لا يُكافأ بأوفرتايم:
-    //    10 ساعات هي الدوام القياسي بالضبط، فالفائض صفر ولا أوفرتايم.
+    // الثغرة التي أُبلغ عنها وجُرِّبت: الموظف يسجّل دخولًا، ثم **يقدّم ساعة
+    // هاتفه وتاريخه**، ثم يضغط انصرافًا. القرار كان يُقاس بـ Date.now() —
+    // أي بساعة الهاتف — فيرى النظام أن 16 ساعة مضت، فيُغلق الوردية ويمنح
+    // صاحبها **10 ساعات كاملة** لم يعملها، ثم يسمح له بدخول جديد. عشر ساعات
+    // مدفوعة من تغيير ساعة، وهذا وقع فعلًا (بلال عبد الصمد 2026-09-15).
     //
-    // ووقت الانصراف يُكتب على الدخول + 10 ساعات لا + 16، حتى يكون المستند
-    // متّسقًا مع نفسه: الفرق بين الدخول والخروج يساوي المدة المحتسبة. ولو
-    // كُتب على +16 مع احتساب 10 لَحسبت اللوحة نسبة الساعات الليلية على نافذة
-    // 16 ساعة بينما الدقائق 600 — رقمان متناقضان في مستند واحد.
+    // لا يمكن إصلاحه هنا: أي «الآن» على جهاز الموظف هو ساعة الموظف. ولا
+    // يستطيع الكشك سؤال الخادم عن الوقت (القواعد تمنحه إنشاءً فقط، بلا
+    // كتابة على مستند اختبار). فالقرار انتقل بالكامل إلى اللوحة، حيث يُقاس
+    // بساعة الخادم وحدها (cancelStaleShifts).
     //
-    // وبما أن الإغلاق لا يقع إلا بعد 16 ساعة، فوقت الانصراف (+10) يسبق
-    // اللحظة الحالية بست ساعات على الأقل، فلا يمكن أن يأتي بعد تسجيل جديد
-    // فيختل ترتيب السجلات.
+    // وقرار الإدارة الجديد: من ينسى الانصراف **لا يُمنح ساعات**. تُلغى
+    // ورديته بعد 15 ساعة وتُحتسب يوم غياب. فلا يبقى للتلاعب بالساعة أي
+    // مكسب: أقصى ما يجلبه تغيير الساعة الآن هو إلغاء يوم صاحبه.
     //
-    // والمعرّف مشتق من مستند الدخول (`auto_<id>`) لا عشوائي: لو أُغلقت من
-    // جهازين معًا كُتب نفس المستند ولم يتكرّر انصرافان — وتكرارهما كان
-    // سيُضاعف الساعات في الرواتب.
-    // autoCheckOut: true يميّزه في اللوحة فلا يُقرأ كأن الموظف انصرف بنفسه.
+    // ولا يبقى الموظف محجوزًا: زرّ الانصراف مفتوح له دائمًا، ومدّة ورديته
+    // تُحسب من ساعة الخادم لا من هاتفه.
     // =====================================================================
-    const AUTO_CHECKOUT_AFTER_HOURS = 16;    // المُشغِّل: بعد كم ساعة يُغلق
-    const AUTO_CHECKOUT_CREDITED_HOURS = 10; // المحتسب: يوم عادي
-
-    async function autoCloseStaleCheckIn(last, empId, empName, empBranch) {
-        if (!last || last.type !== 'Check-In' || !last.when) return false;
-        const ageHours = (Date.now() - last.when.getTime()) / 3600000;
-        if (ageHours < AUTO_CHECKOUT_AFTER_HOURS) return false;
-
-        const autoId = `auto_${last.id}`;
-        try {
-            // لو أغلقها جهاز آخر أو المشرف قبل قليل فلا نكتب شيئًا. والكتابة
-            // فوق مستند قائم ممنوعة على هذه الصفحة بالقواعد أصلًا (إنشاء فقط).
-            const existing = await getDoc(doc(db, "attendance", autoId));
-            if (existing.exists()) return true;
-
-            const outAt = new Date(last.when.getTime() + AUTO_CHECKOUT_CREDITED_HOURS * 3600000);
-            const mins = AUTO_CHECKOUT_CREDITED_HOURS * 60;
-            await setDoc(doc(db, "attendance", autoId), {
-                employeeId: empId,
-                employeeName: empName,
-                branch: empBranch,
-                type: 'Check-Out',
-                timestamp: outAt,
-                // لا serverTimestamp هنا: هذا انصراف **مُحتسب** لحظةً ماضية
-                // (الدخول + 10 ساعات)، ووقت الخادم الآن ليس وقته. ولو كُتب
-                // لَاعتبرته اللوحة المرجع فانتقلت الوردية إلى يوم الاكتشاف.
-                date: formatDateEnglish(outAt),
-                time: formatTimeEnglish(outAt),
-                deviceTz: deviceTimeZoneName(),
-                duration: `${AUTO_CHECKOUT_CREDITED_HOURS}h 0m`,
-                workMinutes: mins,
-                autoCheckOut: true,
-                autoReason: `No Check-Out was recorded within ${AUTO_CHECKOUT_AFTER_HOURS} hours of the Check-In on ${last.date || '-'} — counted as a normal ${AUTO_CHECKOUT_CREDITED_HOURS}-hour day`,
-                linkedCheckInId: last.id,
-                location: null
-            });
-            return true;
-        } catch (e) {
-            console.error("Auto check-out failed:", e);
-            return false; // نُكمل: لا نمنع الموظف من عمله بسبب فشل إغلاق قديم
-        }
-    }
 
     // ---- Duplicate-submit guard --------------------------------------------
     // Bug fixed: on a touchscreen, a double/triple-tap (or a slow GPS lookup
@@ -1295,8 +1251,6 @@
     // write), and both buttons are visibly disabled for the same window so
     // there's no confusing "nothing happened, let me tap again" moment.
     let isProcessingAttendance = false;
-    // يُرفع عند إغلاق وردية قديمة تلقائيًا، ليُذكر ذلك في رسالة النجاح.
-    let autoClosedNotice = false;
     function setAttendanceButtonsDisabled(disabled) {
         ['btnCheckIn', 'btnCheckOut', 'btnSplit'].forEach(id => {
             const b = document.getElementById(id); if (b) b.disabled = disabled;
@@ -1312,7 +1266,6 @@
         if (isProcessingAttendance) return; // ignore duplicate taps entirely
         const type = (action === 'Split') ? 'Check-Out' : action;
         const isSplit = (action === 'Split');
-        autoClosedNotice = false;   // لا تُنقل ملاحظة من محاولة سابقة
         const empId = document.getElementById('employeeSelect').value;
         const pinInput = document.getElementById('pinInput').value.trim();
 
@@ -1352,19 +1305,13 @@
         let last = await getLastAttendanceRecord(empId);
         let lastType = last ? last.type : null;
 
-        // وردية مفتوحة أكثر من 16 ساعة تُغلق تلقائيًا قبل أي شيء، فلا يبقى
-        // الموظف محجوزًا خارج النظام بسبب نسيانه انصرافًا قديمًا.
-        if (lastType === 'Check-In') {
-            const closed = await autoCloseStaleCheckIn(
-                last, empId, emp0 ? emp0.name : empId, emp0 ? emp0.branch : "");
-            if (closed) {
-                lastType = 'Check-Out';   // صار منصرفًا بالإغلاق التلقائي
-                autoClosedNotice = true;
-            }
-        }
+        // ⛔ لا إغلاق تلقائي هنا بعد اليوم. كان هذا الموضع بالضبط هو الثغرة:
+        // تقديم ساعة الهاتف كان يجعل النظام «يُغلق» الوردية ويمنح 10 ساعات
+        // ثم يفتح الباب لدخول جديد. الآن التبديل الصارم وحده هو الحاكم، وأي
+        // وردية منسيّة تُلغيها اللوحة بساعة الخادم لا بساعة أحد.
 
         if (type === 'Check-In' && lastType === 'Check-In') {
-            showStatus("You are already checked in. Please Check-Out first before checking in again.", "error");
+            showStatus("You are still checked in from an earlier shift. Press Check-Out first — you cannot check in twice.", "error");
             isProcessingAttendance = false;
             setAttendanceButtonsDisabled(false);
             return;
@@ -1512,11 +1459,6 @@
                             successMessage += ` (Work Duration: ${durationStr})`;
                         }
                     }
-                    if (autoClosedNotice) {
-                        successMessage += ` Note: an earlier shift of yours had no Check-Out. After ${AUTO_CHECKOUT_AFTER_HOURS} hours it was closed automatically and counted as a normal ${AUTO_CHECKOUT_CREDITED_HOURS}-hour day.`;
-                        autoClosedNotice = false;
-                    }
-
                     showStatus(successMessage, "success");
                     document.getElementById('pinInput').value = '';
                 } catch (error) {

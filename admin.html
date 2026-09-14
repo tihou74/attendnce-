@@ -592,6 +592,18 @@
             </div>
         </div>
 
+        <!-- ⛔ أيام أُلغيت لعدم تسجيل خروج: صفر ساعة + يوم غياب -->
+        <div class="card" id="cancelledDaysCard" style="display: none; border-left: 4px solid var(--danger);">
+            <h3><span data-icon="alertTriangle"></span> Days cancelled — no Check-Out <span id="cancelledDaysCount" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
+            <p class="card-sub">A shift with no Check-Out for more than <b>15 hours</b> is <b>cancelled</b>: it pays <b>zero hours</b> and counts as <b>one day of absence</b> in the payroll below. <b dir="rtl">ملغي أوتوماتيكيًا لعدم تسجيل خروج</b>. The old automatic check-out that credited a 10-hour day is gone — it could be triggered by changing a phone's clock, so any old record it created is shown here as cancelled too and no longer pays anything.</p>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Employee</th><th>Branch</th><th>Day</th><th>Checked in</th><th>Reason</th></tr></thead>
+                    <tbody id="cancelledDaysBody"></tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- ⭐ ورديات ادّعى فيها الجهاز مدةً غير الحقيقية -->
         <div class="card" id="tamperCard" style="display: none; border-left: 4px solid var(--danger);">
             <h3><span data-icon="alertTriangle"></span> A device claimed a longer shift than it worked <span id="tamperCount" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
@@ -620,9 +632,9 @@
              شهر سابق تُفسد حساب الشهرين معًا وتمنع الموظف من تسجيل دخول جديد. -->
         <div class="card" id="openShiftsCard" style="display: none; border-left: 4px solid var(--warning);">
             <h3><span data-icon="alertTriangle"></span> Shifts still open (a Check-In with no Check-Out) <span id="openShiftsCount" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
-            <p class="card-sub">A Check-In with no Check-Out is closed <b>automatically after 16 hours</b> and counted as a <b>normal 10-hour day</b> — a forgotten Check-Out never earns overtime. It is marked <b>AUTO CHECK-OUT</b> in the attendance logs. This list shows anything still open, which is usually a shift in progress right now; if one has passed 16 hours and is still here, press the button to close it immediately.</p>
+            <p class="card-sub">A Check-In with no Check-Out for more than <b>15 hours</b> is <b>cancelled</b> — it pays <b>zero hours</b> and counts as <b>one day of absence</b>. It is marked <b>CANCELLED — no Check-Out</b> in the attendance logs. Automatic check-out that credited a 10-hour day has been <b>removed completely</b>: it could be triggered by changing a phone's clock. The 15 hours are measured on the <b>Firebase server clock</b>, never on a phone. This list shows anything still open, which is usually a shift in progress right now.</p>
             <div class="controls" style="margin-bottom: 12px;">
-                <button class="btn-warning btn-sm" onclick="autoCloseStaleShifts(false)"><span data-icon="clock"></span> Close everything past 16 hours now (as 10-hour days)</button>
+                <button class="btn-warning btn-sm" onclick="cancelStaleShifts(false)"><span data-icon="clock"></span> Cancel everything past 15 hours now (zero hours + absence)</button>
             </div>
             <div class="table-container">
                 <table>
@@ -3267,9 +3279,15 @@
     }
     // يستقبل الجلسات مبنيةً مسبقًا (لا سجلات خام) حتى يكون «يوم العمل» هو
     // تاريخ بداية الوردية دائمًا، ولا تُبنى الجلسات مرتين بلا داعٍ.
+    // ⚠️ اليوم الملغى ليس يوم عمل — وهذا هو ما يجعله «يوم غياب» فعلًا.
+    // القرار: وردية بلا انصراف بعد 15 ساعة تُلغى وتُحتسب غيابًا. لا يحتاج ذلك
+    // آلية جديدة: يكفي أن يسقط اليوم من هنا، فيراه محرّك الغياب يوم راحة غير
+    // مستحق ويخصمه.
+    // لكن اليوم الذي فيه وردية ملغاة **وأخرى حقيقية** يبقى يوم عمل: نستبعد
+    // الجلسة الملغاة لا التاريخ. لهذا الشرط على الجلسة لا على `set`.
     function getWorkedDateSet(sessions) {
         const set = new Set();
-        sessions.forEach(s => { if (s.date) set.add(s.date); });
+        sessions.forEach(s => { if (s.date && !s.cancelled) set.add(s.date); });
         return set;
     }
     // ⚠️ `!d.isOtherAmount` ضرورية — كانت غائبة وهذا كان خطأً حقيقيًا:
@@ -3939,6 +3957,34 @@
         paintIcons(card);
     }
 
+    /**
+     * الأيام الملغاة — صفر ساعة ويوم غياب لكل واحدة.
+     * تُعرض صريحةً لأن الإلغاء قرار مالي ثقيل (يوم كامل من الراتب)، فلا يجوز
+     * أن يحدث في صمت داخل جدول طويل. من هنا يراها المالك مجموعة ويعترض إن
+     * كان أحدها خطأً.
+     */
+    function renderCancelledDays() {
+        const card = document.getElementById('cancelledDaysCard');
+        const body = document.getElementById('cancelledDaysBody');
+        if (!card || !body) return;
+        const rows = buildSessions(allAttendance || [])
+            .filter(s => s.cancelled)
+            .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+        if (!rows.length) { card.style.display = 'none'; return; }
+        card.style.display = 'block';
+        const badge = document.getElementById('cancelledDaysCount');
+        if (badge) { badge.innerText = rows.length; badge.style.display = 'inline-block'; }
+        body.innerHTML = rows.map(s => `
+            <tr style="background: rgba(220,38,38,0.07);">
+                <td><b>${escapeHtml(s.employeeName || s.employeeId || '—')}</b></td>
+                <td>${escapeHtml(s.branch || '—')}</td>
+                <td><b>${escapeHtml(s.date || '—')}</b></td>
+                <td>${s.checkIn ? escapeHtml(logQatarTime(s.checkIn)) : '—'}</td>
+                <td style="font-size: 12.5px; color: var(--text-dim);" dir="auto">${escapeHtml(s.cancelReason || CANCEL_REASON_AR)}</td>
+            </tr>`).join('');
+        paintIcons(card);
+    }
+
     /** ورديات ادّعى فيها الجهاز مدةً تختلف عن الحقيقة بساعة الخادم. */
     function renderTamperAlert() {
         const card = document.getElementById('tamperCard');
@@ -3982,52 +4028,100 @@
         paintIcons(card);
     }
 
-    // قرار الإدارة: وردية بلا انصراف تُغلق تلقائيًا بعد 16 ساعة، وتُحتسب
-    // **يومًا عاديًا 10 ساعات** لا 16 — فالنسيان لا يُنتج أوفرتايم.
-    // 10 ساعات = STANDARD_DAILY_HOURS بالضبط، فالفائض صفر ولا أوفرتايم.
-    // الرقمان نفسهما مكتوبان في index.html — أي تغيير يجب أن يكون في الملفين.
-    const AUTO_CHECKOUT_AFTER_HOURS = 16;                            // المُشغِّل
-    const AUTO_CHECKOUT_CREDITED_HOURS = STANDARD_DAILY_HOURS;       // المحتسب = 10
-    const OPEN_SHIFT_ALERT_HOURS = AUTO_CHECKOUT_AFTER_HOURS;
+    // =====================================================================
+    // إلغاء اليوم بعد 15 ساعة — بديل الخروج التلقائي الذي أُلغي
+    // ---------------------------------------------------------------------
+    // ما كان: بعد 16 ساعة يُغلق النظام الوردية ويحتسبها **يومًا عاديًا 10
+    // ساعات**. وكان الكشك ينفّذ ذلك أيضًا بساعة الهاتف — فمن قدّم ساعته
+    // حصل على 10 ساعات لم يعملها ثم سُمح له بدخول جديد. وقع فعلًا.
+    //
+    // القرار الجديد: من ينسى الانصراف **لا يُمنح شيئًا**. بعد 15 ساعة تُلغى
+    // الوردية: صفر دقيقة، ووسم «ملغي أوتوماتيكيًا لعدم تسجيل خروج»،
+    // ويُحتسب **يوم غياب** (لأن اليوم يسقط من مجموعة أيام العمل، فيصير يوم
+    // راحة غير مستحق، ومحرّك الغياب يخصمه — بلا آلية جديدة).
+    //
+    // ولذلك زال الدافع للتلاعب بالساعة: لا يوجد ما يُكسب.
+    // =====================================================================
+    const SHIFT_CANCEL_AFTER_HOURS = 15;
+    const OPEN_SHIFT_ALERT_HOURS = SHIFT_CANCEL_AFTER_HOURS;
+    const CANCEL_REASON_AR = 'ملغي أوتوماتيكيًا لعدم تسجيل خروج';
+    const CANCEL_REASON_EN = 'Cancelled automatically — no Check-Out was recorded';
 
     /**
-     * يُغلق كل وردية مفتوحة تجاوزت 16 ساعة.
-     * ينفّذه الكشك أيضًا عند أول تفاعل للموظف، لكن من لا يعود إلى العمل لا
-     * يُغلقها أحد — فتُغلق من هنا عند فتح اللوحة.
-     *
-     * المعرّف مشتق من مستند الدخول (`auto_<id>`) لا عشوائي: لو أغلقها الكشك
-     * واللوحة معًا كُتب نفس المستند، ولم يُسجَّل انصرافان يُضاعفان 16 ساعة.
-     * ووقت الانصراف هو الدخول + 16 ساعة لا وقت الاكتشاف، فتبقى الوردية في
-     * يومها الصحيح مهما تأخّر الاكتشاف.
-     *
-     * القواعد تسمح بإنشاء سجل حضور للمالك والكشك فقط، فلا يُستدعى لغيرهما.
+     * «الآن» بساعة الخادم، لا بساعة هذا الجهاز.
+     * ⚠️ هذا جوهر الإصلاح: الحساب القديم كان `Date.now()`، وأي ساعة جهاز
+     * قابلة للتغيير. نكتب طابع خادم على مستند واحد ثابت ونقرأه، فنعرف الوقت
+     * الحقيقي. وإن فشل (بلا شبكة) نُعيد null ولا نُلغي شيئًا — الامتناع أسلم
+     * من إلغاء يوم عمل حقيقي بناءً على ساعة مغلوطة.
      */
-    // مرة واحدة لكل فتح للصفحة: الإغلاق التلقائي يُعيد تحميل السجلات، وهو
-    // يُنادى من داخل تحميلها — فبلا هذا الحارس لَدارت الحلقة بلا نهاية.
+    async function serverNowMs() {
+        try {
+            const ref = doc(db, "settings", "serverClockProbe");
+            await setDoc(ref, { probedAt: serverTimestamp() }, { merge: true });
+            const snap = await getDoc(ref);
+            const d = tsFieldToDate(snap.exists() ? snap.data().probedAt : null);
+            return d ? d.getTime() : null;
+        } catch (e) {
+            console.error("Server clock probe failed:", e);
+            return null;
+        }
+    }
+
+    /**
+     * لحظة بداية الوردية بساعة الخادم. إن لم تحمل طابع خادم (سجل قديم) نُعيد
+     * null فلا تُلغى — لا نُصدر حكمًا بالغياب اعتمادًا على ساعة هاتف.
+     */
+    function serverStartMs(ci) {
+        const d = tsFieldToDate(ci && ci.serverTime);
+        return d ? d.getTime() : null;
+    }
+
+    // مرة واحدة لكل فتح للصفحة: الإلغاء يُعيد تحميل السجلات، وهو يُنادى من
+    // داخل تحميلها — فبلا هذا الحارس لَدارت الحلقة بلا نهاية.
     let autoCloseRan = false;
     function maybeAutoCloseOnce() {
         if (autoCloseRan) return;
         autoCloseRan = true;
         if (currentRole !== ROLE_ADMIN) return;
-        window.autoCloseStaleShifts(true).catch(e => console.error(e));
+        window.cancelStaleShifts(true).catch(e => console.error(e));
     }
 
-    window.autoCloseStaleShifts = async function(silent) {
+    window.cancelStaleShifts = async function(silent) {
         if (currentRole !== ROLE_ADMIN) return 0;
-        const nowMs = Date.now();
-        const stale = buildSessions(allAttendance || [])
-            .filter(s => s.checkIn && !s.checkOut && s.checkIn.id)
-            .filter(s => (nowMs - tsToMillis(s.checkIn)) / 3600000 >= AUTO_CHECKOUT_AFTER_HOURS);
-        if (!stale.length) return 0;
+        const nowMs = await serverNowMs();
+        if (nowMs === null) {
+            if (!silent) alert("Could not read the server clock, so nothing was cancelled.\n\nThis is deliberate: cancelling a day costs an employee a full day's pay, and that decision is never made on a device clock. Check the internet connection and try again.");
+            return 0;
+        }
 
-        let closed = 0;
+        const open = buildSessions(allAttendance || [])
+            .filter(s => s.checkIn && !s.checkOut && s.checkIn.id);
+        // بلا طابع خادم على الدخول لا يُلغى شيء — نُبلّغ ولا نحكم.
+        const unjudgeable = open.filter(s => serverStartMs(s.checkIn) === null);
+        const stale = open.filter(s => {
+            const st = serverStartMs(s.checkIn);
+            return st !== null && (nowMs - st) / 3600000 >= SHIFT_CANCEL_AFTER_HOURS;
+        });
+        if (!stale.length) {
+            if (!silent) {
+                alert(unjudgeable.length
+                    ? `Nothing passed ${SHIFT_CANCEL_AFTER_HOURS} hours on the server clock.\n\nNote: ${unjudgeable.length} open shift(s) carry no server time, so they cannot be judged and were left untouched. Those came from a device running an old cached copy of the app — have that branch close the attendance app and open it again.`
+                    : `No open shift has passed ${SHIFT_CANCEL_AFTER_HOURS} hours on the server clock. Nothing to cancel.`);
+            }
+            return 0;
+        }
+
+        let cancelled = 0;
         for (const s of stale) {
-            const autoId = `auto_${s.checkIn.id}`;
+            // المعرّف مشتق من مستند الدخول لا عشوائي: لو نُفِّذ مرتين كُتب نفس
+            // المستند ولم يُسجَّل انصرافان.
+            const cancelId = `cancel_${s.checkIn.id}`;
             try {
-                // الدخول + 10 ساعات (المحتسب) لا + 16 (المُشغِّل): المستند
-                // يجب أن يكون متّسقًا، فالفرق بين وقتَيه يساوي مدته المحتسبة.
-                const outAt = new Date(tsToMillis(s.checkIn) + AUTO_CHECKOUT_CREDITED_HOURS * 3600000);
-                await setDoc(doc(db, "attendance", autoId), {
+                // وقت الانصراف = بداية الوردية نفسها. ليس اختراعًا لساعات:
+                // الوردية ملغاة وقيمتها صفر، ووضعُ الوقت على البداية يُبقي
+                // المستند متّسقًا (الفرق بين وقتَيه صفر = مدته صفر).
+                const outAt = new Date(serverStartMs(s.checkIn));
+                await setDoc(doc(db, "attendance", cancelId), {
                     employeeId: s.employeeId,
                     employeeName: s.employeeName || '',
                     branch: s.branch || '',
@@ -4035,33 +4129,39 @@
                     timestamp: outAt,
                     date: qatarDateISO(outAt),
                     time: timeLabelFromDate(outAt),
-                    duration: `${AUTO_CHECKOUT_CREDITED_HOURS}h 0m`,
-                    workMinutes: AUTO_CHECKOUT_CREDITED_HOURS * 60,
-                    autoCheckOut: true,
-                    autoReason: `No Check-Out was recorded within ${AUTO_CHECKOUT_AFTER_HOURS} hours of the Check-In on ${s.checkIn.date || '-'} — counted as a normal ${AUTO_CHECKOUT_CREDITED_HOURS}-hour day`,
+                    duration: 'CANCELLED',
+                    workMinutes: 0,
+                    // ⚠️ بلا serverTime: هذه لحظة ماضية (بداية الوردية) لا
+                    // «الآن»، ولو كُتب طابع خادم لانتقلت الوردية إلى يوم
+                    // الاكتشاف وحُسبت مدتها 15 ساعة بدل صفر.
+                    cancelledNoCheckout: true,
+                    cancelReason: `${CANCEL_REASON_AR} — ${CANCEL_REASON_EN} within ${SHIFT_CANCEL_AFTER_HOURS} hours of the Check-In on ${logQatarDate(s.checkIn) || '-'}. Zero hours paid, counted as one day of absence.`,
                     linkedCheckInId: s.checkIn.id,
                     location: null
                 });
-                closed++;
-                logAudit("Automatic Check-Out",
-                    `${s.employeeName || s.employeeId} — Check-In ${logQatarDate(s.checkIn) || '-'} ${logQatarTime(s.checkIn)} had no Check-Out after ${AUTO_CHECKOUT_AFTER_HOURS}h, counted as a normal ${AUTO_CHECKOUT_CREDITED_HOURS}-hour day`);
+                cancelled++;
+                logAudit("Shift cancelled — no Check-Out",
+                    `${s.employeeName || s.employeeId} — Check-In ${logQatarDate(s.checkIn) || '-'} ${logQatarTime(s.checkIn)} had no Check-Out after ${SHIFT_CANCEL_AFTER_HOURS}h on the server clock. ${CANCEL_REASON_AR}. Zero hours, counted as one day of absence.`);
             } catch (e) {
-                console.error("Automatic check-out failed for", autoId, e);
+                console.error("Cancelling the shift failed for", cancelId, e);
             }
         }
-        if (closed) {
+        if (cancelled) {
             await loadAttendanceLogs();
             if (!silent) {
-                alert(`${closed} shift(s) had no Check-Out after ${AUTO_CHECKOUT_AFTER_HOURS} hours and were closed automatically.\n\nEach one is counted as a normal ${AUTO_CHECKOUT_CREDITED_HOURS}-hour day, so no overtime is paid for a forgotten Check-Out.`);
+                alert(`${cancelled} shift(s) had no Check-Out after ${SHIFT_CANCEL_AFTER_HOURS} hours on the server clock and were CANCELLED.\n\n${CANCEL_REASON_AR}\n\nEach one pays zero hours and counts as one day of absence. No hours are ever credited for a forgotten Check-Out — that is what made changing a phone's clock profitable, and it is gone.`);
             }
         }
-        return closed;
+        return cancelled;
     };
     function renderOpenShifts() {
         const card = document.getElementById('openShiftsCard');
         const body = document.getElementById('openShiftsBody');
         if (!card || !body) return;
         const nowMs = Date.now();
+        // العرض فقط، والقرار في مكان آخر: `hours` هنا تقريب لساعة هذا الجهاز
+        // ليرى المشرف «مفتوحة منذ كم». الإلغاء الفعلي في cancelStaleShifts
+        // ويُقاس بساعة الخادم وحدها — فلا يعتمد أي حكم مالي على هذا الرقم.
         const open = buildSessions(allAttendance || [])
             .filter(s => s.checkIn && !s.checkOut)
             .map(s => ({ s, hours: (nowMs - tsToMillis(s.checkIn)) / 3600000 }))
@@ -4271,6 +4371,33 @@
                 durationLabel = `${Math.floor(real / 60)}h ${real % 60}m`;
             }
 
+            // =============================================================
+            // ⛔ يوم ملغى = صفر ساعة + يوم غياب
+            // -------------------------------------------------------------
+            // ثلاث حالات تُلغي الوردية:
+            //  1) `cancelledNoCheckout` — ألغتها اللوحة بعد 15 ساعة بلا انصراف.
+            //  2) `autoCheckOut` — سجلات الخروج التلقائي **القديمة**. تلك كانت
+            //     تمنح 10 ساعات لم تُعمل، وهي الثغرة نفسها التي استُغلّت. لا
+            //     نُبقيها مدفوعة: تُعامَل بالقرار الجديد فتصير صفرًا.
+            //  3) وردية أغلقها صاحبها بنفسه لكن مدّتها الحقيقية (بساعة الخادم)
+            //     15 ساعة أو أكثر — نسيان انصراف ثم انصراف متأخر، وهو نفس
+            //     الحالة التي وضعت الإدارة لها هذه القاعدة.
+            // في كل الحالات: صفر دقيقة. اليوم يسقط من أيام العمل في
+            // getWorkedDateSet فيصير يوم راحة غير مستحق، ومحرّك الغياب يخصمه.
+            // =============================================================
+            const cancelledFlag = !!(co && (co.cancelledNoCheckout || co.autoCheckOut));
+            const tooLong = durationTrusted && workMinutes >= SHIFT_CANCEL_AFTER_HOURS * 60;
+            const cancelled = cancelledFlag || tooLong;
+            let cancelReason = '';
+            if (cancelled) {
+                cancelReason = (co && co.cancelReason)
+                    || (co && co.autoReason ? `${CANCEL_REASON_AR} — ${co.autoReason}` : '')
+                    || `${CANCEL_REASON_AR} — ${CANCEL_REASON_EN}`
+                        + (tooLong ? ` (the shift ran ${Math.floor(workMinutes / 60)}h on the server clock, past the ${SHIFT_CANCEL_AFTER_HOURS}h limit)` : '');
+                workMinutes = 0;
+                durationLabel = 'CANCELLED';
+            }
+
             // عبور منتصف الليل يُقاس بتاريخَي قطر الموثوقين لا بالنصّين المخزَّنين
             const dIn = ci ? logQatarDate(ci) : '';
             const dOut = co ? logQatarDate(co) : '';
@@ -4289,6 +4416,9 @@
                 deviceClaimedMinutes,
                 tamperMinutes,
                 durationTrusted,
+                // يوم ملغى: صفر ساعة، ولا يُحتسب يوم عمل (فيصير يوم غياب)
+                cancelled,
+                cancelReason,
                 // وقتُ كل طرف: من الخادم أم من الجهاز؟ يُعرض صريحًا في الجدول.
                 inTimeIsServer: logTimeIsServer(ci),
                 outTimeIsServer: logTimeIsServer(co),
@@ -4357,6 +4487,7 @@
             renderClockSkewAlert();
             renderTamperAlert();
             renderServerTimeDiagnostic();
+            renderCancelledDays();
             maybeAutoCloseOnce();
         } catch (error) {
             try {
@@ -4368,8 +4499,9 @@
                 renderOpenShifts();
                 renderMonthArchive();
                 renderClockSkewAlert();
-            renderTamperAlert();
-            renderServerTimeDiagnostic();
+                renderTamperAlert();
+                renderServerTimeDiagnostic();
+                renderCancelledDays();
                 maybeAutoCloseOnce();
             } catch (err) {
                 console.error(err);
@@ -4444,7 +4576,7 @@
             const multi = g.parts.length > 1;
             const dayTotalMins = g.parts.reduce((a, p) => a + (Number(p.workMinutes) || 0), 0);
             const anySplit = g.parts.some(p => p.checkOut && p.checkOut.splitBreak);
-            const anyAuto = g.parts.some(p => p.checkOut && p.checkOut.autoCheckOut);
+            const cancelledParts = g.parts.filter(p => p.cancelled);
             const anyOpen = g.parts.some(p => !p.checkOut);
 
             // ---- سطر واحد لليوم المقسوم -----------------------------------
@@ -4459,7 +4591,7 @@
                     let t = escapeHtml(logQatarTime(p.checkOut)) + deviceTimeMark(p.outTimeIsServer);
                     if (p.crossesMidnight) t += ` <span title="انتهت بعد منتصف الليل في اليوم التالي / ended after midnight, next day" style="color: var(--accent); font-size: 11px; font-weight: 700;">+1d</span>`;
                     if (p.checkOut.splitBreak) t += ` <span title="Split Break — غادر بين فترتَي دوامه وعاد في نفس اليوم" style="color: #6366f1; font-size: 11px; font-weight: 800;">split</span>`;
-                    if (p.checkOut.autoCheckOut) t += ` <span title="${escapeHtml(p.checkOut.autoReason || 'Closed automatically')}" style="color: var(--warning); font-size: 11px; font-weight: 800;">auto</span>`;
+                    if (p.cancelled) t += ` <span title="${escapeHtml(p.cancelReason || CANCEL_REASON_EN)}" style="color: var(--danger); font-size: 11px; font-weight: 800;">cancelled</span>`;
                     return t;
                 }).join(sep);
 
@@ -4474,7 +4606,7 @@
                         ? 'Split shift — one working day made of ' + g.parts.length + ' parts. Overtime and absence are calculated on this combined total.'
                         : g.parts.length + ' separate shifts on the same day. Overtime and absence are calculated on this combined total.'}" style="color: #6366f1; font-size: 11px; font-weight: 800; white-space: nowrap;">${escapeHtml(tagText)}</span>`
                     + (anyOpen ? ` <span title="One part has no Check-Out yet, so it adds no minutes" style="color: var(--warning); font-size: 11px; font-weight: 800; white-space: nowrap;">1 still open</span>` : '')
-                    + (anyAuto ? ` <span style="color: var(--warning); font-size: 11px; font-weight: 800; white-space: nowrap;">auto ${AUTO_CHECKOUT_CREDITED_HOURS}h</span>` : '');
+                    + (cancelledParts.length ? ` <span title="${escapeHtml(cancelledParts[0].cancelReason || CANCEL_REASON_EN)}" style="color: var(--danger); font-size: 11px; font-weight: 800; white-space: nowrap;">${cancelledParts.length} CANCELLED · 0h</span>` : '');
 
                 const lat0 = g.parts[0].checkIn?.location?.latitude || g.parts[0].checkOut?.location?.latitude;
                 const lng0 = g.parts[0].checkIn?.location?.longitude || g.parts[0].checkOut?.location?.longitude;
@@ -4521,17 +4653,17 @@
                 : '';
             // فترة واحدة في اليوم. الوسوم بجانب المدة على نفس السطر لا تحتها.
             const isSplit = !!(s.checkOut && s.checkOut.splitBreak);
-            const isAuto = !!(s.checkOut && s.checkOut.autoCheckOut);
             // سبليت بفترة واحدة فقط = غادر ولم يعد بعد. نقولها صريحًا بدل أن
             // نعرض «مجموع اليوم» ونحن نعرف أن اليوم لم يكتمل.
             const splitTag = isSplit
                 ? ` <span title="Split Break — the employee left between two shifts on the same day and has not come back yet. When they Check-In again this becomes one line with the day's total." style="color: #6366f1; font-size: 11px; font-weight: 800; white-space: nowrap;">SPLIT · not back yet</span>`
                 : '';
-            const autoTag = isAuto
-                ? ` <span title="${escapeHtml(s.checkOut.autoReason || 'Closed automatically')}" style="color: var(--warning); font-size: 11px; font-weight: 800; white-space: nowrap;">AUTO ${AUTO_CHECKOUT_CREDITED_HOURS}h day</span>`
+            // وسم الإلغاء بالأحمر وبنصّه العربي: هذا اليوم لا يُدفع ويُحتسب غيابًا.
+            const cancelTag = s.cancelled
+                ? ` <span title="${escapeHtml(s.cancelReason || CANCEL_REASON_EN)}" style="color: var(--danger); font-size: 11px; font-weight: 800; white-space: nowrap;">CANCELLED · 0h · absence — ${escapeHtml(CANCEL_REASON_AR)}</span>`
                 : '';
             const durationHtml = s.checkOut
-                ? `<span class="duration-pill">${escapeHtml(s.durationLabel)}</span>${shortWarn}${splitTag}${autoTag}`
+                ? `<span class="duration-pill"${s.cancelled ? ' style="background: rgba(220,38,38,0.15); color: var(--danger); text-decoration: line-through;"' : ''}>${escapeHtml(s.durationLabel)}</span>${s.cancelled ? '' : shortWarn}${splitTag}${cancelTag}`
                 : `<span class="duration-pill open">Open</span>`;
             const lat = s.checkIn?.location?.latitude || s.checkOut?.location?.latitude;
             const lng = s.checkIn?.location?.longitude || s.checkOut?.location?.longitude;
@@ -4595,7 +4727,7 @@
         return groups.map(g => {
             const mins = g.parts.reduce((a, p) => a + (Number(p.workMinutes) || 0), 0);
             const anySplit = g.parts.some(p => p.checkOut && p.checkOut.splitBreak);
-            const anyAuto = g.parts.some(p => p.checkOut && p.checkOut.autoCheckOut);
+            const cancelledCount = g.parts.filter(p => p.cancelled).length;
             const anyOpen = g.parts.some(p => !p.checkOut);
             return {
                 "Employee": g.employeeName || 'Unknown',
@@ -4606,7 +4738,10 @@
                 "Day Total": `${Math.floor(mins / 60)}h ${mins % 60}m`,
                 "Day Total (minutes)": mins,
                 "Split Shift": anySplit ? 'Yes' : '',
-                "Auto Check-Out": anyAuto ? 'Yes' : '',
+                // الملف يجب أن يقول صريحًا أن اليوم ملغى وسببه، وإلا قرأ من
+                // يفتح الإكسل «0h 0m» ولم يعرف أنه غياب مقصود لا بيانات ناقصة.
+                "Cancelled": cancelledCount ? 'Yes' : '',
+                "Cancel reason": cancelledCount ? `${CANCEL_REASON_AR} — ${CANCEL_REASON_EN} (0 hours, counted as absence)` : '',
                 "Still Open": anyOpen ? 'Yes' : '',
                 "Branch": g.branch || '-'
             };
