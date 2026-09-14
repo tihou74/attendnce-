@@ -1262,7 +1262,7 @@
 
             <!-- رسالة الواتساب للمدير — تُبنى بعد كل قرار وتُرسل بنقرة -->
             <div id="pettyMsgBox" style="display: none; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 16px;">
-                <div style="font-size: 12.5px; font-weight: 800; color: var(--text-dim); margin-bottom: 8px;">MESSAGE FOR THE MANAGER</div>
+                <div style="font-size: 12.5px; font-weight: 800; color: var(--text-dim); margin-bottom: 8px;">MESSAGE FOR THE MANAGER — READY TO SEND</div>
                 <div id="pettyMsgText" dir="auto" style="white-space: pre-wrap; font-size: 14px; line-height: 1.9; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px;"></div>
                 <div class="controls" style="margin-top: 12px; gap: 10px;">
                     <a id="pettyMsgWa" class="btn-accent" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;" rel="noopener"><span data-icon="plane"></span> Send on WhatsApp</a>
@@ -4943,19 +4943,51 @@
     // =====================================================================
     // رسائل واتساب لقرار البيتي كاش — الثلاث التي حدّدتها الإدارة
     // ---------------------------------------------------------------------
-    // بالعربية لأن المديرين عرب، وبها المبلغ حتى لا يحتاج المدير سؤالًا ثانيًا.
+    // بالإنجليزية وبصيغة رسمية بقرار المالك. المبلغ **المطلوب** يُذكر في
+    // الحالات الثلاث دائمًا حتى يعرف المدير أيّ طلب يخصّه بلا سؤال ثانٍ،
+    // ويُضاف المبلغ المُعتمد بجانبه عند القبول.
+    // WhatsApp يعرض *النص* عريضًا، فالعنوان والمبالغ بين نجمتين.
     // =====================================================================
     function pettyDecisionMessage(kind, r, amount) {
-        const amt = `${money(amount)} ريال`;
-        const who = r.managerName ? `${r.managerName}` : '';
-        const head = who ? `${who}،\n` : '';
-        if (kind === 'approved') {
-            return head + `تم قبول طلبك بخصوص البيتي كاش بمبلغ ${amt}، وهو قيد التنفيذ.`;
+        const requested = `QAR ${money(r.amount)}`;
+        const approved = `QAR ${money(amount)}`;
+        const greet = r.managerName ? `Dear ${r.managerName},` : 'Dear Sir/Madam,';
+        const L = [];
+
+        if (kind === 'rejected') L.push('*Petty Cash Request — Not Approved*');
+        else if (kind === 'revised') L.push('*Petty Cash Request — Approved (Amount Revised)*');
+        else L.push('*Petty Cash Request — Approved*');
+        L.push('');
+        L.push(greet);
+        L.push('');
+
+        if (kind === 'rejected') {
+            L.push(`Your petty cash request for *${requested}* has been reviewed and could not be approved for accounting reasons.`);
+        } else if (kind === 'revised') {
+            L.push(`Your petty cash request for *${requested}* has been reviewed and approved at a revised amount of *${approved}*.`);
+        } else {
+            L.push(`Your petty cash request for *${requested}* has been approved in full.`);
         }
-        if (kind === 'revised') {
-            return head + `تم قبول طلبك بخصوص البيتي كاش مع مراجعة المبلغ إلى ${amt}.`;
+        L.push('');
+
+        // كتلة التفاصيل: مرجع مختصر يقرأه المدير في سطرين
+        if (r.branch) L.push(`Branch: ${r.branch}`);
+        L.push(`Requested amount: ${requested}`);
+        if (kind !== 'rejected') L.push(`Approved amount: ${approved}`);
+        L.push(`Status: ${kind === 'rejected' ? 'Not approved' : 'Approved — in process'}`);
+        // تاريخ القرار لا تاريخ اليوم: إعادة إرسال رسالة طلب قديم يجب أن تحمل
+        // تاريخ الموافقة الأصلي وإلا بدت موافقةً جديدة.
+        L.push(`Date: ${r.paymentDate || todayISO()}`);
+        L.push('');
+
+        if (kind === 'rejected') {
+            L.push('Kindly contact the accounts department should you require any clarification, or submit a revised request.');
+        } else {
+            L.push('The approved amount is now being processed. Please keep all receipts for the accounts department.');
         }
-        return head + `تم رفض الطلب لأمور حسابية.`;
+        L.push('');
+        L.push('Al Sheikha Group — Accounts Department');
+        return L.join('\n');
     }
 
     /**
@@ -5103,7 +5135,7 @@
             // نبني الرسالة من نسخة محلية: المستند بعد إعادة التحميل هو نفسه،
             // لكن هذا يعمل حتى لو تعثّرت إعادة القراءة.
             showPettyMessage(revised ? 'revised' : 'approved',
-                { managerName: r.managerName, amount: requested }, approved);
+                { managerName: r.managerName, branch: r.branch, amount: requested, paymentDate: today }, approved);
         } catch (e) {
             show('Error: ' + e.message, 'var(--danger)');
         }
@@ -5129,7 +5161,7 @@
         if (pettyApprovalId === id) window.cancelPettyApproval();
         show('Saving...', 'var(--warning)');
         // نحتفظ ببيانات الرسالة قبل الحذف
-        const snapshotForMessage = { managerName: r.managerName, amount: r.amount };
+        const snapshotForMessage = { managerName: r.managerName, branch: r.branch, amount: r.amount };
         try {
             await deleteDoc(doc(db, "petty_cash_requests", id));
             // سجل التدقيق هو الأثر الدائم للطلب المرفوض بعد حذف المستند.
