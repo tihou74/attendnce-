@@ -324,7 +324,9 @@
         <div class="controls" style="justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center;">
             <div style="flex: 1; min-width: 240px; font-size: 13.5px; font-weight: 600; line-height: 1.7;">
                 <span data-icon="bell"></span>
-                Turn on alerts to get a notification with a sound the moment a manager sends a request.
+                Turn on alerts to get a notification with a sound the moment any request arrives —
+                petty cash, warning letter, an employee request, or a new employee registration.
+                You are asked once only.
                 <br><small id="notifSetupHint" style="font-weight: 500; color: var(--text-dim);"></small>
             </div>
             <div class="controls" style="gap: 8px;">
@@ -5441,8 +5443,6 @@
     let audioCtx = null;
     let alertsUnlocked = false;      // المتصفح يمنع الصوت قبل أول ضغطة
     let requestUnsubs = [];
-    let seenPettyIds = null;         // null = لم تُبنَ القائمة الأولى بعد
-    let seenWarnIds = null;
 
     /** فتح قناة الصوت — يجب أن يحدث داخل ضغطة مستخدم. */
     function unlockAudio() {
@@ -5517,17 +5517,20 @@
         const denied = supported && Notification.permission === 'denied';
         const dismissed = localStorage.getItem(NOTIF_DISMISS_KEY) === '1';
 
-        // مُفعَّل والصوت مفتوح = لا داعي للشريط.
-        if (granted && alertsUnlocked) { bar.style.display = 'none'; return; }
-        if (dismissed && !denied) { bar.style.display = 'none'; return; }
+        // ⚠️ الإذن مُعطى = يُخفى الشريط نهائيًّا، ولا يُسأل مرة أخرى أبدًا.
+        // كان الشرط يطلب أيضًا أن تكون قناة الصوت مفتوحة (alertsUnlocked)،
+        // وهي تبدأ مغلقة في كل فتح للصفحة لأن المتصفح يمنع الصوت قبل أول
+        // تفاعل — فكان الشريط يظهر في كل دخول ويسأل من جديد. وقناة الصوت
+        // تُفتح تلقائيًّا بأول ضغطة في أي مكان، فلا حاجة لمطالبة المستخدم بها.
+        if (granted) { bar.style.display = 'none'; return; }
+        // أجّله بنفسه = لا نُلاحقه، حتى لو كان محجوبًا.
+        if (dismissed) { bar.style.display = 'none'; return; }
         bar.style.display = 'block';
 
         if (!supported) {
             hint.innerText = 'This browser does not support notifications. Alerts will still play a sound while the dashboard is open.';
         } else if (denied) {
             hint.innerText = 'Notifications are blocked for this site. Allow them from the browser/site settings, then press Turn on alerts again.';
-        } else if (granted && !alertsUnlocked) {
-            hint.innerText = 'Notifications are on. Press Test once so the browser allows the alert sound too.';
         } else {
             hint.innerText = 'On iPhone this works only when the dashboard has been added to the Home Screen (iOS 16.4 or later). The alert works while the dashboard is open or in the background — see the note in the Settings tab.';
         }
@@ -5546,10 +5549,13 @@
         try {
             const res = await Notification.requestPermission();
             if (res === 'granted') {
+                // نُثبّت الإخفاء أيضًا حتى لا يظهر الشريط لو تعذّر قراءة
+                // Notification.permission لأي سبب في فتحة قادمة.
+                try { localStorage.setItem(NOTIF_DISMISS_KEY, '1'); } catch (e) {}
                 playAlertChime();
                 await showLocalNotification(
                     'Alerts are on',
-                    'You will get this notification with a sound when a manager sends a request.',
+                    'You will get this notification with a sound for every new request.',
                     'alsheikha-test', 'tab-variable');
             }
         } catch (e) { console.error(e); }
@@ -5571,24 +5577,88 @@
      * إشعار فوري بطلب جديد: رنّة + تنبيه نظام + تحديث الجرس والجدول.
      * يُنادى من مُستمع Firestore الحيّ، فلا يحتاج المالك فتح التبويب.
      */
-    function announceNewRequests(kind, docs) {
+    function announceNewRequests(cfg, docs) {
         if (!docs.length) return;
         playAlertChime();
-        const isPetty = kind === 'petty';
-        const tab = isPetty ? 'tab-variable' : 'tab-warnings';
         if (docs.length === 1) {
-            const r = docs[0];
-            showLocalNotification(
-                isPetty ? 'New petty cash request' : 'New warning letter request',
-                isPetty
-                    ? `${money(r.amount)} QAR — ${r.managerName || 'a manager'}${r.branch ? ' · ' + r.branch : ''}`
-                    : `${r.employeeName || r.employeeId || 'An employee'} — ${r.deductionDays || 0} day(s) — ${r.managerName || 'a manager'}`,
-                `alsheikha-${kind}-${r.id}`, tab);
+            showLocalNotification(cfg.titleOne, cfg.body(docs[0]),
+                `alsheikha-${cfg.kind}-${docs[0].id}`, cfg.tab);
         } else {
-            showLocalNotification(
-                isPetty ? `${docs.length} new petty cash requests` : `${docs.length} new warning requests`,
-                'Open the dashboard to review them.', `alsheikha-${kind}-many`, tab);
+            showLocalNotification(cfg.titleMany(docs.length),
+                'Open the dashboard to review them.', `alsheikha-${cfg.kind}-many`, cfg.tab);
         }
+    }
+
+    // =====================================================================
+    // كل أنواع الطلبات تُنبِّه — لا البيتي كاش والإنذار وحدهما
+    // ---------------------------------------------------------------------
+    // جدول واحد يُعرِّف الأربعة: المجموعة، ومن يملك قراءتها (مطابقًا
+    // firestore.rules بالحرف وإلا دار الدور في خطأ صلاحيات)، وما يُعدّ
+    // «معلّقًا» في كل مجموعة (الصيغة مختلفة فعلًا: pending صغيرة في طلبات
+    // المديرين، وPending كبيرة بحالة افتراضية في طلبات الموظفين)، والتبويب
+    // الذي يفتحه الضغط على التنبيه، ونص الرسالة.
+    // =====================================================================
+    function requestFeeds() {
+        const isOwner = currentRole === ROLE_ADMIN;
+        // قواعد leave_requests و employee_applications: isAdmin() أو
+        // isProfileEditor() = السكرتيرة أو المشرفون. المحاسب لا يقرؤهما.
+        const profileEditor = currentRole === ROLE_SECRETARY || currentRole === ROLE_SUPERVISOR;
+        return [
+            {
+                kind: 'petty', coll: 'petty_cash_requests', tab: 'tab-variable',
+                mayRead: isOwner || currentRole === ROLE_ACCOUNTANT,
+                isPending: r => r.status === 'pending',
+                titleOne: 'New petty cash request',
+                titleMany: n => `${n} new petty cash requests`,
+                body: r => `${money(r.amount)} QAR — ${r.managerName || 'a manager'}${r.branch ? ' · ' + r.branch : ''}`,
+                apply: rows => { allPettyRequests = rows; pettyLoadError = ''; },
+                render: () => renderPettyRequests(),
+                onError: msg => { pettyLoadError = msg; }
+            },
+            {
+                kind: 'warn', coll: 'warning_requests', tab: 'tab-warnings',
+                mayRead: isOwner || currentRole === ROLE_SECRETARY,
+                isPending: r => r.status === 'pending',
+                titleOne: 'New warning letter request',
+                titleMany: n => `${n} new warning letter requests`,
+                body: r => `${r.employeeName || r.employeeId || 'An employee'} — ${r.deductionDays || 0} day(s) — ${r.managerName || 'a manager'}`,
+                apply: rows => { allWarningRequests = rows; warningLoadError = ''; },
+                render: () => renderWarningRequests(),
+                onError: msg => { warningLoadError = msg; }
+            },
+            {
+                // طلبات الموظفين: إجازة، عذر تأخير، سلفة، شهادة راتب/عمل.
+                kind: 'leave', coll: 'leave_requests', tab: 'tab-requests',
+                mayRead: isOwner || profileEditor,
+                // نفس شرط processRequestsData: كل ما ليس Approved/Rejected معلّق
+                // (بما فيه Processing) وغياب الحقل يعني Pending.
+                isPending: r => {
+                    const s = r.status || 'Pending';
+                    return s !== 'Approved' && s !== 'Rejected';
+                },
+                titleOne: 'New employee request',
+                titleMany: n => `${n} new employee requests`,
+                body: r => `${r.employeeName || 'An employee'} — ${r.type || 'a request'}`
+                    + (r.amount ? ` — ${money(r.amount)} QAR` : '')
+                    + (r.date ? ` — ${r.date}` : ''),
+                apply: rows => { leaveRequestsRaw = rows; },
+                render: () => renderLeaveRequestsFromRaw(),
+                onError: () => {}
+            },
+            {
+                // تسجيل موظف جديد لنفسه من صفحة الموظفين.
+                kind: 'app', coll: 'employee_applications', tab: 'tab-applications',
+                mayRead: isOwner || profileEditor,
+                isPending: a => (a.status || 'Pending') === 'Pending',
+                titleOne: 'New employee registration',
+                titleMany: n => `${n} new employee registrations`,
+                // الحقل اسمه `role` في المستند الذي تكتبه صفحة الموظفين.
+                body: a => `${a.fullName || 'Unknown'}${a.role && a.role !== '-' ? ' — ' + a.role : ''}${a.branch ? ' · ' + a.branch : ''}`,
+                apply: rows => { allApplications = rows; },
+                render: () => renderApplicationsTable(),
+                onError: () => {}
+            }
+        ];
     }
 
     /**
@@ -5601,39 +5671,37 @@
     function startRequestListeners() {
         requestUnsubs.forEach(u => { try { u(); } catch (e) {} });
         requestUnsubs = [];
-        seenPettyIds = null; seenWarnIds = null;
+        // «المعروف» لكل مجموعة على حدة — لا نخلط طلبات مجموعة بأخرى.
+        const seen = new Map();   // kind -> Set | null
 
-        const watch = (coll, kind, mayRead) => {
-            if (!mayRead) return;
-            const unsub = onSnapshot(collection(db, coll), (snap) => {
+        requestFeeds().forEach(cfg => {
+            if (!cfg.mayRead) return;
+            seen.set(cfg.kind, null);
+            const unsub = onSnapshot(collection(db, cfg.coll), (snap) => {
                 const rows = [];
                 snap.forEach(d => rows.push({ id: d.id, ...d.data() }));
-                if (kind === 'petty') { allPettyRequests = rows; pettyLoadError = ''; }
-                else { allWarningRequests = rows; warningLoadError = ''; }
+                cfg.apply(rows);
 
-                const seenRef = kind === 'petty' ? seenPettyIds : seenWarnIds;
-                const pendingIds = rows.filter(r => r.status === 'pending').map(r => r.id);
-                if (seenRef === null) {
-                    // اللقطة الأولى: نعرفها ولا نرنّ.
-                    if (kind === 'petty') seenPettyIds = new Set(pendingIds);
-                    else seenWarnIds = new Set(pendingIds);
+                const pendingIds = rows.filter(cfg.isPending).map(r => r.id);
+                const known = seen.get(cfg.kind);
+                if (known === null) {
+                    // اللقطة الأولى: نتعلّم ما هو موجود بلا رنّة، وإلا رنّ
+                    // الجهاز لكل طلب قديم عند كل فتح للصفحة.
+                    seen.set(cfg.kind, new Set(pendingIds));
                 } else {
-                    const fresh = rows.filter(r => r.status === 'pending' && !seenRef.has(r.id));
-                    pendingIds.forEach(id => seenRef.add(id));
-                    if (fresh.length) announceNewRequests(kind, fresh);
+                    const fresh = rows.filter(r => cfg.isPending(r) && !known.has(r.id));
+                    pendingIds.forEach(id => known.add(id));
+                    if (fresh.length) announceNewRequests(cfg, fresh);
                 }
-                if (kind === 'petty') renderPettyRequests(); else renderWarningRequests();
+                try { cfg.render(); } catch (e) { console.error(e); }
                 renderNotifDropdown();
             }, (err) => {
                 // دور بلا صلاحية قراءة يصل هنا — وهو سلوك صحيح لا عطل.
-                console.error(`Live listener on ${coll} stopped:`, err);
-                if (kind === 'petty') pettyLoadError = err.message; else warningLoadError = err.message;
+                console.error(`Live listener on ${cfg.coll} stopped:`, err);
+                cfg.onError(err.message);
             });
             requestUnsubs.push(unsub);
-        };
-
-        watch('petty_cash_requests', 'petty', currentRole === ROLE_ADMIN || currentRole === ROLE_ACCOUNTANT);
-        watch('warning_requests', 'warn', currentRole === ROLE_ADMIN || currentRole === ROLE_SECRETARY);
+        });
     }
 
     // أول ضغطة في أي مكان تفتح قناة الصوت — بلا هذا تُكتم أول رنّة.
@@ -8047,16 +8115,28 @@
     // to duplicate the "what counts as pending" filtering logic.
     let allPendingLeaveRequests = [];
 
+    // السجلات الخام لطلبات الموظفين — يُغذّيها التحميل الأول والمستمع الحيّ
+    // معًا، فالعرض واحد لا مساران يتباعدان.
+    let leaveRequestsRaw = [];
+
     function processRequestsData(querySnapshot) {
+        const rows = [];
+        querySnapshot.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
+        leaveRequestsRaw = rows;
+        renderLeaveRequestsFromRaw();
+    }
+
+    function renderLeaveRequestsFromRaw() {
         let html = "";
         let pendingCount = 0;
         allPendingLeaveRequests = [];
-        querySnapshot.forEach((docSnap) => {
-            const req = docSnap.data();
+        leaveRequestsRaw.forEach((row) => {
+            const docSnap = { id: row.id };
+            const req = row;
             const status = req.status || "Pending";
             if (status === "Approved" || status === "Rejected") return;
             pendingCount++;
-            allPendingLeaveRequests.push({ id: docSnap.id, ...req });
+            allPendingLeaveRequests.push({ ...req });
 
             let detailsText = `Date: ${escapeHtml(req.date || '-')}`;
             if (req.amount) detailsText += ` | Amount: ${escapeHtml(req.amount)} QAR`;
@@ -8083,9 +8163,12 @@
         document.getElementById("leaveRequestsTableBody").innerHTML = html || `<tr><td colspan="6" style="text-align: center;">No pending requests</td></tr>`;
 
         const badge = document.getElementById("requestsNavBadge");
-        if (pendingCount > 0) { badge.innerText = pendingCount; badge.style.display = "inline-block"; }
-        else { badge.style.display = "none"; }
-        document.getElementById("homeReqCount").innerText = pendingCount;
+        if (badge) {
+            if (pendingCount > 0) { badge.innerText = pendingCount; badge.style.display = "inline-block"; }
+            else { badge.style.display = "none"; }
+        }
+        const homeReq = document.getElementById("homeReqCount");
+        if (homeReq) homeReq.innerText = pendingCount;
     }
 
     window.updateRequestStatusOnly = async function(id, status) {
