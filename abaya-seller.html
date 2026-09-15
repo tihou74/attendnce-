@@ -446,6 +446,7 @@
             <h2>Stock movement</h2>
             <p class="ar" dir="rtl">
                 أضيفي سطرًا فقط إن دخلت أو خرجت بضاعة اليوم. اتركيه فارغًا إن لم يحدث شيء.
+                <br><b>بضاعة شانتون لها مخزنها المستقل</b> — اختاري حركتها من القسم الثاني في القائمة.
             </p>
             <div class="mvform">
                 <div>
@@ -559,12 +560,24 @@
         { key: 'travel',   en: 'Travel Collection', ar: 'ترافل كولكشن' },
         { key: 'jalabiya', en: 'Jalabiya',         ar: 'جلابية' }
     ];
+    // ⚠️ owner يفصل مخزنَين لا مخزنًا واحدًا: بضاعتنا وبضاعة شانتون. خلطهما
+    // يجعل قيمة مخزوننا أكبر من الحقيقة، لأن عباياتها ليست ملكنا.
+    // وحركتا «وصلت منها» و«أُرجعت لها» ضروريتان: بلا الأولى لا يزيد مخزنها
+    // أبدًا، وبلا الثانية لا ينقص إلا بالبيع — فتُظهر عبايات لم تعد موجودة.
     const ABAYA_MOVE_KINDS = [
-        { key: 'out_to_shop',      en: 'Sent to another shop',       ar: 'خرجت إلى محل آخر',  needsShop: true,  sign: -1 },
-        { key: 'in_from_shop',     en: 'Received from another shop', ar: 'وصلت من محل آخر',   needsShop: true,  sign: +1 },
-        { key: 'in_from_workshop', en: 'Received from the workshop', ar: 'وصلت من الورشة',                      sign: +1 },
-        { key: 'in_from_supplier', en: 'Received from a supplier',   ar: 'وصلت من مورّد',    needsSupplier: true, sign: +1 }
+        // بضاعتنا
+        { key: 'out_to_shop',        en: 'Sent to another shop',                ar: 'خرجت إلى محل آخر',           owner: 'own',     needsShop: true,     sign: -1 },
+        { key: 'in_from_shop',       en: 'Received from another shop',          ar: 'وصلت من محل آخر',            owner: 'own',     needsShop: true,     sign: +1 },
+        { key: 'in_from_workshop',   en: 'Received from the workshop',          ar: 'وصلت من الورشة',             owner: 'own',                          sign: +1 },
+        { key: 'in_from_supplier',   en: 'Received from a supplier',            ar: 'وصلت من مورّد',              owner: 'own',     needsSupplier: true, sign: +1 },
+        // بضاعة شانتون — عبايات فقط
+        { key: 'in_from_designer',   en: 'SHANTON — received from her',         ar: 'شانتون — وصلت منها',         owner: 'shanton',                      sign: +1 },
+        { key: 'return_to_designer', en: 'SHANTON — returned to her',           ar: 'شانتون — أُرجعت لها',        owner: 'shanton',                      sign: -1 },
+        { key: 'sh_out_to_shop',     en: 'SHANTON — sent to another shop',      ar: 'شانتون — خرجت إلى محل آخر',  owner: 'shanton', needsShop: true,     sign: -1 },
+        { key: 'sh_in_from_shop',    en: 'SHANTON — received from another shop', ar: 'شانتون — وصلت من محل آخر',  owner: 'shanton', needsShop: true,     sign: +1 }
     ];
+    // شانتون تعرض عبايات فقط، فحركاتها لا تقبل نوعًا آخر.
+    const ABAYA_SHANTON_ITEM = 'abaya';
     const SHANTON_DEFAULT_PER_PIECE = 200;
     const ABAYA_DEFAULT_CARD_FEE_PCT = 1.5;
 
@@ -685,10 +698,14 @@
     }
 
     function buildMoveSelects() {
-        el('mvKind').innerHTML = ABAYA_MOVE_KINDS.map(k =>
-            `<option value="${k.key}">${escapeHtml(k.en)} — ${escapeHtml(k.ar)}</option>`).join('');
-        el('mvItem').innerHTML = ABAYA_STOCK_ITEMS.map(i =>
-            `<option value="${i.key}">${escapeHtml(i.en)} — ${escapeHtml(i.ar)}</option>`).join('');
+        // مجموعتان في القائمة: بضاعتنا وبضاعة شانتون. الفصل بصريًّا يمنع
+        // اختيار حركة الملك الخطأ بالسهو.
+        const group = (label, arr) => `<optgroup label="${escapeHtml(label)}">`
+            + arr.map(k => `<option value="${k.key}">${escapeHtml(k.en)} — ${escapeHtml(k.ar)}</option>`).join('')
+            + `</optgroup>`;
+        el('mvKind').innerHTML =
+            group('Our own stock — بضاعتنا', ABAYA_MOVE_KINDS.filter(k => k.owner === 'own'))
+            + group('Shanton — بضاعة شانتون', ABAYA_MOVE_KINDS.filter(k => k.owner === 'shanton'));
         el('mvKind').addEventListener('change', syncMoveFields);
         syncMoveFields();
     }
@@ -706,6 +723,18 @@
             el('mvShop').innerHTML = others.map(s =>
                 `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
         }
+        // حركة شانتون: عبايات فقط. نُقصر القائمة على العباية ونُثبّتها، فلا
+        // تُسجَّل «شيلا من شانتون» فتدخل مخزنها نوعًا لا تعرضه أصلًا.
+        const isShanton = !!(kind && kind.owner === 'shanton');
+        const items = isShanton
+            ? ABAYA_STOCK_ITEMS.filter(i => i.key === ABAYA_SHANTON_ITEM)
+            : ABAYA_STOCK_ITEMS;
+        const keep = el('mvItem').value;
+        el('mvItem').innerHTML = items.map(i =>
+            `<option value="${i.key}">${escapeHtml(i.en)} — ${escapeHtml(i.ar)}</option>`).join('');
+        if (!isShanton && items.some(i => i.key === keep)) el('mvItem').value = keep;
+        el('mvItem').disabled = isShanton;
+        el('mvItem').style.opacity = isShanton ? '.7' : '';
     }
 
     // =====================================================================
@@ -813,9 +842,11 @@
             const kind = ABAYA_MOVE_KINDS.find(k => k.key === m.kind);
             const item = ABAYA_STOCK_ITEMS.find(x => x.key === m.item);
             const where = m.shop ? ` — ${escapeHtml(m.shop)}` : (m.supplier ? ` — ${escapeHtml(m.supplier)}` : '');
-            return `<li>
+            const isSh = m.owner === 'shanton';
+            return `<li${isSh ? ' style="border-inline-start: 3px solid var(--color-brand);"' : ''}>
                 <span class="txt">${kind && kind.sign < 0 ? '&minus;' : '+'}<b>${m.qty}</b>
-                    ${escapeHtml(item ? item.en : m.item)} · ${escapeHtml(kind ? kind.en : m.kind)}${where}</span>
+                    ${escapeHtml(item ? item.en : m.item)} · ${escapeHtml(kind ? kind.en : m.kind)}${where}
+                    ${isSh ? '<b style="color: var(--color-brand-text);">· SHANTON</b>' : ''}</span>
                 <button type="button" data-i="${i}">Remove</button>
             </li>`;
         }).join('');
@@ -833,7 +864,10 @@
         const qty = num('mvQty', true);
         if (!kind) { setMsg('mvMsg', 'Choose what happened.', 'err'); return; }
         if (qty === null || qty <= 0) { setMsg('mvMsg', 'Enter how many pieces (1 or more).', 'err'); return; }
-        const line = { kind: kind.key, item, qty };
+        // owner يُخزَّن على السطر لا يُستنتج من kind وقت العرض: لو أُضيف نوع
+        // حركة جديد لاحقًا بقيت السجلات القديمة مفهومة بلا تخمين.
+        const owner = kind.owner === 'shanton' ? 'shanton' : 'own';
+        const line = { kind: kind.key, item: owner === 'shanton' ? ABAYA_SHANTON_ITEM : item, qty, owner };
         if (kind.needsShop) {
             const shop = el('mvShop').value;
             if (!shop) { setMsg('mvMsg', 'Choose the other shop.', 'err'); return; }
@@ -1116,6 +1150,9 @@
                 L.push(`${k && k.sign < 0 ? '-' : '+'}${m.qty} ${it ? it.en : m.item} · ${k ? k.en : m.kind}`
                     + (m.shop ? ` (${m.shop})` : m.supplier ? ` (${m.supplier})` : ''));
             });
+            // مخزنان لا مخزن: يُقال في الرسالة أيّها تحرّك.
+            const shMoves = r.movements.filter(m => m.owner === 'shanton').length;
+            if (shMoves) L.push(`_${shMoves} of these are Shanton's own pieces, kept in a separate stock._`);
         }
         if (r.note) { L.push(''); L.push(`Note: ${r.note}`); }
         L.push('');

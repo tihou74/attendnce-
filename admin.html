@@ -1297,6 +1297,24 @@
             <p class="card-sub" style="margin: 12px 0 0;" id="abStockNote"></p>
         </div>
 
+        <!-- مخزن شانتون: مستقل تمامًا لأن البضاعة بضاعتها -->
+        <div class="card" style="border-left: 4px solid var(--warning);">
+            <h3><span data-icon="database"></span> Shanton's stock <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">مخزن شانتون</span></h3>
+            <p class="card-sub">
+                Her abayas held in your shops. <b>Not your property</b> and never part of your stock value.
+                It grows when a shop records <b>SHANTON &mdash; received from her</b>, and shrinks when one of her abayas is
+                sold, is returned to her, or moves to another shop.
+            </p>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Shop</th><th class="money-col">Opening</th><th class="money-col">Received</th><th class="money-col">Sold</th><th class="money-col">Returned / sent</th><th class="money-col">Held now</th></tr></thead>
+                    <tbody id="abShStockBody"></tbody>
+                    <tfoot id="abShStockFoot"></tfoot>
+                </table>
+            </div>
+            <p class="card-sub" style="margin: 12px 0 0;" id="abShStockNote"></p>
+        </div>
+
         <div class="card money-only">
             <h3><span data-icon="edit"></span> Opening stock count <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">الجرد الافتتاحي</span></h3>
             <p class="card-sub">
@@ -6210,12 +6228,24 @@
         { key: 'travel',   en: 'Travel Collection', ar: 'ترافل كولكشن' },
         { key: 'jalabiya', en: 'Jalabiya',          ar: 'جلابية' }
     ];
+    // ⚠️ owner يفصل مخزنَين لا مخزنًا واحدًا: بضاعتنا وبضاعة شانتون. خلطهما
+    // يجعل قيمة مخزوننا أكبر من الحقيقة، لأن عباياتها ليست ملكنا.
+    // وحركتا «وصلت منها» و«أُرجعت لها» ضروريتان: بلا الأولى لا يزيد مخزنها
+    // أبدًا، وبلا الثانية لا ينقص إلا بالبيع — فتُظهر عبايات لم تعد موجودة.
     const ABAYA_MOVE_KINDS = [
-        { key: 'out_to_shop',      en: 'Sent to another shop',       ar: 'خرجت إلى محل آخر',  needsShop: true,     sign: -1 },
-        { key: 'in_from_shop',     en: 'Received from another shop', ar: 'وصلت من محل آخر',   needsShop: true,     sign: +1 },
-        { key: 'in_from_workshop', en: 'Received from the workshop', ar: 'وصلت من الورشة',                         sign: +1 },
-        { key: 'in_from_supplier', en: 'Received from a supplier',   ar: 'وصلت من مورّد',     needsSupplier: true, sign: +1 }
+        // بضاعتنا
+        { key: 'out_to_shop',        en: 'Sent to another shop',                ar: 'خرجت إلى محل آخر',           owner: 'own',     needsShop: true,     sign: -1 },
+        { key: 'in_from_shop',       en: 'Received from another shop',          ar: 'وصلت من محل آخر',            owner: 'own',     needsShop: true,     sign: +1 },
+        { key: 'in_from_workshop',   en: 'Received from the workshop',          ar: 'وصلت من الورشة',             owner: 'own',                          sign: +1 },
+        { key: 'in_from_supplier',   en: 'Received from a supplier',            ar: 'وصلت من مورّد',              owner: 'own',     needsSupplier: true, sign: +1 },
+        // بضاعة شانتون — عبايات فقط
+        { key: 'in_from_designer',   en: 'SHANTON — received from her',         ar: 'شانتون — وصلت منها',         owner: 'shanton',                      sign: +1 },
+        { key: 'return_to_designer', en: 'SHANTON — returned to her',           ar: 'شانتون — أُرجعت لها',        owner: 'shanton',                      sign: -1 },
+        { key: 'sh_out_to_shop',     en: 'SHANTON — sent to another shop',      ar: 'شانتون — خرجت إلى محل آخر',  owner: 'shanton', needsShop: true,     sign: -1 },
+        { key: 'sh_in_from_shop',    en: 'SHANTON — received from another shop', ar: 'شانتون — وصلت من محل آخر',  owner: 'shanton', needsShop: true,     sign: +1 }
     ];
+    // شانتون تعرض عبايات فقط، فحركاتها لا تقبل نوعًا آخر.
+    const ABAYA_SHANTON_ITEM = 'abaya';
     const SHANTON_DEFAULT_PER_PIECE = 200;
     const ABAYA_DEFAULT_CARD_FEE_PCT = 1.5;
     const ABAYA_CENT = 0.005;
@@ -6225,6 +6255,9 @@
         abayaReady: 'abaya', abayaOrder: 'abaya', kaftan: 'kaftan',
         shela: 'shela', travel: 'travel', jalabiya: 'jalabiya'
     };
+    // مفتاح جرد شانتون في خريطة الجرد الافتتاحي. اسمٌ مستقل عن مفاتيح
+    // ABAYA_STOCK_ITEMS حتى لا يدخل في حلقة بضاعتنا بالسهو.
+    const ABAYA_SHANTON_STOCK_KEY = 'shantonAbaya';
 
     let allAbayaReports = [];
     let abayaSellers = [];
@@ -6549,6 +6582,8 @@
             parts.push(`<b>Not deducted anywhere:</b> the bank also charges ${abayaRates.cardFeePercent}% on Shanton's card sales, `
                 + `and that cost is currently borne in full by the shop and is <b>not</b> taken off what she is owed. `
                 + `Tell me if it should be shared and I will change it.`);
+            parts.push(`Her abayas held in the shops are tracked in <b>Shanton's stock</b> further down, `
+                + `separately from yours.`);
             if (unknown.n) {
                 parts.push(`<b style="color: var(--danger);">${unknown.n} report(s) carry a shop name that is not one of the three above</b> — `
                     + `they are shown on their own line so the total still adds up. Check them on the Daily tab.`);
@@ -6603,6 +6638,14 @@
     // ⚠️ عبايات شانتون **ليست** في هذا الرصيد: بضاعتها لا بضاعتنا، وخلطها
     // يجعل قيمة المخزون أكبر من الحقيقة. تُعرض في سطر مستقل.
     // =====================================================================
+    /** ملك القطعة في سطر حركة. السجل القديم بلا owner بضاعتنا — بلا أثر رجعي. */
+    function abayaMoveOwner(m) {
+        if (m && m.owner === 'shanton') return 'shanton';
+        if (m && m.owner === 'own') return 'own';
+        const kind = ABAYA_MOVE_KINDS.find(k => k.key === (m && m.kind));
+        return (kind && kind.owner === 'shanton') ? 'shanton' : 'own';
+    }
+
     function abayaStockFor(shop) {
         const since = abayaOpening.openingDate || '';
         const openMap = abayaOpening.opening[shop] || {};
@@ -6610,6 +6653,10 @@
         ABAYA_STOCK_ITEMS.forEach(it => {
             out[it.key] = { opening: Number(openMap[it.key]) || 0, received: 0, sold: 0, sentOut: 0 };
         });
+        // مخزن شانتون مستقل تمامًا: يزيد بما يصل منها أو من محل آخر، وينقص
+        // ببيع عباياتها أو بإرجاعها لها أو بإرسالها لمحل آخر.
+        const sh = { opening: Number(openMap[ABAYA_SHANTON_STOCK_KEY]) || 0, received: 0, sold: 0, sentOut: 0 };
+
         allAbayaReports.forEach(r => {
             if (r.shop !== shop) return;
             const d = String(r.date || '');
@@ -6619,15 +6666,23 @@
                 if (!stockKey || !out[stockKey]) return;
                 out[stockKey].sold += Number(r[abQtyField(it.key)]) || 0;
             });
+            // عبايات شانتون المبيعة تُخصم من مخزنها لا من مخزننا
+            sh.sold += Number(r.shTotalQty) || 0;
+
             (Array.isArray(r.movements) ? r.movements : []).forEach(m => {
-                const cell = out[m.item];
-                if (!cell) return;
                 const kind = ABAYA_MOVE_KINDS.find(k => k.key === m.kind);
                 const qty = Number(m.qty) || 0;
                 if (!kind || qty <= 0) return;
+                if (abayaMoveOwner(m) === 'shanton') {
+                    if (kind.sign < 0) sh.sentOut += qty; else sh.received += qty;
+                    return;
+                }
+                const cell = out[m.item];
+                if (!cell) return;
                 if (kind.sign < 0) cell.sentOut += qty; else cell.received += qty;
             });
         });
+
         let sum = { opening: 0, received: 0, sold: 0, sentOut: 0, now: 0 };
         ABAYA_STOCK_ITEMS.forEach(it => {
             const c = out[it.key];
@@ -6635,7 +6690,14 @@
             sum.opening += c.opening; sum.received += c.received;
             sum.sold += c.sold; sum.sentOut += c.sentOut; sum.now += c.now;
         });
-        return { items: out, sum };
+        sh.now = sh.opening + sh.received - sh.sold - sh.sentOut;
+        // المجموع المدموج للعلم فقط، ولا يُستخدم في أي حساب مالي: قيمة مخزوننا
+        // هي sum وحدها.
+        const combined = {
+            opening: sum.opening + sh.opening, received: sum.received + sh.received,
+            sold: sum.sold + sh.sold, sentOut: sum.sentOut + sh.sentOut, now: sum.now + sh.now
+        };
+        return { items: out, sum, shanton: sh, combined };
     }
 
     window.renderAbayaStock = function() {
@@ -6690,28 +6752,62 @@
         const mm = abayaTransferMismatches();
         if (mm.length) {
             notes.push(`<b style="color: var(--danger);">Transfers that do not match:</b><br>`
-                + mm.map(x => `${escapeHtml(x.from)} recorded <b>${x.out}</b> ${escapeHtml(x.item)} sent to ${escapeHtml(x.to)}, `
+                + mm.map(x => `${escapeHtml(x.from)} recorded <b>${x.out}</b> ${escapeHtml(x.label)} sent to ${escapeHtml(x.to)}, `
                     + `but ${escapeHtml(x.to)} recorded <b>${x.in}</b> received. Difference of ${Math.abs(x.out - x.in)}.`).join('<br>')
                 + `<br>Pieces do not vanish between two shops — one of the two reports is wrong.`);
         }
-        // شانتون: تُعرض ولا تُخلط
-        const shSold = ABAYA_SHOPS.map(s => {
-            let n = 0;
-            allAbayaReports.forEach(r => {
-                if (r.shop !== s) return;
-                if (abayaOpening.openingDate && String(r.date || '') < abayaOpening.openingDate) return;
-                n += Number(r.shTotalQty) || 0;
-            });
-            return { shop: s, n };
-        }).filter(x => x.n);
-        if (shSold.length) {
-            notes.push(`<b>Shanton's abayas are not counted above</b> — they are her goods, not yours, and mixing them would `
-                + `make your stock look bigger than it is. Sold since the count: `
-                + shSold.map(x => `${escapeHtml(x.shop)} ${x.n}`).join(' · ')
-                + `. There is no line yet for <i>receiving</i> her pieces, so her own stock cannot be tracked yet — tell me if you want one.`);
-        }
+        notes.push(`<b>Shanton's abayas are not in the table above.</b> They are her goods, not yours, and counting them `
+            + `would make your stock look bigger than it is. She has her own stock below.`);
         const el = document.getElementById('abStockNote');
         if (el) el.innerHTML = notes.join('<br><br>');
+
+        // ---- مخزن شانتون: جدول مستقل ----------------------------------
+        const shBody = document.getElementById('abShStockBody');
+        if (shBody) {
+            shBody.innerHTML = per.map(({ shop, st }) => {
+                const s = st.shanton;
+                return `<tr>
+                    <td><b>${escapeHtml(shop)}</b></td>
+                    <td class="money-col">${s.opening}</td>
+                    <td class="money-col" style="color: var(--success);">${s.received ? '+' + s.received : '—'}</td>
+                    <td class="money-col" style="color: var(--danger);">${s.sold ? '-' + s.sold : '—'}</td>
+                    <td class="money-col" style="color: var(--danger);">${s.sentOut ? '-' + s.sentOut : '—'}</td>
+                    <td class="money-col"><strong style="color: ${s.now < 0 ? 'var(--danger)' : 'var(--accent)'}; font-size: 15px;">${s.now}</strong></td>
+                </tr>`;
+            }).join('');
+            const gs = per.reduce((a, { st }) => ({
+                opening: a.opening + st.shanton.opening, received: a.received + st.shanton.received,
+                sold: a.sold + st.shanton.sold, sentOut: a.sentOut + st.shanton.sentOut, now: a.now + st.shanton.now
+            }), { opening: 0, received: 0, sold: 0, sentOut: 0, now: 0 });
+            const shFoot = document.getElementById('abShStockFoot');
+            if (shFoot) {
+                shFoot.innerHTML = `<tr style="background: var(--surface-2); font-weight: 800;">
+                    <td>SHANTON — ALL THREE SHOPS</td>
+                    <td class="money-col">${gs.opening}</td>
+                    <td class="money-col">${gs.received ? '+' + gs.received : '—'}</td>
+                    <td class="money-col">${gs.sold ? '-' + gs.sold : '—'}</td>
+                    <td class="money-col">${gs.sentOut ? '-' + gs.sentOut : '—'}</td>
+                    <td class="money-col"><strong style="font-size: 15px;">${gs.now}</strong></td>
+                </tr>`;
+            }
+            const shNotes = [];
+            // ⚠️ رصيدها سالبًا يعني بيعَ عبايات لم تُسجَّل واردةً منها.
+            const neg = per.filter(x => x.st.shanton.now < 0);
+            if (neg.length) {
+                shNotes.push(`<b style="color: var(--danger);">Her stock is negative in ${neg.map(x => escapeHtml(x.shop)).join(' · ')}.</b> `
+                    + `That means abayas of hers were sold without ever being recorded as received from her. `
+                    + `Either enter her opening count below, or ask the shop to add a `
+                    + `<b>"SHANTON — received from her"</b> line for the pieces she brought.`);
+            }
+            // المجموع المدموج: يُعرض لأن المالك سأل عنه، ولا يُستخدم في أي حساب.
+            const gc = per.reduce((a, { st }) => a + st.combined.now, 0);
+            shNotes.push(`<b>Both stocks together: ${gc} piece(s)</b> in the three shops `
+                + `(${per.reduce((a, x) => a + x.st.sum.now, 0)} yours + ${gs.now} Shanton's). `
+                + `This combined figure is shown for information only and is never used in any money calculation — `
+                + `the value of your stock is your own pieces alone.`);
+            const shEl = document.getElementById('abShStockNote');
+            if (shEl) shEl.innerHTML = shNotes.join('<br><br>');
+        }
     };
 
     /**
@@ -6728,12 +6824,15 @@
                 if (!m || !m.shop) return;
                 const qty = Number(m.qty) || 0;
                 if (qty <= 0) return;
-                if (m.kind === 'out_to_shop') {
-                    const k = `${r.shop}|${m.shop}|${m.item}`;
+                // ⚠️ الملك جزءٌ من المفتاح: تحويل عباياتنا لا يُقابل تحويل
+                // عبايات شانتون، وإلا تسترا خطأ بعضهما.
+                const own = abayaMoveOwner(m);
+                if (m.kind === 'out_to_shop' || m.kind === 'sh_out_to_shop') {
+                    const k = `${r.shop}|${m.shop}|${m.item}|${own}`;
                     outMap.set(k, (outMap.get(k) || 0) + qty);
-                } else if (m.kind === 'in_from_shop') {
+                } else if (m.kind === 'in_from_shop' || m.kind === 'sh_in_from_shop') {
                     // الوارد يُقيَّد باتجاه المصدر ← المستلم
-                    const k = `${m.shop}|${r.shop}|${m.item}`;
+                    const k = `${m.shop}|${r.shop}|${m.item}|${own}`;
                     inMap.set(k, (inMap.get(k) || 0) + qty);
                 }
             });
@@ -6743,9 +6842,11 @@
         keys.forEach(k => {
             const o = outMap.get(k) || 0, i = inMap.get(k) || 0;
             if (o === i) return;
-            const [from, to, item] = k.split('|');
+            const [from, to, item, own] = k.split('|');
             const it = ABAYA_STOCK_ITEMS.find(x => x.key === item);
-            out.push({ from, to, item: it ? it.en : item, out: o, in: i });
+            out.push({ from, to, item: it ? it.en : item, owner: own,
+                       label: (own === 'shanton' ? 'SHANTON ' : '') + (it ? it.en : item),
+                       out: o, in: i });
         });
         return out.sort((a, b) => Math.abs(b.out - b.in) - Math.abs(a.out - a.in));
     }
@@ -6758,7 +6859,8 @@
         const body = document.getElementById('abOpeningBody');
         if (!body) return;
         // ترويسة واحدة تحمل الأنواع: العمود الثاني يتّسع لكل الخانات.
-        if (heads) heads.innerHTML = ABAYA_STOCK_ITEMS.map(it => escapeHtml(it.en)).join(' · ');
+        if (heads) heads.innerHTML = ABAYA_STOCK_ITEMS.map(it => escapeHtml(it.en)).join(' · ')
+            + ' · <span style="color: var(--warning);">Shanton abayas</span>';
         const editable = canEditAbayaSetup();
         body.innerHTML = ABAYA_SHOPS.map((shop, si) => {
             const cur = abayaOpening.opening[shop] || {};
@@ -6767,7 +6869,13 @@
                     <label for="abOpen_${si}_${ii}" style="font-size: 10.5px;">${escapeHtml(it.en)}</label>
                     <input type="number" id="abOpen_${si}_${ii}" step="1" min="0" placeholder="0"
                            value="${cur[it.key] != null ? Number(cur[it.key]) : ''}"${editable ? '' : ' readonly style="opacity:.65;"'}>
-                </div>`).join('');
+                </div>`).join('')
+                // خانة مخزن شانتون — بحدٍّ ذهبي حتى لا تُخلط ببضاعتنا
+                + `<div style="min-width: 138px; padding-inline-start: 10px; border-inline-start: 2px solid var(--warning);">
+                    <label for="abOpenSh_${si}" style="font-size: 10.5px; color: var(--warning);">Shanton abayas</label>
+                    <input type="number" id="abOpenSh_${si}" step="1" min="0" placeholder="0"
+                           value="${cur[ABAYA_SHANTON_STOCK_KEY] != null ? Number(cur[ABAYA_SHANTON_STOCK_KEY]) : ''}"${editable ? '' : ' readonly style="opacity:.65;"'}>
+                </div>`;
             return `<tr>
                 <td style="vertical-align: top;"><b>${escapeHtml(shop)}</b><br><small dir="rtl" style="color: var(--text-dim);">${escapeHtml(ABAYA_SHOPS_AR[shop] || '')}</small></td>
                 <td><div style="display: flex; gap: 10px; flex-wrap: wrap;">${inputs}</div></td>
@@ -6802,6 +6910,14 @@
                 }
                 opening[shop][ABAYA_STOCK_ITEMS[ii].key] = Math.round(v);
             }
+            // مخزن شانتون في نفس المستند بمفتاح مستقل
+            const shRaw = (document.getElementById(`abOpenSh_${si}`) || {}).value;
+            const shV = shRaw === '' || shRaw === undefined ? 0 : Number(shRaw);
+            if (!isFinite(shV) || shV < 0) {
+                show(`${shop} — Shanton abayas: must be a whole number of zero or more.`, 'var(--danger)');
+                return;
+            }
+            opening[shop][ABAYA_SHANTON_STOCK_KEY] = Math.round(shV);
         }
         show('Saving...', 'var(--warning)');
         try {
@@ -7091,12 +7207,20 @@
         }));
         const stockSheet = ABAYA_SHOPS.flatMap(shop => {
             const st = abayaStockFor(shop);
-            return ABAYA_STOCK_ITEMS.map(it => ({
-                "Shop": shop, "Item": it.en,
+            const own = ABAYA_STOCK_ITEMS.map(it => ({
+                "Shop": shop, "Owner": "Ours", "Item": it.en,
                 "Opening": st.items[it.key].opening, "Received": st.items[it.key].received,
-                "Sold": st.items[it.key].sold, "Sent out": st.items[it.key].sentOut,
+                "Sold": st.items[it.key].sold, "Returned / sent out": st.items[it.key].sentOut,
                 "In stock now": st.items[it.key].now
             }));
+            // صفٌّ مستقل لشانتون في كل محل — الملك عمودٌ صريح لا يُخمَّن
+            own.push({
+                "Shop": shop, "Owner": "Shanton", "Item": "Abaya",
+                "Opening": st.shanton.opening, "Received": st.shanton.received,
+                "Sold": st.shanton.sold, "Returned / sent out": st.shanton.sentOut,
+                "In stock now": st.shanton.now
+            });
+            return own;
         });
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(shopSheet), "By shop");
