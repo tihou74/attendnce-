@@ -684,6 +684,7 @@
                 <button class="action-btn btn-submit" onclick="chooseReportTask('sales')">Daily Sales Report</button>
                 <button class="action-btn btn-submit" onclick="chooseReportTask('petty')">Petty Cash Request</button>
                 <button class="action-btn btn-submit" onclick="chooseReportTask('warn')">Warning Letter Request</button>
+                <button class="action-btn btn-submit" onclick="chooseReportTask('present')">My Duty Status</button>
             </div>
             <button class="action-btn" style="background-color: #6c757d; margin-top: 14px;" onclick="reportBackToLogin()">&#11013; Sign out</button>
         </div>
@@ -731,6 +732,49 @@
 
             <p class="report-currency-note">The request goes to the secretary, who issues the warning letter. Enter 0 days if no salary deduction is meant.</p>
             <button class="action-btn btn-in" id="btnSubmitWarn" style="margin-top: 14px;" onclick="submitWarningRequest()">Send Request &#128228;</button>
+            <button class="action-btn" style="background-color: #6c757d; margin-top: 10px;" onclick="showReportStep('reportMenuStep')">&#11013; Back</button>
+        </div>
+
+        <!-- ==================================================================
+             حالة دوام المدير — للسيدة فاطمة تراها في لوحتها.
+             ------------------------------------------------------------------
+             ⚠️ هذه ليست حضورًا ولا تمسّ الرواتب إطلاقًا: تُكتب في مجموعة
+             manager_presence المستقلة، لا في attendance. الكتابة في attendance
+             كانت ستغيّر رواتب فعلية، وستُفسد أيضًا تتابع «دخول ثم خروج» في
+             شاشة الموظفين لأنها تقرأ أحدث مستند للموظف بلا نظر إلى نوعه.
+             ⚠️ ولا يوجد فحص موقع هنا بقرار الإدارة الصريح، ولا تُحسب مدة عمل.
+             ⚠️ ثلاثة أحداث تُضاف ولا تُعدَّل: بدء · انتهاء · يوم راحة. الحالة
+             الحالية هي آخر حدث في ذلك اليوم، فمن ضغط خطأً يضغط الصحيح بعده.
+             ================================================================== -->
+        <div id="reportPresentStep" style="display: none;">
+            <h2 style="font-size: 17px; margin-bottom: 2px;">My Duty Status</h2>
+            <p style="text-align: left; color: #6c757d; font-size: 12.5px; margin: 0 0 4px; font-weight: 700;" id="presentBranchLabel"></p>
+            <p style="text-align: left; color: #6c757d; font-size: 12px; margin: 0 0 16px; line-height: 1.7;">
+                This tells the management panel whether you are on duty right now.
+                It is <b>not</b> attendance: your hours are not counted and your salary is not affected.
+            </p>
+
+            <div id="presentNowBox" style="background: #f1f8f4; border: 1px solid #cfe8d8; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 13px; line-height: 1.8; color: #14532d; font-weight: 700;"></div>
+
+            <div class="form-group">
+                <label for="presentEndTime">I will finish at:</label>
+                <input type="time" id="presentEndTime">
+            </div>
+            <button class="action-btn btn-in" id="btnPresentStart" style="margin-top: 4px;" onclick="submitPresence('start')">I am starting my shift now &#9989;</button>
+
+            <button class="action-btn" id="btnPresentEnd" style="margin-top: 10px; background-color: #b91c1c;" onclick="submitPresence('end')">I have finished my shift &#128308;</button>
+
+            <hr style="border: none; border-top: 1px solid #e9ecef; margin: 18px 0 14px;">
+
+            <div class="form-group">
+                <label for="presentOffDate">Day off &mdash; which day?</label>
+                <input type="date" id="presentOffDate">
+            </div>
+            <button class="action-btn" id="btnPresentOff" style="background-color: #6c757d;" onclick="submitPresence('off')">I am off on that day &#127958;</button>
+
+            <p class="report-currency-note" style="margin-top: 14px;">
+                Pressed the wrong one? Just press the right one &mdash; the newest entry is the one shown.
+            </p>
             <button class="action-btn" style="background-color: #6c757d; margin-top: 10px;" onclick="showReportStep('reportMenuStep')">&#11013; Back</button>
         </div>
 
@@ -1114,6 +1158,9 @@
                     id: docSnap.id,
                     name: d.name || docSnap.id,
                     branch: d.branch || "",
+                    // المسمّى الوظيفي — يُنسخ على حدث حالة الدوام ليظهر للسيدة
+                    // فاطمة، فهي لا تستطيع قراءة مستند الموظف نفسه.
+                    role: d.role || "",
                     canSubmitSalesReport: d.canSubmitSalesReport === true
                 });
             });
@@ -1990,7 +2037,7 @@
         cash: 'Cash', card: 'Card', snoonu: 'Snoonu', talabat: 'Talabat', keeta: 'Keeta'
     };
     // task = المهمة التي اختارها المدير قبل الفرع: 'sales' | 'petty' | 'warn'
-    let reportState = { managerId: null, managerName: null, branch: null, managerBranch: '', task: null };
+    let reportState = { managerId: null, managerName: null, branch: null, managerBranch: '', managerRole: '', task: null };
     let isSubmittingReport = false;
     // آخر تقرير حُفظ فعلًا — منه يُبنى الملخص ونص الواتساب.
     let lastSubmittedReport = null;
@@ -2066,7 +2113,7 @@
     }
 
     function resetReportFlow() {
-        reportState = { managerId: null, managerName: null, branch: null, managerBranch: '', task: null };
+        reportState = { managerId: null, managerName: null, branch: null, managerBranch: '', managerRole: '', task: null };
         lastSubmittedReport = null;
         showReportStep('reportLoginStep');
         const pinEl = document.getElementById('reportPinInput');
@@ -2189,6 +2236,7 @@
         document.getElementById('reportPinInput').value = '';
         // فرع المدير من ملفه — يُستخدم تلقائيًا في طلبَي البيتي كاش والإنذار.
         reportState.managerBranch = emp.branch || '';
+        reportState.managerRole = emp.role || '';
         const menuName = document.getElementById('reportMenuName');
         if (menuName) {
             menuName.innerText = `Welcome, ${emp.name}`
@@ -2199,7 +2247,7 @@
     };
 
     window.reportBackToLogin = function() {
-        reportState = { managerId: null, managerName: null, branch: null, managerBranch: '', task: null };
+        reportState = { managerId: null, managerName: null, branch: null, managerBranch: '', managerRole: '', task: null };
         showReportStep('reportLoginStep');
     };
     window.reportBackToBranch = function() {
@@ -2208,8 +2256,9 @@
 
     // كل خطوات شاشة المدير في مكان واحد، فإظهار خطوة يُخفي الباقي تلقائيًا.
     // لمّا صارت الخطوات سبعًا، صار التبديل اليدوي لكل زوج مصدرًا للأخطاء.
+    // ⚠️ خطوة غير مذكورة هنا لا تُخفى أبدًا بعد ظهورها، فتتراكم على غيرها.
     const REPORT_STEPS = ['reportLoginStep', 'reportBranchStep', 'reportMenuStep',
-        'reportPettyStep', 'reportWarnStep', 'reportFormStep', 'reportSummaryStep'];
+        'reportPettyStep', 'reportWarnStep', 'reportPresentStep', 'reportFormStep', 'reportSummaryStep'];
     window.showReportStep = function(stepId) {
         REPORT_STEPS.forEach(id => {
             const el = document.getElementById(id);
@@ -2224,10 +2273,13 @@
      * المهمة تُحفظ في reportState.task، فاختيار الفرع بعدها يعرف إلى أي نموذج
      * ينتقل. لو لم تُحفظ لكان زر الفرع الواحد لا يعرف ما يفتح.
      */
+    // ⚠️ مهمة غائبة عن هذه الخريطة تسقط إلى 'sales' بصمت (انظر السطر التالي
+    // لـ chooseReportTask)، فيجد المدير نفسه في نموذج المبيعات بلا تفسير.
     const REPORT_TASK_LABEL = {
         sales: 'Daily Sales Report',
         petty: 'Petty Cash Request',
-        warn: 'Warning Letter Request'
+        warn: 'Warning Letter Request',
+        present: 'My Duty Status'
     };
     window.chooseReportTask = function(task) {
         reportState.task = REPORT_TASK_LABEL[task] ? task : 'sales';
@@ -2237,10 +2289,12 @@
         if (reportState.task !== 'sales') {
             if (reportState.managerBranch) {
                 reportState.branch = reportState.managerBranch;
-                ['pettyBranchLabel', 'warnBranchLabel'].forEach(id => {
+                ['pettyBranchLabel', 'warnBranchLabel', 'presentBranchLabel'].forEach(id => {
                     const el = document.getElementById(id); if (el) el.innerText = reportState.branch;
                 });
-                if (reportState.task === 'petty') openPettyForm(); else openWarnForm();
+                if (reportState.task === 'petty') openPettyForm();
+                else if (reportState.task === 'present') openPresenceForm();
+                else openWarnForm();
                 return;
             }
             // ملف المدير بلا فرع مسجَّل — لا نُخمّن فرعًا في طلب مالي أو
@@ -2255,12 +2309,13 @@
 
     window.selectReportBranch = function(branch) {
         reportState.branch = branch;
-        ['reportBranchLabel', 'pettyBranchLabel', 'warnBranchLabel'].forEach(id => {
+        ['reportBranchLabel', 'pettyBranchLabel', 'warnBranchLabel', 'presentBranchLabel'].forEach(id => {
             const el = document.getElementById(id); if (el) el.innerText = branch;
         });
         // ينتقل إلى نموذج المهمة التي اختارها قبل الفرع.
         if (reportState.task === 'petty') openPettyForm();
         else if (reportState.task === 'warn') openWarnForm();
+        else if (reportState.task === 'present') openPresenceForm();
         else openSalesForm();
     };
 
@@ -2274,6 +2329,105 @@
         recalcReportTotal();
         window.onReportDateChange();
         showReportStep('reportFormStep');
+    };
+
+    // =====================================================================
+    // حالة دوام المدير — بدء · انتهاء · يوم راحة
+    // ---------------------------------------------------------------------
+    // ⚠️ لا تُكتب في attendance بحال: تلك تُغذّي الرواتب، ومستندٌ غريب فيها
+    // يُفسد أيضًا تتابع «دخول ثم خروج» في شاشة الموظفين. وهنا لا مدة عمل
+    // تُحسب ولا موقع يُفحص — قرار الإدارة الصريح.
+    // ⚠️ إضافةٌ فقط: كل ضغطة مستندٌ جديد، والحالة هي آخر حدث في يومه. لا
+    // تعديل ولا حذف من هذه الشاشة (القواعد تمنعهما)، فمن ضغط خطأً يضغط
+    // الصحيح بعده.
+    // =====================================================================
+    const PRESENCE_LABEL = { start: 'on duty', end: 'finished', off: 'day off' };
+
+    /** «HH:MM» بتوقيت قطر — للعرض وللمقارنة في لوحة الإدارة. */
+    function qatarHM(dateObj) {
+        const p = qatarParts(dateObj);
+        return `${p.hour}:${p.minute}`;
+    }
+
+    window.openPresenceForm = function() {
+        const now = new Date();
+        // ساعة الانتهاء المقترحة: بعد عشر ساعات من الآن، وله تغييرها.
+        const endEl = document.getElementById('presentEndTime');
+        if (endEl && !endEl.value) {
+            const later = new Date(now.getTime() + 10 * 60 * 60 * 1000);
+            endEl.value = qatarHM(later);
+        }
+        // يوم الراحة: الغد افتراضًا — وهو ما طلبته الإدارة («غدًا أوف»).
+        const offEl = document.getElementById('presentOffDate');
+        if (offEl && !offEl.value) {
+            offEl.value = formatDateEnglish(new Date(now.getTime() + 24 * 60 * 60 * 1000));
+        }
+        const box = document.getElementById('presentNowBox');
+        if (box) {
+            box.innerText = `${reportState.managerName || ''} — today is ${formatDateEnglish(now)}, `
+                + `the time now is ${qatarHM(now)} (Qatar).`;
+        }
+        showReportStep('reportPresentStep');
+    };
+
+    let isSendingPresence = false;
+    /** event: 'start' | 'end' | 'off' */
+    window.submitPresence = async function(event) {
+        if (!PRESENCE_LABEL[event]) return;
+        if (isSendingPresence) return;                 // نفس حارس الضغط المزدوج
+        if (!reportState.managerId) { showStatus("Please start again from the login screen.", "error"); return; }
+
+        const now = new Date();
+        let date = formatDateEnglish(now);
+        let fromTime = '', toTime = '';
+
+        if (event === 'start') {
+            toTime = (document.getElementById('presentEndTime') || {}).value || '';
+            if (!toTime) { showStatus("Please choose the hour you will finish at.", "error"); return; }
+            fromTime = qatarHM(now);
+        } else if (event === 'off') {
+            date = (document.getElementById('presentOffDate') || {}).value || '';
+            if (!date) { showStatus("Please choose which day you are off.", "error"); return; }
+        }
+
+        const btnId = { start: 'btnPresentStart', end: 'btnPresentEnd', off: 'btnPresentOff' }[event];
+        const btn = document.getElementById(btnId);
+        isSendingPresence = true;
+        if (btn) btn.disabled = true;
+        showStatus("Sending...", "loading");
+        try {
+            await authReady;
+            await addDoc(collection(db, "manager_presence"), {
+                employeeId: reportState.managerId,
+                // الاسم والفرع يُنسخان على الحدث نفسه: السيدة فاطمة لا تستطيع
+                // قراءة مستندات الموظفين إطلاقًا (فيها الرواتب وصور الهويات)،
+                // فلو لم يُنسخا هنا لَظهر لها حدثٌ بلا اسم صاحبه.
+                employeeName: reportState.managerName || '',
+                branch: reportState.branch || reportState.managerBranch || '',
+                title: reportState.managerRole || '',
+                event: event,
+                date: date,
+                fromTime: fromTime,
+                toTime: toTime,
+                // ⭐ المرجع الزمني الموثوق: ساعة الخادم. وقت الجهاز يُخزَّن
+                // للتشخيص فقط، لأن ساعة الهاتف تُغيَّر — وقد حدث ذلك فعلًا.
+                serverTime: serverTimestamp(),
+                deviceTime: now,
+                deviceTz: deviceTimeZoneName(),
+                deviceTzOffsetMin: now.getTimezoneOffset()
+            });
+
+            let msg;
+            if (event === 'start') msg = `Recorded: on duty from ${fromTime} until ${toTime}. The management panel now shows you as available.`;
+            else if (event === 'end') msg = `Recorded: your shift has ended. The panel now shows that you have finished for today.`;
+            else msg = `Recorded: you are off on ${date}. The panel will show that on the day.`;
+            showStatus(msg, "success");
+        } catch (e) {
+            showStatus("Could not send it: " + e.message, "error");
+        } finally {
+            isSendingPresence = false;
+            if (btn) btn.disabled = false;
+        }
     };
 
     window.openPettyForm = function() {

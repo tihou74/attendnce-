@@ -1943,6 +1943,57 @@
              dashboard manages into a single downloadable JSON file, as a
              safety net independent of Firebase's own backup tooling. Purely
              client-side (reads with getDocs, no Cloud Functions needed). -->
+        <!-- ==================================================================
+             بطاقات المدراء — الصورة والمسمّى الذي تراه السيدة فاطمة
+             ------------------------------------------------------------------
+             ⚠️ لماذا مجموعة مستقلة (manager_cards) ولا تُقرأ الصورة من ملف
+             الموظف؟ لأن السيدة فاطمة مُشاهِدة (isViewer) ولا تستطيع قراءة
+             مجموعة employees إطلاقًا — فيها الرواتب وأرقام الهويات وصورها.
+             فالبطاقة نسخةٌ مقصودة ومحدودة: اسم وفرع ومسمّى وصورة صغيرة.
+             ⚠️ ولا تُستخدم صورة الهوية (qidFront/qidBack) بطاقةً بحال: تلك
+             وثيقة رسمية، ووضعها هنا يعني نشر هوية المدير على من يقرأ المجموعة.
+             ⚠️ الصورة تُصغَّر وتُضغط قبل الحفظ: صفحة السيدة فاطمة تُحدَّث كل
+             دقيقة، وصورةٌ بحجم 700KB لكل مدير كانت ستستهلك بياناتها بلا داعٍ.
+             ================================================================== -->
+        <div class="card">
+            <h3><span data-icon="users"></span> Manager Cards <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">بطاقات المدراء</span></h3>
+            <p class="card-sub">
+                The photo and job title that appear beside each manager in the management panel, next to the
+                green or red dot showing whether he is on duty. Only the managers enabled for the Daily Sales
+                Report are listed here. <b>Never</b> upload a QID picture &mdash; use an ordinary photograph.
+                The picture is shrunk automatically, so any size is fine.
+            </p>
+            <div class="controls" style="align-items: flex-end; gap: 10px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 220px;">
+                    <label for="mcManagerSelect">Manager</label>
+                    <select id="mcManagerSelect" onchange="onManagerCardPick()">
+                        <option value="">-- Choose a manager --</option>
+                    </select>
+                </div>
+                <div style="flex: 1; min-width: 180px;">
+                    <label for="mcTitle">Job title (shown to management)</label>
+                    <input type="text" id="mcTitle" placeholder="e.g. Branch Manager">
+                </div>
+                <div style="flex: 1; min-width: 200px;">
+                    <label for="mcPhotoInput">Photo</label>
+                    <input type="file" id="mcPhotoInput" accept="image/*" onchange="previewManagerCardPhoto()">
+                </div>
+                <div style="align-self: flex-end;">
+                    <button class="btn-success" onclick="saveManagerCard()"><span data-icon="save"></span> Save card</button>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 14px; margin-top: 12px;">
+                <img id="mcPreview" alt="" style="display: none; width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border);">
+                <span id="mcStatus" style="font-weight: 600; font-size: 13px;"></span>
+            </div>
+            <div class="table-container" style="margin-top: 16px;">
+                <table>
+                    <thead><tr><th>Photo</th><th>Manager</th><th>Job title</th><th>Branch</th><th>Photo size</th><th></th></tr></thead>
+                    <tbody id="mcTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="card money-only">
             <h3><span data-icon="database"></span> Full Backup Export</h3>
             <p class="card-sub">Downloads a single JSON file containing every record from every collection this dashboard manages (employees, PINs, attendance, deductions, leave requests, applications, warnings, annual leaves, allowance payments, audit log, branch geofences, settings). Keep backups somewhere safe outside Firebase as an extra safety net.</p>
@@ -3355,6 +3406,9 @@
         // تُحمَّل عند الإقلاع لا عند فتح التبويب فقط، وإلا لم يظهر الجرس حتى
         // يفتح المستخدم النافذة — وهو عكس الغرض من التنبيه.
         await loadManagerRequests();
+        // بطاقات المدراء: تُحمَّل عند الإقلاع لأن جدولها يُظهر أيضًا من لا بطاقة
+        // له — وهو نقصٌ يجب أن يُرى بلا انتظار فتح تبويب الإعدادات.
+        await loadManagerCards();
         // ثم نُسلّم المتابعة لمستمعين حيّين: الطلب الجديد يرنّ لحظة وصوله بلا
         // أن يفتح المالك أي تبويب. القراءة الأولى أعلاه تكفي لبناء الشاشة.
         startRequestListeners();
@@ -10825,6 +10879,224 @@
         XLSX.writeFile(wb, `${(emp?.name || attReportEmpId).replace(/[^A-Z0-9]+/gi,'_')}_Attendance_${start}_to_${end}.xlsx`);
     };
 
+    // =====================================================================
+    // بطاقات المدراء — manager_cards
+    // ---------------------------------------------------------------------
+    // ⚠️ مجموعة مستقلة عن employees عن قصد: السيدة فاطمة مُشاهِدة ولا تقرأ
+    // مستندات الموظفين (رواتب، أرقام هويات، صور هويات). البطاقة نسخةٌ محدودة
+    // بلا شيء حسّاس، ولهذا جاز أن تقرأها.
+    // ⚠️ الصورة تُصغَّر وتُضغط هنا لا تُحفظ كما هي: صفحة السيدة فاطمة تُحدَّث
+    // كل دقيقة، وصورةٌ بحجم الحدّ العام (700KB) لكل مدير كانت ستستهلك بياناتها.
+    // =====================================================================
+    const MANAGER_CARD_PHOTO_PX = 256;              // أقصى ضلع بعد التصغير
+    const MANAGER_CARD_MAX_BYTES = 120 * 1024;      // حدٌّ صارم بعد الضغط
+    let managerCards = [];                          // [{ id, ...data }]
+    let mcPendingPhoto = null;                      // الصورة المُصغَّرة بانتظار الحفظ
+
+    /** يُصغّر الصورة إلى مربّع MANAGER_CARD_PHOTO_PX ويُخرجها JPEG مضغوطة. */
+    function shrinkImageToDataUrl(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onerror = () => reject(new Error('Could not read the picture file.'));
+            reader.onload = () => {
+                const img = new Image();
+                img.onerror = () => reject(new Error('That file is not a picture the browser can open.'));
+                img.onload = () => {
+                    try {
+                        // قصٌّ مركزيٌّ إلى مربّع ثم تصغير — فالصورة تُعرض دائرية،
+                        // وتصغيرٌ بلا قصّ كان يسحب الوجه أفقيًّا أو رأسيًّا.
+                        const side = Math.min(img.width, img.height);
+                        const sx = Math.floor((img.width - side) / 2);
+                        const sy = Math.floor((img.height - side) / 2);
+                        const out = Math.min(MANAGER_CARD_PHOTO_PX, side);
+                        const canvas = document.createElement('canvas');
+                        canvas.width = out; canvas.height = out;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, sx, sy, side, side, 0, 0, out, out);
+                        // نُنزل الجودة تدريجيًّا حتى ندخل الحدّ، فلا نرفض صورة
+                        // كبيرة في وجه المالك بل نُصغّرها.
+                        let quality = 0.85, url = canvas.toDataURL('image/jpeg', quality);
+                        while (url.length * 0.75 > MANAGER_CARD_MAX_BYTES && quality > 0.35) {
+                            quality -= 0.1;
+                            url = canvas.toDataURL('image/jpeg', quality);
+                        }
+                        resolve(url);
+                    } catch (e) { reject(e); }
+                };
+                img.src = reader.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    /** المدراء = المفعَّل لهم التقرير اليومي، وهم من يضغط زرّ حالة الدوام. */
+    function managerCandidates() {
+        return activeEmployees()
+            .filter(e => e.canSubmitSalesReport === true)
+            .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+    }
+
+    window.loadManagerCards = async function() {
+        try {
+            const snap = await getDocs(collection(db, "manager_cards"));
+            managerCards = [];
+            snap.forEach(d => managerCards.push({ id: d.id, ...d.data() }));
+        } catch (e) {
+            console.error('Could not load manager cards:', e);
+            managerCards = [];
+        }
+        renderManagerCardPicker();
+        renderManagerCardsTable();
+    };
+
+    function renderManagerCardPicker() {
+        const sel = document.getElementById('mcManagerSelect');
+        if (!sel) return;
+        const keep = sel.value;
+        const list = managerCandidates();
+        sel.innerHTML = list.length
+            ? '<option value="">-- Choose a manager --</option>' + list.map(e =>
+                `<option value="${escapeHtml(e.id)}">${escapeHtml(e.name || e.id)}`
+                + `${managerCards.some(c => c.id === e.id) ? ' ✓' : ''}</option>`).join('')
+            : '<option value="">-- No manager is enabled for the Daily Sales Report yet --</option>';
+        if (keep) sel.value = keep;
+    }
+
+    window.onManagerCardPick = function() {
+        const id = document.getElementById('mcManagerSelect').value;
+        const emp = allEmployees.find(e => e.id === id);
+        const card = managerCards.find(c => c.id === id);
+        // المسمّى: الموجود في البطاقة، وإلا مسمّى الموظف من ملفه بداية معقولة.
+        document.getElementById('mcTitle').value = (card && card.title) || (emp && emp.role) || '';
+        mcPendingPhoto = null;
+        document.getElementById('mcPhotoInput').value = '';
+        const prev = document.getElementById('mcPreview');
+        const existing = card && card.photoBase64;
+        if (existing) { prev.src = existing; prev.style.display = 'block'; }
+        else { prev.removeAttribute('src'); prev.style.display = 'none'; }
+        document.getElementById('mcStatus').innerText = card
+            ? 'This manager already has a card. Saving replaces it.'
+            : (id ? 'No card yet for this manager.' : '');
+        document.getElementById('mcStatus').style.color = 'var(--text-dim)';
+    };
+
+    window.previewManagerCardPhoto = async function() {
+        const input = document.getElementById('mcPhotoInput');
+        const status = document.getElementById('mcStatus');
+        const file = input.files[0];
+        if (!file) { mcPendingPhoto = null; return; }
+        status.style.color = 'var(--text-dim)';
+        status.innerText = 'Shrinking the picture...';
+        try {
+            mcPendingPhoto = await shrinkImageToDataUrl(file);
+            const prev = document.getElementById('mcPreview');
+            prev.src = mcPendingPhoto;
+            prev.style.display = 'block';
+            status.innerText = `Ready — ${(mcPendingPhoto.length * 0.75 / 1024).toFixed(0)}KB after shrinking `
+                + `(was ${(file.size / 1024).toFixed(0)}KB).`;
+        } catch (e) {
+            mcPendingPhoto = null;
+            input.value = '';
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Could not use that picture: ' + e.message;
+        }
+    };
+
+    window.saveManagerCard = async function() {
+        const id = document.getElementById('mcManagerSelect').value;
+        const status = document.getElementById('mcStatus');
+        const title = document.getElementById('mcTitle').value.trim();
+        if (!id) { status.style.color = 'var(--danger)'; status.innerText = 'Choose a manager first.'; return; }
+        const emp = allEmployees.find(e => e.id === id);
+        if (!emp) { status.style.color = 'var(--danger)'; status.innerText = 'That employee no longer exists.'; return; }
+        const existing = managerCards.find(c => c.id === id);
+        const photo = mcPendingPhoto || (existing && existing.photoBase64) || '';
+        if (!photo) {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Choose a photo — without one the panel shows only the first letter of the name.';
+            return;
+        }
+        status.style.color = 'var(--text-dim)';
+        status.innerText = 'Saving...';
+        try {
+            await setDoc(doc(db, "manager_cards", id), {
+                employeeId: id,
+                name: emp.name || id,
+                branch: emp.branch || '',
+                title: title,
+                photoBase64: photo,
+                updatedAt: serverTimestamp()
+            });
+            logAudit('Manager card saved', `${emp.name || id}${title ? ' — ' + title : ''}`);
+            mcPendingPhoto = null;
+            document.getElementById('mcPhotoInput').value = '';
+            await loadManagerCards();
+            document.getElementById('mcManagerSelect').value = id;
+            status.style.color = 'var(--success)';
+            status.innerText = 'Saved. The management panel will show this photo and title.';
+        } catch (e) {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Could not save it: ' + e.message;
+        }
+    };
+
+    window.deleteManagerCard = async function(id) {
+        const card = managerCards.find(c => c.id === id);
+        if (!card) return;
+        if (!confirm(`Remove the card of ${card.name || id}?\n\nHis duty status stays; only the photo and title are removed.`)) return;
+        const status = document.getElementById('mcStatus');
+        try {
+            await deleteDoc(doc(db, "manager_cards", id));
+            logAudit('Manager card removed', card.name || id);
+            await loadManagerCards();
+            status.style.color = 'var(--success)';
+            status.innerText = 'Card removed.';
+        } catch (e) {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Could not remove it: ' + e.message;
+        }
+    };
+
+    function renderManagerCardsTable() {
+        const body = document.getElementById('mcTableBody');
+        if (!body) return;
+        const cands = managerCandidates();
+        // ⚠️ نعرض المدراء المفعَّلين **كلهم**، لا أصحاب البطاقات فقط: من لا
+        // بطاقة له يجب أن يُرى نقصُه، وإلا بقي بلا صورة عند السيدة فاطمة بلا
+        // أن يعرف المالك السبب.
+        const rows = cands.map(e => ({ emp: e, card: managerCards.find(c => c.id === e.id) || null }));
+        // وبطاقةٌ لمن لم يبقَ مديرًا (سُحبت صلاحيته أو انتهت خدمته) تُعرض موسومة:
+        // بطاقتها تظل تظهر للسيدة فاطمة، فلا تُترك خفيّة.
+        managerCards.forEach(c => {
+            if (!cands.some(e => e.id === c.id)) rows.push({ emp: null, card: c });
+        });
+        if (!rows.length) {
+            body.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-dim);">No manager is enabled for the Daily Sales Report yet.</td></tr>';
+            return;
+        }
+        body.innerHTML = rows.map(({ emp, card }) => {
+            const id = emp ? emp.id : card.id;
+            const name = (emp && emp.name) || (card && card.name) || id;
+            const stray = !emp;
+            const kb = card && card.photoBase64 ? (card.photoBase64.length * 0.75 / 1024).toFixed(0) + 'KB' : '—';
+            return `<tr${stray ? ' style="background: rgba(220,38,38,0.07);"' : ''}>
+                <td>${card && card.photoBase64
+                    ? `<img src="${card.photoBase64}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">`
+                    : '<span style="color: var(--warning); font-weight: 700; font-size: 12px;">no photo</span>'}</td>
+                <td><b>${escapeHtml(name)}</b>${stray
+                    ? ' <span style="color: var(--danger); font-size: 11px; font-weight: 800;">⚠ no longer a manager</span>' : ''}</td>
+                <td>${escapeHtml((card && card.title) || (emp && emp.role) || '—')}</td>
+                <td>${escapeHtml((card && card.branch) || (emp && emp.branch) || '—')}</td>
+                <td>${kb}</td>
+                <td>${card
+                    ? `<button class="btn-danger btn-sm" onclick="deleteManagerCard('${escapeHtml(id)}')"><span data-icon="trash"></span> Remove</button>`
+                    : ''}</td>
+            </tr>`;
+        }).join('');
+        // أزرار الحذف تحمل data-icon، وإعادة رسم innerHTML تمحو ما رُسم فيها.
+        if (typeof paintIcons === 'function') paintIcons();
+    }
+
     const MAX_DOC_FILE_BYTES = 700 * 1024;
     async function readFileIfPresent(inputEl, fallback = "") {
         const file = inputEl.files[0];
@@ -12316,7 +12588,12 @@
         // بعد تعديل الرواتب، ففقدانها فقدان دائم.
         "financial_payments", "financial_months",
         // وطلبات المديرين: سجل من طلب ومن وافق ومتى — إثبات لا يُعاد بناؤه.
-        "petty_cash_requests", "warning_requests"
+        "petty_cash_requests", "warning_requests",
+        // العبايات: نشاط كامل مستقل — تقاريره وبياعاته وأرقامهن السرية.
+        "abaya_sales_reports", "abaya_sellers", "abaya_seller_pins",
+        // وبطاقات المدراء وسجل حالة دوامهم. البطاقة تحمل الصورة نفسها ولا
+        // نسخة أخرى منها في أي مكان، فبلا هذا السطر تُفقد الصور نهائيًّا.
+        "manager_cards", "manager_presence"
     ];
     window.exportFullBackup = async function() {
         // النسخة الاحتياطية تحتوي كل شيء بلا استثناء — رواتب وصور هويات وعقود.

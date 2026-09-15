@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v12   (2026-09-15)  <<<
+//   >>>  RULES REVISION: v13   (2026-09-15)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,12 +12,14 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       abaya-balances.html
+//       manager_presence
 //
 //   (This exact text exists nowhere in any earlier revision, which is the whole
-//    point of a marker. Two earlier attempts were wrong and are worth avoiding:
-//    "abaya_sales_reports" is now in v11 AND v12 so it cannot tell them apart,
-//    and "isAccountant() || isViewer();" already existed before the abaya work.
+//    point of a marker. Earlier wrong attempts worth avoiding: for v12 the
+//    marker "abaya_sales_reports" was useless because it is in v11 AND v12, and
+//    "isAccountant() || isViewer();" already existed before the abaya work.
+//    "abaya-balances.html" was the correct v12 marker but is now in v12 AND
+//    v13, so it can no longer tell those two apart either.
 //    Pick a marker that is NEW in the revision you are publishing.)
 //
 //   FOUND     -> v12 is live. Good.
@@ -39,6 +41,33 @@ rules_version = '2';
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
 //
+//  v13  2026-09-15  + MANAGERS' PRESENCE — manager_presence and manager_cards.
+//                     Management's request: Mrs Fatima opens the panel and sees
+//                     which managers are on duty at that moment, each with his
+//                     photo, a green/red dot and a short written message.
+//                     Two NEW collections on purpose, and specifically NOT the
+//                     existing attendance collection:
+//                       • attendance feeds PAYROLL. A presence record written
+//                         there would change salaries, and would also break the
+//                         kiosk's strict Check-In/Check-Out alternation, since
+//                         the kiosk reads an employee's newest attendance doc
+//                         regardless of its type. Management was explicit that
+//                         the managers' hours are NOT being measured here
+//                         ("لا يهمني مدة العمل") — so this data must stay out of
+//                         payroll entirely.
+//                       • the VIEWERS cannot read employees at all (salaries,
+//                         QID photos), so the manager's photo and name could
+//                         not have come from an employee document. manager_cards
+//                         holds ONLY a name, a branch, a job title and a small
+//                         photo — nothing confidential — which is why a viewer
+//                         may read it while employees stays closed to her.
+//                     manager_presence is APPEND-ONLY for the managers' screen:
+//                     it records events (start / end / off) and the current
+//                     state is the latest event of that day. Nobody may edit an
+//                     event after the fact; the owner alone may delete one, to
+//                     clear a test entry. A manager who pressed the wrong button
+//                     simply presses the right one — the newest event wins.
+//                     No viewer gains any write anywhere, as always.
 //  v12  2026-09-15    abaya_sales_reports: the VIEWERS (the owner's viewing
 //                     account and Mrs Fatima) may now READ them, for the new
 //                     read-only page abaya-balances.html which shows the abaya
@@ -523,6 +552,58 @@ service cloud.firestore {
     // opening stock count of each shop) need NO rule of their own — they live
     // inside the settings collection already covered above, which the panel may
     // read and the owner and accountant may write.
+
+    // ---- manager_cards (the manager's photo, name and job title) -------------
+    // Exists ONLY so Mrs Fatima can see a face and a title next to each manager.
+    // She is a VIEWER and cannot read the employees collection at all — that one
+    // carries salaries, QID numbers and QID photographs. So the card is a
+    // deliberate, minimal copy: name, branch, job title, small photo. Nothing
+    // here is confidential, which is exactly why it can be a separate readable
+    // collection instead of opening up employee records.
+    //
+    // ⚠️ The photo must NEVER be taken from qidFront / qidBack. Those are
+    // identity documents; putting one here would publish a manager's QID to
+    // everyone who can read this collection. The owner uploads a normal
+    // photograph from the dashboard.
+    //
+    // Only the OWNER writes: a manager cannot change his own photo or title, and
+    // the restricted dashboard roles have no reason to.
+    match /manager_cards/{empId} {
+      allow read: if isAdmin() || isStaff() || isViewer();
+      allow write: if isAdmin();
+    }
+
+    // ---- manager_presence (on duty / finished / off) -------------------------
+    // One document per EVENT, never one per manager: 'start' (with the hour he
+    // says he will finish), 'end' (he confirms he has finished) and 'off' (a day
+    // he is not working, declared in advance). The current state of a manager on
+    // a given day is simply his LATEST event of that day.
+    //
+    // Why append-only instead of one editable document per manager per day:
+    // the managers' screen signs in anonymously (isKiosk) exactly like the staff
+    // kiosk, so granting it update would let anyone who opens that link rewrite
+    // an existing record. Creating a new event is the weakest permission that
+    // still does the job, and it leaves a history that cannot be altered.
+    //
+    // ⚠️ This is NOT attendance and must never be treated as such: it does not
+    // feed payroll, it carries no worked-hours figure, and management asked for
+    // no location check on it. It is a courtesy status for Mrs Fatima.
+    //
+    // The honest limit, stated rather than hidden: the managers' screen proves
+    // who is pressing only by a PIN checked inside the browser, so these rules
+    // cannot verify that the manager named in the document is the person who
+    // pressed. That is the same level of trust as the daily sales report and the
+    // petty-cash request, which already work this way. Because nothing here
+    // affects money, the consequence of a false entry is a wrong dot on a
+    // screen, not a wrong payment.
+    match /manager_presence/{eventId} {
+      allow read: if isAdmin() || isStaff() || isViewer();
+      allow create: if isKiosk() || isAdmin();
+      // History is not rewritable — a mistake is corrected by a NEW event.
+      allow update: if false;
+      // The owner alone may remove a test entry.
+      allow delete: if isAdmin();
+    }
 
     // ---- Default deny for anything not explicitly listed above ---------------
     match /{document=**} {

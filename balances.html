@@ -259,6 +259,52 @@
        ===================================================================== */
     .chooser { display: grid; gap: var(--space-4); grid-template-columns: 1fr; margin-bottom: var(--space-6); }
     @media (min-width: 560px) { .chooser { grid-template-columns: 1fr 1fr; } }
+    /* اختيار النشاط صار ثلاثة: مطاعم · عبايات · حضور المدراء */
+    @media (min-width: 980px) { .chooser.three { grid-template-columns: repeat(3, 1fr); } }
+
+    /* ---- حضور المدراء: بطاقة لكل مدير ------------------------------------ */
+    .mgrs { display: grid; gap: var(--space-4); grid-template-columns: 1fr; }
+    @media (min-width: 760px) { .mgrs { grid-template-columns: 1fr 1fr; } }
+    .mgr {
+        display: flex; gap: var(--space-4); align-items: flex-start;
+        background: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-border);
+        border-radius: var(--card-radius); padding: var(--space-5);
+        box-shadow: var(--shadow-xs);
+        border-left: 4px solid var(--color-border-strong);
+    }
+    /* الحدّ الملوّن مع النقطة: لا نعتمد على اللون وحده، والنصّ يقول الحالة أيضًا */
+    .mgr.on { border-left-color: var(--color-success); }
+    .mgr.off { border-left-color: var(--color-danger); }
+    .mgr.rest { border-left-color: var(--color-warning); }
+    .mgr .ph {
+        flex: 0 0 auto; width: 62px; height: 62px; border-radius: 50%;
+        object-fit: cover; background: var(--color-surface-2);
+        border: 2px solid var(--color-border);
+    }
+    /* بديل الصورة حين لا بطاقة: أول حرف من الاسم، فلا يبقى مربّع فارغ */
+    .mgr .ph.none {
+        display: flex; align-items: center; justify-content: center;
+        font-size: var(--text-xl); font-weight: 700; color: var(--color-text-muted);
+    }
+    .mgr .bd { min-width: 0; flex: 1; }
+    .mgr .nm { margin: 0; font-size: var(--text-base); font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .mgr .dot { width: 11px; height: 11px; border-radius: 50%; flex: 0 0 auto; display: inline-block; background: var(--color-text-muted); }
+    .mgr.on .dot { background: var(--color-success); }
+    .mgr.off .dot { background: var(--color-danger); }
+    .mgr.rest .dot { background: var(--color-warning); }
+    .mgr .ttl { margin: 3px 0 0; font-size: var(--text-xs); color: var(--color-text-muted); }
+    .mgr .st { margin: 8px 0 0; font-size: var(--text-xs); font-weight: 700; }
+    .mgr.on .st { color: var(--color-success); }
+    .mgr.off .st { color: var(--color-danger); }
+    .mgr.rest .st { color: var(--color-warning); }
+    /* الرسالة عربية داخل صفحة إنجليزية، فتُجبر على الاتجاه الصحيح */
+    .mgr .msg {
+        margin: var(--space-3) 0 0; font-size: var(--text-sm); line-height: var(--leading-arabic);
+        background: var(--color-surface-2); border-radius: var(--radius-md);
+        padding: 10px 12px; color: var(--color-text);
+    }
+    .mgr .why { margin: 6px 0 0; font-size: 11.5px; color: var(--color-text-muted); }
     .pick {
         display: flex; align-items: center; gap: var(--space-4);
         width: 100%; height: auto; text-align: start;
@@ -422,7 +468,7 @@
              نفسه، وتُسمّي نسخة Firebase "balances" فتتشارك الجلسة — فلا يُطلب
              تسجيل دخول ثانٍ عند الانتقال.
              ============================================================== -->
-        <div class="chooser" id="biz">
+        <div class="chooser three" id="biz">
             <button type="button" class="pick" id="pickRest" aria-pressed="false" aria-controls="restWrap">
                 <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v8a3 3 0 0 0 6 0V3"/><path d="M9 11v10"/><path d="M17 3c-1.5 2-2 3.5-2 6s.5 3 2 3 2-.5 2-3-.5-4-2-6z"/><path d="M17 12v9"/></svg></span>
                 <span class="tx">
@@ -437,6 +483,13 @@
                     <span class="t2" dir="rtl">عبايات الشيخة ستايل &mdash; الحساب والتارقت والستوك</span>
                 </span>
             </a>
+            <button type="button" class="pick" id="pickMgr" aria-pressed="false" aria-controls="mgrWrap">
+                <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg></span>
+                <span class="tx">
+                    <span class="t1">Managers on duty</span>
+                    <span class="t2" dir="rtl">حضور المدراء &mdash; من موجود الآن</span>
+                </span>
+            </button>
         </div>
 
         <p class="pickhint" id="bizHint">
@@ -573,6 +626,29 @@
         </div><!-- /viewBalances -->
         </div><!-- /restWrap -->
 
+        <!-- ==============================================================
+             حضور المدراء — صورة المدير ونقطة حالته ورسالته
+             --------------------------------------------------------------
+             ⚠️ الصورة والمسمّى من مجموعة manager_cards لا من مستند الموظف:
+             هذه الصفحة لا تستطيع قراءة مستندات الموظفين إطلاقًا (فيها الرواتب
+             وأرقام الهويات وصورها)، والبطاقة نسخةٌ محدودة بلا شيء حسّاس.
+             ⚠️ وهذه ليست سجل حضور ولا تمسّ الرواتب: لا مدة عمل ولا فحص موقع.
+             ============================================================== -->
+        <div id="mgrWrap" class="hidden">
+            <div class="backbar">
+                <button type="button" class="ghost" id="mgrBack">&#9664; Restaurants or Abaya</button>
+                <p class="ttl">Managers on duty <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--color-text-muted);">&mdash; حضور المدراء</span></p>
+            </div>
+            <div class="bar">
+                <button class="ghost" id="mgrPrev">&#9664; Previous day</button>
+                <div><label for="mgrDate">Day</label><input type="date" id="mgrDate"></div>
+                <button class="ghost" id="mgrNext">Next day &#9654;</button>
+            </div>
+            <p class="err" id="mgrError"></p>
+            <div class="mgrs" id="mgrList"></div>
+            <p class="note" id="mgrNote"></p>
+        </div>
+
         <!-- التحديث والخروج يبقيان ظاهرين دائمًا: لا يخصّان قسمًا بعينه،
              وزرّ الخروج تحديدًا لا يجوز أن يُخفى خلف اختيار. -->
         <div class="bar">
@@ -584,7 +660,9 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, doc, getDoc }
+    // query/where لأجل حضور المدراء: أحداثه تتراكم يومًا بعد يوم، فتُقرأ أحداث
+    // اليوم المعروض وحده. قراءة المجموعة كلها كانت ستَكبر بلا حدّ على جوالها.
+    import { getFirestore, collection, getDocs, doc, getDoc, query, where }
         from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut }
         from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -631,6 +709,20 @@
 
     const el = (id) => document.getElementById(id);
     const money = (n) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // ⚠️ ليست تجميلًا: أسماء المدراء ومسمّياتهم في حضور المدراء تأتي من مستندات
+    // تكتبها شاشة المدراء (بدخول مجهول)، فهي نصٌّ غير موثوق يُحقن في innerHTML.
+    // بلا هذا التهريب يستطيع من يكتب اسمًا فيه وسم <script> تنفيذه في هذه الصفحة.
+    function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
+            ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    /** لا يُقبل في src إلا صورة مُرمَّزة داخل المستند — لا رابط خارجي ولا javascript:. */
+    function safePhoto(v) {
+        const s = String(v || '');
+        return /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(s) ? s : '';
+    }
 
     // ---- منطق الحساب: نسخة مطابقة لما في admin.html ----------------------
     function dateAtMidnight(iso) {
@@ -921,15 +1013,199 @@
     // ⚠️ والخروج من المطاعم يُنسي القسم المُختار، فكل دخول يبدأ من الزرّين.
     // (زرّ العبايات لا يُدار من هنا: هو رابطٌ ينتقل بصفحته.)
     // =====================================================================
+    let activeBiz = '';
     function showBiz(which) {
+        activeBiz = which;
         el('biz').classList.toggle('hidden', !!which);
         el('bizHint').classList.toggle('hidden', !!which);
         el('restWrap').classList.toggle('hidden', which !== 'rest');
+        el('mgrWrap').classList.toggle('hidden', which !== 'mgr');
         el('pickRest').setAttribute('aria-pressed', String(which === 'rest'));
+        el('pickMgr').setAttribute('aria-pressed', String(which === 'mgr'));
         if (which !== 'rest') showView('');
+        // حضور المدراء يُحمَّل عند اختياره لا عند كل دخول: من يفتح الأرصدة لا
+        // يحتاج تنزيل صور المدراء، وهي أثقل ما في الصفحة.
+        if (which === 'mgr') loadManagers();
     }
     el('pickRest').addEventListener('click', () => showBiz('rest'));
     el('restBack').addEventListener('click', () => showBiz(''));
+    el('pickMgr').addEventListener('click', () => showBiz('mgr'));
+    el('mgrBack').addEventListener('click', () => showBiz(''));
+
+    // =====================================================================
+    // حضور المدراء
+    // ---------------------------------------------------------------------
+    // ⚠️ البطاقات (الصور) تُحمَّل **مرة واحدة** لا كل دقيقة: الصفحة تُحدّث نفسها
+    // كل دقيقة، وإعادة تنزيل صورة لكل مدير في كل مرة تستهلك بيانات جوالها بلا
+    // فائدة — الصورة لا تتغيّر. الأحداث وحدها تُعاد قراءتها.
+    // ⚠️ وأحداث اليوم المعروض وحدها تُقرأ (where على date)، فالمجموعة تكبر
+    // بيوم كل يوم ولا يجوز أن يكبر معها ما تُنزّله.
+    // =====================================================================
+    let mgrCards = [];          // manager_cards
+    let mgrCardsLoaded = false;
+    let mgrEvents = [];         // أحداث اليوم المعروض
+    let mgrEventsDate = '';
+
+    /** ترتيب الأحداث بساعة الخادم — لا بساعة جهاز من كتبها. */
+    function mgrEventMillis(e) {
+        const t = e.serverTime || e.deviceTime;
+        if (t && typeof t.toDate === 'function') return t.toDate().getTime();
+        if (t instanceof Date) return t.getTime();
+        return 0;
+    }
+
+    function currentMgrDay() {
+        return el('mgrDate').value || todayISOLocal();
+    }
+
+    async function loadManagers() {
+        el('mgrError').innerText = '';
+        if (!el('mgrDate').value) el('mgrDate').value = todayISOLocal();
+        const day = currentMgrDay();
+        try {
+            if (!mgrCardsLoaded) {
+                const snap = await getDocs(collection(db, "manager_cards"));
+                mgrCards = [];
+                snap.forEach(d => mgrCards.push({ id: d.id, ...d.data() }));
+                mgrCards.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+                mgrCardsLoaded = true;
+            }
+            const snap2 = await getDocs(query(collection(db, "manager_presence"), where("date", "==", day)));
+            mgrEvents = [];
+            snap2.forEach(d => mgrEvents.push({ id: d.id, ...d.data() }));
+            mgrEventsDate = day;
+            renderManagers();
+        } catch (e) {
+            console.error(e);
+            // لا نُظهر حالة قديمة كأنها حالية عند فشل القراءة.
+            el('mgrList').innerHTML = '';
+            el('mgrNote').innerHTML = '';
+            el('mgrError').innerText = 'Could not load the managers: ' + e.message;
+        }
+    }
+
+    /**
+     * حالة مدير في يوم: آخر حدث له في ذلك اليوم.
+     * ⚠️ «انتهى تلقائيًّا» يُميَّز عن «أكّد انتهاءه» عن قصد: الأول استنتاجٌ من
+     * الساعة التي حدّدها، والثاني ضغطةٌ منه. عرضهما سواءً كان سيُخبرها بما لم
+     * يحدث. وهذا الاستنتاج يُقاس بساعة **جهازها** (لا سبيل لساعة الخادم في
+     * المتصفح بلا كتابة)، وهو مقبول هنا وحده لأنه لا يترتّب عليه أي مال.
+     */
+    function mgrStateFor(empId, day) {
+        const evs = mgrEvents.filter(e => e.employeeId === empId)
+            .sort((a, b) => mgrEventMillis(a) - mgrEventMillis(b));
+        if (!evs.length) return { state: 'none', ev: null };
+        const last = evs[evs.length - 1];
+        if (last.event === 'off') return { state: 'rest', ev: last };
+        if (last.event === 'end') return { state: 'ended', ev: last, auto: false };
+        // 'start' — هل مضت الساعة التي حدّدها؟
+        const now = new Date();
+        const nowHM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const today = todayISOLocal();
+        // يومٌ ماضٍ وبدايةٌ بلا انتهاء: دوامه انتهى بالبديهة.
+        if (day < today) return { state: 'ended', ev: last, auto: true };
+        if (day > today) return { state: 'active', ev: last, auto: false };
+        if (last.toTime && nowHM >= last.toTime) return { state: 'ended', ev: last, auto: true };
+        return { state: 'active', ev: last, auto: false };
+    }
+
+    const MGR_CLASS = { active: 'on', ended: 'off', rest: 'rest', none: '' };
+    const MGR_WORD = {
+        active: 'On duty now',
+        ended: 'Shift finished',
+        rest: 'Day off',
+        none: 'Nothing recorded for this day'
+    };
+
+    /** الرسالة التي طلبتها الإدارة — بالعربية، وبصيغة المخاطبة. */
+    function mgrMessage(st, name, title) {
+        const who = title ? `${name} &mdash; ${escapeHtml(title)}` : name;
+        if (st.state === 'active') {
+            return `أهلًا السيدة فاطمة، أنا ${who}. أنا متواجد من الساعة `
+                + `<b>${escapeHtml(st.ev.fromTime || '—')}</b> إلى الساعة <b>${escapeHtml(st.ev.toTime || '—')}</b>، `
+                + `ويسعدني أن أكون في خدمتك في أي وقت.`;
+        }
+        if (st.state === 'ended') {
+            return `أهلًا السيدة فاطمة، أنا ${who}. لقد انتهى دوامي، ورغم هذا أنا متوفر `
+                + `للضرورة في أي وقت ويسعدني ذلك.`;
+        }
+        if (st.state === 'rest') {
+            return `أهلًا السيدة فاطمة، أنا ${who}. هذا اليوم يوم راحتي، ومع ذلك `
+                + `يسعدني أن أكون في خدمتك في أي وقت.`;
+        }
+        return '';
+    }
+
+    function renderManagers() {
+        const day = mgrEventsDate;
+        el('mgrNext').disabled = day >= todayISOLocal();
+
+        // القائمة = أصحاب البطاقات + أي مدير سجّل حدثًا اليوم بلا بطاقة.
+        // ⚠️ لولا الثاني لكان مديرٌ ضغط الزرّ ولم تُرفع له صورة **غائبًا تمامًا**
+        // عن الشاشة، فتظنّ أنه لم يسجّل شيئًا.
+        const rows = mgrCards.map(c => ({ id: c.id, name: c.name || c.id, title: c.title || '', photo: safePhoto(c.photoBase64) }));
+        mgrEvents.forEach(e => {
+            if (!e.employeeId || rows.some(r => r.id === e.employeeId)) return;
+            rows.push({ id: e.employeeId, name: e.employeeName || e.employeeId, title: e.title || '', photo: '', noCard: true });
+        });
+
+        if (!rows.length) {
+            el('mgrList').innerHTML = '';
+            el('mgrNote').innerHTML = `<b>No manager card has been added yet.</b> `
+                + `The owner adds each manager's photo and job title from the dashboard, under Settings.`;
+            return;
+        }
+
+        rows.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+
+        el('mgrList').innerHTML = rows.map(r => {
+            const st = mgrStateFor(r.id, day);
+            const cls = MGR_CLASS[st.state] || '';
+            const initial = String(r.name).trim().charAt(0).toUpperCase() || '?';
+            const msg = mgrMessage(st, escapeHtml(r.name), r.title);
+            let why = '';
+            if (st.state === 'ended' && st.auto) {
+                why = `Automatically shown as finished &mdash; the hour he gave (${escapeHtml((st.ev && st.ev.toTime) || '—')}) has passed. He did not press it himself.`;
+            } else if (st.state === 'ended') {
+                why = 'He confirmed this himself.';
+            } else if (st.state === 'none') {
+                why = 'He has not pressed anything for this day.';
+            }
+            return `<div class="mgr ${cls}">
+                ${r.photo
+                    ? `<img class="ph" src="${r.photo}" alt="">`
+                    : `<span class="ph none" aria-hidden="true">${escapeHtml(initial)}</span>`}
+                <span class="bd">
+                    <p class="nm"><span class="dot" aria-hidden="true"></span>${escapeHtml(r.name)}</p>
+                    <p class="ttl">${escapeHtml(r.title || '—')}${r.noCard ? ' · <b>no photo added yet</b>' : ''}</p>
+                    <p class="st">${escapeHtml(MGR_WORD[st.state] || '')}</p>
+                    ${msg ? `<p class="msg" dir="rtl">${msg}</p>` : ''}
+                    ${why ? `<p class="why">${why}</p>` : ''}
+                </span>
+            </div>`;
+        }).join('');
+
+        const notes = [];
+        const active = rows.filter(r => mgrStateFor(r.id, day).state === 'active').length;
+        notes.push(`<b>${active} of ${rows.length} manager(s)</b> on duty on ${escapeHtml(day)}.`);
+        notes.push(`Each manager presses this himself from his own screen. `
+            + `It is a courtesy status, <b>not</b> an attendance record: no hours are counted and no salary is affected.`);
+        notes.push(`A manager shown as finished because his stated hour passed is marked as such &mdash; `
+            + `it is not the same as him confirming it.`);
+        el('mgrNote').innerHTML = notes.join('<br><br>');
+    }
+
+    el('mgrPrev').addEventListener('click', () => {
+        el('mgrDate').value = shiftISO(currentMgrDay(), -1);
+        loadManagers();
+    });
+    el('mgrNext').addEventListener('click', () => {
+        const d = currentMgrDay();
+        if (d >= todayISOLocal()) return;
+        el('mgrDate').value = shiftISO(d, 1);
+        loadManagers();
+    });
+    el('mgrDate').addEventListener('change', loadManagers);
 
     el('tgPrev').addEventListener('click', () => {
         tgDate = shiftISO(currentTargetDay(), -1);
@@ -1076,7 +1352,23 @@
         }
     });
     el('pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') el('loginBtn').click(); });
-    el('refreshBtn').addEventListener('click', loadAll);
+    // =====================================================================
+    // التحديث: ما هو معروضٌ وحده
+    // ---------------------------------------------------------------------
+    // ⚠️ حضور المدراء لا يُحمَّل مع الأرصدة: صوره أثقل ما في الصفحة، ومن يفتح
+    // الأرصدة لا يحتاجها. ولكن حين يكون معروضًا **يجب** أن يُحدَّث بنفسه، وإلا
+    // بقيت النقطة خضراء بعد انتهاء دوام صاحبها.
+    // ⚠️ والتحديث اليدوي يُنسي البطاقات المحمَّلة، فمديرٌ أُضيفت صورته الآن يظهر
+    // بضغطة «Refresh now» بلا إعادة تحميل الصفحة كلها.
+    // =====================================================================
+    async function refreshShown() {
+        await loadAll();
+        if (activeBiz === 'mgr') await loadManagers();
+    }
+    el('refreshBtn').addEventListener('click', () => {
+        mgrCardsLoaded = false;
+        refreshShown();
+    });
     el('logoutBtn').addEventListener('click', () => signOut(auth));
 
     onAuthStateChanged(auth, (user) => {
@@ -1096,7 +1388,7 @@
             showBiz('');
             loadAll();
             if (timer) clearInterval(timer);
-            timer = setInterval(loadAll, AUTO_REFRESH_MS);
+            timer = setInterval(refreshShown, AUTO_REFRESH_MS);
         } else {
             if (timer) { clearInterval(timer); timer = null; }
             el('dataPanel').classList.add('hidden');
@@ -1107,7 +1399,9 @@
 
     // إعادة الحساب عند العودة إلى الصفحة، فالوقت تقدّم وقد تكون مبيعات دخلت.
     document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && auth.currentUser) loadAll();
+        // ⚠️ refreshShown لا loadAll: من عاد إلى الصفحة وهو على حضور المدراء
+        // كان يرى حالة قديمة — وهي أكثر ما يتقادم في الصفحة كلها.
+        if (!document.hidden && auth.currentUser) refreshShown();
     });
 </script>
 
