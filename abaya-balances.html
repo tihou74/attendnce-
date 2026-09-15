@@ -120,6 +120,15 @@
     /* ---- شاشة الاختيار: ثلاثة أزرار، ولا نتائج قبل الضغط -------------- */
     .chooser { display: grid; gap: var(--space-4); grid-template-columns: 1fr; margin-bottom: var(--space-5); }
     @media (min-width: 700px) { .chooser { grid-template-columns: repeat(3, 1fr); } }
+    /* اختيار المحل داخل الستوك: أربعة أزرار (ثلاثة محلات + الكل مجتمعين). */
+    @media (min-width: 560px) and (max-width: 899px) { .chooser.four { grid-template-columns: 1fr 1fr; } }
+    @media (min-width: 900px) { .chooser.four { grid-template-columns: repeat(4, 1fr); } }
+    /* زرّ «الكل مجتمعين» يُميَّز بحدّه الذهبي: هو ملخّصٌ لا محلًّا. */
+    .pick.all { border-top: 3px solid var(--color-brand); }
+    /* شريط الرجوع: اسم المحل بجانب زرّ العودة إلى أزرار المحلات. */
+    .backbar { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-4); }
+    .backbar button { width: auto; min-height: 40px; }
+    .backbar .ttl { margin: 0; font-size: var(--text-base); font-weight: 700; }
     .pick {
         display: flex; align-items: center; gap: var(--space-4);
         width: 100%; height: auto; text-align: start; padding: var(--space-5); cursor: pointer;
@@ -256,7 +265,7 @@
                 <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5"/><path d="M12 12v9"/></svg></span>
                 <span>
                     <span class="t1">Stock</span>
-                    <span class="t2">Pieces in each shop right now</span>
+                    <span class="t2">Pick a shop, or see all three together</span>
                 </span>
             </button>
         </div>
@@ -362,24 +371,41 @@
              ⚠️ ترويسة الأعمدة تُبنى في الترميز من ABAYA_SHOPS، فلا تُكتب أسماء
              المحلات في HTML: محلٌّ يُضاف هناك يظهر هنا تلقائيًّا. -->
         <div id="viewStock" class="hidden">
-            <div class="tw">
-                <table>
-                    <thead><tr id="stHead"></tr></thead>
-                    <tbody id="stBody"></tbody>
-                    <tfoot id="stFoot"></tfoot>
-                </table>
-            </div>
-            <p class="note" id="stNote"></p>
+            <!-- ⚠️ أزرار المحلات تُبنى في الترميز من ABAYA_SHOPS، ويُميَّز كلٌّ منها
+                 بـ data-shop لا بمعرّف id: محلٌّ يُضاف هناك يظهر زرّه وحده، ولا
+                 مستمعَ لكل زر بل مستمعٌ واحد على الحاوية. -->
+            <div class="chooser four" id="stChooser"></div>
+            <p class="pickhint" id="stHint">Choose a shop to see what it is holding.</p>
 
-            <p class="sect">Shanton's abayas &mdash; her goods, not yours</p>
-            <div class="tw">
-                <table>
-                    <thead><tr><th>Shop</th><th class="n">Held now</th></tr></thead>
-                    <tbody id="shBody"></tbody>
-                    <tfoot id="shFoot"></tfoot>
-                </table>
+            <!-- ستوك المحل المُختار (أو الكل مجتمعين) -->
+            <div id="stPanel" class="hidden">
+                <div class="backbar">
+                    <button class="ghost" id="stBack">&#9664; All shops</button>
+                    <p class="ttl" id="stTitle">&mdash;</p>
+                </div>
+                <div class="tw">
+                    <table>
+                        <thead><tr id="stHead"></tr></thead>
+                        <tbody id="stBody"></tbody>
+                        <tfoot id="stFoot"></tfoot>
+                    </table>
+                </div>
+                <p class="note" id="stNote"></p>
+
+                <!-- ⚠️ مخزن شانتون يظهر في محلّها وفي «الكل مجتمعين» فقط. إظهاره
+                     في محلٍّ لا تعرض فيه كان يُقرأ أن لها بضاعة هناك. -->
+                <div id="shWrap" class="hidden">
+                    <p class="sect">Shanton's abayas &mdash; her goods, not yours</p>
+                    <div class="tw">
+                        <table>
+                            <thead><tr><th>Shop</th><th class="n">Held now</th></tr></thead>
+                            <tbody id="shBody"></tbody>
+                            <tfoot id="shFoot"></tfoot>
+                        </table>
+                    </div>
+                    <p class="note" id="shNote"></p>
+                </div>
             </div>
-            <p class="note" id="shNote"></p>
         </div>
 
         <div style="display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-5);">
@@ -670,10 +696,34 @@
         el('pickTarget').setAttribute('aria-pressed', String(which === 'target'));
         el('pickStock').setAttribute('aria-pressed', String(which === 'stock'));
         el('pickHint').classList.toggle('hidden', !!which);
+        // كل دخول إلى الستوك يبدأ من أزرار المحلات، وكل خروج منه يُنسي المُختار.
+        showStock('');
     }
     el('pickAccount').addEventListener('click', () => showView('account'));
     el('pickTarget').addEventListener('click', () => showView('target'));
     el('pickStock').addEventListener('click', () => showView('stock'));
+
+    // ---------------------------------------------------------------------
+    // اختيار المحل داخل الستوك
+    // '' = لم يُختر شيء بعد (تظهر الأزرار) · ALL = الكل مجتمعين · أو اسم محل.
+    // ⚠️ مثل showView: لا يُلمس هذا في render()، فالتحديث كل دقيقة كان سيُرجع
+    // القارئ من ستوك المحل الذي يقرؤه إلى شاشة الأزرار بين يديه.
+    // ---------------------------------------------------------------------
+    const STOCK_ALL = '__ALL__';
+    let stShop = '';
+    function showStock(which) {
+        stShop = which;
+        el('stChooser').classList.toggle('hidden', !!which);
+        el('stHint').classList.toggle('hidden', !!which);
+        el('stPanel').classList.toggle('hidden', !which);
+        renderStock();
+    }
+    // مستمعٌ واحد على الحاوية لا مستمعٌ لكل زر: الأزرار تُبنى في كل تحديث.
+    el('stChooser').addEventListener('click', (ev) => {
+        const b = ev.target.closest('button[data-shop]');
+        if (b) showStock(b.getAttribute('data-shop'));
+    });
+    el('stBack').addEventListener('click', () => showStock(''));
 
     // =====================================================================
     // 1) الحساب
@@ -830,39 +880,101 @@
     // =====================================================================
     function renderStock() {
         const per = ABAYA_SHOPS.map(s => ({ shop: s, st: abayaStockFor(s) }));
-
-        // ⚠️ سطرٌ لكل صنف وعمودٌ لكل محل — لا العكس. الأصناف سبعة والمحلات
-        // ثلاثة، فهذا الاتجاه يعطي جدولًا من 5 أعمدة يُقرأ على الجوال، والعكس
-        // كان سيعطي 9 أعمدة تحتاج سحبًا أفقيًّا.
-        el('stHead').innerHTML = '<th>Product</th>'
-            + per.map(({ shop }) => `<th class="n">${escapeHtml(shop)}</th>`).join('')
-            + '<th class="n">All shops</th>';
-
         const cell = (v) => `<td class="n${v < 0 ? ' down' : ''}">${v}</td>`;
-        el('stBody').innerHTML = ABAYA_STOCK_ITEMS.map(it => {
-            const vals = per.map(({ st }) => st.items[it.key].now);
-            const tot = vals.reduce((a, b) => a + b, 0);
-            return `<tr>
-                <td><b>${escapeHtml(it.en)}</b></td>
-                ${vals.map(cell).join('')}
-                <td class="n"><b class="${tot < 0 ? 'down' : ''}">${tot}</b></td>
-            </tr>`;
-        }).join('');
 
-        // ⚠️ مجموع المحل يُقرأ من st.sum.now لا من جمع خانات العمود: هما متساويان
-        // بحكم بناء abayaStockFor، والاعتماد على المصدر نفسه يمنع تباعدهما لو
-        // أُضيف صنفٌ إلى المخزون ونُسي من ABAYA_STOCK_ITEMS.
-        const shopNow = per.map(({ st }) => st.sum.now);
-        const grand = shopNow.reduce((a, b) => a + b, 0);
-        el('stFoot').innerHTML = `<tr>
-            <td>ALL PRODUCTS</td>
-            ${shopNow.map(cell).join('')}
-            <td class="n"><b class="${grand < 0 ? 'down' : ''}">${grand}</b></td>
-        </tr>`;
+        // ---- أزرار المحلات: على كل زرّ عددُ ما فيه الآن -------------------
+        // ⚠️ تُعاد بناؤها في كل تحديث لأن الأعداد عليها تتغيّر، ولذلك المستمع
+        // على الحاوية لا على الأزرار.
+        const box = (svg) => `<span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${svg}</svg></span>`;
+        const SHOP_IC = '<path d="M3 9.5 5 4h14l2 5.5"/><path d="M4 9.5h16V20H4z"/><path d="M9.5 20v-5h5v5"/>';
+        const ALL_IC = '<path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5"/><path d="M12 12v9"/>';
+        const grandNow = per.reduce((a, { st }) => a + st.sum.now, 0);
+        el('stChooser').innerHTML = per.map(({ shop, st }) => `
+            <button type="button" class="pick" data-shop="${escapeHtml(shop)}">
+                ${box(SHOP_IC)}
+                <span>
+                    <span class="t1">${escapeHtml(shop)}</span>
+                    <span class="t2 ${st.sum.now < 0 ? 'down' : ''}">${st.sum.now} piece(s) now</span>
+                </span>
+            </button>`).join('')
+            + `<button type="button" class="pick all" data-shop="${STOCK_ALL}">
+                ${box(ALL_IC)}
+                <span>
+                    <span class="t1">All shops together</span>
+                    <span class="t2 ${grandNow < 0 ? 'down' : ''}">${grandNow} piece(s) in total</span>
+                </span>
+            </button>`;
+
+        // لا جدول قبل الاختيار.
+        if (!stShop) return;
+
+        const isAll = stShop === STOCK_ALL;
+        // ⚠️ محلٌّ محفوظ ثم حُذف من ABAYA_SHOPS: نعود إلى الأزرار بدل عرض أصفار.
+        if (!isAll && !ABAYA_SHOPS.includes(stShop)) { showStock(''); return; }
+        const one = isAll ? null : per.find(x => x.shop === stShop);
+
+        el('stTitle').innerText = isAll ? 'All three shops together' : stShop;
+
+        if (isAll) {
+            // ⚠️ سطرٌ لكل صنف وعمودٌ لكل محل — لا العكس. الأصناف سبعة والمحلات
+            // ثلاثة، فهذا الاتجاه يعطي جدولًا من 5 أعمدة يُقرأ على الجوال، والعكس
+            // كان سيعطي 9 أعمدة تحتاج سحبًا أفقيًّا.
+            el('stHead').innerHTML = '<th>Product</th>'
+                + per.map(({ shop }) => `<th class="n">${escapeHtml(shop)}</th>`).join('')
+                + '<th class="n">All shops</th>';
+            el('stBody').innerHTML = ABAYA_STOCK_ITEMS.map(it => {
+                const vals = per.map(({ st }) => st.items[it.key].now);
+                const tot = vals.reduce((a, b) => a + b, 0);
+                return `<tr>
+                    <td><b>${escapeHtml(it.en)}</b></td>
+                    ${vals.map(cell).join('')}
+                    <td class="n"><b class="${tot < 0 ? 'down' : ''}">${tot}</b></td>
+                </tr>`;
+            }).join('');
+            // ⚠️ مجموع المحل من st.sum.now لا من جمع خانات العمود: هما متساويان
+            // بحكم بناء abayaStockFor، والاعتماد على المصدر نفسه يمنع تباعدهما لو
+            // أُضيف صنفٌ إلى المخزون ونُسي من ABAYA_STOCK_ITEMS.
+            const shopNow = per.map(({ st }) => st.sum.now);
+            el('stFoot').innerHTML = `<tr>
+                <td>ALL PRODUCTS</td>
+                ${shopNow.map(cell).join('')}
+                <td class="n"><b class="${grandNow < 0 ? 'down' : ''}">${grandNow}</b></td>
+            </tr>`;
+        } else {
+            // محلٌّ واحد: عمودان فقط — الصنف وكم منه فيه.
+            el('stHead').innerHTML = '<th>Product</th><th class="n">Pieces now</th>';
+            el('stBody').innerHTML = ABAYA_STOCK_ITEMS.map(it => `<tr>
+                <td><b>${escapeHtml(it.en)}</b></td>
+                ${cell(one.st.items[it.key].now)}
+            </tr>`).join('');
+            el('stFoot').innerHTML = `<tr>
+                <td>ALL PRODUCTS</td>
+                <td class="n"><b class="${one.st.sum.now < 0 ? 'down' : ''}">${one.st.sum.now}</b></td>
+            </tr>`;
+        }
+
+        const grand = grandNow;
+
+        // ---- مخزن شانتون: محلّها وحده، مع أي محل ظهرت فيه أرقام باسمها خطأً
+        // ⚠️ يُحسب قبل كتابة الملاحظات: إحداها تقول «جدولها بالأسفل»، ولا يجوز
+        // أن تُقال قبل معرفة أن هناك جدولًا بالأسفل فعلًا.
+        const strays = ABAYA_SHOPS.filter(s => !ABAYA_SHANTON_SHOPS.includes(s)
+            && (() => { const x = abayaStockFor(s).shanton; return x.opening || x.received || x.sold || x.sentOut; })());
+        const shShops = ABAYA_SHOPS.filter(s => ABAYA_SHANTON_SHOPS.includes(s) || strays.includes(s));
+        // ⚠️ في عرض محلٍّ واحد لا يُعرض إلا ما في ذلك المحل: جدولٌ يسرد محلًّا
+        // آخر داخل شاشة «جلف مول» كان يُقرأ أن لها بضاعة في جلف مول.
+        const shPer = shShops
+            .filter(s => isAll || s === stShop)
+            .map(s => ({ shop: s, st: abayaStockFor(s) }));
+        const shShown = shPer.length > 0;
+        el('shWrap').classList.toggle('hidden', !shShown);
 
         const stNotes = [];
-        stNotes.push(`<b>Pieces available right now</b> in each shop, product by product. `
-            + `How the stock moved day by day is in the owner's dashboard, not here.`);
+        stNotes.push(isAll
+            ? `<b>Pieces available right now</b> in each shop, product by product. `
+              + `How the stock moved day by day is in the owner's dashboard, not here.`
+            : `<b>Pieces available right now in ${escapeHtml(stShop)}</b>, product by product. `
+              + `The other shops are on their own buttons, and the last button adds all three together.`);
         if (!abayaOpening.openingDate) {
             stNotes.push(`<b class="wait">The opening count has not been entered yet</b>, so these figures start from zero `
                 + `and will look negative as sales come in. The owner enters it once from the dashboard.`);
@@ -871,14 +983,13 @@
                 + `are already inside the opening count and are deliberately not subtracted again.`);
         }
         stNotes.push(`<b>Shanton's abayas are not in this table</b> — they are her goods, not yours, and counting them `
-            + `would make the stock look bigger than it is. They have their own table below.`);
+            + `would make the stock look bigger than it is. `
+            + (shShown
+                ? `They have their own table below.`
+                : `She displays in <b>${ABAYA_SHANTON_SHOPS.join(', ')}</b> only, so there is nothing of hers here.`));
         el('stNote').innerHTML = stNotes.join('<br><br>');
 
-        // ---- مخزن شانتون: محلّها وحده، مع أي محل ظهرت فيه أرقام باسمها خطأً
-        const strays = ABAYA_SHOPS.filter(s => !ABAYA_SHANTON_SHOPS.includes(s)
-            && (() => { const x = abayaStockFor(s).shanton; return x.opening || x.received || x.sold || x.sentOut; })());
-        const shShops = ABAYA_SHOPS.filter(s => ABAYA_SHANTON_SHOPS.includes(s) || strays.includes(s));
-        const shPer = shShops.map(s => ({ shop: s, st: abayaStockFor(s) }));
+        if (!shShown) { el('shBody').innerHTML = ''; el('shFoot').innerHTML = ''; el('shNote').innerHTML = ''; return; }
 
         el('shBody').innerHTML = shPer.map(({ shop, st }) => {
             const s = st.shanton;
@@ -900,9 +1011,14 @@
             shNotes.push(`<b class="down">Her stock is negative in ${neg.map(x => escapeHtml(x.shop)).join(' · ')}.</b> `
                 + `That means abayas of hers were sold without ever being recorded as received from her.`);
         }
-        // ⚠️ مخزوننا يُقرأ من grand (المحلات الثلاثة) لا من shPer الذي بُني على محلّها.
-        shNotes.push(`<b>Both stocks together: ${grand + gs.now} piece(s)</b> `
-            + `(${grand} yours in the three shops + ${gs.now} Shanton's). `
+        // ⚠️ المدموج يجب أن يخصّ ما هو معروضٌ على الشاشة. في «الكل مجتمعين» هو
+        // grand (المحلات الثلاثة)، وفي محلٍّ واحد هو مخزون ذلك المحل وحده —
+        // وإلا قرأ من يفتح «دوحة فيستفال» مخزونَ الشركة كله كأنه مخزون المحل.
+        // ولا يُقرأ من shPer بحال، فهو مبنيٌّ على محلّها.
+        const mineShown = isAll ? grand : one.st.sum.now;
+        const whereShown = isAll ? 'the three shops' : stShop;
+        shNotes.push(`<b>Both stocks together: ${mineShown + gs.now} piece(s)</b> `
+            + `(${mineShown} yours in ${escapeHtml(whereShown)} + ${gs.now} Shanton's). `
             + `This combined figure is for information only and is never used in any money calculation — `
             + `the value of the stock is your own pieces alone.`);
         el('shNote').innerHTML = shNotes.join('<br><br>');
