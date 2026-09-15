@@ -1,8 +1,8 @@
 {
-  "name": "Al Sheikha Balances",
-  "short_name": "Balances",
+  "name": "Al Sheikha — Restaurants & Abaya",
+  "short_name": "Al Sheikha",
   "id": "./?app=balances",
-  "description": "View only — how much is in the bank, how much the delivery apps still owe, and how much is in the cash box right now.",
+  "description": "View only — one panel for both businesses: the restaurants' balances and daily target, and the abaya shops' account, target and stock.",
   "start_url": "./balances.html",
   "scope": "./",
   "display": "standalone",

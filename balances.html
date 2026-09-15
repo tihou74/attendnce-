@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Balances — Al Sheikha Group</title>
+<title>Al Sheikha — Restaurants &amp; Abaya</title>
 
 <!-- =============================================================================
      لوحة الأرصدة — عرض فقط
@@ -34,7 +34,7 @@
 <link rel="apple-touch-icon" href="./icons/balances-touch.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Balances">
+<meta name="apple-mobile-web-app-title" content="Al Sheikha">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="robots" content="noindex, nofollow">
 
@@ -269,6 +269,15 @@
         transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
     }
     .pick:hover { background: var(--color-surface-2); border-color: var(--color-primary); }
+    /* زرّ العبايات رابطٌ لا زرّ (انظر تعليق الترميز)، فيحتاج تسوية المظهر. */
+    a.pick { text-decoration: none; box-sizing: border-box; }
+    a.pick:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+    /* شريط الرجوع إلى اختيار النشاط */
+    .backbar { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-5); }
+    .backbar button { width: auto; min-height: 40px; }
+    .backbar .ttl { margin: 0; font-size: var(--text-base); font-weight: 700; }
+    button.ghost { background: transparent; color: var(--color-text); border: var(--border-hairline) solid var(--color-border-strong); }
+    button.ghost:hover:not([disabled]) { background: var(--color-surface-2); }
     /* المُختار: حدٌّ كحلي عريض من الأعلى + سطح مميّز. لا نعتمد اللون وحده —
        aria-pressed تُخبر قارئ الشاشة، والحدّ يُرى في وضع تباين عالٍ. */
     .pick[aria-pressed="true"] {
@@ -370,10 +379,10 @@
 
 <div class="wrap">
     <header>
-        <img src="./icons/balances-192.png" alt="Al Sheikha Group">
+        <img src="./icons/balances-192.png" alt="Al Sheikha">
         <div>
-            <h1>Balances</h1>
-            <p>Al Sheikha Group &mdash; view only</p>
+            <h1>Al Sheikha</h1>
+            <p>Restaurants &amp; Abaya &mdash; view only</p>
         </div>
     </header>
 
@@ -385,7 +394,7 @@
         <label for="pass">Password</label>
         <input type="password" id="pass" autocomplete="current-password">
         <button id="loginBtn">Sign in</button>
-        <p class="note">This screen only shows the three balances. Nothing here can be changed.</p>
+        <p class="note">One panel for both businesses &mdash; the restaurants and the abaya shops. Nothing here can be changed.</p>
 
         <!-- تعليمات التثبيت — نفس نمط لوحة المديرين: تطبيق مستقل بأيقونته.
              تظهر فقط في المتصفح العادي، فإن كانت الصفحة مفتوحة كتطبيق مثبَّت
@@ -394,7 +403,7 @@
         <div class="install" id="installBox">
             <h2 id="installTitle">Add this panel to your home screen</h2>
             <ol id="installSteps"></ol>
-            <p class="note">Install from <b>this</b> page so you get the Balances app. Installing from the staff attendance page or the sales report page gives a different app.</p>
+            <p class="note">Install from <b>this</b> page. One icon covers both the restaurants and the abaya shops, so you no longer need a separate abaya icon. Installing from the staff attendance page or the sales report page gives a different app.</p>
         </div>
     </div>
 
@@ -403,7 +412,47 @@
         <p class="err" id="dataError"></p>
 
         <!-- ==============================================================
-             الاختيار: زرّان ولا نتائج قبل الضغط (بطلب الإدارة)
+             المستوى الأول: النشاط — مطاعم أم عبايات (بطلب الإدارة)
+             --------------------------------------------------------------
+             ⚠️ زرّ العبايات <a> لا <button> يُنادي window.location: متصفّحات
+             الجوال تحجب الانتقال البرمجي أحيانًا ولا تحجب رابطًا أبدًا.
+             ⚠️ ولا target="_blank": داخل تطبيق مثبَّت يُخرج ذلك القارئ إلى
+             المتصفّح، والمطلوب أن يبقى في التطبيق نفسه.
+             ⚠️ وصفحة العبايات تُعلن نفس manifest-balances.json فتُعدّ التطبيق
+             نفسه، وتُسمّي نسخة Firebase "balances" فتتشارك الجلسة — فلا يُطلب
+             تسجيل دخول ثانٍ عند الانتقال.
+             ============================================================== -->
+        <div class="chooser" id="biz">
+            <button type="button" class="pick" id="pickRest" aria-pressed="false" aria-controls="restWrap">
+                <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v8a3 3 0 0 0 6 0V3"/><path d="M9 11v10"/><path d="M17 3c-1.5 2-2 3.5-2 6s.5 3 2 3 2-.5 2-3-.5-4-2-6z"/><path d="M17 12v9"/></svg></span>
+                <span class="tx">
+                    <span class="t1">Al Sheikha Group &mdash; Restaurants</span>
+                    <span class="t2" dir="rtl">مطاعم الشيخة قروب &mdash; الأرصدة والتارقت</span>
+                </span>
+            </button>
+            <a class="pick" id="pickAbaya" href="./abaya-balances.html">
+                <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l3 5-3 1v12H9V9L6 8z"/><path d="M9 9h6"/></svg></span>
+                <span class="tx">
+                    <span class="t1">Al Sheikha Style &mdash; Abaya</span>
+                    <span class="t2" dir="rtl">عبايات الشيخة ستايل &mdash; الحساب والتارقت والستوك</span>
+                </span>
+            </a>
+        </div>
+
+        <p class="pickhint" id="bizHint">
+            Choose which business you want to see.
+            <span dir="rtl">&mdash; اختر النشاط الذي تريد رؤيته.</span>
+        </p>
+
+        <!-- كل ما يخصّ المطاعم داخل هذه الحاوية، فيُخفى بضغطة واحدة -->
+        <div id="restWrap" class="hidden">
+        <div class="backbar">
+            <button type="button" class="ghost" id="restBack">&#9664; Restaurants or Abaya</button>
+            <p class="ttl">Al Sheikha Group &mdash; Restaurants</p>
+        </div>
+
+        <!-- ==============================================================
+             المستوى الثاني: الأرصدة أم التارقت
              ============================================================== -->
         <div class="chooser" id="chooser">
             <button type="button" class="pick" id="pickBalances" aria-pressed="false" aria-controls="viewBalances">
@@ -522,6 +571,7 @@
             Delivery money stays with the apps until a cheque is collected.
         </p>
         </div><!-- /viewBalances -->
+        </div><!-- /restWrap -->
 
         <!-- التحديث والخروج يبقيان ظاهرين دائمًا: لا يخصّان قسمًا بعينه،
              وزرّ الخروج تحديدًا لا يجوز أن يُخفى خلف اختيار. -->
@@ -863,6 +913,24 @@
     el('pickBalances').addEventListener('click', () => showView('balances'));
     el('pickTarget').addEventListener('click', () => showView('target'));
 
+    // =====================================================================
+    // المستوى الأول: النشاط
+    // ---------------------------------------------------------------------
+    // ⚠️ مثل showView: لا يُلمس هذا في loadAll/renderAll — التحديث كل دقيقة
+    // كان سيُرجع القارئ من القسم الذي يقرؤه إلى شاشة الاختيار بين يديه.
+    // ⚠️ والخروج من المطاعم يُنسي القسم المُختار، فكل دخول يبدأ من الزرّين.
+    // (زرّ العبايات لا يُدار من هنا: هو رابطٌ ينتقل بصفحته.)
+    // =====================================================================
+    function showBiz(which) {
+        el('biz').classList.toggle('hidden', !!which);
+        el('bizHint').classList.toggle('hidden', !!which);
+        el('restWrap').classList.toggle('hidden', which !== 'rest');
+        el('pickRest').setAttribute('aria-pressed', String(which === 'rest'));
+        if (which !== 'rest') showView('');
+    }
+    el('pickRest').addEventListener('click', () => showBiz('rest'));
+    el('restBack').addEventListener('click', () => showBiz(''));
+
     el('tgPrev').addEventListener('click', () => {
         tgDate = shiftISO(currentTargetDay(), -1);
         renderTarget();
@@ -1024,7 +1092,8 @@
             el('dataPanel').classList.remove('hidden');
             // كل دخول يبدأ بلا اختيار — وليس فقط أول تحميل للصفحة. من خرج
             // ودخل من جديد في نفس التبويب يجب أن يرى الزرّين لا قسم سابقه.
-            showView('');
+            // showBiz('') تُنادي showView('') بنفسها، فتُصفَّر المستويان.
+            showBiz('');
             loadAll();
             if (timer) clearInterval(timer);
             timer = setInterval(loadAll, AUTO_REFRESH_MS);

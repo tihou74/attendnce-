@@ -26,18 +26,29 @@
      ⚠️ قاعدة شانتون: مبيعاتها **لا تُجمع** مع مبيعات المحل. دخل المحل منها هو
      العمولة وحدها (عدد القطع × المبلغ المقرَّر)، والباقي دَينٌ عليها في الصندوق.
 
-     ⚠️ نسخة Firebase هنا مُسمّاة "abayaview" عن قصد. صفحات أخرى على نفس النطاق
-     تسجّل دخولًا مجهولًا، ولو تشاركت النسخة الافتراضية معها لاستُبدلت جلسة هذه
-     الصفحة وانكسرت القراءة. لا تحذف الاسم.
+     ⚠️ نسخة Firebase هنا مُسمّاة "balances" — نفس اسم نسخة balances.html عن قصد،
+     لا "abayaview". جلسة الدخول في Firebase مفتاحُها اسمُ النسخة، فتوحيد الاسم
+     يعني جلسةً واحدة: من دخل في لوحة الأرصدة يجد نفسه داخلًا هنا، والخروج من
+     أيّهما خروجٌ من كلتيهما — وهذا هو معنى «تطبيق واحد» الذي طلبته الإدارة.
+     ⚠️ ويجب أن يبقى اسمًا صريحًا لا النسخة الافتراضية: صفحة الموظفين على نفس
+     النطاق تسجّل دخولًا مجهولًا، ولو تشاركت الافتراضية معها لاستُبدلت الجلسة
+     وانكسرت القراءة. لا تحذف الاسم، ولا تجعله مخالفًا لاسم balances.html.
      ============================================================================= -->
 
-<link rel="manifest" href="./manifest-abaya-view.json">
-<meta name="theme-color" content="#0F172A">
+<!-- ⚠️ تُعلن هذه الصفحة manifest-balances.json — نفس بيان لوحة الأرصدة — عن قصد،
+     ولا تُعلن بيانها القديم. الإدارة طلبت تطبيقًا واحدًا لا تطبيقين. وبيانان
+     مختلفا الـid على نفس النطاق يجعلان كروم يعدّهما تطبيقين، فينتقل القارئ من
+     داخل التطبيق إلى تبويب متصفّح عند فتح هذه الصفحة. وبإعلان البيان نفسه
+     يبقى الانتقال داخل التطبيق، ويكون التثبيت من أي الصفحتين تطبيقًا واحدًا.
+     manifest-abaya-view.json بقي في المستودع وفي قائمة القشرة لأن من ثبّت
+     أيقونة العبايات قبل هذا التغيير لا يزال جهازه يطلبه. -->
+<link rel="manifest" href="./manifest-balances.json">
+<meta name="theme-color" content="#F8FAFC">
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/abayaview-192.png">
-<link rel="apple-touch-icon" href="./icons/abayaview-touch.png">
+<link rel="apple-touch-icon" href="./icons/balances-touch.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Abaya View">
+<meta name="apple-mobile-web-app-title" content="Al Sheikha">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="robots" content="noindex, nofollow">
 
@@ -129,6 +140,17 @@
     .backbar { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-4); }
     .backbar button { width: auto; min-height: 40px; }
     .backbar .ttl { margin: 0; font-size: var(--text-base); font-weight: 700; }
+    /* رابط الرجوع إلى اللوحة الواحدة — بمظهر زرّ ثانوي */
+    .ghostlink {
+        display: inline-flex; align-items: center; min-height: 40px;
+        padding: 0 var(--btn-padding-x); text-decoration: none;
+        font-size: var(--btn-font-size); font-weight: var(--btn-font-weight);
+        color: var(--color-text); background: transparent;
+        border: var(--border-hairline) solid var(--color-border-strong);
+        border-radius: var(--btn-radius);
+    }
+    .ghostlink:hover { background: var(--color-surface-2); }
+    .ghostlink:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
     .pick {
         display: flex; align-items: center; gap: var(--space-4);
         width: 100%; height: auto; text-align: start; padding: var(--space-5); cursor: pointer;
@@ -244,6 +266,14 @@
 
     <div id="dataPanel" class="hidden">
         <p class="err" id="dataError"></p>
+
+        <!-- الرجوع إلى اللوحة الواحدة. ⚠️ رابط <a> لا زرّ برمجي: متصفّحات
+             الجوال تحجب الانتقال البرمجي أحيانًا ولا تحجب رابطًا أبدًا.
+             وبلا target حتى يبقى القارئ داخل التطبيق لا في تبويب جديد. -->
+        <div class="backbar">
+            <a class="ghostlink" href="./balances.html">&#9664; Restaurants or Abaya</a>
+            <p class="ttl">Al Sheikha Style &mdash; Abaya</p>
+        </div>
 
         <!-- ثلاثة أزرار، ولا نتائج قبل الضغط -->
         <div class="chooser" id="chooser">
@@ -432,7 +462,9 @@
       measurementId: "G-W88XGV8E1Q"
     };
     // نسخة مُسمّاة — انظر التحذير في رأس الملف. لا تحذف الاسم.
-    const app = initializeApp(firebaseConfig, "abayaview");
+    // ⚠️ "balances" لا "abayaview" — انظر تعليق الرأس: الاسم الموحَّد هو ما
+    // يجعل الجلسة واحدة بين الصفحتين. تغييره يُعيد طلبَ دخولٍ ثانٍ.
+    const app = initializeApp(firebaseConfig, "balances");
     const db = getFirestore(app);
     const auth = getAuth(app);
 
