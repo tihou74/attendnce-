@@ -250,6 +250,59 @@
        يحمل معنى ولا يُفقد الأحمر قيمته. ولا يُستخدم الأخضر لأي رقم آخر في
        الصفحة، فيبقى دالًّا على شيء واحد.
        ===================================================================== */
+    /* =====================================================================
+       شاشة الاختيار — زرّان، ولا نتائج قبل الضغط
+       ---------------------------------------------------------------------
+       بطلب الإدارة: عند الدخول لا يُعرض شيء إلا الزرّان، فمن يريد الأرصدة
+       يضغط الأرصدة ومن يريد التارقت يضغط التارقت. ويبقى الزرّان ظاهرين بعد
+       الاختيار — مع تمييز المُختار — فيمكن التبديل بلا إعادة تحميل الصفحة.
+       ===================================================================== */
+    .chooser { display: grid; gap: var(--space-4); grid-template-columns: 1fr; margin-bottom: var(--space-6); }
+    @media (min-width: 560px) { .chooser { grid-template-columns: 1fr 1fr; } }
+    .pick {
+        display: flex; align-items: center; gap: var(--space-4);
+        width: 100%; height: auto; text-align: start;
+        padding: var(--space-5); cursor: pointer;
+        background: var(--color-surface); color: var(--color-text);
+        border: var(--border-hairline) solid var(--color-border-strong);
+        border-radius: var(--card-radius); box-shadow: var(--shadow-xs);
+        transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+    }
+    .pick:hover { background: var(--color-surface-2); border-color: var(--color-primary); }
+    /* المُختار: حدٌّ كحلي عريض من الأعلى + سطح مميّز. لا نعتمد اللون وحده —
+       aria-pressed تُخبر قارئ الشاشة، والحدّ يُرى في وضع تباين عالٍ. */
+    .pick[aria-pressed="true"] {
+        background: var(--color-surface-2);
+        border-color: var(--color-primary);
+        border-top: 3px solid var(--color-primary);
+    }
+    .pick .ic {
+        flex: 0 0 auto; width: 42px; height: 42px; border-radius: var(--radius-md);
+        background: var(--color-surface-2);
+        border: var(--border-hairline) solid var(--color-border);
+        display: flex; align-items: center; justify-content: center;
+        color: var(--color-text-muted);
+    }
+    .pick[aria-pressed="true"] .ic {
+        background: var(--color-primary); border-color: var(--color-primary);
+        color: var(--color-on-primary);
+    }
+    .pick .ic svg { width: 20px; height: 20px; display: block; }
+    .pick .tx { display: block; min-width: 0; }
+    .pick .t1 {
+        display: block; font-size: var(--text-sm); font-weight: 700;
+        color: var(--color-text); line-height: 1.4;
+    }
+    .pick .t2 {
+        display: block; font-size: var(--text-xs); color: var(--color-text-muted);
+        line-height: var(--leading-arabic); margin-top: 2px;
+    }
+    /* تلميح قبل الاختيار: لا تبقى الشاشة صامتة بلا سبب ظاهر */
+    .pickhint {
+        font-size: var(--text-sm); color: var(--color-text-muted);
+        line-height: 1.8; margin: 0 0 var(--space-5); text-align: center;
+    }
+
     .tsec { margin-bottom: var(--space-6); }
     .tsec > .h {
         display: flex; flex-wrap: wrap; align-items: center;
@@ -350,10 +403,34 @@
         <p class="err" id="dataError"></p>
 
         <!-- ==============================================================
-             التارقت اليومي — أول ما يُرى عند الدخول، بطلب الإدارة.
-             عرضٌ فقط، وبنفس أرقام لوحة المالك وبنفس قواعد الحكم.
+             الاختيار: زرّان ولا نتائج قبل الضغط (بطلب الإدارة)
              ============================================================== -->
-        <section class="tsec" id="targetSec">
+        <div class="chooser" id="chooser">
+            <button type="button" class="pick" id="pickBalances" aria-pressed="false" aria-controls="viewBalances">
+                <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="13" rx="2"/><path d="M2.5 10h19"/><path d="M6 15h4"/></svg></span>
+                <span class="tx">
+                    <span class="t1">Balances</span>
+                    <span class="t2" dir="rtl">الأرصدة &mdash; البنك والكاش والتوصيل</span>
+                </span>
+            </button>
+            <button type="button" class="pick" id="pickTarget" aria-pressed="false" aria-controls="viewTarget">
+                <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg></span>
+                <span class="tx">
+                    <span class="t1">Sales target</span>
+                    <span class="t2" dir="rtl">التارقت اليومي &mdash; الهدف وما تحقّق</span>
+                </span>
+            </button>
+        </div>
+
+        <p class="pickhint" id="pickHint">
+            Choose what you want to see.
+            <span dir="rtl">&mdash; اختر ما تريد رؤيته.</span>
+        </p>
+
+        <!-- ==============================================================
+             التارقت اليومي — عرضٌ فقط، وبنفس أرقام لوحة المالك وقواعد حكمه.
+             ============================================================== -->
+        <section class="tsec hidden" id="viewTarget">
             <div class="h">
                 <p class="ttl">Sales target <span dir="rtl">&mdash; التارقت اليومي</span></p>
                 <span class="day" id="tgDay">&mdash;</span>
@@ -395,6 +472,15 @@
             <p class="tnote" id="tgNote"></p>
         </section>
 
+        <!-- ==============================================================
+             الأرصدة الثلاثة
+             ============================================================== -->
+        <div id="viewBalances" class="hidden">
+        <!-- ⚠️ رسالة «لم تُدخل الأرصدة الافتتاحية» تخصّ هذا القسم وحده، فهي
+             هنا لا في dataError المشترك: من اختار التارقت لا شأن له بها،
+             وظهورها له كان سيبدو خطأً في التارقت. -->
+        <p class="err" id="balError"></p>
+
         <div class="cards">
             <div class="card">
                 <h2>Bank account</h2>
@@ -429,16 +515,20 @@
             <p class="v" id="totalAmt">&mdash; QAR</p>
         </div>
 
-        <div class="bar">
-            <button id="refreshBtn">Refresh now</button>
-            <button class="ghost" id="logoutBtn">Sign out</button>
-        </div>
         <p class="stamp" id="stamp"></p>
         <p class="note">
             Sales reach these balances the day after they were made, at 19:00 &mdash; so today's takings are not here yet.
             Card sales arrive in the bank after the bank fee. Cash stays in the cash box until it is deposited.
             Delivery money stays with the apps until a cheque is collected.
         </p>
+        </div><!-- /viewBalances -->
+
+        <!-- التحديث والخروج يبقيان ظاهرين دائمًا: لا يخصّان قسمًا بعينه،
+             وزرّ الخروج تحديدًا لا يجوز أن يُخفى خلف اختيار. -->
+        <div class="bar">
+            <button id="refreshBtn">Refresh now</button>
+            <button class="ghost" id="logoutBtn">Sign out</button>
+        </div>
     </div>
 </div>
 
@@ -746,6 +836,33 @@
         el('tgNext').disabled = day >= todayISOLocal();
     }
 
+    // =====================================================================
+    // اختيار القسم المعروض
+    // ---------------------------------------------------------------------
+    // ⚠️ لا يُحفظ الاختيار بين الزيارات عن قصد: الطلب كان «لما ادخل يطلع
+    // زرين وانا اختار»، فالبداية دائمًا بلا اختيار.
+    //
+    // ⚠️ ولا يُلمس هذا في render(): التحديث التلقائي كل دقيقة يُعيد رسم
+    // الأرقام، فلو تحكّم في الظهور لَقفزت الشاشة إلى قسم آخر بين يدي القارئ.
+    // الرسم يملأ القسمين دائمًا، والإظهار مسؤولية هذه الدالة وحدها.
+    // =====================================================================
+    let activeView = '';   // '' | 'balances' | 'target'
+
+    function showView(which) {
+        activeView = which;
+        const views = { balances: 'viewBalances', target: 'viewTarget' };
+        Object.entries(views).forEach(([k, id]) => {
+            el(id).classList.toggle('hidden', k !== which);
+        });
+        el('pickBalances').setAttribute('aria-pressed', String(which === 'balances'));
+        el('pickTarget').setAttribute('aria-pressed', String(which === 'target'));
+        // التلميح يُخفى بعد الاختيار: صار بلا معنى وقد اختار صاحبه.
+        el('pickHint').classList.toggle('hidden', !!which);
+    }
+
+    el('pickBalances').addEventListener('click', () => showView('balances'));
+    el('pickTarget').addEventListener('click', () => showView('target'));
+
     el('tgPrev').addEventListener('click', () => {
         tgDate = shiftISO(currentTargetDay(), -1);
         renderTarget();
@@ -830,10 +947,11 @@
             ['bankAmt', 'delAmt', 'cashAmt'].forEach(id => { el(id).innerHTML = '&mdash;<span class="cur">QAR</span>'; el(id).className = 'amt'; });
             ['bankMeta', 'delMeta', 'cashMeta'].forEach(id => el(id).innerText = '');
             el('totalAmt').innerText = '— QAR';
-            el('dataError').innerText = 'The opening balances have not been entered yet by management, so nothing can be calculated.';
+            el('balError').innerText = 'The opening balances have not been entered yet by management, so nothing can be calculated.';
             el('stamp').innerText = '';
             return;
         }
+        el('balError').innerText = '';
 
         // نفصل «الليلة» عن «لاحقًا» فلا يظن أن إيجار يوم 23 سيدخل الليلة.
         const pend = (k) => {
@@ -904,6 +1022,9 @@
         if (user) {
             el('loginPanel').classList.add('hidden');
             el('dataPanel').classList.remove('hidden');
+            // كل دخول يبدأ بلا اختيار — وليس فقط أول تحميل للصفحة. من خرج
+            // ودخل من جديد في نفس التبويب يجب أن يرى الزرّين لا قسم سابقه.
+            showView('');
             loadAll();
             if (timer) clearInterval(timer);
             timer = setInterval(loadAll, AUTO_REFRESH_MS);
