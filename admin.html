@@ -1172,6 +1172,44 @@
             <div class="stat-box"><div class="stat-icon" data-icon="fileText"></div><div><h3>Reports Received</h3><p id="abCount">0</p></div></div>
         </div>
 
+        <!-- ==============================================================
+             تارقت العبايات — هدف يومي لكل محل
+             ⚠️ له منتقي يوم خاص به: التارقت رقمُ يومٍ واحد، ومدى From/To
+             أعلاه قد يمتدّ شهرًا فلا معنى لمقارنته بهدف يوم.
+             ============================================================== -->
+        <div class="card">
+            <h3><span data-icon="check"></span> Daily target &mdash; <span id="abTgDayLabel">&mdash;</span></h3>
+            <p class="card-sub">
+                Compared against each shop's <b>own sales after the <span id="abTgCardPct">1.5</span>% bank charge</b>.
+                Shanton's commission is <b>not</b> counted here &mdash; she displays in one shop only, so including it
+                would make that shop's target unfair. Set the targets on the <b>Abaya &mdash; Monthly</b> tab.
+            </p>
+            <div class="controls" style="gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px;">
+                <button class="btn-ghost btn-sm" onclick="shiftAbayaTargetDay(-1)" title="Previous day">&#9664; Previous day</button>
+                <div style="width: 170px;"><label for="abTgDate">Day</label><input type="date" id="abTgDate" onchange="renderAbayaTarget()"></div>
+                <button class="btn-ghost btn-sm" onclick="shiftAbayaTargetDay(1)" title="Next day" id="abTgNext">Next day &#9654;</button>
+                <a id="abTgWaLink" class="btn-accent btn-sm" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;"><span data-icon="plane"></span> Send on WhatsApp</a>
+            </div>
+            <p class="card-sub" style="margin: 0 0 12px;" id="abTgWaFallback"></p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Shop</th>
+                            <th class="money-col">Target</th>
+                            <th class="money-col">Sales (after charge)</th>
+                            <th class="money-col">Difference</th>
+                            <th>Status</th>
+                            <th class="money-col">Announced</th>
+                        </tr>
+                    </thead>
+                    <tbody id="abTgBody"></tbody>
+                    <tfoot id="abTgFoot"></tfoot>
+                </table>
+            </div>
+            <p class="card-sub" style="margin: 12px 0 0;" id="abTgNote"></p>
+        </div>
+
         <!-- ⚠️ بطاقة الشرح: بلا هذه الكلمات يُقرأ «مبيعات شانتون» كأنه دخل. -->
         <div class="card" style="border-left: 4px solid var(--warning);">
             <h3><span data-icon="alertTriangle"></span> How Shanton is counted <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">قاعدة شانتون</span></h3>
@@ -1355,6 +1393,21 @@
                     <thead><tr><th>Name</th><th>PIN</th><th class="money-col">Reports sent</th><th>Last report</th><th></th></tr></thead>
                     <tbody id="abSellersBody"></tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- ---- تارقت كل محل ---- -->
+        <div class="card money-only">
+            <h3><span data-icon="check"></span> Daily target per shop <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">التارقت اليومي لكل محل</span></h3>
+            <p class="card-sub">
+                Type what you expect each shop to sell <b>in one day</b> and press Save. You do this once &mdash; every day
+                after that is compared automatically on the <b>Abaya &mdash; Daily</b> tab and on the viewing page.
+                Leave a shop empty if you do not want a target for it.
+            </p>
+            <div class="edit-profile-grid" id="abTargetGrid" style="grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));"></div>
+            <div style="display: flex; justify-content: flex-end; align-items: center; gap: 14px; flex-wrap: wrap;">
+                <span id="abTargetStatus" style="font-weight: 600; font-size: 13px;"></span>
+                <button class="btn-success" id="btnSaveAbayaTargets" onclick="saveAbayaTargets()"><span data-icon="save"></span> Save targets</button>
             </div>
         </div>
 
@@ -6272,6 +6325,8 @@
     let abayaSellers = [];
     let abayaRates = { cardFeePercent: ABAYA_DEFAULT_CARD_FEE_PCT, shantonPerPiece: SHANTON_DEFAULT_PER_PIECE };
     let abayaOpening = { opening: {}, openingDate: '' };
+    // هدف يومي لكل محل — يُسجَّل مرة ويبقى ساريًا كل يوم، كتارقت المطاعم.
+    let abayaTargets = {};
     let abayaLoaded = false;
 
     /** المالك والمحاسب فقط — العبايات ليست من عمل بقية الأدوار. */
@@ -6292,14 +6347,15 @@
         const body = document.getElementById('abReportsBody');
         if (body) body.innerHTML = `<tr><td colspan="13" style="text-align:center;">Loading...</td></tr>`;
         try {
-            const [repSnap, selSnap, rateSnap, openSnap] = await Promise.all([
+            const [repSnap, selSnap, rateSnap, openSnap, tgSnap] = await Promise.all([
                 getDocs(query(collection(db, "abaya_sales_reports"), orderBy("timestamp", "desc"), limit(2000)))
                     // ترتيب timestamp يحتاج فهرسًا في أول تشغيل؛ نفس نمط البدائل
                     // المستخدم في بقية المجموعات: مسح بلا ترتيب ثم ترتيب محليًا.
                     .catch(() => getDocs(collection(db, "abaya_sales_reports"))),
                 getDocs(collection(db, "abaya_sellers")),
                 getDoc(doc(db, "settings", "abaya_rates")),
-                getDoc(doc(db, "settings", "abaya_stock_opening"))
+                getDoc(doc(db, "settings", "abaya_stock_opening")),
+                getDoc(doc(db, "settings", "abaya_targets"))
             ]);
 
             allAbayaReports = [];
@@ -6325,6 +6381,13 @@
                     openingDate: d.openingDate || ''
                 };
             }
+            // أهداف التارقت — المحلات المعروفة فقط والقيمة الموجبة فقط
+            const tg = (tgSnap.exists() && tgSnap.data().targets) ? tgSnap.data().targets : {};
+            abayaTargets = {};
+            ABAYA_SHOPS.forEach(s => {
+                const v = Number(tg[s]);
+                if (isFinite(v) && v > 0) abayaTargets[s] = v;
+            });
             abayaLoaded = true;
             renderAbayaAll();
         } catch (e) {
@@ -6339,6 +6402,8 @@
         renderAbayaMonth();
         renderAbayaSellers();
         renderAbayaOpeningEditor();
+        renderAbayaTargetEditor();
+        renderAbayaTarget();
         const cEl = document.getElementById('abCardRate');
         if (cEl) cEl.value = abayaRates.cardFeePercent;
         const pEl = document.getElementById('abPerPiece');
@@ -7078,6 +7143,257 @@
             abayaRates = { cardFeePercent: card, shantonPerPiece: Math.round(per) };
             renderAbayaAll();
             show(`Saved. Every abaya report is now calculated with ${card}% and ${Math.round(per)} QAR per abaya.`, 'var(--success)');
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    // =====================================================================
+    // تارقت العبايات
+    // ---------------------------------------------------------------------
+    // ⚠️ المقارنة مع **مبيعات المحل بعد رسوم البنك** لا مع الدخل الحقيقي.
+    // السبب: الدخل الحقيقي يضمّ عمولة شانتون، وهي تعرض في محل واحد فقط —
+    // فإدخالها في المقارنة يجعل هدف ذلك المحل أسهل من هدف غيره بلا سبب.
+    //
+    // ⚠️ وقاعدة الحكم هي نفسها المعتمدة في تارقت المطاعم حرفيًّا:
+    //  • فرق موجب → تحقّق، مكتملة كانت التقارير أو لا (وصولُ الباقي يزيده فقط).
+    //  • فرق سالب والتقارير ناقصة → «بانتظار» لا «لم يتحقق». هذا هو الفخ:
+    //    إعلانُ فشلٍ في التاسعة صباحًا لأن المحلات لم تُرسل بعد.
+    //  • فرق سالب والتقارير مكتملة → «لم يتحقق»، وهو حكم صحيح حينها.
+    // =====================================================================
+    function currentAbayaTargetDay() {
+        const el = document.getElementById('abTgDate');
+        return (el && el.value) || abayaLatestReportDate() || todayISO();
+    }
+    /** أحدث يوم وردت عنه تقارير — أفضل من «اليوم» الذي لم يُرسل عنه أحد بعد. */
+    function abayaLatestReportDate() {
+        let best = '';
+        (allAbayaReports || []).forEach(r => {
+            const d = String(r.date || '');
+            if (d && d > best) best = d;
+        });
+        return best;
+    }
+    window.shiftAbayaTargetDay = function(delta) {
+        const el = document.getElementById('abTgDate');
+        if (!el) return;
+        const cur = currentAbayaTargetDay();
+        if (delta > 0 && cur >= todayISO()) return;   // لا تقليب إلى المستقبل
+        el.value = delta < 0 ? prevDayISO(cur) : nextDayISO(cur);
+        renderAbayaTarget();
+    };
+
+    function abayaTargetRowFor(dateISO, shop) {
+        const rows = (allAbayaReports || [])
+            .filter(r => (r.date || '') === dateISO && r.shop === shop)
+            .map(abayaRow);
+        const t = abayaTotals(rows);
+        const target = Number(abayaTargets[shop]) || 0;
+        const hasReport = rows.length > 0;
+        const hasTarget = target > 0;
+        let state;
+        if (!hasReport) state = 'noreport';
+        else if (!hasTarget) state = 'notarget';
+        else {
+            const d = t.afterCharge - target;
+            if (Math.abs(d) <= ABAYA_CENT) state = 'on';
+            else if (d > 0) state = 'above';
+            else state = 'below';
+        }
+        return {
+            shop, target, hasTarget, hasReport, reports: rows.length,
+            sales: t.afterCharge, announced: t.ownSales, commission: t.commission,
+            diff: (hasReport && hasTarget) ? t.afterCharge - target : null,
+            pct: (hasReport && hasTarget) ? (t.afterCharge / target * 100) : null,
+            state
+        };
+    }
+
+    function abayaTargetTotals(rows) {
+        const reported = rows.filter(r => r.hasReport);
+        const missing = rows.filter(r => !r.hasReport);
+        // الهدف = هدف الشركة الكامل دائمًا، فلا يتقلّص بهدوء كلما تأخّر محل.
+        const fullTarget = rows.filter(r => r.hasTarget).reduce((a, r) => a + r.target, 0);
+        const totalSales = reported.reduce((a, r) => a + r.sales, 0);
+        const totalAnnounced = reported.reduce((a, r) => a + r.announced, 0);
+        const totalCommission = reported.reduce((a, r) => a + r.commission, 0);
+        const complete = missing.length === 0;
+        const totalDiff = fullTarget > 0 ? totalSales - fullTarget : null;
+
+        let state;
+        if (!reported.length) state = 'pending';
+        else if (!fullTarget) state = 'notarget';
+        else if (totalDiff > ABAYA_CENT) state = 'above';
+        else if (!complete) state = 'pending';
+        else if (Math.abs(totalDiff) <= ABAYA_CENT) state = 'on';
+        else state = 'below';
+
+        return {
+            reported: reported.length, shops: rows.length, missing, complete,
+            fullTarget, totalSales, totalAnnounced, totalCommission, totalDiff, state
+        };
+    }
+
+    const ABAYA_TG_COLOR = {
+        above: 'var(--success)', on: 'var(--success)', below: 'var(--danger)',
+        pending: 'var(--warning)', noreport: 'var(--text-dim)', notarget: 'var(--text-dim)'
+    };
+    const ABAYA_TG_MARK = {
+        above: '\u2705', on: '\u2705', below: '\u274C',
+        pending: '\u23F3', noreport: '\u2014', notarget: '\u2014'
+    };
+    const ABAYA_TG_LABEL = {
+        above: 'Above target', on: 'On target', below: 'Below target',
+        noreport: 'No report yet', notarget: 'No target set'
+    };
+    const ABAYA_TG_WORD = {
+        above: 'POSITIVE \u2705', on: 'ON TARGET \u2705', below: 'NEGATIVE \u274C',
+        pending: 'PENDING \u23F3', notarget: 'NO TARGET SET'
+    };
+
+    window.renderAbayaTarget = function() {
+        const body = document.getElementById('abTgBody');
+        if (!body) return;
+        const day = currentAbayaTargetDay();
+        const dEl = document.getElementById('abTgDate');
+        if (dEl && !dEl.value) dEl.value = day;
+        const rows = ABAYA_SHOPS.map(s => abayaTargetRowFor(day, s));
+        const tot = abayaTargetTotals(rows);
+
+        const lbl = document.getElementById('abTgDayLabel');
+        if (lbl) lbl.innerText = salesDateLabel(day) || '—';
+        const pctEl = document.getElementById('abTgCardPct');
+        if (pctEl) pctEl.innerText = abayaRates.cardFeePercent;
+        const nx = document.getElementById('abTgNext');
+        if (nx) nx.disabled = day >= todayISO();
+
+        body.innerHTML = rows.map(r => `
+            <tr${r.state === 'below' ? ' style="background: rgba(220,38,38,0.05);"' : ''}>
+                <td><b>${escapeHtml(r.shop)}</b></td>
+                <td class="money-col">${r.hasTarget ? money(r.target) : '<span style="color: var(--text-faint);">not set</span>'}</td>
+                <td class="money-col">${r.hasReport ? '<b>' + money(r.sales) + '</b>' : '<span style="color: var(--text-faint);">—</span>'}</td>
+                <td class="money-col">${r.diff === null ? '<span style="color: var(--text-faint);">—</span>'
+                    : `<strong style="color: ${r.diff >= 0 ? 'var(--success)' : 'var(--danger)'};">${r.diff >= 0 ? '+' : '-'}${money(Math.abs(r.diff))}</strong>`
+                      + (r.pct !== null ? ` <small style="color: var(--text-dim);">(${r.pct.toFixed(1)}%)</small>` : '')}</td>
+                <td style="color: ${ABAYA_TG_COLOR[r.state]}; font-weight: 800; white-space: nowrap;">${ABAYA_TG_MARK[r.state]} ${escapeHtml(ABAYA_TG_LABEL[r.state])}</td>
+                <td class="money-col" style="color: var(--text-dim);">${r.hasReport ? money(r.announced) : '—'}</td>
+            </tr>`).join('');
+
+        let totalLabel = ABAYA_TG_LABEL[tot.state] || 'Waiting';
+        if (tot.state === 'pending') {
+            totalLabel = tot.reported ? `Waiting for ${tot.missing.length} of ${tot.shops} shops` : 'No reports yet';
+        }
+        const foot = document.getElementById('abTgFoot');
+        if (foot) {
+            foot.innerHTML = `<tr style="background: var(--surface-2); font-weight: 800;">
+                <td>ALL SHOPS${tot.complete ? '' : ` — ${tot.reported} of ${tot.shops} reported`}</td>
+                <td class="money-col">${money(tot.fullTarget)}</td>
+                <td class="money-col">${money(tot.totalSales)}</td>
+                <td class="money-col"><strong style="color: ${tot.totalDiff === null ? 'var(--text-dim)' : (tot.totalDiff >= 0 ? 'var(--success)' : 'var(--danger)')};">${tot.totalDiff === null ? '—' : (tot.totalDiff >= 0 ? '+' : '-') + money(Math.abs(tot.totalDiff))}</strong></td>
+                <td style="color: ${ABAYA_TG_COLOR[tot.state]}; white-space: nowrap;">${ABAYA_TG_MARK[tot.state]} ${escapeHtml(totalLabel)}</td>
+                <td class="money-col" style="color: var(--text-dim);">${money(tot.totalAnnounced)}</td>
+            </tr>`;
+        }
+
+        const notes = [];
+        if (!tot.fullTarget) {
+            notes.push(`<b style="color: var(--warning);">No target has been set yet.</b> `
+                + `Set one for each shop on the <b>Abaya — Monthly</b> tab and this table starts working by itself.`);
+        }
+        if (tot.missing.length && tot.reported) {
+            notes.push(`<b style="color: var(--warning);">${tot.missing.length} of ${tot.shops} shops have not sent a report for this day yet:</b> `
+                + tot.missing.map(r => escapeHtml(r.shop)).join(' · ')
+                + `. The target stays the full amount, so the difference looks negative until they report — which is why the `
+                + `status says <b>Waiting</b> and not <b>Below target</b>.`);
+        }
+        if (tot.totalCommission > ABAYA_CENT) {
+            notes.push(`Shanton's commission for this day (${money(tot.totalCommission)} QAR) is income but is `
+                + `<b>not</b> included in the comparison above.`);
+        }
+        const nEl = document.getElementById('abTgNote');
+        if (nEl) nEl.innerHTML = notes.join('<br><br>');
+
+        wireWhatsappLink(
+            document.getElementById('abTgWaLink'),
+            document.getElementById('abTgWaFallback'),
+            buildAbayaTargetWaText(day, tot));
+    };
+
+    /** رسالة قصيرة بنموذج المالك: إجمالي الشركة فقط. */
+    function buildAbayaTargetWaText(day, tot) {
+        const amount = (n) => `${Math.abs(Math.round(Number(n) || 0))}QAR`;
+        // الفرق من الرقمين المقرَّبين حتى تتوازن الأسطر الثلاثة دائمًا
+        const target = Math.round(tot.fullTarget);
+        const actual = Math.round(tot.totalSales);
+        const variance = actual - target;
+        const L = [];
+        L.push('*ABAYA SALES TARGET \u2014 COMPANY*');
+        L.push(targetSlashDate(day));
+        L.push('');
+        L.push(`TARGET : ${amount(target)}`);
+        L.push(`ACTUAL : ${amount(actual)}`);
+        L.push('');
+        L.push(`VARIANCE : *${variance < 0 ? '-' : ''}${amount(variance)}*`);
+        L.push('');
+        L.push(`STATUS : ${ABAYA_TG_WORD[tot.state]}`);
+        if (tot.missing.length && tot.shops) {
+            L.push('');
+            L.push(`_${tot.missing.length} of ${tot.shops} shops have not sent their report yet._`);
+        }
+        return L.join('\n');
+    }
+
+    // ---- محرّر الأهداف ---------------------------------------------------
+    function renderAbayaTargetEditor() {
+        const grid = document.getElementById('abTargetGrid');
+        if (!grid) return;
+        const editable = canEditAbayaSetup();
+        grid.innerHTML = ABAYA_SHOPS.map((s, i) => `
+            <div>
+                <label for="abTgIn${i}">${escapeHtml(s)}</label>
+                <input type="number" id="abTgIn${i}" step="0.01" min="0" placeholder="0.00"
+                       value="${abayaTargets[s] != null ? abayaTargets[s] : ''}"
+                       oninput="renderAbayaTarget()"${editable ? '' : ' readonly style="opacity:.65;"'}>
+            </div>`).join('');
+        const btn = document.getElementById('btnSaveAbayaTargets');
+        if (btn) btn.style.display = editable ? '' : 'none';
+        if (!editable) {
+            const st = document.getElementById('abTargetStatus');
+            if (st) { st.innerText = 'Only the owner can change a target.'; st.style.color = 'var(--text-dim)'; }
+        }
+    }
+
+    window.saveAbayaTargets = async function() {
+        const st = document.getElementById('abTargetStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        if (!canEditAbayaSetup()) { show('Only the owner can change a target.', 'var(--danger)'); return; }
+        const next = {};
+        for (let i = 0; i < ABAYA_SHOPS.length; i++) {
+            const raw = (document.getElementById(`abTgIn${i}`) || {}).value;
+            if (raw === '' || raw === undefined) { next[ABAYA_SHOPS[i]] = 0; continue; }
+            const v = Number(raw);
+            if (!isFinite(v) || v < 0) {
+                show(`${ABAYA_SHOPS[i]}: the target must be a number of zero or more.`, 'var(--danger)');
+                return;
+            }
+            next[ABAYA_SHOPS[i]] = v;
+        }
+        show('Saving...', 'var(--warning)');
+        try {
+            // الخريطة كاملة: كل المحلات موجودة (الفارغ صفر)، فلا يبقى هدف قديم
+            // لمحل أُفرغت خانته.
+            await setDoc(doc(db, "settings", "abaya_targets"), {
+                targets: next,
+                updatedAt: serverTimestamp(),
+                updatedBy: (currentUser && currentUser.email) || 'unknown'
+            }, { merge: true });
+            logAudit("Abaya Daily Targets Updated",
+                ABAYA_SHOPS.map(s => `${s}: ${money(next[s])}`).join(' · '));
+            abayaTargets = {};
+            ABAYA_SHOPS.forEach(s => { if (next[s] > 0) abayaTargets[s] = next[s]; });
+            renderAbayaTargetEditor();
+            renderAbayaTarget();
+            show('Saved. Every day is now compared against these targets automatically.', 'var(--success)');
         } catch (e) {
             show('Error: ' + e.message, 'var(--danger)');
         }

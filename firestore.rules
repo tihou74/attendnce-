@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v11   (2026-09-15)  <<<
+//   >>>  RULES REVISION: v12   (2026-09-15)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,9 +12,15 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       abaya_sales_reports
+//       abaya-balances.html
 //
-//   FOUND     -> v11 is live. Good.
+//   (This exact text exists nowhere in any earlier revision, which is the whole
+//    point of a marker. Two earlier attempts were wrong and are worth avoiding:
+//    "abaya_sales_reports" is now in v11 AND v12 so it cannot tell them apart,
+//    and "isAccountant() || isViewer();" already existed before the abaya work.
+//    Pick a marker that is NEW in the revision you are publishing.)
+//
+//   FOUND     -> v12 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -33,6 +39,19 @@ rules_version = '2';
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
 //
+//  v12  2026-09-15    abaya_sales_reports: the VIEWERS (the owner's viewing
+//                     account and Mrs Fatima) may now READ them, for the new
+//                     read-only page abaya-balances.html which shows the abaya
+//                     account, the daily target and the stock.
+//                     This REVERSES part of v11 on purpose: v11 limited the
+//                     abaya business to the owner and the accountant, and the
+//                     owner has since asked for Mrs Fatima to see it. Read
+//                     only — viewers still have no write anywhere at all, so
+//                     they cannot submit, correct or delete a report, add a
+//                     saleswoman, or change the rates, targets or stock count.
+//                     settings/abaya_targets needs no rule of its own: the
+//                     settings collection above is already readable by viewers
+//                     and writable only by the owner and the accountant.
 //  v11  2026-09-15  + THE ABAYA SHOPS (Al Sheikha Style) — a SEPARATE business
 //                     from the restaurants: abaya_sellers, abaya_seller_pins,
 //                     abaya_sales_reports. Deliberately separate collections,
@@ -485,8 +504,15 @@ service cloud.firestore {
     // Correcting and deleting stay with the owner and the accountant — the same
     // split as the restaurants' reports, minus the supervisors who have no part
     // in this business.
+    // v12: the VIEWERS may now READ these as well, for abaya-balances.html —
+    // the read-only page the owner and Mrs Fatima open to see the abaya
+    // account, target and stock. This is a deliberate change to v11, which
+    // limited the abaya business to the owner and the accountant.
+    // READ only: they still cannot submit, correct or delete a report, cannot
+    // add a saleswoman, and cannot touch the rates, the targets or the stock
+    // count — those stay writes, and no viewer has any write anywhere.
     match /abaya_sales_reports/{reportId} {
-      allow read: if isAdmin() || isAccountant();
+      allow read: if isAdmin() || isAccountant() || isViewer();
       allow update: if isAdmin() || isAccountant();
       allow delete: if isAdmin() || isAccountant();
       allow create: if isKiosk() || isAdmin();

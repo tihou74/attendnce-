@@ -27,7 +27,7 @@
 // تبويبًا جديدًا بعد نشره. v3: أُزيل التحويل التلقائي من report.html (كان يُبطل تثبيت تطبيق المديرين على
 // iOS)، ويجب إبطال
 // الكاش القديم حتى لا يبقى من ثبّت التطبيق سابقًا على النسخة القديمة.
-const CACHE_VERSION = 'v53';
+const CACHE_VERSION = 'v54';
 const SHELL_CACHE = `alsheikha-shell-${CACHE_VERSION}`;
 const ASSET_CACHE = `alsheikha-assets-${CACHE_VERSION}`;
 
@@ -40,11 +40,13 @@ const SHELL_FILES = [
     './balances.html',
     './manager.html',
     './abaya-seller.html',
+    './abaya-balances.html',
     './manifest.json',
     './manifest-report.json',
     './manifest-admin.json',
     './manifest-balances.json',
     './manifest-abaya.json',
+    './manifest-abaya-view.json',
     // ورقة الهوية البصرية: تُخزَّن مع القشرة لا عند أول طلب، وإلا فُتحت الصفحة
     // بلا أي تنسيق في أول تشغيل بلا شبكة. الخط نفسه من نطاق جوجل ويُخزَّن
     // بقاعدة CACHEABLE_HOSTS، والنظام يستخدم خطه الاحتياطي لو تعذّر.

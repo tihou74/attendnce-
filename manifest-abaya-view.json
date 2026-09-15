@@ -1,0 +1,38 @@
+{
+  "name": "Al Sheikha Style — Account, Target & Stock",
+  "short_name": "Abaya View",
+  "id": "./?app=abayaview",
+  "description": "View only — the abaya shops' account, the daily target and the stock right now. Nothing here can be changed.",
+  "start_url": "./abaya-balances.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f1e8",
+  "theme_color": "#0F172A",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": [
+    "business",
+    "finance"
+  ],
+  "icons": [
+    {
+      "src": "./icons/abayaview-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/abayaview-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/abayaview-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

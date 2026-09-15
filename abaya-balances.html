@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Abaya — Account, Target &amp; Stock</title>
+
+<!-- =============================================================================
+     الشيخة ستايل — صفحة العرض (الحساب · التارقت · الستوك)
+     -----------------------------------------------------------------------------
+     للمالك والسيدة فاطمة. ثلاثة أزرار عند الدخول، ولا نتائج قبل الاختيار —
+     بنفس أسلوب balances.html الذي اعتمده المالك.
+
+     ⚠️ لا يوجد في هذه الصفحة أي أمر كتابة إطلاقًا: لا setDoc ولا addDoc ولا
+     updateDoc ولا deleteDoc ولا writeBatch. تقرأ وتحسب في المتصفح فقط. وأي
+     إضافة مستقبلية لزر يُعدّل هنا تُخالف الغرض منها وتُوسّع صلاحيات من يفتحها.
+     ويحرس ذلك اختبارٌ يفشل إن ظهر أي أمر كتابة.
+
+     ⚠️ تضاعف منطقي مقصود: دوال الحساب أدناه (abayaRow، abayaTotals،
+     abayaStockFor، abayaMoveOwner، abayaTargetRowFor، abayaTargetTotals) نسخة
+     **مطابقة حرفيًّا** لما في admin.html. المشروع بلا خطوة بناء ولا وحدات
+     مشتركة فلا سبيل لاستيرادها. أي تعديل على قواعد الحساب هناك يجب أن يُنقل
+     إلى هنا حرفيًّا، ويحرس التطابقَ اختبارٌ يُشغّل نسختَي الملفّين على نفس
+     البيانات ويطالب بتساوي كل رقم وكل حكم.
+
+     ⚠️ قاعدة شانتون: مبيعاتها **لا تُجمع** مع مبيعات المحل. دخل المحل منها هو
+     العمولة وحدها (عدد القطع × المبلغ المقرَّر)، والباقي دَينٌ عليها في الصندوق.
+
+     ⚠️ نسخة Firebase هنا مُسمّاة "abayaview" عن قصد. صفحات أخرى على نفس النطاق
+     تسجّل دخولًا مجهولًا، ولو تشاركت النسخة الافتراضية معها لاستُبدلت جلسة هذه
+     الصفحة وانكسرت القراءة. لا تحذف الاسم.
+     ============================================================================= -->
+
+<link rel="manifest" href="./manifest-abaya-view.json">
+<meta name="theme-color" content="#0F172A">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/abayaview-192.png">
+<link rel="apple-touch-icon" href="./icons/abayaview-touch.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Abaya View">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="robots" content="noindex, nofollow">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./brand/design-tokens.css">
+
+<style>
+    /* =========================================================================
+       هوية مجموعة الشيخة — كل قيمة من ./brand/design-tokens.css.
+       الذهب #A89060 تباينه على الأبيض 3.08:1 فلا يحمل نصًّا: هو للحدود والأسطح.
+       الأرقام كلها مونو ومتراصفة (tabular-nums) لأنها تُقرأ عموديًّا في جداول.
+       ========================================================================= */
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+        font-family: var(--font-sans);
+        background: var(--color-bg); color: var(--color-text);
+        font-size: var(--text-base); line-height: var(--leading-normal);
+        -webkit-text-size-adjust: 100%;
+    }
+    .wrap {
+        max-width: 1100px; margin: 0 auto;
+        padding: var(--space-5) var(--space-4) calc(var(--space-8) + env(safe-area-inset-bottom));
+        padding-top: calc(var(--space-5) + env(safe-area-inset-top));
+    }
+    header {
+        display: flex; align-items: center; gap: var(--space-4);
+        margin-bottom: var(--space-6); padding-bottom: var(--space-4);
+        border-bottom: var(--border-hairline) solid var(--color-border);
+    }
+    header img { width: 44px; height: 44px; border-radius: var(--radius-md); display: block; }
+    header h1 { margin: 0; font-size: var(--text-lg); font-weight: 700; letter-spacing: -.01em; }
+    header p { margin: 3px 0 0; font-size: var(--text-xs); color: var(--color-text-muted); }
+    header .wordmark {
+        display: block; font-size: var(--text-xs); font-weight: 700;
+        letter-spacing: .22em; color: var(--color-brand-text);
+        text-transform: uppercase; margin-top: 3px;
+    }
+
+    label {
+        display: block; font-size: var(--text-xs); font-weight: 700;
+        color: var(--color-text-muted); margin-bottom: 6px;
+        text-transform: uppercase; letter-spacing: .06em;
+    }
+    input {
+        width: 100%; height: var(--input-height); padding: 0 var(--space-3);
+        font-family: inherit; font-size: var(--text-sm);
+        background: var(--color-surface); color: var(--color-text);
+        border: var(--input-border); border-radius: var(--input-radius);
+        margin-bottom: var(--space-4);
+    }
+    input:focus-visible {
+        outline: none; border-color: var(--color-focus);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus) 22%, transparent);
+    }
+    button {
+        width: 100%; min-height: var(--btn-height); padding: var(--space-3) var(--btn-padding-x);
+        font-family: inherit; font-size: var(--btn-font-size); font-weight: var(--btn-font-weight);
+        background: var(--color-primary); color: var(--color-on-primary);
+        border: 1px solid transparent; border-radius: var(--btn-radius); cursor: pointer;
+        transition: background var(--dur-fast) var(--ease);
+    }
+    button:hover:not([disabled]) { background: var(--ink-700); }
+    button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+    button[disabled] { opacity: .45; cursor: not-allowed; }
+    button.ghost { background: transparent; color: var(--color-text); border-color: var(--color-border-strong); }
+    button.ghost:hover:not([disabled]) { background: var(--color-surface-2); }
+
+    .panel {
+        background: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-border);
+        border-top: 3px solid var(--color-brand);
+        border-radius: var(--card-radius);
+        padding: var(--space-5); margin-bottom: var(--space-5);
+        box-shadow: var(--shadow-xs);
+    }
+
+    /* ---- شاشة الاختيار: ثلاثة أزرار، ولا نتائج قبل الضغط -------------- */
+    .chooser { display: grid; gap: var(--space-4); grid-template-columns: 1fr; margin-bottom: var(--space-5); }
+    @media (min-width: 700px) { .chooser { grid-template-columns: repeat(3, 1fr); } }
+    .pick {
+        display: flex; align-items: center; gap: var(--space-4);
+        width: 100%; height: auto; text-align: start; padding: var(--space-5); cursor: pointer;
+        background: var(--color-surface); color: var(--color-text);
+        border: var(--border-hairline) solid var(--color-border-strong);
+        border-radius: var(--card-radius); box-shadow: var(--shadow-xs);
+        transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+    }
+    .pick:hover { background: var(--color-surface-2); border-color: var(--color-primary); }
+    .pick[aria-pressed="true"] {
+        background: var(--color-surface-2); border-color: var(--color-primary);
+        border-top: 3px solid var(--color-primary);
+    }
+    .pick .ic {
+        flex: 0 0 auto; width: 42px; height: 42px; border-radius: var(--radius-md);
+        background: var(--color-surface-2);
+        border: var(--border-hairline) solid var(--color-border);
+        display: flex; align-items: center; justify-content: center; color: var(--color-text-muted);
+    }
+    .pick[aria-pressed="true"] .ic {
+        background: var(--color-primary); border-color: var(--color-primary); color: var(--color-on-primary);
+    }
+    .pick .ic svg { width: 20px; height: 20px; display: block; }
+    .pick .t1 { display: block; font-size: var(--text-sm); font-weight: 700; line-height: 1.4; }
+    .pick .t2 { display: block; font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 2px; }
+    .pickhint {
+        font-size: var(--text-sm); color: var(--color-text-muted);
+        line-height: 1.8; margin: 0 0 var(--space-5); text-align: center;
+    }
+
+    /* ---- بطاقات الأرقام ------------------------------------------------ */
+    .cards { display: grid; gap: var(--space-4); grid-template-columns: 1fr; margin-bottom: var(--space-5); }
+    @media (min-width: 560px) { .cards { grid-template-columns: 1fr 1fr; } }
+    @media (min-width: 980px) { .cards { grid-template-columns: repeat(4, 1fr); } }
+    .card {
+        background: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-border);
+        border-top: 3px solid var(--color-brand);
+        border-radius: var(--card-radius); padding: var(--space-5); box-shadow: var(--shadow-xs);
+    }
+    .card h2 {
+        font-size: var(--text-xs); letter-spacing: .1em; text-transform: uppercase;
+        color: var(--color-text-muted); margin: 0 0 8px; font-weight: 700;
+    }
+    .card .amt {
+        font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+        font-size: var(--text-2xl); font-weight: 600; margin: 0;
+        line-height: 1.2; letter-spacing: -.02em; color: var(--color-text);
+    }
+    .card .amt.sm { font-size: var(--text-xl); }
+    .card .cur {
+        font-family: var(--font-sans); font-size: var(--text-xs); font-weight: 700;
+        color: var(--color-text-muted); margin-left: 5px; letter-spacing: .06em;
+    }
+    .card .meta { font-size: var(--text-xs); color: var(--color-text-muted); margin: var(--space-3) 0 0; line-height: 1.7; }
+    /* الأخضر للتجاوز والأحمر للدَّين والنقص — لا لكل رقم موجب */
+    .up { color: var(--color-success); }
+    .down { color: var(--color-danger); }
+    .wait { color: var(--color-warning); }
+    .card .amt.word { font-family: var(--font-sans); font-size: var(--text-base); }
+
+    /* ---- الجداول ------------------------------------------------------- */
+    .tw { overflow-x: auto; border-radius: var(--radius-md); border: var(--border-hairline) solid var(--color-border); }
+    table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); background: var(--color-surface); }
+    thead th {
+        font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+        color: var(--color-text-muted); text-align: start; padding: 10px 12px; white-space: nowrap;
+        background: var(--color-surface-2);
+        border-bottom: var(--border-hairline) solid var(--color-border);
+    }
+    thead th.n, tbody td.n, tfoot td.n { text-align: end; }
+    tbody td, tfoot td {
+        padding: 10px 12px; border-bottom: var(--border-hairline) solid var(--color-border);
+        white-space: nowrap;
+    }
+    tbody td.n, tfoot td.n {
+        font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+    }
+    tfoot td { background: var(--color-surface-2); font-weight: 800; border-bottom: 0; }
+    tbody tr:last-child td { border-bottom: 0; }
+
+    .bar { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-end; margin-bottom: var(--space-5); }
+    .bar > div { width: 180px; }
+    .bar input { margin-bottom: 0; }
+    .bar button { width: auto; min-height: 42px; }
+    .note { font-size: var(--text-xs); color: var(--color-text-muted); line-height: 1.8; margin: var(--space-4) 0 0; }
+    .err { color: var(--color-danger); font-size: var(--text-sm); font-weight: 700; margin: 0 0 var(--space-3); min-height: 18px; }
+    .stamp { font-size: var(--text-xs); color: var(--color-text-muted); margin: var(--space-4) 0 0; }
+    .sect { font-size: var(--text-sm); font-weight: 700; margin: var(--space-6) 0 var(--space-3); }
+    .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+    <header>
+        <img src="./icons/abayaview-192.png" alt="Al Sheikha Style">
+        <div>
+            <h1>Abaya Shops</h1>
+            <span class="wordmark">Al Sheikha Style</span>
+            <p>View only &mdash; nothing here can be changed</p>
+        </div>
+    </header>
+
+    <div class="panel" id="loginPanel">
+        <p class="err" id="loginError"></p>
+        <label for="email">Email</label>
+        <input type="email" id="email" autocomplete="username" inputmode="email">
+        <label for="pass">Password</label>
+        <input type="password" id="pass" autocomplete="current-password">
+        <button id="loginBtn">Sign in</button>
+    </div>
+
+    <div id="dataPanel" class="hidden">
+        <p class="err" id="dataError"></p>
+
+        <!-- ثلاثة أزرار، ولا نتائج قبل الضغط -->
+        <div class="chooser" id="chooser">
+            <button type="button" class="pick" id="pickAccount" aria-pressed="false" aria-controls="viewAccount">
+                <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10"/><path d="M14.6 9.4c-.5-.6-1.4-.9-2.6-.9-1.6 0-2.5.7-2.5 1.8 0 1 .7 1.5 2.5 1.8 1.9.3 2.7.8 2.7 1.9 0 1.2-1 1.9-2.7 1.9-1.3 0-2.2-.3-2.8-1"/></svg></span>
+                <span>
+                    <span class="t1">Account</span>
+                    <span class="t2">Sales, income and what is owed</span>
+                </span>
+            </button>
+            <button type="button" class="pick" id="pickTarget" aria-pressed="false" aria-controls="viewTarget">
+                <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg></span>
+                <span>
+                    <span class="t1">Daily target</span>
+                    <span class="t2">What was expected against what came</span>
+                </span>
+            </button>
+            <button type="button" class="pick" id="pickStock" aria-pressed="false" aria-controls="viewStock">
+                <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5"/><path d="M12 12v9"/></svg></span>
+                <span>
+                    <span class="t1">Stock</span>
+                    <span class="t2">Pieces in each shop right now</span>
+                </span>
+            </button>
+        </div>
+
+        <p class="pickhint" id="pickHint">Choose what you want to see.</p>
+
+        <!-- ============ 1) الحساب ============ -->
+        <div id="viewAccount" class="hidden">
+            <div class="bar">
+                <div><label for="acMonth">Month</label><input type="month" id="acMonth"></div>
+                <button class="ghost" id="acPrev">&#9664; Previous</button>
+                <button class="ghost" id="acNext">Next &#9654;</button>
+            </div>
+            <div class="cards">
+                <div class="card">
+                    <h2>Shop sales</h2>
+                    <p class="amt" id="acSales">&mdash;<span class="cur">QAR</span></p>
+                    <p class="meta" id="acSalesMeta"></p>
+                </div>
+                <div class="card">
+                    <h2>Real income</h2>
+                    <p class="amt" id="acIncome">&mdash;<span class="cur">QAR</span></p>
+                    <p class="meta">After the bank charge, plus Shanton's commission.</p>
+                </div>
+                <div class="card">
+                    <h2>Commission from Shanton</h2>
+                    <p class="amt up" id="acCommission">&mdash;<span class="cur">QAR</span></p>
+                    <p class="meta">Yours &mdash; the only part of her sales that is income.</p>
+                </div>
+                <div class="card">
+                    <h2>Due to Shanton</h2>
+                    <p class="amt down" id="acDue">&mdash;<span class="cur">QAR</span></p>
+                    <p class="meta">In your till but <b>not yours</b>.</p>
+                </div>
+            </div>
+            <div class="tw">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Shop</th><th class="n">Days</th><th class="n">Pieces</th>
+                            <th class="n">Sales</th><th class="n">Bank charge</th><th class="n">After charge</th>
+                            <th class="n">Sh. pcs</th><th class="n">Commission</th>
+                            <th class="n">Real income</th><th class="n">Due to Sh.</th>
+                        </tr>
+                    </thead>
+                    <tbody id="acBody"></tbody>
+                    <tfoot id="acFoot"></tfoot>
+                </table>
+            </div>
+            <p class="sect">Cash in the till, as last reported</p>
+            <div class="tw">
+                <table>
+                    <thead><tr><th>Shop</th><th class="n">Cash on hand</th><th>As reported on</th></tr></thead>
+                    <tbody id="acCashBody"></tbody>
+                </table>
+            </div>
+            <p class="note" id="acNote"></p>
+        </div>
+
+        <!-- ============ 2) التارقت ============ -->
+        <div id="viewTarget" class="hidden">
+            <div class="bar">
+                <button class="ghost" id="tgPrev">&#9664; Previous day</button>
+                <div><label for="tgDate">Day</label><input type="date" id="tgDate"></div>
+                <button class="ghost" id="tgNext">Next day &#9654;</button>
+            </div>
+            <div class="cards">
+                <div class="card">
+                    <h2>Total target</h2>
+                    <p class="amt" id="tgTarget">&mdash;<span class="cur">QAR</span></p>
+                </div>
+                <div class="card">
+                    <h2>Sales (after charge)</h2>
+                    <p class="amt" id="tgActual">&mdash;<span class="cur">QAR</span></p>
+                </div>
+                <div class="card">
+                    <h2>Difference</h2>
+                    <p class="amt" id="tgDiff">&mdash;</p>
+                </div>
+                <div class="card">
+                    <h2>Status</h2>
+                    <p class="amt word" id="tgStatus">&mdash;</p>
+                </div>
+            </div>
+            <div class="tw">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Shop</th><th class="n">Target</th><th class="n">Sales (after charge)</th>
+                            <th class="n">Difference</th><th>Status</th><th class="n">Announced</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tgBody"></tbody>
+                    <tfoot id="tgFoot"></tfoot>
+                </table>
+            </div>
+            <p class="note" id="tgNote"></p>
+        </div>
+
+        <!-- ============ 3) الستوك ============ -->
+        <div id="viewStock" class="hidden">
+            <p class="sect" style="margin-top: 0;">Your own stock</p>
+            <div class="tw">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Shop</th><th class="n">Opening</th><th class="n">Received</th>
+                            <th class="n">Sold</th><th class="n">Sent out</th><th class="n">In stock now</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stBody"></tbody>
+                    <tfoot id="stFoot"></tfoot>
+                </table>
+            </div>
+            <p class="note" id="stNote"></p>
+
+            <p class="sect">Shanton's stock &mdash; her goods, not yours</p>
+            <div class="tw">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Shop</th><th class="n">Opening</th><th class="n">Received</th>
+                            <th class="n">Sold</th><th class="n">Returned / sent</th><th class="n">Held now</th>
+                        </tr>
+                    </thead>
+                    <tbody id="shBody"></tbody>
+                    <tfoot id="shFoot"></tfoot>
+                </table>
+            </div>
+            <p class="note" id="shNote"></p>
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-5);">
+            <button class="ghost" id="refreshBtn" style="width: auto;">Refresh now</button>
+            <button class="ghost" id="logoutBtn" style="width: auto;">Sign out</button>
+        </div>
+        <p class="stamp" id="stamp"></p>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, doc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut }
+        from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCWZb0GwAeMgLtJIfq3kuRfmEQ1POBNSp0",
+      authDomain: "attendance-system-f32d6.firebaseapp.com",
+      projectId: "attendance-system-f32d6",
+      storageBucket: "attendance-system-f32d6.firebasestorage.app",
+      messagingSenderId: "302261734220",
+      appId: "1:302261734220:web:50cb9e10965ed3ddcf1de9",
+      measurementId: "G-W88XGV8E1Q"
+    };
+    // نسخة مُسمّاة — انظر التحذير في رأس الملف. لا تحذف الاسم.
+    const app = initializeApp(firebaseConfig, "abayaview");
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    // =====================================================================
+    // ثوابت العبايات — نسخة مطابقة لما في admin.html
+    // =====================================================================
+    const ABAYA_SHOPS = ['GULF MALL', 'VENDOME MALL', 'DOHA FESTIVAL CITY'];
+    const ABAYA_ITEMS = [
+        { key: 'abayaReady', en: 'Abaya — ready',      ar: 'عباية — بيع جاهز' },
+        { key: 'abayaOrder', en: 'Abaya — order',      ar: 'عباية — طلب / تفصيل' },
+        { key: 'kaftan',     en: 'Kaftan',             ar: 'قفطان' },
+        { key: 'shela',      en: 'Shela',              ar: 'شيلا' },
+        { key: 'inner',      en: 'Inner',              ar: 'إنر' },
+        { key: 'travel',     en: 'Travel Collection',  ar: 'ترافل كولكشن' },
+        { key: 'jalabiya',   en: 'Jalabiya',           ar: 'جلابية' },
+        { key: 'perfume',    en: 'Perfume',            ar: 'عطور' }
+    ];
+    const ABAYA_STOCK_ITEMS = [
+        { key: 'abaya',    en: 'Abaya',             ar: 'عباية' },
+        { key: 'kaftan',   en: 'Kaftan',            ar: 'قفطان' },
+        { key: 'shela',    en: 'Shela',             ar: 'شيلا' },
+        { key: 'inner',    en: 'Inner',             ar: 'إنر' },
+        { key: 'travel',   en: 'Travel Collection', ar: 'ترافل كولكشن' },
+        { key: 'jalabiya', en: 'Jalabiya',          ar: 'جلابية' },
+        { key: 'perfume',  en: 'Perfume',           ar: 'عطور' }
+    ];
+    const ABAYA_MOVE_KINDS = [
+        { key: 'out_to_shop',        en: 'Sent to another shop',                ar: 'خرجت إلى محل آخر',           owner: 'own',     needsShop: true,     sign: -1 },
+        { key: 'in_from_shop',       en: 'Received from another shop',          ar: 'وصلت من محل آخر',            owner: 'own',     needsShop: true,     sign: +1 },
+        { key: 'in_from_workshop',   en: 'Received from the workshop',          ar: 'وصلت من الورشة',             owner: 'own',                          sign: +1 },
+        { key: 'in_from_supplier',   en: 'Received from a supplier',            ar: 'وصلت من مورّد',              owner: 'own',     needsSupplier: true, sign: +1 },
+        { key: 'in_from_designer',   en: 'SHANTON — received from her',         ar: 'شانتون — وصلت منها',         owner: 'shanton',                      sign: +1 },
+        { key: 'return_to_designer', en: 'SHANTON — returned to her',           ar: 'شانتون — أُرجعت لها',        owner: 'shanton',                      sign: -1 },
+        { key: 'sh_out_to_shop',     en: 'SHANTON — sent to another shop',      ar: 'شانتون — خرجت إلى محل آخر',  owner: 'shanton', needsShop: true,     sign: -1 },
+        { key: 'sh_in_from_shop',    en: 'SHANTON — received from another shop', ar: 'شانتون — وصلت من محل آخر',  owner: 'shanton', needsShop: true,     sign: +1 }
+    ];
+    const ABAYA_SHANTON_SHOPS = ['DOHA FESTIVAL CITY'];
+    const ABAYA_ITEM_TO_STOCK = {
+        abayaReady: 'abaya', abayaOrder: 'abaya', kaftan: 'kaftan',
+        shela: 'shela', inner: 'inner', travel: 'travel',
+        jalabiya: 'jalabiya', perfume: 'perfume'
+    };
+    const ABAYA_SHANTON_STOCK_KEY = 'shantonAbaya';
+    const SHANTON_DEFAULT_PER_PIECE = 200;
+    const ABAYA_DEFAULT_CARD_FEE_PCT = 1.5;
+    const ABAYA_CENT = 0.005;
+    const AUTO_REFRESH_MS = 60000;
+
+    let allAbayaReports = [];
+    let abayaRates = { cardFeePercent: ABAYA_DEFAULT_CARD_FEE_PCT, shantonPerPiece: SHANTON_DEFAULT_PER_PIECE };
+    let abayaOpening = { opening: {}, openingDate: '' };
+    let abayaTargets = {};
+    let timer = null;
+
+    const el = (id) => document.getElementById(id);
+    const money = (n) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    function todayISO() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    function shiftDayISO(iso, delta) {
+        const [y, m, d] = String(iso).split('-').map(Number);
+        const t = new Date(y, m - 1, d + delta);
+        return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    }
+    function shiftMonth(ym, delta) {
+        const [y, m] = String(ym).split('-').map(Number);
+        const d = new Date(y, m - 1 + delta, 1);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+    function monthBounds(ym) {
+        const [y, m] = String(ym).split('-').map(Number);
+        const last = new Date(y, m, 0).getDate();
+        return { start: `${ym}-01`, end: `${ym}-${String(last).padStart(2, '0')}` };
+    }
+    /** 15-09-2026 — صيغة الإدارة، نفس salesDateLabel في اللوحة. */
+    function dateLabel(iso) {
+        return iso ? `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}` : '';
+    }
+    function slashDate(iso) {
+        return iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '';
+    }
+    function abQtyField(key) { return 'qty' + key.charAt(0).toUpperCase() + key.slice(1); }
+    function abAmtField(key) { return 'amt' + key.charAt(0).toUpperCase() + key.slice(1); }
+
+    /* =========================================================================
+       منطق الحساب — نسخة مطابقة حرفيًّا لما في admin.html (انظر رأس الملف)
+       ========================================================================= */
+    function abayaMoveOwner(m) {
+        if (m && m.owner === 'shanton') return 'shanton';
+        if (m && m.owner === 'own') return 'own';
+        const kind = ABAYA_MOVE_KINDS.find(k => k.key === (m && m.kind));
+        return (kind && kind.owner === 'shanton') ? 'shanton' : 'own';
+    }
+
+    function abayaRow(r) {
+        const num = (v) => Number(v) || 0;
+        const ownSales = num(r.totalSales);
+        const cardFee = num(r.cardSales) * (Number(abayaRates.cardFeePercent) || 0) / 100;
+        const shPieces = num(r.shTotalQty);
+        const perPiece = Number(abayaRates.shantonPerPiece) || SHANTON_DEFAULT_PER_PIECE;
+        const shCollected = num(r.shTotalSales);
+        const commission = Math.min(shPieces * perPiece, shCollected);
+        return {
+            ...r,
+            pieces: num(r.totalQty),
+            ownSales,
+            cash: num(r.cashSales), card: num(r.cardSales),
+            cardFee, afterCharge: ownSales - cardFee,
+            cashOnHand: num(r.cashOnHand),
+            shPieces, shCollected, perPiece,
+            commission,
+            shDue: Math.max(0, shCollected - commission),
+            realIncome: (ownSales - cardFee) + commission,
+            walkLocal: num(r.walkInsLocal), walkExpat: num(r.walkInsExpat),
+            movements: Array.isArray(r.movements) ? r.movements : []
+        };
+    }
+
+    function abayaTotals(rows) {
+        const t = {
+            n: rows.length, days: new Set(), pieces: 0, ownSales: 0, cash: 0, card: 0,
+            cardFee: 0, afterCharge: 0, cashOnHand: 0, shPieces: 0, shCollected: 0,
+            commission: 0, shDue: 0, realIncome: 0, walkLocal: 0, walkExpat: 0
+        };
+        rows.forEach(r => {
+            if (r.date) t.days.add(r.date);
+            ['pieces', 'ownSales', 'cash', 'card', 'cardFee', 'afterCharge', 'cashOnHand',
+             'shPieces', 'shCollected', 'commission', 'shDue', 'realIncome',
+             'walkLocal', 'walkExpat'].forEach(k => { t[k] += r[k]; });
+        });
+        t.dayCount = t.days.size;
+        return t;
+    }
+
+    function abayaStockFor(shop) {
+        const since = abayaOpening.openingDate || '';
+        const openMap = abayaOpening.opening[shop] || {};
+        const out = {};
+        ABAYA_STOCK_ITEMS.forEach(it => {
+            out[it.key] = { opening: Number(openMap[it.key]) || 0, received: 0, sold: 0, sentOut: 0 };
+        });
+        const sh = { opening: Number(openMap[ABAYA_SHANTON_STOCK_KEY]) || 0, received: 0, sold: 0, sentOut: 0 };
+
+        allAbayaReports.forEach(r => {
+            if (r.shop !== shop) return;
+            const d = String(r.date || '');
+            if (since && d < since) return;
+            ABAYA_ITEMS.forEach(it => {
+                const stockKey = ABAYA_ITEM_TO_STOCK[it.key];
+                if (!stockKey || !out[stockKey]) return;
+                out[stockKey].sold += Number(r[abQtyField(it.key)]) || 0;
+            });
+            sh.sold += Number(r.shTotalQty) || 0;
+
+            (Array.isArray(r.movements) ? r.movements : []).forEach(m => {
+                const kind = ABAYA_MOVE_KINDS.find(k => k.key === m.kind);
+                const qty = Number(m.qty) || 0;
+                if (!kind || qty <= 0) return;
+                if (abayaMoveOwner(m) === 'shanton') {
+                    if (kind.sign < 0) sh.sentOut += qty; else sh.received += qty;
+                    return;
+                }
+                const cell = out[m.item];
+                if (!cell) return;
+                if (kind.sign < 0) cell.sentOut += qty; else cell.received += qty;
+            });
+        });
+
+        let sum = { opening: 0, received: 0, sold: 0, sentOut: 0, now: 0 };
+        ABAYA_STOCK_ITEMS.forEach(it => {
+            const c = out[it.key];
+            c.now = c.opening + c.received - c.sold - c.sentOut;
+            sum.opening += c.opening; sum.received += c.received;
+            sum.sold += c.sold; sum.sentOut += c.sentOut; sum.now += c.now;
+        });
+        sh.now = sh.opening + sh.received - sh.sold - sh.sentOut;
+        const combined = {
+            opening: sum.opening + sh.opening, received: sum.received + sh.received,
+            sold: sum.sold + sh.sold, sentOut: sum.sentOut + sh.sentOut, now: sum.now + sh.now
+        };
+        return { items: out, sum, shanton: sh, combined };
+    }
+
+    function abayaTargetRowFor(dateISO, shop) {
+        const rows = (allAbayaReports || [])
+            .filter(r => (r.date || '') === dateISO && r.shop === shop)
+            .map(abayaRow);
+        const t = abayaTotals(rows);
+        const target = Number(abayaTargets[shop]) || 0;
+        const hasReport = rows.length > 0;
+        const hasTarget = target > 0;
+        let state;
+        if (!hasReport) state = 'noreport';
+        else if (!hasTarget) state = 'notarget';
+        else {
+            const d = t.afterCharge - target;
+            if (Math.abs(d) <= ABAYA_CENT) state = 'on';
+            else if (d > 0) state = 'above';
+            else state = 'below';
+        }
+        return {
+            shop, target, hasTarget, hasReport, reports: rows.length,
+            sales: t.afterCharge, announced: t.ownSales, commission: t.commission,
+            diff: (hasReport && hasTarget) ? t.afterCharge - target : null,
+            pct: (hasReport && hasTarget) ? (t.afterCharge / target * 100) : null,
+            state
+        };
+    }
+
+    function abayaTargetTotals(rows) {
+        const reported = rows.filter(r => r.hasReport);
+        const missing = rows.filter(r => !r.hasReport);
+        const fullTarget = rows.filter(r => r.hasTarget).reduce((a, r) => a + r.target, 0);
+        const totalSales = reported.reduce((a, r) => a + r.sales, 0);
+        const totalAnnounced = reported.reduce((a, r) => a + r.announced, 0);
+        const totalCommission = reported.reduce((a, r) => a + r.commission, 0);
+        const complete = missing.length === 0;
+        const totalDiff = fullTarget > 0 ? totalSales - fullTarget : null;
+
+        let state;
+        if (!reported.length) state = 'pending';
+        else if (!fullTarget) state = 'notarget';
+        else if (totalDiff > ABAYA_CENT) state = 'above';
+        else if (!complete) state = 'pending';
+        else if (Math.abs(totalDiff) <= ABAYA_CENT) state = 'on';
+        else state = 'below';
+
+        return {
+            reported: reported.length, shops: rows.length, missing, complete,
+            fullTarget, totalSales, totalAnnounced, totalCommission, totalDiff, state
+        };
+    }
+
+    const TG_CLASS = { above: 'up', on: 'up', below: 'down', pending: 'wait', noreport: '', notarget: '' };
+    const TG_MARK = { above: '\u2705', on: '\u2705', below: '\u274C', pending: '\u23F3', noreport: '\u2014', notarget: '\u2014' };
+    const TG_LABEL = { above: 'Above target', on: 'On target', below: 'Below target', noreport: 'No report yet', notarget: 'No target set' };
+
+    /** أحدث يوم وردت عنه تقارير — أفضل من «اليوم» الذي لم يُرسل عنه أحد بعد. */
+    function latestReportDate() {
+        let best = '';
+        allAbayaReports.forEach(r => { const d = String(r.date || ''); if (d && d > best) best = d; });
+        return best;
+    }
+
+    // =====================================================================
+    // اختيار القسم المعروض
+    // ---------------------------------------------------------------------
+    // ⚠️ لا يُلمس هذا في render(): التحديث التلقائي كل دقيقة يُعيد رسم الأرقام،
+    // فلو تحكّم في الظهور لَقفزت الشاشة إلى قسم آخر بين يدي القارئ.
+    // ⚠️ ولا يُحفظ الاختيار بين الزيارات: كل دخول يبدأ بالأزرار الثلاثة.
+    // =====================================================================
+    let activeView = '';
+    function showView(which) {
+        activeView = which;
+        const views = { account: 'viewAccount', target: 'viewTarget', stock: 'viewStock' };
+        Object.entries(views).forEach(([k, id]) => el(id).classList.toggle('hidden', k !== which));
+        el('pickAccount').setAttribute('aria-pressed', String(which === 'account'));
+        el('pickTarget').setAttribute('aria-pressed', String(which === 'target'));
+        el('pickStock').setAttribute('aria-pressed', String(which === 'stock'));
+        el('pickHint').classList.toggle('hidden', !!which);
+    }
+    el('pickAccount').addEventListener('click', () => showView('account'));
+    el('pickTarget').addEventListener('click', () => showView('target'));
+    el('pickStock').addEventListener('click', () => showView('stock'));
+
+    // =====================================================================
+    // 1) الحساب
+    // =====================================================================
+    function renderAccount() {
+        const month = el('acMonth').value || todayISO().slice(0, 7);
+        const { start, end } = monthBounds(month);
+        const rows = allAbayaReports
+            .filter(r => (r.date || '') >= start && (r.date || '') <= end)
+            .map(abayaRow);
+
+        const per = ABAYA_SHOPS.map(shop => ({ shop, t: abayaTotals(rows.filter(r => r.shop === shop)) }));
+        // محلٌّ غير معروف: يُعرض صريحًا وإلا اختلف مجموع المحلات عن الكلي بلا تفسير
+        const unknown = abayaTotals(rows.filter(r => !ABAYA_SHOPS.includes(r.shop)));
+        const all = abayaTotals(rows);
+
+        const set = (id, v, cls) => {
+            const e = el(id);
+            if (!e) return;
+            e.innerHTML = `${v}<span class="cur">QAR</span>`;
+            if (cls !== undefined) e.className = 'amt ' + cls;
+        };
+        set('acSales', money(all.ownSales));
+        set('acIncome', money(all.realIncome));
+        set('acCommission', money(all.commission), 'up');
+        set('acDue', money(all.shDue), 'down');
+        el('acSalesMeta').innerText = `${all.n} report(s) over ${all.dayCount} day(s) · ${all.pieces} piece(s)`;
+
+        const line = (label, t) => `<tr>
+            <td><b>${escapeHtml(label)}</b></td>
+            <td class="n">${t.dayCount}</td>
+            <td class="n">${t.pieces}</td>
+            <td class="n">${money(t.ownSales)}</td>
+            <td class="n down">${t.cardFee > ABAYA_CENT ? '-' + money(t.cardFee) : '—'}</td>
+            <td class="n">${money(t.afterCharge)}</td>
+            <td class="n">${t.shPieces || '—'}</td>
+            <td class="n up">${t.commission ? money(t.commission) : '—'}</td>
+            <td class="n"><b>${money(t.realIncome)}</b></td>
+            <td class="n down">${t.shDue ? money(t.shDue) : '—'}</td>
+        </tr>`;
+        el('acBody').innerHTML = per.map(({ shop, t }) => line(shop, t)).join('')
+            + (unknown.n ? line(`⚠ Unknown shop (${unknown.n} report(s))`, unknown) : '');
+        el('acFoot').innerHTML = `<tr>
+            <td>ALL SHOPS — ${escapeHtml(month)}</td>
+            <td class="n">${all.dayCount}</td>
+            <td class="n">${all.pieces}</td>
+            <td class="n">${money(all.ownSales)}</td>
+            <td class="n down">${all.cardFee > ABAYA_CENT ? '-' + money(all.cardFee) : '—'}</td>
+            <td class="n">${money(all.afterCharge)}</td>
+            <td class="n">${all.shPieces || '—'}</td>
+            <td class="n up">${all.commission ? money(all.commission) : '—'}</td>
+            <td class="n">${money(all.realIncome)}</td>
+            <td class="n down">${all.shDue ? money(all.shDue) : '—'}</td>
+        </tr>`;
+
+        // الكاش في الصندوق: من آخر تقرير لكل محل، وبتاريخه — رقمٌ بلا تاريخه
+        // يُقرأ كأنه رصيد اللحظة، وهو رصيد آخر يوم أُبلغ عنه.
+        el('acCashBody').innerHTML = ABAYA_SHOPS.map(shop => {
+            const mine = allAbayaReports.filter(r => r.shop === shop && r.date);
+            let last = null;
+            mine.forEach(r => { if (!last || String(r.date) > String(last.date)) last = r; });
+            return `<tr>
+                <td><b>${escapeHtml(shop)}</b></td>
+                <td class="n">${last ? money(last.cashOnHand) : '—'}</td>
+                <td>${last ? escapeHtml(dateLabel(last.date)) : '<span style="color: var(--color-text-muted);">no report yet</span>'}</td>
+            </tr>`;
+        }).join('');
+
+        const notes = [];
+        notes.push(`<b>Real income</b> = the shops' own sales after the ${abayaRates.cardFeePercent}% bank charge, `
+            + `plus the commission from Shanton. Her own sales are never added: `
+            + `<b>${money(all.shDue)} QAR</b> of what was collected this month belongs to her.`);
+        notes.push(`Expenses (shop rent, salaries) are not included, so these figures are <b>sales and income, not profit</b>.`);
+        if (unknown.n) {
+            notes.push(`<b class="down">${unknown.n} report(s) carry a shop name that is not one of the three above</b> — `
+                + `shown on their own line so the total still adds up.`);
+        }
+        el('acNote').innerHTML = notes.join('<br><br>');
+    }
+
+    // =====================================================================
+    // 2) التارقت
+    // =====================================================================
+    function renderTarget() {
+        const day = el('tgDate').value || latestReportDate() || todayISO();
+        if (!el('tgDate').value) el('tgDate').value = day;
+        const rows = ABAYA_SHOPS.map(s => abayaTargetRowFor(day, s));
+        const tot = abayaTargetTotals(rows);
+        el('tgNext').disabled = day >= todayISO();
+
+        const setAmt = (id, v, cls) => {
+            const e = el(id);
+            e.innerHTML = `${v}<span class="cur">QAR</span>`;
+            e.className = 'amt ' + (cls || '');
+        };
+        setAmt('tgTarget', money(tot.fullTarget));
+        setAmt('tgActual', money(tot.totalSales));
+        if (tot.totalDiff === null) {
+            el('tgDiff').innerHTML = '&mdash;';
+            el('tgDiff').className = 'amt';
+        } else {
+            setAmt('tgDiff', `${tot.totalDiff >= 0 ? '+' : '-'}${money(Math.abs(tot.totalDiff))}`,
+                tot.totalDiff >= 0 ? 'up' : 'down');
+        }
+        let totalLabel = TG_LABEL[tot.state] || 'Waiting';
+        if (tot.state === 'pending') {
+            totalLabel = tot.reported ? `Waiting for ${tot.missing.length} of ${tot.shops} shops` : 'No reports yet';
+        }
+        el('tgStatus').innerText = `${TG_MARK[tot.state]} ${totalLabel}`;
+        el('tgStatus').className = 'amt word ' + (TG_CLASS[tot.state] || '');
+
+        el('tgBody').innerHTML = rows.map(r => `
+            <tr>
+                <td><b>${escapeHtml(r.shop)}</b></td>
+                <td class="n">${r.hasTarget ? money(r.target) : '<span style="color: var(--color-text-muted);">not set</span>'}</td>
+                <td class="n">${r.hasReport ? '<b>' + money(r.sales) + '</b>' : '—'}</td>
+                <td class="n">${r.diff === null ? '—'
+                    : `<b class="${r.diff >= 0 ? 'up' : 'down'}">${r.diff >= 0 ? '+' : '-'}${money(Math.abs(r.diff))}</b>`
+                      + (r.pct !== null ? ` <small style="color: var(--color-text-muted);">(${r.pct.toFixed(1)}%)</small>` : '')}</td>
+                <td class="${TG_CLASS[r.state] || ''}" style="font-weight: 800;">${TG_MARK[r.state]} ${escapeHtml(TG_LABEL[r.state])}</td>
+                <td class="n" style="color: var(--color-text-muted);">${r.hasReport ? money(r.announced) : '—'}</td>
+            </tr>`).join('');
+        el('tgFoot').innerHTML = `<tr>
+            <td>ALL SHOPS${tot.complete ? '' : ` — ${tot.reported} of ${tot.shops} reported`}</td>
+            <td class="n">${money(tot.fullTarget)}</td>
+            <td class="n">${money(tot.totalSales)}</td>
+            <td class="n ${tot.totalDiff === null ? '' : (tot.totalDiff >= 0 ? 'up' : 'down')}">${tot.totalDiff === null ? '—' : (tot.totalDiff >= 0 ? '+' : '-') + money(Math.abs(tot.totalDiff))}</td>
+            <td class="${TG_CLASS[tot.state] || ''}">${TG_MARK[tot.state]} ${escapeHtml(totalLabel)}</td>
+            <td class="n" style="color: var(--color-text-muted);">${money(tot.totalAnnounced)}</td>
+        </tr>`;
+
+        const notes = [];
+        notes.push(`Compared against each shop's <b>own sales after the ${abayaRates.cardFeePercent}% bank charge</b>. `
+            + `Shanton's commission is <b>not</b> counted here — she displays in one shop only, so including it would `
+            + `make that shop's target unfair.`);
+        if (!tot.fullTarget) {
+            notes.push(`<b class="wait">No target has been set yet.</b> The owner sets one for each shop from the dashboard.`);
+        }
+        if (tot.missing.length && tot.reported) {
+            notes.push(`<b class="wait">${tot.missing.length} of ${tot.shops} shops have not sent a report for this day yet:</b> `
+                + tot.missing.map(r => escapeHtml(r.shop)).join(' · ')
+                + `. The target stays the full amount, so the difference looks negative until they report — which is why `
+                + `the status says <b>Waiting</b> and not <b>Below target</b>.`);
+        }
+        if (tot.totalCommission > ABAYA_CENT) {
+            notes.push(`Shanton's commission for this day (${money(tot.totalCommission)} QAR) is income but is not in the comparison.`);
+        }
+        el('tgNote').innerHTML = notes.join('<br><br>');
+    }
+
+    // =====================================================================
+    // 3) الستوك
+    // =====================================================================
+    function renderStock() {
+        const per = ABAYA_SHOPS.map(s => ({ shop: s, st: abayaStockFor(s) }));
+
+        el('stBody').innerHTML = per.map(({ shop, st }) => {
+            const detail = ABAYA_STOCK_ITEMS
+                .filter(it => st.items[it.key].opening || st.items[it.key].received
+                           || st.items[it.key].sold || st.items[it.key].sentOut)
+                .map(it => `${escapeHtml(it.en)}: <b class="${st.items[it.key].now < 0 ? 'down' : ''}">${st.items[it.key].now}</b>`)
+                .join(' · ');
+            return `<tr>
+                <td><b>${escapeHtml(shop)}</b>${detail ? `<br><small style="color: var(--color-text-muted); white-space: normal;">${detail}</small>` : ''}</td>
+                <td class="n">${st.sum.opening}</td>
+                <td class="n up">${st.sum.received ? '+' + st.sum.received : '—'}</td>
+                <td class="n down">${st.sum.sold ? '-' + st.sum.sold : '—'}</td>
+                <td class="n down">${st.sum.sentOut ? '-' + st.sum.sentOut : '—'}</td>
+                <td class="n"><b class="${st.sum.now < 0 ? 'down' : ''}">${st.sum.now}</b></td>
+            </tr>`;
+        }).join('');
+        const g = per.reduce((a, { st }) => ({
+            opening: a.opening + st.sum.opening, received: a.received + st.sum.received,
+            sold: a.sold + st.sum.sold, sentOut: a.sentOut + st.sum.sentOut, now: a.now + st.sum.now
+        }), { opening: 0, received: 0, sold: 0, sentOut: 0, now: 0 });
+        el('stFoot').innerHTML = `<tr>
+            <td>ALL THREE SHOPS</td>
+            <td class="n">${g.opening}</td><td class="n">${g.received ? '+' + g.received : '—'}</td>
+            <td class="n">${g.sold ? '-' + g.sold : '—'}</td><td class="n">${g.sentOut ? '-' + g.sentOut : '—'}</td>
+            <td class="n"><b>${g.now}</b></td>
+        </tr>`;
+
+        const stNotes = [];
+        if (!abayaOpening.openingDate) {
+            stNotes.push(`<b class="wait">The opening count has not been entered yet</b>, so these figures start from zero `
+                + `and will look negative as sales come in. The owner enters it once from the dashboard.`);
+        } else {
+            stNotes.push(`Counted from <b>${escapeHtml(abayaOpening.openingDate)}</b> onwards. Reports older than that date `
+                + `are already inside the opening count and are deliberately not subtracted again.`);
+        }
+        stNotes.push(`<b>Shanton's abayas are not in this table</b> — they are her goods, not yours, and counting them `
+            + `would make the stock look bigger than it is. They have their own table below.`);
+        el('stNote').innerHTML = stNotes.join('<br><br>');
+
+        // ---- مخزن شانتون: محلّها وحده، مع أي محل ظهرت فيه أرقام باسمها خطأً
+        const strays = ABAYA_SHOPS.filter(s => !ABAYA_SHANTON_SHOPS.includes(s)
+            && (() => { const x = abayaStockFor(s).shanton; return x.opening || x.received || x.sold || x.sentOut; })());
+        const shShops = ABAYA_SHOPS.filter(s => ABAYA_SHANTON_SHOPS.includes(s) || strays.includes(s));
+        const shPer = shShops.map(s => ({ shop: s, st: abayaStockFor(s) }));
+
+        el('shBody').innerHTML = shPer.map(({ shop, st }) => {
+            const s = st.shanton;
+            const stray = !ABAYA_SHANTON_SHOPS.includes(shop);
+            return `<tr>
+                <td><b>${escapeHtml(shop)}</b>${stray ? ' <b class="down" style="font-size: 11px;">⚠ not her shop</b>' : ''}</td>
+                <td class="n">${s.opening}</td>
+                <td class="n up">${s.received ? '+' + s.received : '—'}</td>
+                <td class="n down">${s.sold ? '-' + s.sold : '—'}</td>
+                <td class="n down">${s.sentOut ? '-' + s.sentOut : '—'}</td>
+                <td class="n"><b class="${s.now < 0 ? 'down' : ''}">${s.now}</b></td>
+            </tr>`;
+        }).join('');
+        const gs = shPer.reduce((a, { st }) => ({
+            opening: a.opening + st.shanton.opening, received: a.received + st.shanton.received,
+            sold: a.sold + st.shanton.sold, sentOut: a.sentOut + st.shanton.sentOut, now: a.now + st.shanton.now
+        }), { opening: 0, received: 0, sold: 0, sentOut: 0, now: 0 });
+        el('shFoot').innerHTML = `<tr>
+            <td>SHANTON — TOTAL</td>
+            <td class="n">${gs.opening}</td><td class="n">${gs.received ? '+' + gs.received : '—'}</td>
+            <td class="n">${gs.sold ? '-' + gs.sold : '—'}</td><td class="n">${gs.sentOut ? '-' + gs.sentOut : '—'}</td>
+            <td class="n"><b>${gs.now}</b></td>
+        </tr>`;
+
+        const shNotes = [];
+        const neg = shPer.filter(x => x.st.shanton.now < 0);
+        if (neg.length) {
+            shNotes.push(`<b class="down">Her stock is negative in ${neg.map(x => escapeHtml(x.shop)).join(' · ')}.</b> `
+                + `That means abayas of hers were sold without ever being recorded as received from her.`);
+        }
+        // ⚠️ مخزوننا يُقرأ من g (المحلات الثلاثة) لا من shPer الذي بُني على محلّها.
+        shNotes.push(`<b>Both stocks together: ${g.now + gs.now} piece(s)</b> `
+            + `(${g.now} yours in the three shops + ${gs.now} Shanton's). `
+            + `This combined figure is for information only and is never used in any money calculation — `
+            + `the value of the stock is your own pieces alone.`);
+        el('shNote').innerHTML = shNotes.join('<br><br>');
+    }
+
+    // =====================================================================
+    // التحميل والرسم
+    // =====================================================================
+    async function loadAll() {
+        el('dataError').innerText = '';
+        try {
+            const [repSnap, rateSnap, openSnap, tgSnap] = await Promise.all([
+                getDocs(collection(db, "abaya_sales_reports")),
+                getDoc(doc(db, "settings", "abaya_rates")),
+                getDoc(doc(db, "settings", "abaya_stock_opening")),
+                getDoc(doc(db, "settings", "abaya_targets"))
+            ]);
+
+            allAbayaReports = [];
+            repSnap.forEach(d => allAbayaReports.push({ id: d.id, ...d.data() }));
+            allAbayaReports.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+
+            if (rateSnap.exists()) {
+                const d = rateSnap.data();
+                const c = Number(d.cardFeePercent), p = Number(d.shantonPerPiece);
+                abayaRates = {
+                    cardFeePercent: isFinite(c) && c >= 0 ? c : ABAYA_DEFAULT_CARD_FEE_PCT,
+                    shantonPerPiece: isFinite(p) && p >= 0 ? p : SHANTON_DEFAULT_PER_PIECE
+                };
+            }
+            if (openSnap.exists()) {
+                const d = openSnap.data();
+                abayaOpening = {
+                    opening: (d.opening && typeof d.opening === 'object') ? d.opening : {},
+                    openingDate: d.openingDate || ''
+                };
+            }
+            const tg = (tgSnap.exists() && tgSnap.data().targets) ? tgSnap.data().targets : {};
+            abayaTargets = {};
+            ABAYA_SHOPS.forEach(s => {
+                const v = Number(tg[s]);
+                if (isFinite(v) && v > 0) abayaTargets[s] = v;
+            });
+
+            render();
+        } catch (e) {
+            console.error(e);
+            // لا نُظهر أرقامًا قديمة كأنها حالية عند فشل التحميل.
+            el('dataError').innerText = 'Could not load the abaya figures: ' + e.message;
+        }
+    }
+
+    /** يرسم الأقسام الثلاثة دائمًا. الإظهار مسؤولية showView وحدها. */
+    function render() {
+        if (!el('acMonth').value) el('acMonth').value = todayISO().slice(0, 7);
+        renderAccount();
+        renderTarget();
+        renderStock();
+        const now = new Date();
+        el('stamp').innerText =
+            `Calculated at ${now.toLocaleString('en-GB', { hour12: false })} · `
+            + `${allAbayaReports.length} report(s) loaded · refreshes by itself every minute.`;
+    }
+
+    el('acPrev').addEventListener('click', () => {
+        el('acMonth').value = shiftMonth(el('acMonth').value || todayISO().slice(0, 7), -1);
+        renderAccount();
+    });
+    el('acNext').addEventListener('click', () => {
+        el('acMonth').value = shiftMonth(el('acMonth').value || todayISO().slice(0, 7), 1);
+        renderAccount();
+    });
+    el('acMonth').addEventListener('change', renderAccount);
+    el('tgPrev').addEventListener('click', () => {
+        el('tgDate').value = shiftDayISO(el('tgDate').value || latestReportDate() || todayISO(), -1);
+        renderTarget();
+    });
+    el('tgNext').addEventListener('click', () => {
+        const cur = el('tgDate').value || latestReportDate() || todayISO();
+        if (cur >= todayISO()) return;
+        el('tgDate').value = shiftDayISO(cur, 1);
+        renderTarget();
+    });
+    el('tgDate').addEventListener('change', renderTarget);
+    el('refreshBtn').addEventListener('click', loadAll);
+    el('logoutBtn').addEventListener('click', () => signOut(auth));
+
+    // =====================================================================
+    // المصادقة
+    // =====================================================================
+    el('loginBtn').addEventListener('click', async () => {
+        const err = el('loginError');
+        err.innerText = '';
+        const email = el('email').value.trim();
+        const pass = el('pass').value;
+        if (!email || !pass) { err.innerText = 'Enter your email and password.'; return; }
+        el('loginBtn').disabled = true;
+        try {
+            await signInWithEmailAndPassword(auth, email, pass);
+        } catch (e) {
+            err.innerText = 'Could not sign in. Check the email and password.';
+        } finally {
+            el('loginBtn').disabled = false;
+        }
+    });
+    el('pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') el('loginBtn').click(); });
+
+    onAuthStateChanged(auth, (user) => {
+        // الدخول المجهول لا يُقبل هنا: صفحات أخرى تستخدمه ولا يملك صلاحية قراءة
+        // تقارير العبايات، فستظهر الصفحة فارغة بلا تفسير.
+        if (user && user.isAnonymous) {
+            signOut(auth);
+            el('loginError').innerText = 'Please sign in with the email and password you were given.';
+            return;
+        }
+        if (user) {
+            el('loginPanel').classList.add('hidden');
+            el('dataPanel').classList.remove('hidden');
+            // كل دخول يبدأ بلا اختيار — لا أول تحميل فقط.
+            showView('');
+            loadAll();
+            if (timer) clearInterval(timer);
+            timer = setInterval(loadAll, AUTO_REFRESH_MS);
+        } else {
+            if (timer) { clearInterval(timer); timer = null; }
+            el('dataPanel').classList.add('hidden');
+            el('loginPanel').classList.remove('hidden');
+            el('pass').value = '';
+        }
+    });
+
+    // إعادة الحساب عند العودة إلى الصفحة، فالوقت تقدّم وقد تكون تقارير وصلت.
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && auth.currentUser) loadAll();
+    });
+</script>
+
+<script>
+    // خدمة العمل: تُخزّن القشرة فقط ليعمل الفتح بلا شبكة. لا تُخزَّن أي بيانات.
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').catch(function () { /* غير حرج */ });
+    }
+</script>
+</body>
+</html>
