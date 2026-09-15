@@ -241,6 +241,75 @@
         color: var(--color-text); line-height: 1.9;
     }
     .install .note { margin: var(--space-3) 0 0; }
+    /* =====================================================================
+       التارقت اليومي
+       ---------------------------------------------------------------------
+       ⚠️ استثناء **مقصود** من قاعدة هذه الصفحة أعلاه («الأحمر للسالب وحده،
+       ولا أخضر لرقم موجب»). تلك القاعدة عن الأرصدة: رصيدٌ موجب أمرٌ عادي لا
+       إنجاز. أما هنا فالموجب يعني **تجاوز الهدف**، وهو إنجاز فعليًّا — فاللون
+       يحمل معنى ولا يُفقد الأحمر قيمته. ولا يُستخدم الأخضر لأي رقم آخر في
+       الصفحة، فيبقى دالًّا على شيء واحد.
+       ===================================================================== */
+    .tsec { margin-bottom: var(--space-6); }
+    .tsec > .h {
+        display: flex; flex-wrap: wrap; align-items: center;
+        gap: var(--space-3); margin: 0 0 var(--space-4);
+    }
+    .tsec .ttl { font-size: var(--text-sm); font-weight: 700; margin: 0; color: var(--color-text); }
+    .tsec .day {
+        font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+        font-size: var(--text-xs); font-weight: 600; color: var(--color-text);
+        background: var(--color-surface-2);
+        border: var(--border-hairline) solid var(--color-border);
+        border-radius: 999px; padding: 4px 11px;
+    }
+    .tsec .tnav { display: flex; gap: var(--space-2); margin-inline-start: auto; }
+    .tsec .tnav button {
+        width: auto; height: 30px; padding: 0 11px; font-size: var(--text-xs);
+        background: transparent; color: var(--color-text);
+        border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm);
+    }
+    .tsec .tnav button:hover:not([disabled]) { background: var(--color-surface-2); }
+
+    .tcards { display: grid; gap: var(--space-4); grid-template-columns: 1fr; }
+    @media (min-width: 560px) { .tcards { grid-template-columns: 1fr 1fr; } }
+    @media (min-width: 980px) { .tcards { grid-template-columns: repeat(4, 1fr); } }
+    .tcard {
+        display: flex; align-items: center; gap: var(--space-4);
+        background: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-border);
+        border-radius: var(--card-radius);
+        padding: var(--space-4) var(--space-5);
+        box-shadow: var(--shadow-xs);
+    }
+    .tcard .ic {
+        flex: 0 0 auto; width: 38px; height: 38px; border-radius: var(--radius-md);
+        background: var(--color-surface-2);
+        border: var(--border-hairline) solid var(--color-border);
+        display: flex; align-items: center; justify-content: center;
+        color: var(--color-text-muted);
+    }
+    .tcard .ic svg { width: 18px; height: 18px; display: block; }
+    .tcard .bd { min-width: 0; }
+    .tcard .k {
+        font-size: var(--text-xs); font-weight: 700; text-transform: uppercase;
+        letter-spacing: .08em; color: var(--color-text-muted); margin: 0 0 3px;
+    }
+    .tcard .v {
+        font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+        font-size: var(--text-xl); font-weight: 600; margin: 0;
+        color: var(--color-text); letter-spacing: -.01em; white-space: nowrap;
+    }
+    .tcard .v.up { color: var(--color-success); }
+    .tcard .v.down { color: var(--color-danger); }
+    .tcard .v.wait { color: var(--color-warning); }
+    /* الحالة كلمات لا رقم، فبخط النص لا المونو، ولها أن تنزل سطرًا */
+    .tcard .v.word { font-family: var(--font-sans); font-size: var(--text-sm); white-space: normal; }
+    .tsec .tnote {
+        font-size: var(--text-xs); color: var(--color-text-muted);
+        line-height: 1.8; margin: var(--space-4) 0 0;
+    }
+
     .hidden { display: none !important; }
 </style>
 </head>
@@ -279,6 +348,52 @@
     <!-- الأرصدة -->
     <div id="dataPanel" class="hidden">
         <p class="err" id="dataError"></p>
+
+        <!-- ==============================================================
+             التارقت اليومي — أول ما يُرى عند الدخول، بطلب الإدارة.
+             عرضٌ فقط، وبنفس أرقام لوحة المالك وبنفس قواعد الحكم.
+             ============================================================== -->
+        <section class="tsec" id="targetSec">
+            <div class="h">
+                <p class="ttl">Sales target <span dir="rtl">&mdash; التارقت اليومي</span></p>
+                <span class="day" id="tgDay">&mdash;</span>
+                <span class="tnav">
+                    <button type="button" id="tgPrev" title="Previous day" aria-label="Previous day">&#9664;</button>
+                    <button type="button" id="tgNext" title="Next day" aria-label="Next day">&#9654;</button>
+                </span>
+            </div>
+            <div class="tcards">
+                <div class="tcard">
+                    <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10"/><path d="M14.6 9.4c-.5-.6-1.4-.9-2.6-.9-1.6 0-2.5.7-2.5 1.8 0 1 .7 1.5 2.5 1.8 1.9.3 2.7.8 2.7 1.9 0 1.2-1 1.9-2.7 1.9-1.3 0-2.2-.3-2.8-1"/></svg></span>
+                    <span class="bd">
+                        <p class="k">Total target</p>
+                        <p class="v" id="tgTarget">&mdash;</p>
+                    </span>
+                </div>
+                <div class="tcard">
+                    <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5"/><path d="M12.5 16V8"/><path d="M17 16v-3"/></svg></span>
+                    <span class="bd">
+                        <p class="k">Total sales (after charges)</p>
+                        <p class="v" id="tgActual">&mdash;</p>
+                    </span>
+                </div>
+                <div class="tcard">
+                    <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M6 11l6-6 6 6"/></svg></span>
+                    <span class="bd">
+                        <p class="k">Difference</p>
+                        <p class="v" id="tgDiff">&mdash;</p>
+                    </span>
+                </div>
+                <div class="tcard">
+                    <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg></span>
+                    <span class="bd">
+                        <p class="k">Status</p>
+                        <p class="v word" id="tgStatus">&mdash;</p>
+                    </span>
+                </div>
+            </div>
+            <p class="tnote" id="tgNote"></p>
+        </section>
 
         <div class="cards">
             <div class="card">
@@ -356,9 +471,22 @@
     const CASH_STREAMS = ['bank', 'cash', 'delivery'];
     const AUTO_REFRESH_MS = 60000;
 
+    // ⚠️ نفس قائمة admin.html حرفيًّا (FINANCE_BRANCHES). أي فرع يُضاف هناك
+    // يجب أن يُضاف هنا، وإلا سقط من مجموع التارقت في هذه الصفحة بصمت.
+    const FINANCE_BRANCHES = [
+        'GAIMER W KAHI WEST WALK',
+        'GAIMER W KAHI OLD MINA PORT',
+        'SHAI BU HAMAD WEST WALK',
+        'SHAI BU HAMAD GULF MALL'
+    ];
+    const FINANCE_DELIVERY_FIELDS = ['snoonu', 'talabat', 'keeta'];
+
     let rates = { deliveryCommissionPercent: DEFAULT_DELIVERY_COMMISSION_PCT, cardFeePercent: DEFAULT_CARD_FEE_PCT };
     let cashAccount = { openingBank: 0, openingCash: 0, openingDelivery: 0, openingDate: '' };
     let salaryPayouts = {}, cashMovements = [], salesReports = [], payments = [];
+    let dailyTargets = {};
+    // '' = اختَر تلقائيًا أحدث يوم وردت عنه تقارير. يتغيّر بأزرار التقليب.
+    let tgDate = '';
     let timer = null;
 
     const el = (id) => document.getElementById(id);
@@ -479,18 +607,169 @@
                  arrivingToday, arrivingTodayCount, afterToday };
     }
 
+    // =====================================================================
+    // التارقت اليومي — نسخة مطابقة لمنطق admin.html
+    // ---------------------------------------------------------------------
+    // ⚠️ تضاعف منطقي مقصود كبقية هذه الصفحة (انظر التحذير في رأس الملف):
+    // targetSalesFor و targetRowFor و targetTotals هي نفس دوال admin.html
+    // حرفيًّا، والفرق الوحيد أن النسبتين تُقرآن من `rates` لا من
+    // `financialRates`. يحرس التطابق اختبارٌ يُشغّل نسختَي الملفّين على نفس
+    // البيانات ويطالب بتساوي المخرجات إلى آخر كسر.
+    // =====================================================================
+    function todayISOLocal() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    function shiftISO(iso, delta) {
+        const [y, m, d] = String(iso).split('-').map(Number);
+        const t = new Date(y, m - 1, d + delta);
+        return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    }
+    /** 15/09/2026 — نفس صيغة رسالة الواتساب في لوحة المالك. */
+    function slashDate(iso) {
+        return iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '';
+    }
+    /**
+     * أحدث يوم وردت عنه تقارير.
+     * ⚠️ لماذا لا يكون الافتراضي «اليوم»؟ لأن تقرير المبيعات يُرسل عن اليوم
+     * السابق عادةً، فبطاقةٌ تفتح على اليوم الحالي كانت ستقول «لا تقارير» في
+     * كل صباح — أي لوحة لا تُفيد صاحبها. فنفتح على أحدث يوم فيه بيانات فعلية.
+     */
+    function latestReportDate() {
+        let best = '';
+        salesReports.forEach(r => { const d = String(r.date || ''); if (d && d > best) best = d; });
+        return best;
+    }
+    function currentTargetDay() {
+        return tgDate || latestReportDate() || todayISOLocal();
+    }
+
+    function targetSalesFor(dateISO, branch) {
+        const rows = salesReports.filter(r => (r.date || '') === dateISO && r.branch === branch);
+        const t = { cash: 0, card: 0, deliveryGross: 0, reports: rows.length };
+        rows.forEach(r => {
+            t.cash += Number(r.cash) || 0;
+            t.card += Number(r.card) || 0;
+            FINANCE_DELIVERY_FIELDS.forEach(f => { t.deliveryGross += Number(r[f]) || 0; });
+        });
+        const cPct = rates.cardFeePercent;
+        const dPct = rates.deliveryCommissionPercent;
+        t.grossTotal = t.cash + t.card + t.deliveryGross;
+        t.cardFee = t.card * cPct / 100;
+        t.deliveryFee = t.deliveryGross * dPct / 100;
+        t.totalFees = t.cardFee + t.deliveryFee;
+        t.netRevenue = t.cash + (t.card - t.cardFee) + (t.deliveryGross - t.deliveryFee);
+        return t;
+    }
+    function targetRowFor(dateISO, branch, targetValue) {
+        const s = targetSalesFor(dateISO, branch);
+        const target = Number(targetValue) || 0;
+        const hasReport = s.reports > 0;
+        const hasTarget = target > 0;
+        return { branch, target, hasTarget, hasReport, sales: s };
+    }
+    /**
+     * الهدف = هدف الشركة الكامل دائمًا، فالمبيعات الناقصة (فرع لم يُرسل) تُظهر
+     * فرقًا سالبًا لا وجود له. ولذلك:
+     *  • فرق موجب → تجاوزٌ حقيقي، مكتملة كانت التقارير أو لا.
+     *  • فرق سالب والتقارير ناقصة → «بانتظار» لا «لم يتحقق». هذا هو الفخ.
+     *  • فرق سالب والتقارير مكتملة → «لم يتحقق»، وهو حكم صحيح حينها.
+     */
+    function targetTotals(rows) {
+        const reported = rows.filter(r => r.hasReport);
+        const missing = rows.filter(r => !r.hasReport);
+        const fullTarget = rows.filter(r => r.hasTarget).reduce((a, r) => a + r.target, 0);
+        const totalSales = reported.reduce((a, r) => a + r.sales.netRevenue, 0);
+        const totalFees = reported.reduce((a, r) => a + r.sales.totalFees, 0);
+        const complete = missing.length === 0;
+        const totalDiff = fullTarget > 0 ? totalSales - fullTarget : null;
+
+        let state;
+        if (!reported.length) state = 'pending';
+        else if (!fullTarget) state = 'notarget';
+        else if (totalDiff > 0.005) state = 'above';
+        else if (!complete) state = 'pending';
+        else if (Math.abs(totalDiff) <= 0.005) state = 'on';
+        else state = 'below';
+
+        return { reported: reported.length, branches: rows.length, missing, complete,
+                 fullTarget, totalSales, totalFees, totalDiff, state };
+    }
+
+    const TG_WORD = {
+        above: '\u2705 Above target', on: '\u2705 On target', below: '\u274C Below target',
+        pending: '\u23F3 Waiting', notarget: '\u2014 No target set'
+    };
+    const TG_CLASS = { above: 'up', on: 'up', below: 'down', pending: 'wait', notarget: '' };
+
+    function renderTarget() {
+        const day = currentTargetDay();
+        const rows = FINANCE_BRANCHES.map(b => targetRowFor(day, b, dailyTargets[b]));
+        const t = targetTotals(rows);
+
+        el('tgDay').innerText = slashDate(day) || '—';
+        el('tgTarget').innerText = `${money(t.fullTarget)} QAR`;
+        el('tgActual').innerText = `${money(t.totalSales)} QAR`;
+
+        const diffEl = el('tgDiff');
+        if (t.totalDiff === null) {
+            diffEl.innerText = '—';
+            diffEl.className = 'v';
+        } else {
+            diffEl.innerText = `${t.totalDiff >= 0 ? '+' : '-'}${money(Math.abs(t.totalDiff))} QAR`;
+            diffEl.className = 'v ' + (t.totalDiff >= 0 ? 'up' : 'down');
+        }
+
+        const stEl = el('tgStatus');
+        let word = TG_WORD[t.state];
+        if (t.state === 'pending' && t.reported) word = `\u23F3 Waiting for ${t.missing.length} of ${t.branches} branches`;
+        else if (t.state === 'pending') word = '\u23F3 No reports yet';
+        stEl.innerText = word;
+        stEl.className = 'v word ' + TG_CLASS[t.state];
+
+        // شرحٌ صريح لسببين يُربكان القارئ لو تُركا بلا كلمة:
+        //  • الرقم أقل من رقم التقرير اليومي (لأنه بعد الخصم).
+        //  • الفرق سالب بينما فرعٌ لم يُرسل بعد.
+        const notes = [];
+        notes.push(`Sales are after the ${rates.cardFeePercent}% bank charge and the ${rates.deliveryCommissionPercent}% delivery commission, so this figure is lower than the announced total.`);
+        if (t.totalFees > 0.005) notes.push(`Charges removed: ${money(t.totalFees)} QAR.`);
+        if (t.missing.length && t.reported) {
+            notes.push(`${t.missing.length} of ${t.branches} branches have not sent their report for this day yet (${t.missing.map(r => r.branch).join(', ')}), and the target stays the full company amount — so the difference is not final.`);
+        } else if (!t.reported) {
+            notes.push('No branch has sent a report for this day yet.');
+        }
+        const dups = rows.filter(r => r.sales.reports > 1);
+        if (dups.length) notes.push(`Warning: ${dups.map(r => r.branch).join(', ')} sent more than one report for this day, so the sales figure may be double-counted.`);
+        el('tgNote').innerText = notes.join(' ');
+
+        // لا تقليب إلى المستقبل: يوم لم يأتِ بعد لا تقرير له ولا معنى لعرضه.
+        el('tgNext').disabled = day >= todayISOLocal();
+    }
+
+    el('tgPrev').addEventListener('click', () => {
+        tgDate = shiftISO(currentTargetDay(), -1);
+        renderTarget();
+    });
+    el('tgNext').addEventListener('click', () => {
+        const day = currentTargetDay();
+        if (day >= todayISOLocal()) return;
+        tgDate = shiftISO(day, 1);
+        renderTarget();
+    });
+
     // ---- تحميل البيانات ---------------------------------------------------
     async function loadAll() {
         const err = el('dataError');
         err.innerText = '';
         try {
-            const [ratesSnap, acctSnap, paySnap, movSnap, salesSnap, paySnap2] = await Promise.all([
+            const [ratesSnap, acctSnap, paySnap, movSnap, salesSnap, paySnap2, tgSnap] = await Promise.all([
                 getDoc(doc(db, "settings", "financial_rates")),
                 getDoc(doc(db, "settings", "cash_account")),
                 getDoc(doc(db, "settings", "salary_payouts")),
                 getDoc(doc(db, "settings", "cash_movements")),
                 getDocs(collection(db, "sales_reports")),
-                getDocs(collection(db, "financial_payments"))
+                getDocs(collection(db, "financial_payments")),
+                getDoc(doc(db, "settings", "daily_targets"))
             ]);
 
             if (ratesSnap.exists()) {
@@ -515,6 +794,14 @@
             salesReports = []; salesSnap.forEach(d => salesReports.push({ id: d.id, ...d.data() }));
             payments = []; paySnap2.forEach(d => payments.push({ id: d.id, ...d.data() }));
 
+            // أهداف التارقت — الفروع المعروفة فقط، والقيمة الموجبة فقط.
+            const tg = (tgSnap.exists() && tgSnap.data().targets) ? tgSnap.data().targets : {};
+            dailyTargets = {};
+            FINANCE_BRANCHES.forEach(b => {
+                const v = Number(tg[b]);
+                if (isFinite(v) && v > 0) dailyTargets[b] = v;
+            });
+
             render();
         } catch (e) {
             console.error(e);
@@ -524,6 +811,12 @@
     }
 
     function render() {
+        // ⚠️ التارقت أولًا وقبل أي خروج مبكر: هو لا يعتمد على الأرصدة
+        // الافتتاحية إطلاقًا. لو نُودي بعد حارس `!led.ready` أدناه لَبقيت
+        // بطاقاته فارغة عند من لم يُدخل أرصدته الافتتاحية بعد — وهو ما يراه
+        // المستخدم أول مرة.
+        renderTarget();
+
         const led = buildCashLedger();
         const put = (amtId, metaId, key, metaText) => {
             const v = led.balance[key];
