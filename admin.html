@@ -6218,16 +6218,24 @@
         { key: 'abayaOrder', en: 'Abaya — order',      ar: 'عباية — طلب / تفصيل' },
         { key: 'kaftan',     en: 'Kaftan',             ar: 'قفطان' },
         { key: 'shela',      en: 'Shela',              ar: 'شيلا' },
+        { key: 'inner',      en: 'Inner',              ar: 'إنر' },
         { key: 'travel',     en: 'Travel Collection',  ar: 'ترافل كولكشن' },
-        { key: 'jalabiya',   en: 'Jalabiya',           ar: 'جلابية' }
+        { key: 'jalabiya',   en: 'Jalabiya',           ar: 'جلابية' },
+        { key: 'perfume',    en: 'Perfume',            ar: 'عطور' }
     ];
     const ABAYA_STOCK_ITEMS = [
         { key: 'abaya',    en: 'Abaya',             ar: 'عباية' },
         { key: 'kaftan',   en: 'Kaftan',            ar: 'قفطان' },
         { key: 'shela',    en: 'Shela',             ar: 'شيلا' },
+        { key: 'inner',    en: 'Inner',             ar: 'إنر' },
         { key: 'travel',   en: 'Travel Collection', ar: 'ترافل كولكشن' },
-        { key: 'jalabiya', en: 'Jalabiya',          ar: 'جلابية' }
+        { key: 'jalabiya', en: 'Jalabiya',          ar: 'جلابية' },
+        { key: 'perfume',  en: 'Perfume',           ar: 'عطور' }
     ];
+    // ⚠️ شانتون تعرض عبايتها في محل واحد فقط. مصفوفة لا نصّ حتى يُضاف محل
+    // لاحقًا بلا تعديل منطق. وبقية المحلات لا يظهر لها قسمها إطلاقًا، فلا
+    // تُسجَّل مبيعات باسمها في محل لا تعرض فيه.
+    const ABAYA_SHANTON_SHOPS = ['DOHA FESTIVAL CITY'];
     // ⚠️ owner يفصل مخزنَين لا مخزنًا واحدًا: بضاعتنا وبضاعة شانتون. خلطهما
     // يجعل قيمة مخزوننا أكبر من الحقيقة، لأن عباياتها ليست ملكنا.
     // وحركتا «وصلت منها» و«أُرجعت لها» ضروريتان: بلا الأولى لا يزيد مخزنها
@@ -6253,7 +6261,8 @@
     // أي مفتاح بيع يخصم من أي نوع في المخزون: الجاهز والطلب كلاهما عباية.
     const ABAYA_ITEM_TO_STOCK = {
         abayaReady: 'abaya', abayaOrder: 'abaya', kaftan: 'kaftan',
-        shela: 'shela', travel: 'travel', jalabiya: 'jalabiya'
+        shela: 'shela', inner: 'inner', travel: 'travel',
+        jalabiya: 'jalabiya', perfume: 'perfume'
     };
     // مفتاح جرد شانتون في خريطة الجرد الافتتاحي. اسمٌ مستقل عن مفاتيح
     // ABAYA_STOCK_ITEMS حتى لا يدخل في حلقة بضاعتنا بالسهو.
@@ -6704,7 +6713,8 @@
         const body = document.getElementById('abStockBody');
         if (!body) return;
         const ready = !!abayaOpening.openingDate;
-        const per = ABAYA_SHOPS.map(s => ({ shop: s, st: abayaStockFor(s) }));
+        // `let` لا `const`: يُعاد استخدامه لجدول شانتون أدناه بمحلّها وحده.
+        let per = ABAYA_SHOPS.map(s => ({ shop: s, st: abayaStockFor(s) }));
 
         body.innerHTML = per.map(({ shop, st }) => {
             const detail = ABAYA_STOCK_ITEMS
@@ -6757,17 +6767,31 @@
                 + `<br>Pieces do not vanish between two shops — one of the two reports is wrong.`);
         }
         notes.push(`<b>Shanton's abayas are not in the table above.</b> They are her goods, not yours, and counting them `
-            + `would make your stock look bigger than it is. She has her own stock below.`);
+            + `would make your stock look bigger than it is. She has her own stock below, `
+            + `in <b>${ABAYA_SHANTON_SHOPS.join(', ')}</b> only &mdash; the shop where she displays.`);
         const el = document.getElementById('abStockNote');
         if (el) el.innerHTML = notes.join('<br><br>');
+        // ⚠️ المجموع الكلي أعلاه على المحلات الثلاثة كلها، أما `per` فيُعاد
+        // بناؤه أدناه على محلّ شانتون وحده. لا يُقرأ منه شيء لجدول بضاعتنا بعد
+        // هذا السطر.
 
-        // ---- مخزن شانتون: جدول مستقل ----------------------------------
+        // ---- مخزن شانتون: جدول مستقل، ومحلّها وحده ---------------------
         const shBody = document.getElementById('abShStockBody');
         if (shBody) {
+            // ⚠️ نُدرج محلَّها، ونُدرج كذلك أي محل آخر ظهرت فيه أرقام باسمها:
+            // ذاك خطأ بيانات (أو تقرير قديم) ولا يجوز أن يسقط من الشاشة بصمت
+            // فتبقى قطعٌ محسوبة عليها في محل لا تعرض فيه.
+            const strays = ABAYA_SHOPS.filter(s => !ABAYA_SHANTON_SHOPS.includes(s)
+                && (abayaStockFor(s).shanton.opening || abayaStockFor(s).shanton.received
+                    || abayaStockFor(s).shanton.sold || abayaStockFor(s).shanton.sentOut));
+            const shShops = ABAYA_SHOPS.filter(s => ABAYA_SHANTON_SHOPS.includes(s) || strays.includes(s));
+            per = shShops.map(s => ({ shop: s, st: abayaStockFor(s) }));
             shBody.innerHTML = per.map(({ shop, st }) => {
                 const s = st.shanton;
-                return `<tr>
-                    <td><b>${escapeHtml(shop)}</b></td>
+                const stray = !ABAYA_SHANTON_SHOPS.includes(shop);
+                return `<tr${stray ? ' style="background: rgba(220,38,38,0.07);"' : ''}>
+                    <td><b>${escapeHtml(shop)}</b>${stray
+                        ? ` <span title="Shanton does not display in this shop, so these figures should not exist." style="color: var(--danger); font-size: 11px; font-weight: 800;">⚠ not her shop</span>` : ''}</td>
                     <td class="money-col">${s.opening}</td>
                     <td class="money-col" style="color: var(--success);">${s.received ? '+' + s.received : '—'}</td>
                     <td class="money-col" style="color: var(--danger);">${s.sold ? '-' + s.sold : '—'}</td>
@@ -6782,7 +6806,7 @@
             const shFoot = document.getElementById('abShStockFoot');
             if (shFoot) {
                 shFoot.innerHTML = `<tr style="background: var(--surface-2); font-weight: 800;">
-                    <td>SHANTON — ALL THREE SHOPS</td>
+                    <td>SHANTON — TOTAL</td>
                     <td class="money-col">${gs.opening}</td>
                     <td class="money-col">${gs.received ? '+' + gs.received : '—'}</td>
                     <td class="money-col">${gs.sold ? '-' + gs.sold : '—'}</td>
@@ -6800,9 +6824,11 @@
                     + `<b>"SHANTON — received from her"</b> line for the pieces she brought.`);
             }
             // المجموع المدموج: يُعرض لأن المالك سأل عنه، ولا يُستخدم في أي حساب.
-            const gc = per.reduce((a, { st }) => a + st.combined.now, 0);
-            shNotes.push(`<b>Both stocks together: ${gc} piece(s)</b> in the three shops `
-                + `(${per.reduce((a, x) => a + x.st.sum.now, 0)} yours + ${gs.now} Shanton's). `
+            // ⚠️ بضاعتنا تُؤخذ من `g` (المحلات الثلاثة) لا من `per` — فـ`per`
+            // أُعيد بناؤه على محل شانتون وحده، وقراءته هنا كانت ستُظهر مخزوننا
+            // في محل واحد وكأنه مخزون الشركة كله.
+            shNotes.push(`<b>Both stocks together: ${g.now + gs.now} piece(s)</b> `
+                + `(${g.now} yours in the three shops + ${gs.now} Shanton's). `
                 + `This combined figure is shown for information only and is never used in any money calculation — `
                 + `the value of your stock is your own pieces alone.`);
             const shEl = document.getElementById('abShStockNote');
@@ -6870,12 +6896,16 @@
                     <input type="number" id="abOpen_${si}_${ii}" step="1" min="0" placeholder="0"
                            value="${cur[it.key] != null ? Number(cur[it.key]) : ''}"${editable ? '' : ' readonly style="opacity:.65;"'}>
                 </div>`).join('')
-                // خانة مخزن شانتون — بحدٍّ ذهبي حتى لا تُخلط ببضاعتنا
-                + `<div style="min-width: 138px; padding-inline-start: 10px; border-inline-start: 2px solid var(--warning);">
+                // خانة مخزن شانتون — في محلّها وحده، وبحدٍّ ذهبي حتى لا تُخلط
+                // ببضاعتنا. وفي غير محلّها لا تظهر الخانة إطلاقًا: خانةٌ فارغة
+                // في محل لا تعرض فيه تدعو لإدخال رقم لا معنى له.
+                + (ABAYA_SHANTON_SHOPS.includes(shop)
+                    ? `<div style="min-width: 138px; padding-inline-start: 10px; border-inline-start: 2px solid var(--warning);">
                     <label for="abOpenSh_${si}" style="font-size: 10.5px; color: var(--warning);">Shanton abayas</label>
                     <input type="number" id="abOpenSh_${si}" step="1" min="0" placeholder="0"
                            value="${cur[ABAYA_SHANTON_STOCK_KEY] != null ? Number(cur[ABAYA_SHANTON_STOCK_KEY]) : ''}"${editable ? '' : ' readonly style="opacity:.65;"'}>
-                </div>`;
+                </div>`
+                    : '');
             return `<tr>
                 <td style="vertical-align: top;"><b>${escapeHtml(shop)}</b><br><small dir="rtl" style="color: var(--text-dim);">${escapeHtml(ABAYA_SHOPS_AR[shop] || '')}</small></td>
                 <td><div style="display: flex; gap: 10px; flex-wrap: wrap;">${inputs}</div></td>
@@ -6910,14 +6940,20 @@
                 }
                 opening[shop][ABAYA_STOCK_ITEMS[ii].key] = Math.round(v);
             }
-            // مخزن شانتون في نفس المستند بمفتاح مستقل
-            const shRaw = (document.getElementById(`abOpenSh_${si}`) || {}).value;
-            const shV = shRaw === '' || shRaw === undefined ? 0 : Number(shRaw);
-            if (!isFinite(shV) || shV < 0) {
-                show(`${shop} — Shanton abayas: must be a whole number of zero or more.`, 'var(--danger)');
-                return;
+            // مخزن شانتون في نفس المستند بمفتاح مستقل، ولمحلّها وحده.
+            // خانته غير موجودة في غير محلّها، فنكتب صفرًا صريحًا بدل تركه —
+            // وإلا بقي رقم قديم لمحل نُقلت عنه بضاعتها.
+            if (ABAYA_SHANTON_SHOPS.includes(shop)) {
+                const shRaw = (document.getElementById(`abOpenSh_${si}`) || {}).value;
+                const shV = shRaw === '' || shRaw === undefined ? 0 : Number(shRaw);
+                if (!isFinite(shV) || shV < 0) {
+                    show(`${shop} — Shanton abayas: must be a whole number of zero or more.`, 'var(--danger)');
+                    return;
+                }
+                opening[shop][ABAYA_SHANTON_STOCK_KEY] = Math.round(shV);
+            } else {
+                opening[shop][ABAYA_SHANTON_STOCK_KEY] = 0;
             }
-            opening[shop][ABAYA_SHANTON_STOCK_KEY] = Math.round(shV);
         }
         show('Saving...', 'var(--warning)');
         try {

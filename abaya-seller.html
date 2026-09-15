@@ -25,9 +25,12 @@
      تسجّل دخولًا مجهولًا أيضًا، ولو تشاركت النسخة الافتراضية معها لتضاربت
      الجلستان. لا تحذف الاسم.
 
-     ⚠️ قاعدة شانتون (قرار الإدارة): شانتون ديزاينر تعرض عبايتها في المحلات.
-     دخل المحل من كل عباية تبيعها = 200 ريال فقط، والباقي دَينٌ لها. فمبيعاتها
-     لا تُجمع مع مبيعات المحل أبدًا — وهذا مكتوب في كل موضع يمسّها هنا.
+     ⚠️ شانتون ديزاينر تعرض عبايتها في محل واحد (ABAYA_SHANTON_SHOPS). هذه
+     الصفحة تُسجّل ما باعته منها: العدد والمبلغ فقط. أما نصيب المحل من مبيعاتها
+     فلا يُحسب هنا ولا يُعرض ولا يُكتب على المستند — قرارُ إدارة، ومكانه
+     admin.html وحده. والسبب ليس تنظيميًّا: الدخول هنا **مجهول**، فكل رقم
+     تعرضه هذه الصفحة أو تقرؤه مقروءٌ لكل من يفتح الرابط.
+     ولا تُجمع مبيعاتها مع مبيعات المحل في أي موضع.
      ============================================================================= -->
 
 <link rel="manifest" href="./manifest-abaya.json">
@@ -371,13 +374,16 @@
             <input type="number" id="cashOnHand" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
         </div>
 
-        <!-- ---- شانتون ---- -->
-        <div class="panel">
-            <h2>Shanton (designer) — separate account</h2>
+        <!-- ---- شانتون ----
+             ⚠️ يظهر هذا القسم في محلّها وحده (ABAYA_SHANTON_SHOPS).
+             ⚠️ ولا يُذكر فيه عمولة المحل ولا نسبتها ولا المستحق لها: تلك أرقام
+             إدارة لا تخصّ البياعة، والصفحة تسجّل دخولًا مجهولًا فكل ما يُعرض
+             فيها معروضٌ لكل من يفتح الرابط. تكتب البياعة ما باعته فقط. -->
+        <div class="panel hidden" id="shantonPanel">
+            <h2>Shanton (designer) — recorded separately</h2>
             <p class="ar" dir="rtl">
-                شانتون تعرض عبايتها عندنا. من كل عباية تبيعها يأخذ المحل
-                <b id="perPieceNote">200</b> ريال فقط، والباقي دَينٌ لها.
-                ولذلك <b>لا تُجمع مبيعاتها مع مبيعات المحل</b>.
+                شانتون ديزاينر تعرض عبايتها في هذا المحل. سجّلي مبيعاتها هنا
+                <b>منفصلة عن مبيعات المحل</b> — لا تجمعيها مع الأرقام أعلاه.
             </p>
             <table class="itbl">
                 <thead>
@@ -413,14 +419,6 @@
             <div class="sum">
                 <span class="k">Shanton total sales<small dir="rtl">مجموع مبيعاتها</small></span>
                 <span class="v" id="shSumSales">0.00</span>
-            </div>
-            <div class="sum ours">
-                <span class="k">Our commission<small dir="rtl">عمولتنا &mdash; دخلٌ للمحل</small></span>
-                <span class="v" id="shCommission">0.00</span>
-            </div>
-            <div class="sum owed">
-                <span class="k">Due to Shanton<small dir="rtl">المستحق لشانتون &mdash; دَينٌ علينا</small></span>
-                <span class="v" id="shDue">0.00</span>
             </div>
             <p class="status" id="shWarn" style="margin: var(--space-3) 0 0;"></p>
         </div>
@@ -497,11 +495,19 @@
 
     <!-- ================= 4) الملخّص ================= -->
     <div class="panel hidden" id="stepDone">
-        <h2>Sent successfully</h2>
-        <p class="ar" dir="rtl">تم إرسال التقرير &mdash; هذا ملخّص ما أُرسل</p>
-        <div id="doneSummary"></div>
-        <a class="walink" id="waLink">Send a copy on WhatsApp</a>
+        <h2>Sent successfully &mdash; now send it on WhatsApp</h2>
+        <p class="ar" dir="rtl">
+            تم إرسال التقرير إلى الإدارة ✅<br>
+            <b>الخطوة الثانية:</b> اضغطي الزر الأخضر لإرساله في الواتساب.
+        </p>
+        <!-- الزر أولًا لا بعد الملخّص: هذه هي الخطوة المطلوبة، ولو كان أسفل
+             جدول طويل لَمرّت البياعة عنه على الهاتف. -->
+        <a class="walink" id="waLink" style="margin-top: 0;">
+            <span style="font-size: 17px;">&#128172;</span> Send on WhatsApp &mdash; إرسال في الواتساب
+        </a>
         <p class="note" id="waFallback"></p>
+        <p class="ar" dir="rtl" style="margin-top: var(--space-5);">ملخّص ما أُرسل:</p>
+        <div id="doneSummary"></div>
         <div class="bar">
             <button class="ghost" id="btnNewReport">New report</button>
         </div>
@@ -549,17 +555,25 @@
         { key: 'abayaOrder', en: 'Abaya — order',      ar: 'عباية — طلب / تفصيل' },
         { key: 'kaftan',     en: 'Kaftan',             ar: 'قفطان' },
         { key: 'shela',      en: 'Shela',              ar: 'شيلا' },
+        { key: 'inner',      en: 'Inner',              ar: 'إنر' },
         { key: 'travel',     en: 'Travel Collection',  ar: 'ترافل كولكشن' },
-        { key: 'jalabiya',   en: 'Jalabiya',           ar: 'جلابية' }
+        { key: 'jalabiya',   en: 'Jalabiya',           ar: 'جلابية' },
+        { key: 'perfume',    en: 'Perfume',            ar: 'عطور' }
     ];
     // أنواع البضاعة في حركة المخزون — بلا تفريق بين جاهز وطلب: الحركة قطعة.
     const ABAYA_STOCK_ITEMS = [
-        { key: 'abaya',    en: 'Abaya',            ar: 'عباية' },
-        { key: 'kaftan',   en: 'Kaftan',           ar: 'قفطان' },
-        { key: 'shela',    en: 'Shela',            ar: 'شيلا' },
+        { key: 'abaya',    en: 'Abaya',             ar: 'عباية' },
+        { key: 'kaftan',   en: 'Kaftan',            ar: 'قفطان' },
+        { key: 'shela',    en: 'Shela',             ar: 'شيلا' },
+        { key: 'inner',    en: 'Inner',             ar: 'إنر' },
         { key: 'travel',   en: 'Travel Collection', ar: 'ترافل كولكشن' },
-        { key: 'jalabiya', en: 'Jalabiya',         ar: 'جلابية' }
+        { key: 'jalabiya', en: 'Jalabiya',          ar: 'جلابية' },
+        { key: 'perfume',  en: 'Perfume',           ar: 'عطور' }
     ];
+    // ⚠️ شانتون تعرض عبايتها في محل واحد فقط. مصفوفة لا نصّ حتى يُضاف محل
+    // لاحقًا بلا تعديل منطق. وبقية المحلات لا يظهر لها قسمها إطلاقًا، فلا
+    // تُسجَّل مبيعات باسمها في محل لا تعرض فيه.
+    const ABAYA_SHANTON_SHOPS = ['DOHA FESTIVAL CITY'];
     // ⚠️ owner يفصل مخزنَين لا مخزنًا واحدًا: بضاعتنا وبضاعة شانتون. خلطهما
     // يجعل قيمة مخزوننا أكبر من الحقيقة، لأن عباياتها ليست ملكنا.
     // وحركتا «وصلت منها» و«أُرجعت لها» ضروريتان: بلا الأولى لا يزيد مخزنها
@@ -578,8 +592,9 @@
     ];
     // شانتون تعرض عبايات فقط، فحركاتها لا تقبل نوعًا آخر.
     const ABAYA_SHANTON_ITEM = 'abaya';
-    const SHANTON_DEFAULT_PER_PIECE = 200;
-    const ABAYA_DEFAULT_CARD_FEE_PCT = 1.5;
+    // ⚠️ نصيب المحل من مبيعات شانتون، ونسبة رسوم البنك: **ليسا في هذه الصفحة**
+    // عن قصد. قرار الإدارة أن البياعة لا ترى ذلك، والصفحة مجهولة الدخول فأي
+    // رقم فيها مقروءٌ لكل من يفتح الرابط. مكانهما admin.html وحده.
 
     const LOCKOUT_MAX_ATTEMPTS = 5;
     const LOCKOUT_WINDOW_MS = 5 * 60 * 1000;
@@ -589,7 +604,6 @@
     let sellers = [];
     let state = { sellerId: null, sellerName: null, shop: null };
     let movements = [];
-    let rates = { cardFeePercent: ABAYA_DEFAULT_CARD_FEE_PCT, shantonPerPiece: SHANTON_DEFAULT_PER_PIECE };
     let isSubmitting = false;
     let lastReport = null;
 
@@ -703,12 +717,19 @@
         const group = (label, arr) => `<optgroup label="${escapeHtml(label)}">`
             + arr.map(k => `<option value="${k.key}">${escapeHtml(k.en)} — ${escapeHtml(k.ar)}</option>`).join('')
             + `</optgroup>`;
+        // حركات بضاعة شانتون لا تُعرض إلا في محلّها.
         el('mvKind').innerHTML =
             group('Our own stock — بضاعتنا', ABAYA_MOVE_KINDS.filter(k => k.owner === 'own'))
-            + group('Shanton — بضاعة شانتون', ABAYA_MOVE_KINDS.filter(k => k.owner === 'shanton'));
-        el('mvKind').addEventListener('change', syncMoveFields);
+            + (isShantonShop(state.shop)
+                ? group('Shanton — بضاعة شانتون', ABAYA_MOVE_KINDS.filter(k => k.owner === 'shanton'))
+                : '');
+        if (!moveSelectsWired) {
+            el('mvKind').addEventListener('change', syncMoveFields);
+            moveSelectsWired = true;
+        }
         syncMoveFields();
     }
+    let moveSelectsWired = false;
 
     /** يُظهر خانة المحل أو المورّد بحسب نوع الحركة، ويُخفي ما لا يلزم. */
     function syncMoveFields() {
@@ -765,16 +786,13 @@
         const byPay = cash + card;
         const byItem = ar + ao;
         const total = byPay > CENT ? byPay : byItem;
-        const perPiece = Number(rates.shantonPerPiece) || SHANTON_DEFAULT_PER_PIECE;
-        const commission = pieces * perPiece;
+        // ⚠️ لا عمولة ولا مستحق هنا عن قصد. حساب نصيب المحل من مبيعاتها قرارُ
+        // إدارة، وهذه الصفحة مجهولة الدخول فما يُحسب فيها يُقرأ من أي متصفح.
+        // اللوحة وحدها تحسبه من عدد القطع بالنسبة السارية.
         return {
             qtyReady: qr, qtyOrder: qo, pieces,
             amtReady: ar, amtOrder: ao, cash, card,
-            byPay, byItem, total, perPiece,
-            commission,
-            // الدَّين لا يكون سالبًا: لو نقص المُحصَّل عن العمولة فذلك خطأ
-            // إدخال يُنبَّه عليه أدناه، ولا يُحوَّل إلى رقم سالب بهدوء.
-            due: Math.max(0, total - commission)
+            byPay, byItem, total
         };
     }
 
@@ -807,23 +825,17 @@
 
         const sh = readShanton();
         if (sh.bad) {
-            ['shSumQty', 'shSumSales', 'shCommission', 'shDue'].forEach(id => el(id).innerText = '—');
+            ['shSumQty', 'shSumSales'].forEach(id => el(id).innerText = '—');
             setMsg('shWarn', '', '');
         } else {
             el('shSumQty').innerText = String(sh.pieces);
             el('shSumSales').innerText = money(sh.total);
-            el('shCommission').innerText = money(sh.commission);
-            el('shDue').innerText = money(sh.due);
-            // حارس حقيقي: عمولةٌ أكبر من المُحصَّل مستحيلة. إمّا العدد خطأ
-            // وإمّا المبلغ، وتمريرها يجعل «المستحق لشانتون» صفرًا بلا سبب.
+            // عدد بلا مبلغ أو مبلغ بلا عدد: الإدارة تحتاج الاثنين لحساب نصيبها،
+            // فيُمنع الإرسال. ولا نُفسّر السبب بأرقام لا تخصّ البياعة.
             if (sh.pieces > 0 && sh.total <= CENT) {
                 setMsg('shWarn', `${sh.pieces} piece(s) entered but no amount. Fill Shanton's cash or card.`, 'err');
-            } else if (sh.commission - sh.total > CENT) {
-                setMsg('shWarn',
-                    `Our commission (${money(sh.commission)}) is more than what was collected (${money(sh.total)}). `
-                    + `Check the number of pieces or the amount.`, 'err');
             } else if (sh.pieces === 0 && sh.total > CENT) {
-                setMsg('shWarn', 'An amount without a piece count — the commission cannot be calculated. Enter how many abayas.', 'err');
+                setMsg('shWarn', 'An amount without a piece count. Enter how many abayas of hers were sold.', 'err');
             } else {
                 setMsg('shWarn', '', '');
             }
@@ -913,24 +925,10 @@
         }
     }
 
-    async function loadRates() {
-        try {
-            const snap = await getDoc(doc(db, "settings", "abaya_rates"));
-            if (snap.exists()) {
-                const d = snap.data();
-                const card = Number(d.cardFeePercent);
-                const per = Number(d.shantonPerPiece);
-                rates = {
-                    cardFeePercent: isFinite(card) && card >= 0 ? card : ABAYA_DEFAULT_CARD_FEE_PCT,
-                    shantonPerPiece: isFinite(per) && per >= 0 ? per : SHANTON_DEFAULT_PER_PIECE
-                };
-            }
-        } catch (e) {
-            // قيمة افتراضية أفضل من شاشة معطّلة: البياعة لا تُدخل النسبة أصلًا.
-            console.error("Could not load the abaya rates, using defaults:", e);
-        }
-        el('perPieceNote').innerText = String(rates.shantonPerPiece);
-    }
+    // ⚠️ لا تُقرأ settings/abaya_rates من هنا إطلاقًا.
+    // كانت تُقرأ لعرض مبلغ عمولة المحل من كل عباية لشانتون. وبما أن ذلك أُلغي
+    // (لا يخصّ البياعة)، فلا سبب لقراءة أي إعداد. وهذا أفضل أمنًا: الصفحة
+    // مجهولة الدخول، وكل ما تقرؤه يُقرأ من أي متصفح يفتح الرابط.
 
     el('btnLogin').addEventListener('click', async () => {
         const id = el('sellerSelect').value;
@@ -963,12 +961,27 @@
         showStep('stepLogin');
     });
 
+    function isShantonShop(shop) {
+        return ABAYA_SHANTON_SHOPS.includes(shop);
+    }
+
     function pickShop(shop) {
         state.shop = shop;
         el('chipShop').innerText = shop;
         el('chipSeller').innerText = state.sellerName || '';
         if (!el('repDate').value) el('repDate').value = todayISO();
-        syncMoveFields();
+        // قسم شانتون في محلّها وحده. ونُفرّغ خاناته عند الانتقال إلى محل آخر
+        // حتى لا تُرسل أرقامها مع تقرير محل لا تعرض فيه (الجهاز مشترك).
+        const shShop = isShantonShop(shop);
+        el('shantonPanel').classList.toggle('hidden', !shShop);
+        if (!shShop) {
+            ['shQtyReady', 'shQtyOrder', 'shAmtReady', 'shAmtOrder', 'shCash', 'shCard']
+                .forEach(id => { if (el(id)) el(id).value = ''; });
+            // وحركات بضاعتها تُحذف كذلك
+            movements = movements.filter(m => m.owner !== 'shanton');
+            renderMoves();
+        }
+        buildMoveSelects();
         recalc();
         showStep('stepForm');
     }
@@ -1021,10 +1034,7 @@
         if (sh.pieces === 0 && sh.total > CENT) {
             showStatus("Shanton has an amount but no piece count. Enter how many abayas she sold.", 'err'); return;
         }
-        if (sh.commission - sh.total > CENT) {
-            showStatus(`Shanton: our commission (${money(sh.commission)}) is more than what was collected (${money(sh.total)}). Check the pieces or the amount.`, 'err');
-            return;
-        }
+
         // تقرير فارغ تمامًا لا معنى لإرساله، وقد يكون ضغطًا بالخطأ.
         const nothing = items.totalQty === 0 && items.totalAmount <= CENT && totalSales <= CENT
             && sh.pieces === 0 && sh.total <= CENT && !movements.length
@@ -1060,13 +1070,13 @@
             cashSales: cash, cardSales: card, totalSales, cashOnHand,
 
             // شانتون — حسابٌ منفصل تمامًا. لا يُجمع أي رقم منها مع مبيعات
-            // المحل: دخل المحل هو shCommission وحده، والباقي دَينٌ لها.
+            // المحل، واللوحة وحدها تحسب نصيب المحل منها.
+            // ⚠️ الأعداد والمبالغ فقط. لا عمولة ولا مستحق يُكتبان من هنا:
+            // اللوحة تحسبهما بالنسبة السارية، فلو تغيّرت النسبة تبعتها كل
+            // التقارير — ولا تُكتب أرقام إدارة من صفحة مجهولة الدخول.
             shQtyReady: sh.qtyReady, shQtyOrder: sh.qtyOrder, shTotalQty: sh.pieces,
             shAmtReady: sh.amtReady, shAmtOrder: sh.amtOrder,
             shCash: sh.cash, shCard: sh.card, shTotalSales: sh.total,
-            shPerPiece: sh.perPiece,
-            shCommission: sh.commission,
-            shDue: sh.due,
 
             walkInsLocal: walkLocal, walkInsExpat: walkExpat,
             movements: movements.slice(),
@@ -1131,13 +1141,13 @@
         L.push(`Card: ${money(r.cardSales)} QAR`);
         L.push(`*Total sales: ${money(r.totalSales)} QAR*`);
         L.push(`Cash on hand: ${money(r.cashOnHand)} QAR`);
+        // ⚠️ عدد ومبلغ فقط. لا عمولة ولا مستحق: الرسالة تُرسل من هاتف البياعة
+        // وقد تصل مجموعةً فيها غيرها، وأرقام نصيب المحل ليست للنشر.
         if (r.shTotalQty > 0 || r.shTotalSales > 0) {
             L.push('');
             L.push(`*SHANTON (designer)*`);
             L.push(`Abayas sold: ${r.shTotalQty} pc`);
             L.push(`Collected: ${money(r.shTotalSales)} QAR`);
-            L.push(`Our commission: ${money(r.shCommission)} QAR`);
-            L.push(`Due to Shanton: ${money(r.shDue)} QAR`);
         }
         L.push('');
         L.push(`Walk-ins: ${r.walkInsLocal} local · ${r.walkInsExpat} expat`);
@@ -1172,8 +1182,7 @@
         add('Cash on hand', money(r.cashOnHand) + ' QAR');
         if (r.shTotalQty > 0 || r.shTotalSales > 0) {
             add('Shanton pieces', String(r.shTotalQty));
-            add('Our commission', money(r.shCommission) + ' QAR');
-            add('Due to Shanton', money(r.shDue) + ' QAR');
+            add('Shanton collected', money(r.shTotalSales) + ' QAR');
         }
         add('Walk-ins', `${r.walkInsLocal} local · ${r.walkInsExpat} expat`);
         if (r.movements.length) add('Stock lines', String(r.movements.length));
@@ -1220,7 +1229,7 @@
     // دخول مجهول قبل أي قراءة، فالقواعد تطلب request.auth != null.
     signInAnonymously(auth)
         .then(async () => {
-            await Promise.all([loadSellers(), loadRates()]);
+            await loadSellers();
             recalc();
         })
         .catch(err => {
