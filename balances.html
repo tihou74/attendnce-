@@ -298,9 +298,9 @@
     .mgr.on .st { color: var(--color-success); }
     .mgr.off .st { color: var(--color-danger); }
     .mgr.rest .st { color: var(--color-warning); }
-    /* الرسالة عربية داخل صفحة إنجليزية، فتُجبر على الاتجاه الصحيح */
+    /* الرسالة إنجليزية بطلب المالك، فبسطر النص المعتاد لا سطر العربية الأوسع */
     .mgr .msg {
-        margin: var(--space-3) 0 0; font-size: var(--text-sm); line-height: var(--leading-arabic);
+        margin: var(--space-3) 0 0; font-size: var(--text-sm); line-height: 1.75;
         background: var(--color-surface-2); border-radius: var(--radius-md);
         padding: 10px 12px; color: var(--color-text);
     }
@@ -1117,21 +1117,27 @@
         none: 'Nothing recorded for this day'
     };
 
-    /** الرسالة التي طلبتها الإدارة — بالعربية، وبصيغة المخاطبة. */
+    /**
+     * الرسالة التي طلبتها الإدارة، بصيغة المخاطبة.
+     * ⚠️ بالإنجليزية بطلب المالك الصريح (كانت عربية أول مرة). والصياغة تبقى
+     * كما دوّنها هو: تحيّة، ثم من هو، ثم متى، ثم عرض الخدمة في أي وقت.
+     * ⚠️ ولا dir="rtl" على عنصرها بعد اليوم — كانت عربية داخل صفحة إنجليزية
+     * فاحتاجت إجبار الاتجاه، وإبقاؤه الآن يُزيح النقطة والفاصلة إلى يسار السطر.
+     */
     function mgrMessage(st, name, title) {
         const who = title ? `${name} &mdash; ${escapeHtml(title)}` : name;
         if (st.state === 'active') {
-            return `أهلًا السيدة فاطمة، أنا ${who}. أنا متواجد من الساعة `
-                + `<b>${escapeHtml(st.ev.fromTime || '—')}</b> إلى الساعة <b>${escapeHtml(st.ev.toTime || '—')}</b>، `
-                + `ويسعدني أن أكون في خدمتك في أي وقت.`;
+            return `Hello Mrs Fatima, I am ${who}. I am on duty from `
+                + `<b>${escapeHtml(st.ev.fromTime || '—')}</b> until <b>${escapeHtml(st.ev.toTime || '—')}</b>, `
+                + `and I am happy to be at your service at any time.`;
         }
         if (st.state === 'ended') {
-            return `أهلًا السيدة فاطمة، أنا ${who}. لقد انتهى دوامي، ورغم هذا أنا متوفر `
-                + `للضرورة في أي وقت ويسعدني ذلك.`;
+            return `Hello Mrs Fatima, I am ${who}. My shift has ended, but I am still `
+                + `available whenever anything is needed, and I would be glad to help.`;
         }
         if (st.state === 'rest') {
-            return `أهلًا السيدة فاطمة، أنا ${who}. هذا اليوم يوم راحتي، ومع ذلك `
-                + `يسعدني أن أكون في خدمتك في أي وقت.`;
+            return `Hello Mrs Fatima, I am ${who}. Today is my day off, but I would still `
+                + `be glad to be at your service at any time.`;
         }
         return '';
     }
@@ -1179,7 +1185,7 @@
                     <p class="nm"><span class="dot" aria-hidden="true"></span>${escapeHtml(r.name)}</p>
                     <p class="ttl">${escapeHtml(r.title || '—')}${r.noCard ? ' · <b>no photo added yet</b>' : ''}</p>
                     <p class="st">${escapeHtml(MGR_WORD[st.state] || '')}</p>
-                    ${msg ? `<p class="msg" dir="rtl">${msg}</p>` : ''}
+                    ${msg ? `<p class="msg">${msg}</p>` : ''}
                     ${why ? `<p class="why">${why}</p>` : ''}
                 </span>
             </div>`;
