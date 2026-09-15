@@ -292,25 +292,22 @@
                     <p class="meta">In your till but <b>not yours</b>.</p>
                 </div>
             </div>
+            <!-- ⚠️ أربعة أعمدة عن قصد. الأعمدة التي حُذفت (رسوم البنك · بعد
+                 الرسوم · قطع شانتون · العمولة · المستحق لها) إمّا مجموعُها في
+                 البطاقات أعلاه، أو أنها شرطة فارغة في محلّين من ثلاثة لأن
+                 شانتون في محل واحد — أي ضجيجٌ يُخفي السطر المهم. -->
             <div class="tw">
                 <table>
                     <thead>
                         <tr>
-                            <th>Shop</th><th class="n">Days</th><th class="n">Pieces</th>
-                            <th class="n">Sales</th><th class="n">Bank charge</th><th class="n">After charge</th>
-                            <th class="n">Sh. pcs</th><th class="n">Commission</th>
-                            <th class="n">Real income</th><th class="n">Due to Sh.</th>
+                            <th>Shop</th>
+                            <th class="n">Sales</th>
+                            <th class="n">Real income</th>
+                            <th class="n">Cash in till</th>
                         </tr>
                     </thead>
                     <tbody id="acBody"></tbody>
                     <tfoot id="acFoot"></tfoot>
-                </table>
-            </div>
-            <p class="sect">Cash in the till, as last reported</p>
-            <div class="tw">
-                <table>
-                    <thead><tr><th>Shop</th><th class="n">Cash on hand</th><th>As reported on</th></tr></thead>
-                    <tbody id="acCashBody"></tbody>
                 </table>
             </div>
             <p class="note" id="acNote"></p>
@@ -344,9 +341,10 @@
             <div class="tw">
                 <table>
                     <thead>
+                        <!-- الفرق يظهر داخل خانة المبيعات لا في عمود خاص،
+                             وعمود «المُعلَن» أُسقط: تفصيلٌ يخصّ لوحة المالك. -->
                         <tr>
-                            <th>Shop</th><th class="n">Target</th><th class="n">Sales (after charge)</th>
-                            <th class="n">Difference</th><th>Status</th><th class="n">Announced</th>
+                            <th>Shop</th><th class="n">Target</th><th class="n">Sales</th><th>Status</th>
                         </tr>
                     </thead>
                     <tbody id="tgBody"></tbody>
@@ -357,31 +355,26 @@
         </div>
 
         <!-- ============ 3) الستوك ============ -->
+        <!-- ⚠️ الحركة (افتتاحي · وارد · مبيع · صادر) أُزيلت من هذه الصفحة عن
+             قصد بطلب المالك: هذه صفحة «كم متوفر الآن»، صنفًا صنفًا وفرعًا فرعًا.
+             الحركة تبقى في لوحة المالك حيث تُراجَع، ومنها وحدها تُكشف تحويلاتٌ
+             لا تتطابق بين محلّين. لا تُعَد هنا.
+             ⚠️ ترويسة الأعمدة تُبنى في الترميز من ABAYA_SHOPS، فلا تُكتب أسماء
+             المحلات في HTML: محلٌّ يُضاف هناك يظهر هنا تلقائيًّا. -->
         <div id="viewStock" class="hidden">
-            <p class="sect" style="margin-top: 0;">Your own stock</p>
             <div class="tw">
                 <table>
-                    <thead>
-                        <tr>
-                            <th>Shop</th><th class="n">Opening</th><th class="n">Received</th>
-                            <th class="n">Sold</th><th class="n">Sent out</th><th class="n">In stock now</th>
-                        </tr>
-                    </thead>
+                    <thead><tr id="stHead"></tr></thead>
                     <tbody id="stBody"></tbody>
                     <tfoot id="stFoot"></tfoot>
                 </table>
             </div>
             <p class="note" id="stNote"></p>
 
-            <p class="sect">Shanton's stock &mdash; her goods, not yours</p>
+            <p class="sect">Shanton's abayas &mdash; her goods, not yours</p>
             <div class="tw">
                 <table>
-                    <thead>
-                        <tr>
-                            <th>Shop</th><th class="n">Opening</th><th class="n">Received</th>
-                            <th class="n">Sold</th><th class="n">Returned / sent</th><th class="n">Held now</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th>Shop</th><th class="n">Held now</th></tr></thead>
                     <tbody id="shBody"></tbody>
                     <tfoot id="shFoot"></tfoot>
                 </table>
@@ -709,51 +702,51 @@
         set('acDue', money(all.shDue), 'down');
         el('acSalesMeta').innerText = `${all.n} report(s) over ${all.dayCount} day(s) · ${all.pieces} piece(s)`;
 
-        const line = (label, t) => `<tr>
-            <td><b>${escapeHtml(label)}</b></td>
-            <td class="n">${t.dayCount}</td>
-            <td class="n">${t.pieces}</td>
+        // الكاش في الصندوق: من آخر تقرير لكل محل. ⚠️ يبقى معه تاريخه — رقمٌ
+        // بلا تاريخه يُقرأ كأنه رصيد اللحظة، وهو رصيد آخر يوم أُبلغ عنه.
+        // ⚠️ ولا يُقيَّد بالشهر المعروض: الكاش في الدرج الآن هو آخر ما أُبلغ عنه
+        // مهما كان شهره، وتصفيره عند تقليب الشهور كان سيُقرأ «الدرج فارغ».
+        const lastFor = (shop) => {
+            let last = null;
+            allAbayaReports.forEach(r => {
+                if (r.shop !== shop || !r.date) return;
+                if (!last || String(r.date) > String(last.date)) last = r;
+            });
+            return last;
+        };
+
+        // أربع خانات: المحل · مبيعاته · دخله الحقيقي · الكاش في درجه.
+        // الأيام والقطع تحت اسم المحل سطرًا صغيرًا لا عمودين.
+        const line = (label, t, last, showMeta) => `<tr>
+            <td><b>${escapeHtml(label)}</b>${showMeta
+                ? `<br><small style="color: var(--color-text-muted);">${t.dayCount} day(s) · ${t.pieces} piece(s)</small>` : ''}</td>
             <td class="n">${money(t.ownSales)}</td>
-            <td class="n down">${t.cardFee > ABAYA_CENT ? '-' + money(t.cardFee) : '—'}</td>
-            <td class="n">${money(t.afterCharge)}</td>
-            <td class="n">${t.shPieces || '—'}</td>
-            <td class="n up">${t.commission ? money(t.commission) : '—'}</td>
             <td class="n"><b>${money(t.realIncome)}</b></td>
-            <td class="n down">${t.shDue ? money(t.shDue) : '—'}</td>
-        </tr>`;
-        el('acBody').innerHTML = per.map(({ shop, t }) => line(shop, t)).join('')
-            + (unknown.n ? line(`⚠ Unknown shop (${unknown.n} report(s))`, unknown) : '');
-        el('acFoot').innerHTML = `<tr>
-            <td>ALL SHOPS — ${escapeHtml(month)}</td>
-            <td class="n">${all.dayCount}</td>
-            <td class="n">${all.pieces}</td>
-            <td class="n">${money(all.ownSales)}</td>
-            <td class="n down">${all.cardFee > ABAYA_CENT ? '-' + money(all.cardFee) : '—'}</td>
-            <td class="n">${money(all.afterCharge)}</td>
-            <td class="n">${all.shPieces || '—'}</td>
-            <td class="n up">${all.commission ? money(all.commission) : '—'}</td>
-            <td class="n">${money(all.realIncome)}</td>
-            <td class="n down">${all.shDue ? money(all.shDue) : '—'}</td>
+            <td class="n">${last
+                ? `${money(last.cashOnHand)}<br><small style="color: var(--color-text-muted); font-family: var(--font-sans);">on ${escapeHtml(dateLabel(last.date))}</small>`
+                : '<span style="color: var(--color-text-muted);">no report</span>'}</td>
         </tr>`;
 
-        // الكاش في الصندوق: من آخر تقرير لكل محل، وبتاريخه — رقمٌ بلا تاريخه
-        // يُقرأ كأنه رصيد اللحظة، وهو رصيد آخر يوم أُبلغ عنه.
-        el('acCashBody').innerHTML = ABAYA_SHOPS.map(shop => {
-            const mine = allAbayaReports.filter(r => r.shop === shop && r.date);
-            let last = null;
-            mine.forEach(r => { if (!last || String(r.date) > String(last.date)) last = r; });
-            return `<tr>
-                <td><b>${escapeHtml(shop)}</b></td>
-                <td class="n">${last ? money(last.cashOnHand) : '—'}</td>
-                <td>${last ? escapeHtml(dateLabel(last.date)) : '<span style="color: var(--color-text-muted);">no report yet</span>'}</td>
-            </tr>`;
-        }).join('');
+        el('acBody').innerHTML = per.map(({ shop, t }) => line(shop, t, lastFor(shop), true)).join('')
+            + (unknown.n ? line(`⚠ Unknown shop (${unknown.n} report(s))`, unknown, null, true) : '');
+
+        const cashTotal = ABAYA_SHOPS.reduce((a, s) => {
+            const l = lastFor(s);
+            return a + (l ? (Number(l.cashOnHand) || 0) : 0);
+        }, 0);
+        el('acFoot').innerHTML = `<tr>
+            <td>ALL SHOPS — ${escapeHtml(month)}</td>
+            <td class="n">${money(all.ownSales)}</td>
+            <td class="n">${money(all.realIncome)}</td>
+            <td class="n">${money(cashTotal)}</td>
+        </tr>`;
 
         const notes = [];
         notes.push(`<b>Real income</b> = the shops' own sales after the ${abayaRates.cardFeePercent}% bank charge, `
             + `plus the commission from Shanton. Her own sales are never added: `
             + `<b>${money(all.shDue)} QAR</b> of what was collected this month belongs to her.`);
-        notes.push(`Expenses (shop rent, salaries) are not included, so these figures are <b>sales and income, not profit</b>.`);
+        notes.push(`Expenses (rent, salaries) are not included, so these are <b>sales and income, not profit</b>. `
+            + `Cash in till is each shop's last reported figure, with its date beside it.`);
         if (unknown.n) {
             notes.push(`<b class="down">${unknown.n} report(s) carry a shop name that is not one of the three above</b> — `
                 + `shown on their own line so the total still adds up.`);
@@ -792,24 +785,25 @@
         el('tgStatus').innerText = `${TG_MARK[tot.state]} ${totalLabel}`;
         el('tgStatus').className = 'amt word ' + (TG_CLASS[tot.state] || '');
 
+        // الفرق سطرٌ صغير تحت المبيعات لا عمودًا: هو نفس الرقم، وعمودٌ له كان
+        // يوسّع الجدول بلا معلومة جديدة.
+        const diffLine = (diff, pct) => diff === null ? ''
+            : `<br><small class="${diff >= 0 ? 'up' : 'down'}" style="font-family: var(--font-sans); font-weight: 700;">`
+              + `${diff >= 0 ? '+' : '-'}${money(Math.abs(diff))}`
+              + (pct !== null ? ` (${pct.toFixed(1)}%)` : '') + `</small>`;
+
         el('tgBody').innerHTML = rows.map(r => `
             <tr>
                 <td><b>${escapeHtml(r.shop)}</b></td>
                 <td class="n">${r.hasTarget ? money(r.target) : '<span style="color: var(--color-text-muted);">not set</span>'}</td>
-                <td class="n">${r.hasReport ? '<b>' + money(r.sales) + '</b>' : '—'}</td>
-                <td class="n">${r.diff === null ? '—'
-                    : `<b class="${r.diff >= 0 ? 'up' : 'down'}">${r.diff >= 0 ? '+' : '-'}${money(Math.abs(r.diff))}</b>`
-                      + (r.pct !== null ? ` <small style="color: var(--color-text-muted);">(${r.pct.toFixed(1)}%)</small>` : '')}</td>
+                <td class="n">${r.hasReport ? '<b>' + money(r.sales) + '</b>' : '—'}${diffLine(r.diff, r.pct)}</td>
                 <td class="${TG_CLASS[r.state] || ''}" style="font-weight: 800;">${TG_MARK[r.state]} ${escapeHtml(TG_LABEL[r.state])}</td>
-                <td class="n" style="color: var(--color-text-muted);">${r.hasReport ? money(r.announced) : '—'}</td>
             </tr>`).join('');
         el('tgFoot').innerHTML = `<tr>
             <td>ALL SHOPS${tot.complete ? '' : ` — ${tot.reported} of ${tot.shops} reported`}</td>
             <td class="n">${money(tot.fullTarget)}</td>
-            <td class="n">${money(tot.totalSales)}</td>
-            <td class="n ${tot.totalDiff === null ? '' : (tot.totalDiff >= 0 ? 'up' : 'down')}">${tot.totalDiff === null ? '—' : (tot.totalDiff >= 0 ? '+' : '-') + money(Math.abs(tot.totalDiff))}</td>
+            <td class="n">${money(tot.totalSales)}${diffLine(tot.totalDiff, null)}</td>
             <td class="${TG_CLASS[tot.state] || ''}">${TG_MARK[tot.state]} ${escapeHtml(totalLabel)}</td>
-            <td class="n" style="color: var(--color-text-muted);">${money(tot.totalAnnounced)}</td>
         </tr>`;
 
         const notes = [];
@@ -837,33 +831,38 @@
     function renderStock() {
         const per = ABAYA_SHOPS.map(s => ({ shop: s, st: abayaStockFor(s) }));
 
-        el('stBody').innerHTML = per.map(({ shop, st }) => {
-            const detail = ABAYA_STOCK_ITEMS
-                .filter(it => st.items[it.key].opening || st.items[it.key].received
-                           || st.items[it.key].sold || st.items[it.key].sentOut)
-                .map(it => `${escapeHtml(it.en)}: <b class="${st.items[it.key].now < 0 ? 'down' : ''}">${st.items[it.key].now}</b>`)
-                .join(' · ');
+        // ⚠️ سطرٌ لكل صنف وعمودٌ لكل محل — لا العكس. الأصناف سبعة والمحلات
+        // ثلاثة، فهذا الاتجاه يعطي جدولًا من 5 أعمدة يُقرأ على الجوال، والعكس
+        // كان سيعطي 9 أعمدة تحتاج سحبًا أفقيًّا.
+        el('stHead').innerHTML = '<th>Product</th>'
+            + per.map(({ shop }) => `<th class="n">${escapeHtml(shop)}</th>`).join('')
+            + '<th class="n">All shops</th>';
+
+        const cell = (v) => `<td class="n${v < 0 ? ' down' : ''}">${v}</td>`;
+        el('stBody').innerHTML = ABAYA_STOCK_ITEMS.map(it => {
+            const vals = per.map(({ st }) => st.items[it.key].now);
+            const tot = vals.reduce((a, b) => a + b, 0);
             return `<tr>
-                <td><b>${escapeHtml(shop)}</b>${detail ? `<br><small style="color: var(--color-text-muted); white-space: normal;">${detail}</small>` : ''}</td>
-                <td class="n">${st.sum.opening}</td>
-                <td class="n up">${st.sum.received ? '+' + st.sum.received : '—'}</td>
-                <td class="n down">${st.sum.sold ? '-' + st.sum.sold : '—'}</td>
-                <td class="n down">${st.sum.sentOut ? '-' + st.sum.sentOut : '—'}</td>
-                <td class="n"><b class="${st.sum.now < 0 ? 'down' : ''}">${st.sum.now}</b></td>
+                <td><b>${escapeHtml(it.en)}</b></td>
+                ${vals.map(cell).join('')}
+                <td class="n"><b class="${tot < 0 ? 'down' : ''}">${tot}</b></td>
             </tr>`;
         }).join('');
-        const g = per.reduce((a, { st }) => ({
-            opening: a.opening + st.sum.opening, received: a.received + st.sum.received,
-            sold: a.sold + st.sum.sold, sentOut: a.sentOut + st.sum.sentOut, now: a.now + st.sum.now
-        }), { opening: 0, received: 0, sold: 0, sentOut: 0, now: 0 });
+
+        // ⚠️ مجموع المحل يُقرأ من st.sum.now لا من جمع خانات العمود: هما متساويان
+        // بحكم بناء abayaStockFor، والاعتماد على المصدر نفسه يمنع تباعدهما لو
+        // أُضيف صنفٌ إلى المخزون ونُسي من ABAYA_STOCK_ITEMS.
+        const shopNow = per.map(({ st }) => st.sum.now);
+        const grand = shopNow.reduce((a, b) => a + b, 0);
         el('stFoot').innerHTML = `<tr>
-            <td>ALL THREE SHOPS</td>
-            <td class="n">${g.opening}</td><td class="n">${g.received ? '+' + g.received : '—'}</td>
-            <td class="n">${g.sold ? '-' + g.sold : '—'}</td><td class="n">${g.sentOut ? '-' + g.sentOut : '—'}</td>
-            <td class="n"><b>${g.now}</b></td>
+            <td>ALL PRODUCTS</td>
+            ${shopNow.map(cell).join('')}
+            <td class="n"><b class="${grand < 0 ? 'down' : ''}">${grand}</b></td>
         </tr>`;
 
         const stNotes = [];
+        stNotes.push(`<b>Pieces available right now</b> in each shop, product by product. `
+            + `How the stock moved day by day is in the owner's dashboard, not here.`);
         if (!abayaOpening.openingDate) {
             stNotes.push(`<b class="wait">The opening count has not been entered yet</b>, so these figures start from zero `
                 + `and will look negative as sales come in. The owner enters it once from the dashboard.`);
@@ -886,21 +885,12 @@
             const stray = !ABAYA_SHANTON_SHOPS.includes(shop);
             return `<tr>
                 <td><b>${escapeHtml(shop)}</b>${stray ? ' <b class="down" style="font-size: 11px;">⚠ not her shop</b>' : ''}</td>
-                <td class="n">${s.opening}</td>
-                <td class="n up">${s.received ? '+' + s.received : '—'}</td>
-                <td class="n down">${s.sold ? '-' + s.sold : '—'}</td>
-                <td class="n down">${s.sentOut ? '-' + s.sentOut : '—'}</td>
                 <td class="n"><b class="${s.now < 0 ? 'down' : ''}">${s.now}</b></td>
             </tr>`;
         }).join('');
-        const gs = shPer.reduce((a, { st }) => ({
-            opening: a.opening + st.shanton.opening, received: a.received + st.shanton.received,
-            sold: a.sold + st.shanton.sold, sentOut: a.sentOut + st.shanton.sentOut, now: a.now + st.shanton.now
-        }), { opening: 0, received: 0, sold: 0, sentOut: 0, now: 0 });
+        const gs = shPer.reduce((a, { st }) => ({ now: a.now + st.shanton.now }), { now: 0 });
         el('shFoot').innerHTML = `<tr>
             <td>SHANTON — TOTAL</td>
-            <td class="n">${gs.opening}</td><td class="n">${gs.received ? '+' + gs.received : '—'}</td>
-            <td class="n">${gs.sold ? '-' + gs.sold : '—'}</td><td class="n">${gs.sentOut ? '-' + gs.sentOut : '—'}</td>
             <td class="n"><b>${gs.now}</b></td>
         </tr>`;
 
@@ -910,9 +900,9 @@
             shNotes.push(`<b class="down">Her stock is negative in ${neg.map(x => escapeHtml(x.shop)).join(' · ')}.</b> `
                 + `That means abayas of hers were sold without ever being recorded as received from her.`);
         }
-        // ⚠️ مخزوننا يُقرأ من g (المحلات الثلاثة) لا من shPer الذي بُني على محلّها.
-        shNotes.push(`<b>Both stocks together: ${g.now + gs.now} piece(s)</b> `
-            + `(${g.now} yours in the three shops + ${gs.now} Shanton's). `
+        // ⚠️ مخزوننا يُقرأ من grand (المحلات الثلاثة) لا من shPer الذي بُني على محلّها.
+        shNotes.push(`<b>Both stocks together: ${grand + gs.now} piece(s)</b> `
+            + `(${grand} yours in the three shops + ${gs.now} Shanton's). `
             + `This combined figure is for information only and is never used in any money calculation — `
             + `the value of the stock is your own pieces alone.`);
         el('shNote').innerHTML = shNotes.join('<br><br>');

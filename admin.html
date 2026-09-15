@@ -1325,6 +1325,21 @@
                 Opening count <b>plus</b> everything received <b>minus</b> everything sold and sent out.
                 Enter the opening count once, below, and this keeps itself up to date from the daily reports.
             </p>
+            <!-- ⚠️ جدولان لسؤالين مختلفين، ولا يُدمجان:
+                 الأول «كم متوفر الآن» صنفًا صنفًا — وهو ما تريده لتعرف ماذا تُرسل.
+                 الثاني «كيف تحرّك» — وهو للمراجعة وحدها، ومنه تُكشف تحويلاتٌ
+                 لا تتطابق بين محلّين، فلا يُحذف من هذه اللوحة.
+                 ⚠️ ترويسة الأول تُبنى في الترميز من ABAYA_SHOPS. -->
+            <div class="table-container" style="margin-bottom: 20px;">
+                <table>
+                    <thead><tr id="abAvailHead"></tr></thead>
+                    <tbody id="abAvailBody"></tbody>
+                    <tfoot id="abAvailFoot"></tfoot>
+                </table>
+            </div>
+            <p class="card-sub" style="margin: 0 0 8px; font-weight: 700; color: var(--text);">
+                How the stock moved <span dir="rtl" style="font-weight:400; color:var(--text-dim);">&mdash; للمراجعة</span>
+            </p>
             <div class="table-container">
                 <table>
                     <thead><tr><th>Shop</th><th class="money-col">Opening</th><th class="money-col">Received</th><th class="money-col">Sold</th><th class="money-col">Sent out</th><th class="money-col">In stock now</th></tr></thead>
@@ -6781,16 +6796,39 @@
         // `let` لا `const`: يُعاد استخدامه لجدول شانتون أدناه بمحلّها وحده.
         let per = ABAYA_SHOPS.map(s => ({ shop: s, st: abayaStockFor(s) }));
 
+        // ---- كم متوفر الآن: سطرٌ لكل صنف وعمودٌ لكل محل -------------------
+        // ⚠️ هذا الاتجاه (صنف × محل) لا العكس: سبعة أصناف وثلاثة محلات تعطي
+        // خمسة أعمدة تُقرأ، والعكس يعطي تسعة تحتاج سحبًا أفقيًّا.
+        const availHead = document.getElementById('abAvailHead');
+        if (availHead) {
+            availHead.innerHTML = '<th>Product</th>'
+                + ABAYA_SHOPS.map(s => `<th class="money-col">${escapeHtml(s)}</th>`).join('')
+                + '<th class="money-col">All shops</th>';
+            const cell = (v) => `<td class="money-col"${v < 0 ? ' style="color: var(--danger);"' : ''}>${v}</td>`;
+            document.getElementById('abAvailBody').innerHTML = ABAYA_STOCK_ITEMS.map(it => {
+                const vals = per.map(({ st }) => st.items[it.key].now);
+                const tot = vals.reduce((a, b) => a + b, 0);
+                return `<tr>
+                    <td><b>${escapeHtml(it.en)}</b> <small dir="rtl" style="color: var(--text-dim);">${escapeHtml(it.ar)}</small></td>
+                    ${vals.map(cell).join('')}
+                    <td class="money-col"><strong style="color: ${tot < 0 ? 'var(--danger)' : 'var(--accent)'};">${tot}</strong></td>
+                </tr>`;
+            }).join('');
+            // ⚠️ مجموع المحل من st.sum.now لا من جمع خانات العمود: نفس المصدر
+            // يمنع تباعد الرقمين لو أُضيف صنفٌ للمخزون ونُسي من ABAYA_STOCK_ITEMS.
+            const shopNow = per.map(({ st }) => st.sum.now);
+            const grandNow = shopNow.reduce((a, b) => a + b, 0);
+            document.getElementById('abAvailFoot').innerHTML =
+                `<tr style="background: var(--surface-2); font-weight: 800;">
+                    <td>ALL PRODUCTS</td>
+                    ${shopNow.map(cell).join('')}
+                    <td class="money-col"><strong style="font-size: 15px;">${grandNow}</strong></td>
+                </tr>`;
+        }
+
         body.innerHTML = per.map(({ shop, st }) => {
-            const detail = ABAYA_STOCK_ITEMS
-                .filter(it => st.items[it.key].opening || st.items[it.key].received
-                           || st.items[it.key].sold || st.items[it.key].sentOut)
-                .map(it => {
-                    const c = st.items[it.key];
-                    return `${escapeHtml(it.en)}: <b${c.now < 0 ? ' style="color: var(--danger);"' : ''}>${c.now}</b>`;
-                }).join(' · ');
             return `<tr>
-                <td><b>${escapeHtml(shop)}</b>${detail ? `<br><small style="color: var(--text-dim);">${detail}</small>` : ''}</td>
+                <td><b>${escapeHtml(shop)}</b></td>
                 <td class="money-col">${st.sum.opening}</td>
                 <td class="money-col" style="color: var(--success);">${st.sum.received ? '+' + st.sum.received : '—'}</td>
                 <td class="money-col" style="color: var(--danger);">${st.sum.sold ? '-' + st.sum.sold : '—'}</td>
