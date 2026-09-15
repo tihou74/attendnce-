@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v10   (2026-09-14)  <<<
+//   >>>  RULES REVISION: v11   (2026-09-15)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,9 +12,9 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       isSupervisor() || isViewer()
+//       abaya_sales_reports
 //
-//   FOUND     -> v10 is live. Good.
+//   FOUND     -> v11 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -33,6 +33,18 @@ rules_version = '2';
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
 //
+//  v11  2026-09-15  + THE ABAYA SHOPS (Al Sheikha Style) — a SEPARATE business
+//                     from the restaurants: abaya_sellers, abaya_seller_pins,
+//                     abaya_sales_reports. Deliberately separate collections,
+//                     never the existing employees/sales_reports: mixing them
+//                     would push abaya money into the restaurants' daily
+//                     report, monthly financials, three balances and daily
+//                     target, and would put the saleswomen into restaurant
+//                     attendance and payroll lists.
+//                     Readable by the OWNER and the ACCOUNTANT only. NOT by
+//                     the supervisors, NOT by the secretary, and NOT by the
+//                     viewers (balances.html) — the abaya business is none of
+//                     their work.
 //  v10  2026-09-14    sales_reports: the three branch supervisors may now READ
 //                     and UPDATE a daily report so they can correct their own
 //                     mistyped figure and resend it. DELETE was deliberately
@@ -419,6 +431,72 @@ service cloud.firestore {
       allow delete: if isAdmin() || isAccountant();
       allow create: if isKiosk() || isAdmin();
     }
+
+    // =========================================================================
+    // THE ABAYA SHOPS — Al Sheikha Style
+    // -------------------------------------------------------------------------
+    // A SEPARATE business from the restaurants. Three shops: Gulf Mall,
+    // Vendome Mall, Doha Festival City.
+    //
+    // ⚠️ Why separate collections and not the existing employees/sales_reports?
+    // Because sharing them would silently corrupt the restaurants:
+    //   • abaya money would enter the restaurants' Daily Report, the Monthly
+    //     Financial report, the three balances and the Daily Target;
+    //   • the saleswomen would appear in restaurant attendance and payroll.
+    // The owner asked for the two businesses never to touch. These rules are
+    // where that guarantee actually lives — hiding a tab does not enforce it.
+    //
+    // Access: the OWNER and the ACCOUNTANT only. NOT the supervisors (Bilal,
+    // Ashraf, Vikas), NOT the secretary, and NOT the viewers of balances.html.
+    // =========================================================================
+
+    // ---- abaya_sellers (the saleswomen: name only, no salary, no documents) --
+    // The seller panel (abaya-seller.html) is signed in ANONYMOUSLY and needs
+    // to READ this list to fill its dropdown. Nothing sensitive lives here —
+    // only a display name — which is exactly why the list is a separate
+    // collection instead of a flag on an employee record.
+    // Only the owner may add or remove a seller.
+    match /abaya_sellers/{sellerId} {
+      allow read: if isAdmin() || isAccountant() || isKiosk();
+      allow write: if isAdmin();
+    }
+
+    // ---- abaya_seller_pins --------------------------------------------------
+    // Same shape and the same trade-off as employee_pins: the panel has no
+    // backend, so it must read the PIN to compare it in the browser. The PIN
+    // is therefore a convenience gate, not a secret — the real protections are
+    // these rules plus Firebase App Check. Kept in its own collection so a
+    // future backend can lock reads away without touching the seller list.
+    match /abaya_seller_pins/{sellerId} {
+      allow read: if isAdmin() || isAccountant() || isKiosk();
+      allow write: if isAdmin();
+    }
+
+    // ---- abaya_sales_reports (the daily report a saleswoman submits) ---------
+    // Submit-blind, exactly like sales_reports: the panel may CREATE a report
+    // but can NEVER read one back. It is signed in anonymously, so read access
+    // would expose every shop's revenue to anyone who opens that page. She gets
+    // a confirmation summary built from what she just typed, not from a query.
+    //
+    // The report also carries what is OWED TO SHANTON (the designer whose
+    // abayas are sold on consignment for a fixed 200 QAR commission per piece).
+    // That is a liability figure, one more reason it is not world-readable.
+    //
+    // Correcting and deleting stay with the owner and the accountant — the same
+    // split as the restaurants' reports, minus the supervisors who have no part
+    // in this business.
+    match /abaya_sales_reports/{reportId} {
+      allow read: if isAdmin() || isAccountant();
+      allow update: if isAdmin() || isAccountant();
+      allow delete: if isAdmin() || isAccountant();
+      allow create: if isKiosk() || isAdmin();
+    }
+
+    // NOTE: the abaya settings documents (settings/abaya_rates for the card fee
+    // and Shanton's per-piece commission, settings/abaya_stock_opening for the
+    // opening stock count of each shop) need NO rule of their own — they live
+    // inside the settings collection already covered above, which the panel may
+    // read and the owner and accountant may write.
 
     // ---- Default deny for anything not explicitly listed above ---------------
     match /{document=**} {

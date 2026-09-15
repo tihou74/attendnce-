@@ -397,6 +397,13 @@
         <button class="nav-tab-btn" data-tab="tab-target">
             <span class="ic-slot" data-icon="check"></span> Daily Target
         </button>
+        <!-- العبايات: عملٌ منفصل تمامًا عن المطاعم. التبويبان للمالك والمحاسب فقط. -->
+        <button class="nav-tab-btn" data-tab="tab-abaya">
+            <span class="ic-slot" data-icon="fileText"></span> Abaya &mdash; Daily
+        </button>
+        <button class="nav-tab-btn" data-tab="tab-abaya-month">
+            <span class="ic-slot" data-icon="dollar"></span> Abaya &mdash; Monthly
+        </button>
         <button class="nav-tab-btn" data-tab="tab-finance">
             <span class="ic-slot" data-icon="dollar"></span> Monthly Financial
         </button>
@@ -1131,6 +1138,221 @@
                 </table>
             </div>
             <p class="card-sub" style="margin: 12px 0 0;" id="targetWarnings"></p>
+        </div>
+    </div>
+
+    <!-- ==================================================================
+         العبايات — الشيخة ستايل — التقرير اليومي
+         ------------------------------------------------------------------
+         ⚠️ عملٌ منفصل تمامًا عن المطاعم. يقرأ abaya_sales_reports وحدها،
+         ولا يمسّ sales_reports ولا الأرصدة ولا التارقت ولا المالية الشهرية.
+         ================================================================== -->
+    <div id="tab-abaya" class="tab-content">
+        <div class="filter-section">
+            <h3><span data-icon="fileText"></span> Al Sheikha Style &mdash; Daily Sales <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">الشيخة ستايل</span></h3>
+            <div class="date-group">
+                <div><label for="abStartDate">From</label><input type="date" id="abStartDate" onchange="renderAbayaReports()"></div>
+                <div><label for="abEndDate">To</label><input type="date" id="abEndDate" onchange="renderAbayaReports()"></div>
+                <div style="flex: 1; min-width: 210px;"><label for="abFilterShop">Shop</label>
+                    <select id="abFilterShop" onchange="renderAbayaReports()"></select>
+                </div>
+                <button class="btn-ghost" onclick="loadAbayaData()"><span data-icon="refresh"></span> Refresh</button>
+                <button class="btn-success" onclick="exportAbayaExcel()"><span data-icon="download"></span> Export Excel</button>
+                <a id="abWhatsAppLink" class="btn-accent" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;"><span data-icon="plane"></span> Send summary on WhatsApp</a>
+            </div>
+            <p class="card-sub" style="margin: 10px 0 0;" id="abWhatsAppFallback"></p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box"><div class="stat-icon" data-icon="inbox"></div><div><h3>Pieces Sold</h3><p id="abTotalPieces">0</p></div></div>
+            <div class="stat-box money-only"><div class="stat-icon" data-icon="dollar"></div><div><h3>Shop Sales</h3><p id="abTotalSales">0 QAR</p></div></div>
+            <div class="stat-box money-only"><div class="stat-icon" data-icon="dollar"></div><div><h3>Commission from Shanton</h3><p id="abCommission">0 QAR</p></div></div>
+            <div class="stat-box money-only"><div class="stat-icon" data-icon="dollar"></div><div><h3>Real Income</h3><p id="abTotalIncome">0 QAR</p></div></div>
+            <div class="stat-box money-only"><div class="stat-icon" data-icon="alertTriangle"></div><div><h3>Due to Shanton</h3><p id="abDue">0 QAR</p></div></div>
+            <div class="stat-box"><div class="stat-icon" data-icon="fileText"></div><div><h3>Reports Received</h3><p id="abCount">0</p></div></div>
+        </div>
+
+        <!-- ⚠️ بطاقة الشرح: بلا هذه الكلمات يُقرأ «مبيعات شانتون» كأنه دخل. -->
+        <div class="card" style="border-left: 4px solid var(--warning);">
+            <h3><span data-icon="alertTriangle"></span> How Shanton is counted <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">قاعدة شانتون</span></h3>
+            <p class="card-sub" style="margin: 0;">
+                Shanton is a designer whose abayas are displayed in the shops. Of every abaya she sells the shop keeps
+                <b><span id="abPerPieceNote">200</span> QAR only</b> &mdash; the rest belongs to her.
+                So her sales are <b>never</b> added to the shop's sales. <b>Real Income</b> above is the shop's own sales
+                plus that commission and nothing else. <b>Due to Shanton</b> is money sitting in your till that is
+                <b>not yours</b>.
+                <span dir="rtl">&mdash; عمولتنا وحدها دخل، والباقي دَينٌ علينا.</span>
+            </p>
+        </div>
+
+        <div class="card">
+            <h3><span data-icon="fileText"></span> Daily reports from the saleswomen</h3>
+            <p class="card-sub">Newest first. A saleswoman cannot read or change a report once sent, so a wrong figure is corrected from here.</p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Shop</th>
+                            <th class="money-col">Pcs</th>
+                            <th class="money-col">Shop sales</th>
+                            <th class="money-col">Cash</th>
+                            <th class="money-col">Card</th>
+                            <th class="money-col">On hand</th>
+                            <th class="money-col">Sh. pcs</th>
+                            <th class="money-col">Commission</th>
+                            <th class="money-col">Due to Sh.</th>
+                            <th>Walk-ins</th>
+                            <th>Saleswoman</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="abReportsBody"><tr><td colspan="13" style="text-align:center;">Loading...</td></tr></tbody>
+                    <tfoot id="abReportsFoot"></tfoot>
+                </table>
+            </div>
+            <p class="card-sub" style="margin: 12px 0 0;" id="abWarnings"></p>
+        </div>
+
+        <div class="card" id="abNotesCard" style="display: none;">
+            <h3><span data-icon="fileText"></span> Notes from the saleswomen</h3>
+            <p class="card-sub">What they wrote about the day, newest first.</p>
+            <div id="abNotesList" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        </div>
+    </div>
+
+    <!-- ==================================================================
+         العبايات — التقرير الشهري + الستوك + إدارة البياعات والنسب
+         ================================================================== -->
+    <div id="tab-abaya-month" class="tab-content">
+        <div class="filter-section">
+            <h3><span data-icon="dollar"></span> Al Sheikha Style &mdash; Monthly Report</h3>
+            <div class="date-group">
+                <div><label for="abMonth">Month</label><input type="month" id="abMonth" onchange="renderAbayaMonth()"></div>
+                <button class="btn-ghost" onclick="shiftAbayaMonth(-1)" title="Previous month">&#9664; Previous</button>
+                <button class="btn-ghost" onclick="shiftAbayaMonth(1)" title="Next month">Next &#9654;</button>
+                <button class="btn-ghost" onclick="loadAbayaData()"><span data-icon="refresh"></span> Refresh</button>
+                <button class="btn-success" onclick="exportAbayaMonthExcel()"><span data-icon="download"></span> Export Excel</button>
+                <a id="abMonthWaLink" class="btn-accent" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;"><span data-icon="plane"></span> Send on WhatsApp</a>
+            </div>
+            <p class="card-sub" style="margin: 10px 0 0;" id="abMonthWaFallback"></p>
+            <p class="card-sub" style="margin: 6px 0 0;">
+                Expenses (shop rent, salaries) are <b>not</b> part of this report yet, by your decision &mdash; so the
+                figures below are <b>sales and income, not profit</b>.
+            </p>
+        </div>
+
+        <div class="card">
+            <h3><span data-icon="dollar"></span> Each shop this month</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Shop</th>
+                            <th class="money-col">Days</th>
+                            <th class="money-col">Pcs</th>
+                            <th class="money-col">Shop sales</th>
+                            <th class="money-col">Bank charge</th>
+                            <th class="money-col">After charge</th>
+                            <th class="money-col">Sh. pcs</th>
+                            <th class="money-col">Commission</th>
+                            <th class="money-col">Real income</th>
+                            <th class="money-col">Due to Sh.</th>
+                            <th>Walk-ins</th>
+                        </tr>
+                    </thead>
+                    <tbody id="abMonthBody"></tbody>
+                    <tfoot id="abMonthFoot"></tfoot>
+                </table>
+            </div>
+            <p class="card-sub" style="margin: 12px 0 0;" id="abMonthNote"></p>
+        </div>
+
+        <div class="card">
+            <h3><span data-icon="inbox"></span> Which item sells &mdash; this month</h3>
+            <p class="card-sub">Pieces and money for every item, so you can see which line earns most.</p>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Item</th><th class="money-col">Pieces</th><th class="money-col">Amount</th><th class="money-col">Share of sales</th><th class="money-col">Average per piece</th></tr></thead>
+                    <tbody id="abItemsBody"></tbody>
+                    <tfoot id="abItemsFoot"></tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- ---- الستوك ---- -->
+        <div class="card">
+            <h3><span data-icon="database"></span> Stock right now <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">الموجود في المحلات الآن</span></h3>
+            <p class="card-sub">
+                Opening count <b>plus</b> everything received <b>minus</b> everything sold and sent out.
+                Enter the opening count once, below, and this keeps itself up to date from the daily reports.
+            </p>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Shop</th><th class="money-col">Opening</th><th class="money-col">Received</th><th class="money-col">Sold</th><th class="money-col">Sent out</th><th class="money-col">In stock now</th></tr></thead>
+                    <tbody id="abStockBody"></tbody>
+                    <tfoot id="abStockFoot"></tfoot>
+                </table>
+            </div>
+            <p class="card-sub" style="margin: 12px 0 0;" id="abStockNote"></p>
+        </div>
+
+        <div class="card money-only">
+            <h3><span data-icon="edit"></span> Opening stock count <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">الجرد الافتتاحي</span></h3>
+            <p class="card-sub">
+                Count what is in each shop today, type it here with today's date, and press Save. Everything after that
+                date is added and subtracted automatically from the daily reports. You only do this once.
+            </p>
+            <div class="controls" style="align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-bottom: 14px;">
+                <div style="width: 190px;"><label for="abOpeningDate">Counted on</label><input type="date" id="abOpeningDate"></div>
+                <span id="abOpeningStatus" style="font-weight: 600; font-size: 13px;"></span>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Shop</th><th id="abOpeningHeads"></th></tr></thead>
+                    <tbody id="abOpeningBody"></tbody>
+                </table>
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
+                <button class="btn-success" onclick="saveAbayaOpening()"><span data-icon="save"></span> Save opening count</button>
+            </div>
+        </div>
+
+        <!-- ---- البياعات ---- -->
+        <div class="card">
+            <h3><span data-icon="users"></span> Saleswomen <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">البياعات</span></h3>
+            <p class="card-sub">
+                Add or remove a saleswoman yourself &mdash; their names change and their shop is not fixed, so nothing here
+                is written into the app. Each one signs in to her own screen with the PIN you give her.
+                She never chooses a shop in advance: she picks it every time she sends a report.
+            </p>
+            <div class="controls" style="align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-bottom: 14px;">
+                <div style="flex: 1; min-width: 200px;"><label for="abNewSellerName">Name</label><input type="text" id="abNewSellerName" placeholder="Full name"></div>
+                <div style="width: 150px;"><label for="abNewSellerPin">PIN (4&ndash;8 digits)</label><input type="text" id="abNewSellerPin" inputmode="numeric" maxlength="8" placeholder="1234"></div>
+                <button class="btn-success" onclick="addAbayaSeller()"><span data-icon="plus"></span> Add</button>
+            </div>
+            <div class="status" id="abSellerStatus" style="min-height: 18px; font-size: 13px; font-weight: 700; margin-bottom: 10px;"></div>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Name</th><th>PIN</th><th class="money-col">Reports sent</th><th>Last report</th><th></th></tr></thead>
+                    <tbody id="abSellersBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ---- النسب ---- -->
+        <div class="card money-only">
+            <h3><span data-icon="settings"></span> Rates <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">النسب</span></h3>
+            <p class="card-sub">
+                These apply to the abaya shops only and never touch the restaurants, which keep their own rates on the
+                Monthly Financial tab.
+            </p>
+            <div class="controls" style="align-items: flex-end; gap: 10px; flex-wrap: wrap;">
+                <div style="width: 190px;"><label for="abCardRate">Bank charge on card %</label><input type="number" id="abCardRate" step="0.1" min="0" max="100"></div>
+                <div style="width: 230px;"><label for="abPerPiece">Shanton &mdash; QAR per abaya</label><input type="number" id="abPerPiece" step="1" min="0"></div>
+                <button class="btn-success" onclick="saveAbayaRates()"><span data-icon="save"></span> Save rates</button>
+                <span id="abRatesStatus" style="font-weight: 600; font-size: 13px;"></span>
+            </div>
         </div>
     </div>
 
@@ -1884,6 +2106,38 @@
 <!-- Modal: تصحيح تقرير المبيعات اليومي.
      المديرون الثلاثة يملكونها لأنهم من أرسل التقرير. الحذف ليس هنا: تصحيح رقم
      خاطئ شيء، وإزالة مال دخل شيء آخر يبقى للمالك والمحاسب. -->
+<!-- Modal: تصحيح تقرير عبايات. يمسّ المال والستوك معًا، فتأكيدٌ وسجلُّ تدقيق. -->
+<div id="abayaEditModal" class="modal-overlay">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h2><span data-icon="edit"></span> Correct the abaya report</h2>
+            <button class="close-modal" onclick="closeAbayaEditModal()"><span data-icon="x"></span> Close</button>
+        </div>
+        <input type="hidden" id="abEditId">
+        <div style="background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 18px; font-size: 13.5px;">
+            <b id="abEditHead">—</b>
+        </div>
+        <div class="edit-profile-grid" id="abEditGrid" style="grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));"></div>
+        <div class="total" style="margin: 4px 0 18px; padding: 14px 16px; background: var(--accent-soft); border: 1px solid var(--accent); border-radius: var(--radius-sm);">
+            <div style="font-size: 12px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: .08em;">After correction</div>
+            <div class="money-col" style="font-size: 14px; line-height: 1.9; text-align: start;" id="abEditTotals">—</div>
+        </div>
+        <div style="margin-bottom: 18px;">
+            <label for="abEditNote">Note</label>
+            <textarea id="abEditNote" dir="auto" rows="4" style="width: 100%;"></textarea>
+        </div>
+        <p class="card-sub" style="margin: 0 0 16px;">
+            Correcting a piece count also moves the stock, and correcting an amount moves the monthly income.
+            Every correction is written to the audit log with the old and the new figure.
+        </p>
+        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 14px; flex-wrap: wrap;">
+            <span id="abEditStatus" style="font-weight: 600; font-size: 13px;"></span>
+            <button class="btn-ghost" onclick="closeAbayaEditModal()"><span data-icon="x"></span> Cancel</button>
+            <button class="btn-success" onclick="saveAbayaEdit()"><span data-icon="save"></span> Save correction</button>
+        </div>
+    </div>
+</div>
+
 <div id="salesEditModal" class="modal-overlay">
     <div class="modal-card modal-sm">
         <div class="modal-header">
@@ -2511,9 +2765,12 @@
         // نافذتا المدفوعات جزء من عمله المالي، فتُدرجان معه.
         // tab-target: يرى التارقت ولا يُعدّله (canEditDailyTargets للمالك وحده).
         // الهدف توقّعُ المالك، لكن المحاسب يحتاج رؤيته ليقرأ أرقام الشهر عليه.
+        // العبايات (tab-abaya + tab-abaya-month): للمالك والمحاسب فقط بقرار
+        // الإدارة. المحاسب يرى ويصحّح تقريرًا، ولا يُضيف بياعة ولا يُعدّل النسب
+        // ولا الجرد (canEditAbayaSetup للمالك وحده). والقواعد تُطابق ذلك.
         [ROLE_ACCOUNTANT]: ['tab-home', 'tab-employees', 'tab-payroll', 'tab-attendance', 'tab-shifts',
                             'tab-leaves', 'tab-sales', 'tab-target', 'tab-finance', 'tab-fixed',
-                            'tab-variable', 'tab-former'],
+                            'tab-variable', 'tab-former', 'tab-abaya', 'tab-abaya-month'],
         // السكرتيرة: ملفات الموظفين (رؤية وتعديل وإضافة) + الإنذارات + طلبات
         // التسجيل + الطلبات. **بلا رواتب** بقرار الإدارة — وهذا ما أتاحه فصل
         // النافذتين، فقبله كان جدول الرواتب داخل نافذة الملفات فلا سبيل لمنعه.
@@ -2783,6 +3040,10 @@
         if (tabId === 'tab-audit') loadAuditLog();
         if (tabId === 'tab-sales') loadSalesReports();
         if (tabId === 'tab-target') loadDailyTargetData();
+        // العبايات: التبويبان يتغذّيان من نفس البيانات، فتحميلها واحد.
+        if (tabId === 'tab-abaya' || tabId === 'tab-abaya-month') {
+            if (abayaLoaded) renderAbayaAll(); else loadAbayaData();
+        }
         // النوافذ الثلاث تتغذّى من نفس البيانات، فتحميلها واحد.
         if (tabId === 'tab-finance' || tabId === 'tab-fixed' || tabId === 'tab-variable') {
             syncFinScopePickers();
@@ -2805,6 +3066,10 @@
         // التارقت يبدأ على اليوم الحالي.
         const tgtDate = document.getElementById('targetDate');
         if (tgtDate) tgtDate.value = todayISO();
+        // العبايات: مدى التقرير اليومي هو الشهر الحالي، والشهري على هذا الشهر.
+        const abS = document.getElementById('abStartDate'); if (abS) abS.value = start;
+        const abE = document.getElementById('abEndDate'); if (abE) abE.value = end;
+        const abM = document.getElementById('abMonth'); if (abM) abM.value = todayISO().slice(0, 7);
         // التقرير المالي يعمل بالشهر لا بمدى تواريخ.
         const finMonthEl = document.getElementById('finMonth');
         if (finMonthEl) finMonthEl.value = todayISO().slice(0, 7);
@@ -5905,6 +6170,1084 @@
         }
         return L.join('\n');
     }
+
+    /* =========================================================================
+       العبايات — الشيخة ستايل
+       -------------------------------------------------------------------------
+       ⚠️ عملٌ منفصل تمامًا عن المطاعم بقرار الإدارة. لا يُقرأ هنا ولا يُكتب أي
+       شيء من مجموعات المطاعم، ولا يدخل أي ريال من العبايات في التقرير اليومي
+       للمطاعم ولا في المالية الشهرية ولا في الأرصدة الثلاثة ولا في التارقت.
+
+       ⚠️ قاعدة شانتون: ديزاينر تعرض عبايتها في المحلات. دخل المحل من كل عباية
+       تبيعها = shPerPiece (200 افتراضًا) فقط، والباقي دَينٌ لها. فمبيعاتها
+       **لا تُجمع** مع مبيعات المحل في أي موضع، والدخل الحقيقي =
+       مبيعات المحل + عمولة شانتون.
+
+       ⚠️ الثوابت أدناه مكتوبة أيضًا في abaya-seller.html. المشروع بلا خطوة بناء
+       ولا وحدات مشتركة، فأي تعديل هنا يجب أن يُنقل إلى هناك حرفيًّا — ويحرس
+       التطابق اختبارٌ يقارن القائمتين نصًّا وترتيبًا.
+       ========================================================================= */
+
+    const ABAYA_SHOPS = ['GULF MALL', 'VENDOME MALL', 'DOHA FESTIVAL CITY'];
+    const ABAYA_SHOPS_AR = {
+        'GULF MALL': 'جلف مول',
+        'VENDOME MALL': 'فندوم مول',
+        'DOHA FESTIVAL CITY': 'دوحة فيستفال سيتي'
+    };
+    // «طلب/تفصيل» للعباية فقط — بقية الأنواع بيع جاهز وحده (قرار الإدارة).
+    const ABAYA_ITEMS = [
+        { key: 'abayaReady', en: 'Abaya — ready',      ar: 'عباية — بيع جاهز' },
+        { key: 'abayaOrder', en: 'Abaya — order',      ar: 'عباية — طلب / تفصيل' },
+        { key: 'kaftan',     en: 'Kaftan',             ar: 'قفطان' },
+        { key: 'shela',      en: 'Shela',              ar: 'شيلا' },
+        { key: 'travel',     en: 'Travel Collection',  ar: 'ترافل كولكشن' },
+        { key: 'jalabiya',   en: 'Jalabiya',           ar: 'جلابية' }
+    ];
+    const ABAYA_STOCK_ITEMS = [
+        { key: 'abaya',    en: 'Abaya',             ar: 'عباية' },
+        { key: 'kaftan',   en: 'Kaftan',            ar: 'قفطان' },
+        { key: 'shela',    en: 'Shela',             ar: 'شيلا' },
+        { key: 'travel',   en: 'Travel Collection', ar: 'ترافل كولكشن' },
+        { key: 'jalabiya', en: 'Jalabiya',          ar: 'جلابية' }
+    ];
+    const ABAYA_MOVE_KINDS = [
+        { key: 'out_to_shop',      en: 'Sent to another shop',       ar: 'خرجت إلى محل آخر',  needsShop: true,     sign: -1 },
+        { key: 'in_from_shop',     en: 'Received from another shop', ar: 'وصلت من محل آخر',   needsShop: true,     sign: +1 },
+        { key: 'in_from_workshop', en: 'Received from the workshop', ar: 'وصلت من الورشة',                         sign: +1 },
+        { key: 'in_from_supplier', en: 'Received from a supplier',   ar: 'وصلت من مورّد',     needsSupplier: true, sign: +1 }
+    ];
+    const SHANTON_DEFAULT_PER_PIECE = 200;
+    const ABAYA_DEFAULT_CARD_FEE_PCT = 1.5;
+    const ABAYA_CENT = 0.005;
+
+    // أي مفتاح بيع يخصم من أي نوع في المخزون: الجاهز والطلب كلاهما عباية.
+    const ABAYA_ITEM_TO_STOCK = {
+        abayaReady: 'abaya', abayaOrder: 'abaya', kaftan: 'kaftan',
+        shela: 'shela', travel: 'travel', jalabiya: 'jalabiya'
+    };
+
+    let allAbayaReports = [];
+    let abayaSellers = [];
+    let abayaRates = { cardFeePercent: ABAYA_DEFAULT_CARD_FEE_PCT, shantonPerPiece: SHANTON_DEFAULT_PER_PIECE };
+    let abayaOpening = { opening: {}, openingDate: '' };
+    let abayaLoaded = false;
+
+    /** المالك والمحاسب فقط — العبايات ليست من عمل بقية الأدوار. */
+    function canSeeAbaya() {
+        return currentRole === ROLE_ADMIN || currentRole === ROLE_ACCOUNTANT;
+    }
+    /** إضافة بياعة أو حذفها، وتعديل النسب والجرد: المالك وحده. */
+    function canEditAbayaSetup() {
+        return currentRole === ROLE_ADMIN;
+    }
+    /** مفتاح حقل العدد/المبلغ لنوع بيع: abayaReady -> qtyAbayaReady */
+    function abQtyField(key) { return 'qty' + key.charAt(0).toUpperCase() + key.slice(1); }
+    function abAmtField(key) { return 'amt' + key.charAt(0).toUpperCase() + key.slice(1); }
+
+    // ---- التحميل ---------------------------------------------------------
+    window.loadAbayaData = async function() {
+        if (!canSeeAbaya()) return;
+        const body = document.getElementById('abReportsBody');
+        if (body) body.innerHTML = `<tr><td colspan="13" style="text-align:center;">Loading...</td></tr>`;
+        try {
+            const [repSnap, selSnap, rateSnap, openSnap] = await Promise.all([
+                getDocs(query(collection(db, "abaya_sales_reports"), orderBy("timestamp", "desc"), limit(2000)))
+                    // ترتيب timestamp يحتاج فهرسًا في أول تشغيل؛ نفس نمط البدائل
+                    // المستخدم في بقية المجموعات: مسح بلا ترتيب ثم ترتيب محليًا.
+                    .catch(() => getDocs(collection(db, "abaya_sales_reports"))),
+                getDocs(collection(db, "abaya_sellers")),
+                getDoc(doc(db, "settings", "abaya_rates")),
+                getDoc(doc(db, "settings", "abaya_stock_opening"))
+            ]);
+
+            allAbayaReports = [];
+            repSnap.forEach(d => allAbayaReports.push({ id: d.id, ...d.data() }));
+            allAbayaReports.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+
+            abayaSellers = [];
+            selSnap.forEach(d => abayaSellers.push({ id: d.id, ...d.data() }));
+            abayaSellers.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+
+            if (rateSnap.exists()) {
+                const d = rateSnap.data();
+                const c = Number(d.cardFeePercent), p = Number(d.shantonPerPiece);
+                abayaRates = {
+                    cardFeePercent: isFinite(c) && c >= 0 ? c : ABAYA_DEFAULT_CARD_FEE_PCT,
+                    shantonPerPiece: isFinite(p) && p >= 0 ? p : SHANTON_DEFAULT_PER_PIECE
+                };
+            }
+            if (openSnap.exists()) {
+                const d = openSnap.data();
+                abayaOpening = {
+                    opening: (d.opening && typeof d.opening === 'object') ? d.opening : {},
+                    openingDate: d.openingDate || ''
+                };
+            }
+            abayaLoaded = true;
+            renderAbayaAll();
+        } catch (e) {
+            console.error("Error loading the abaya reports:", e);
+            if (body) body.innerHTML = `<tr><td colspan="13" style="text-align:center; color: var(--danger);">Error loading: ${escapeHtml(e.message)}</td></tr>`;
+        }
+    };
+
+    function renderAbayaAll() {
+        renderAbayaShopPickers();
+        renderAbayaReports();
+        renderAbayaMonth();
+        renderAbayaSellers();
+        renderAbayaOpeningEditor();
+        const cEl = document.getElementById('abCardRate');
+        if (cEl) cEl.value = abayaRates.cardFeePercent;
+        const pEl = document.getElementById('abPerPiece');
+        if (pEl) pEl.value = abayaRates.shantonPerPiece;
+        const nEl = document.getElementById('abPerPieceNote');
+        if (nEl) nEl.innerText = String(abayaRates.shantonPerPiece);
+    }
+
+    /** قائمة المحلات تُبنى من الثابت لا من قائمة ثابتة مكرّرة في الترميز. */
+    function renderAbayaShopPickers() {
+        const sel = document.getElementById('abFilterShop');
+        if (sel && !sel.options.length) {
+            sel.innerHTML = '<option value="">All shops</option>'
+                + ABAYA_SHOPS.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+        }
+    }
+
+    // =====================================================================
+    // حساب تقرير واحد
+    // ---------------------------------------------------------------------
+    // ⚠️ الدخل الحقيقي = مبيعات المحل + عمولة شانتون. ولا يُجمع shTotalSales
+    // مع totalSales أبدًا: معظمه مالُ شانتون لا مالُ المحل.
+    // =====================================================================
+    function abayaRow(r) {
+        const num = (v) => Number(v) || 0;
+        const ownSales = num(r.totalSales);
+        const cardFee = num(r.cardSales) * (Number(abayaRates.cardFeePercent) || 0) / 100;
+        // العمولة تُعاد حسابها من العدد بالنسبة السارية، ولا تُقرأ من المستند
+        // كما هي: لو غيّر المالك مبلغ العمولة لاحقًا وجب أن تتبعه التقارير.
+        const shPieces = num(r.shTotalQty);
+        const perPiece = Number(abayaRates.shantonPerPiece) || SHANTON_DEFAULT_PER_PIECE;
+        const shCollected = num(r.shTotalSales);
+        const commission = Math.min(shPieces * perPiece, shCollected);
+        return {
+            ...r,
+            pieces: num(r.totalQty),
+            ownSales,
+            cash: num(r.cashSales), card: num(r.cardSales),
+            cardFee, afterCharge: ownSales - cardFee,
+            cashOnHand: num(r.cashOnHand),
+            shPieces, shCollected, perPiece,
+            commission,
+            // الدَّين لا يكون سالبًا (انظر لوحة البياعات: العمولة مسقوفة بالمُحصَّل)
+            shDue: Math.max(0, shCollected - commission),
+            realIncome: (ownSales - cardFee) + commission,
+            walkLocal: num(r.walkInsLocal), walkExpat: num(r.walkInsExpat),
+            movements: Array.isArray(r.movements) ? r.movements : []
+        };
+    }
+
+    function abayaTotals(rows) {
+        const t = {
+            n: rows.length, days: new Set(), pieces: 0, ownSales: 0, cash: 0, card: 0,
+            cardFee: 0, afterCharge: 0, cashOnHand: 0, shPieces: 0, shCollected: 0,
+            commission: 0, shDue: 0, realIncome: 0, walkLocal: 0, walkExpat: 0
+        };
+        rows.forEach(r => {
+            if (r.date) t.days.add(r.date);
+            ['pieces', 'ownSales', 'cash', 'card', 'cardFee', 'afterCharge', 'cashOnHand',
+             'shPieces', 'shCollected', 'commission', 'shDue', 'realIncome',
+             'walkLocal', 'walkExpat'].forEach(k => { t[k] += r[k]; });
+        });
+        t.dayCount = t.days.size;
+        return t;
+    }
+
+    function filteredAbayaReports() {
+        const start = document.getElementById('abStartDate')?.value;
+        const end = document.getElementById('abEndDate')?.value;
+        const shop = document.getElementById('abFilterShop')?.value;
+        return allAbayaReports
+            .filter(r => (!start || (r.date || '') >= start)
+                      && (!end || (r.date || '') <= end)
+                      && (!shop || r.shop === shop))
+            .map(abayaRow);
+    }
+
+    window.renderAbayaReports = function() {
+        const body = document.getElementById('abReportsBody');
+        if (!body) return;
+        const rows = filteredAbayaReports();
+        const t = abayaTotals(rows);
+
+        const set = (id, v) => { const e = document.getElementById(id); if (e) e.innerText = v; };
+        set('abTotalPieces', String(t.pieces));
+        set('abTotalSales', `${money(t.ownSales)} QAR`);
+        set('abCommission', `${money(t.commission)} QAR`);
+        set('abTotalIncome', `${money(t.realIncome)} QAR`);
+        set('abDue', `${money(t.shDue)} QAR`);
+        set('abCount', String(t.n));
+
+        if (!rows.length) {
+            body.innerHTML = `<tr><td colspan="13" style="text-align:center;">No reports for this period / shop.</td></tr>`;
+            const f = document.getElementById('abReportsFoot');
+            if (f) f.innerHTML = '';
+            renderAbayaNotes([]);
+            renderAbayaWhatsApp(rows, t);
+            document.getElementById('abWarnings').innerHTML = '';
+            return;
+        }
+
+        body.innerHTML = rows.map(r => {
+            const sid = escapeJsAttr(r.id);
+            let actions = '';
+            if (canSeeAbaya()) {
+                actions += `<button class="btn-ghost btn-sm" title="Correct a wrong figure" onclick="openAbayaEditModal('${sid}')">${iconSvg('edit','ic-sm')}</button>`;
+                actions += ` <button class="btn-danger btn-sm" title="Delete this report" onclick="deleteAbayaReport('${sid}')">${iconSvg('trash','ic-sm')}</button>`;
+            }
+            const corrected = r.editedAt
+                ? `<br><small title="Corrected after it was sent" style="color: var(--warning); font-weight: 800; font-size: 11px;">CORRECTED</small>` : '';
+            return `<tr>
+                <td><b>${escapeHtml(salesDateLabel(r.date) || '—')}</b></td>
+                <td>${escapeHtml(r.shop || '—')}</td>
+                <td class="money-col">${r.pieces}</td>
+                <td class="money-col"><strong style="color: var(--accent);">${money(r.ownSales)}</strong></td>
+                <td class="money-col">${money(r.cash)}</td>
+                <td class="money-col">${money(r.card)}</td>
+                <td class="money-col" style="color: var(--text-dim);">${money(r.cashOnHand)}</td>
+                <td class="money-col">${r.shPieces || '—'}</td>
+                <td class="money-col" style="color: var(--success);">${r.commission ? money(r.commission) : '—'}</td>
+                <td class="money-col" style="color: var(--danger);">${r.shDue ? money(r.shDue) : '—'}</td>
+                <td style="white-space: nowrap; font-size: 12.5px;">${r.walkLocal} L · ${r.walkExpat} E</td>
+                <td>${escapeHtml(r.sellerName || '—')}${corrected}</td>
+                <td style="white-space: nowrap;">${actions}</td>
+            </tr>`;
+        }).join('');
+
+        const foot = document.getElementById('abReportsFoot');
+        if (foot) {
+            foot.innerHTML = `<tr style="background: var(--surface-2); font-weight: 800;">
+                <td colspan="2">TOTAL (${t.n} report(s), ${t.dayCount} day(s))</td>
+                <td class="money-col">${t.pieces}</td>
+                <td class="money-col"><strong style="color: var(--accent);">${money(t.ownSales)}</strong></td>
+                <td class="money-col">${money(t.cash)}</td>
+                <td class="money-col">${money(t.card)}</td>
+                <td class="money-col">—</td>
+                <td class="money-col">${t.shPieces}</td>
+                <td class="money-col" style="color: var(--success);">${money(t.commission)}</td>
+                <td class="money-col" style="color: var(--danger);">${money(t.shDue)}</td>
+                <td style="white-space: nowrap;">${t.walkLocal} L · ${t.walkExpat} E</td>
+                <td colspan="2"></td>
+            </tr>`;
+        }
+
+        // تحذيرات: تقريران لنفس المحل في نفس اليوم يُضخّمان كل شيء.
+        const warn = [];
+        const seen = new Map();
+        rows.forEach(r => {
+            const k = `${r.shop}|${r.date}`;
+            seen.set(k, (seen.get(k) || 0) + 1);
+        });
+        const dups = [...seen.entries()].filter(([, n]) => n > 1);
+        if (dups.length) {
+            warn.push(`<b style="color: var(--danger);">Duplicate reports:</b> `
+                + dups.map(([k, n]) => `${escapeHtml(k.split('|')[0])} on ${escapeHtml(salesDateLabel(k.split('|')[1]))} (${n} reports)`).join(' · ')
+                + `. Their figures are added together, which double-counts the sales and the stock. Delete the wrong one.`);
+        }
+        // فرقٌ بين المبلغ بحسب النوع والمبلغ بحسب الدفع — لوحة البياعات تمنعه،
+        // لكن تقريرًا صُحّح من هنا قد يُخلّه، فنُظهره بدل أن يمرّ بصمت.
+        const mismatch = rows.filter(r => {
+            const byItem = Number(r.totalItemAmount) || 0;
+            return byItem > ABAYA_CENT && Math.abs(byItem - r.ownSales) > ABAYA_CENT;
+        });
+        if (mismatch.length) {
+            warn.push(`<b style="color: var(--warning);">${mismatch.length} report(s)</b> where the amount by item does not equal cash + card. `
+                + `Open each one and fix the figure that is wrong.`);
+        }
+        document.getElementById('abWarnings').innerHTML = warn.join('<br><br>');
+
+        renderAbayaNotes(rows);
+        renderAbayaWhatsApp(rows, t);
+    };
+
+    /** ملاحظات البياعات — تُعرض كما كُتبت، وهي أحيانًا أهمّ من الأرقام. */
+    function renderAbayaNotes(rows) {
+        const card = document.getElementById('abNotesCard');
+        const list = document.getElementById('abNotesList');
+        if (!card || !list) return;
+        const withNotes = rows.filter(r => (r.note || '').trim());
+        if (!withNotes.length) { card.style.display = 'none'; return; }
+        card.style.display = 'block';
+        list.innerHTML = withNotes.map(r => `
+            <div style="background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px;">
+                <div style="font-size: 12px; font-weight: 800; color: var(--text-dim); margin-bottom: 6px;">
+                    ${escapeHtml(r.shop || '—')} · ${escapeHtml(salesDateLabel(r.date) || '—')} · ${escapeHtml(r.sellerName || '—')}
+                </div>
+                <div dir="auto" style="font-size: 13px; line-height: 1.8; white-space: pre-wrap;">${escapeHtml(r.note)}</div>
+            </div>`).join('');
+    }
+
+    // =====================================================================
+    // التقرير الشهري للعبايات
+    // =====================================================================
+    function currentAbayaMonth() {
+        const el = document.getElementById('abMonth');
+        return (el && el.value) || todayISO().slice(0, 7);
+    }
+    window.shiftAbayaMonth = function(delta) {
+        const el = document.getElementById('abMonth');
+        if (!el) return;
+        el.value = delta < 0 ? previousMonth(currentAbayaMonth()) : nextMonth(currentAbayaMonth());
+        renderAbayaMonth();
+    };
+    function abayaMonthRows(month) {
+        const { start, end } = monthBoundsISO(month);
+        return allAbayaReports
+            .filter(r => (r.date || '') >= start && (r.date || '') <= end)
+            .map(abayaRow);
+    }
+
+    window.renderAbayaMonth = function() {
+        const body = document.getElementById('abMonthBody');
+        if (!body) return;
+        const month = currentAbayaMonth();
+        const rows = abayaMonthRows(month);
+
+        const perShop = ABAYA_SHOPS.map(shop => ({
+            shop, t: abayaTotals(rows.filter(r => r.shop === shop))
+        }));
+        // محلٌّ غير معروف: تقرير بمحل خارج الثلاثة لا يسقط بصمت بل يُعرض صريحًا،
+        // وإلا اختلف مجموع المحلات عن المجموع الكلي بلا تفسير.
+        const unknown = abayaTotals(rows.filter(r => !ABAYA_SHOPS.includes(r.shop)));
+        const all = abayaTotals(rows);
+
+        const line = (label, t, bold) => `<tr${bold ? ' style="background: var(--surface-2); font-weight: 800;"' : ''}>
+            <td>${bold ? '' : '<b>'}${escapeHtml(label)}${bold ? '' : '</b>'}</td>
+            <td class="money-col">${t.dayCount}</td>
+            <td class="money-col">${t.pieces}</td>
+            <td class="money-col">${money(t.ownSales)}</td>
+            <td class="money-col" style="color: var(--danger);">${t.cardFee > ABAYA_CENT ? '-' + money(t.cardFee) : '—'}</td>
+            <td class="money-col">${money(t.afterCharge)}</td>
+            <td class="money-col">${t.shPieces || '—'}</td>
+            <td class="money-col" style="color: var(--success);">${t.commission ? money(t.commission) : '—'}</td>
+            <td class="money-col"><strong style="color: var(--accent);">${money(t.realIncome)}</strong></td>
+            <td class="money-col" style="color: var(--danger);">${t.shDue ? money(t.shDue) : '—'}</td>
+            <td style="white-space: nowrap; font-size: 12.5px;">${t.walkLocal} L · ${t.walkExpat} E</td>
+        </tr>`;
+
+        body.innerHTML = perShop.map(({ shop, t }) => line(shop, t)).join('')
+            + (unknown.n ? line(`⚠ Unknown shop (${unknown.n} report(s))`, unknown) : '');
+        const foot = document.getElementById('abMonthFoot');
+        if (foot) foot.innerHTML = line(`ALL SHOPS — ${month}`, all, true);
+
+        const noteEl = document.getElementById('abMonthNote');
+        if (noteEl) {
+            const parts = [];
+            parts.push(`<b>Real income</b> = shop sales after the ${abayaRates.cardFeePercent}% bank charge, plus the commission from Shanton. `
+                + `Shanton's own sales are never added — ${money(all.shDue)} QAR of what was collected this month belongs to her.`);
+            // ⚠️ سؤال معلَّق لا أخترعه: رسوم البنك على مبيعات شانتون بالكارد.
+            parts.push(`<b>Not deducted anywhere:</b> the bank also charges ${abayaRates.cardFeePercent}% on Shanton's card sales, `
+                + `and that cost is currently borne in full by the shop and is <b>not</b> taken off what she is owed. `
+                + `Tell me if it should be shared and I will change it.`);
+            if (unknown.n) {
+                parts.push(`<b style="color: var(--danger);">${unknown.n} report(s) carry a shop name that is not one of the three above</b> — `
+                    + `they are shown on their own line so the total still adds up. Check them on the Daily tab.`);
+            }
+            noteEl.innerHTML = parts.join('<br><br>');
+        }
+
+        renderAbayaItems(rows);
+        renderAbayaStock();
+        renderAbayaMonthWhatsApp(month, all, perShop);
+    };
+
+    /** أي نوع يبيع أكثر — بالقطع وبالمال، والمال هو ما لا يُستخرج لاحقًا. */
+    function renderAbayaItems(rows) {
+        const body = document.getElementById('abItemsBody');
+        if (!body) return;
+        const per = ABAYA_ITEMS.map(it => {
+            let qty = 0, amt = 0;
+            rows.forEach(r => {
+                qty += Number(r[abQtyField(it.key)]) || 0;
+                amt += Number(r[abAmtField(it.key)]) || 0;
+            });
+            return { it, qty, amt };
+        });
+        const totalAmt = per.reduce((a, x) => a + x.amt, 0);
+        const totalQty = per.reduce((a, x) => a + x.qty, 0);
+        body.innerHTML = per.map(({ it, qty, amt }) => `
+            <tr>
+                <td><b>${escapeHtml(it.en)}</b><br><small dir="rtl" style="color: var(--text-dim);">${escapeHtml(it.ar)}</small></td>
+                <td class="money-col">${qty}</td>
+                <td class="money-col">${money(amt)}</td>
+                <td class="money-col">${totalAmt > ABAYA_CENT ? (amt / totalAmt * 100).toFixed(1) + '%' : '—'}</td>
+                <td class="money-col">${qty > 0 && amt > ABAYA_CENT ? money(amt / qty) : '—'}</td>
+            </tr>`).join('');
+        const foot = document.getElementById('abItemsFoot');
+        if (foot) {
+            foot.innerHTML = `<tr style="background: var(--surface-2); font-weight: 800;">
+                <td>TOTAL</td><td class="money-col">${totalQty}</td>
+                <td class="money-col">${money(totalAmt)}</td>
+                <td class="money-col">${totalAmt > ABAYA_CENT ? '100.0%' : '—'}</td>
+                <td class="money-col">${totalQty > 0 && totalAmt > ABAYA_CENT ? money(totalAmt / totalQty) : '—'}</td>
+            </tr>`;
+        }
+    }
+
+    // =====================================================================
+    // الستوك
+    // ---------------------------------------------------------------------
+    // الرصيد = الجرد الافتتاحي + الوارد − المبيع − الخارج.
+    // ⚠️ يُحسب من تاريخ الجرد فصاعدًا فقط: تقريرٌ أقدم من الجرد سبق العدّ، وخصمُه
+    // كان سيُنقص المخزون مرتين.
+    // ⚠️ عبايات شانتون **ليست** في هذا الرصيد: بضاعتها لا بضاعتنا، وخلطها
+    // يجعل قيمة المخزون أكبر من الحقيقة. تُعرض في سطر مستقل.
+    // =====================================================================
+    function abayaStockFor(shop) {
+        const since = abayaOpening.openingDate || '';
+        const openMap = abayaOpening.opening[shop] || {};
+        const out = {};
+        ABAYA_STOCK_ITEMS.forEach(it => {
+            out[it.key] = { opening: Number(openMap[it.key]) || 0, received: 0, sold: 0, sentOut: 0 };
+        });
+        allAbayaReports.forEach(r => {
+            if (r.shop !== shop) return;
+            const d = String(r.date || '');
+            if (since && d < since) return;      // ما قبل الجرد داخلٌ فيه أصلًا
+            ABAYA_ITEMS.forEach(it => {
+                const stockKey = ABAYA_ITEM_TO_STOCK[it.key];
+                if (!stockKey || !out[stockKey]) return;
+                out[stockKey].sold += Number(r[abQtyField(it.key)]) || 0;
+            });
+            (Array.isArray(r.movements) ? r.movements : []).forEach(m => {
+                const cell = out[m.item];
+                if (!cell) return;
+                const kind = ABAYA_MOVE_KINDS.find(k => k.key === m.kind);
+                const qty = Number(m.qty) || 0;
+                if (!kind || qty <= 0) return;
+                if (kind.sign < 0) cell.sentOut += qty; else cell.received += qty;
+            });
+        });
+        let sum = { opening: 0, received: 0, sold: 0, sentOut: 0, now: 0 };
+        ABAYA_STOCK_ITEMS.forEach(it => {
+            const c = out[it.key];
+            c.now = c.opening + c.received - c.sold - c.sentOut;
+            sum.opening += c.opening; sum.received += c.received;
+            sum.sold += c.sold; sum.sentOut += c.sentOut; sum.now += c.now;
+        });
+        return { items: out, sum };
+    }
+
+    window.renderAbayaStock = function() {
+        const body = document.getElementById('abStockBody');
+        if (!body) return;
+        const ready = !!abayaOpening.openingDate;
+        const per = ABAYA_SHOPS.map(s => ({ shop: s, st: abayaStockFor(s) }));
+
+        body.innerHTML = per.map(({ shop, st }) => {
+            const detail = ABAYA_STOCK_ITEMS
+                .filter(it => st.items[it.key].opening || st.items[it.key].received
+                           || st.items[it.key].sold || st.items[it.key].sentOut)
+                .map(it => {
+                    const c = st.items[it.key];
+                    return `${escapeHtml(it.en)}: <b${c.now < 0 ? ' style="color: var(--danger);"' : ''}>${c.now}</b>`;
+                }).join(' · ');
+            return `<tr>
+                <td><b>${escapeHtml(shop)}</b>${detail ? `<br><small style="color: var(--text-dim);">${detail}</small>` : ''}</td>
+                <td class="money-col">${st.sum.opening}</td>
+                <td class="money-col" style="color: var(--success);">${st.sum.received ? '+' + st.sum.received : '—'}</td>
+                <td class="money-col" style="color: var(--danger);">${st.sum.sold ? '-' + st.sum.sold : '—'}</td>
+                <td class="money-col" style="color: var(--danger);">${st.sum.sentOut ? '-' + st.sum.sentOut : '—'}</td>
+                <td class="money-col"><strong style="color: ${st.sum.now < 0 ? 'var(--danger)' : 'var(--accent)'}; font-size: 15px;">${st.sum.now}</strong></td>
+            </tr>`;
+        }).join('');
+
+        const g = per.reduce((a, { st }) => ({
+            opening: a.opening + st.sum.opening, received: a.received + st.sum.received,
+            sold: a.sold + st.sum.sold, sentOut: a.sentOut + st.sum.sentOut, now: a.now + st.sum.now
+        }), { opening: 0, received: 0, sold: 0, sentOut: 0, now: 0 });
+        const foot = document.getElementById('abStockFoot');
+        if (foot) {
+            foot.innerHTML = `<tr style="background: var(--surface-2); font-weight: 800;">
+                <td>ALL THREE SHOPS</td>
+                <td class="money-col">${g.opening}</td>
+                <td class="money-col">${g.received ? '+' + g.received : '—'}</td>
+                <td class="money-col">${g.sold ? '-' + g.sold : '—'}</td>
+                <td class="money-col">${g.sentOut ? '-' + g.sentOut : '—'}</td>
+                <td class="money-col"><strong style="font-size: 15px;">${g.now}</strong></td>
+            </tr>`;
+        }
+
+        const notes = [];
+        if (!ready) {
+            notes.push(`<b style="color: var(--warning);">The opening count has not been entered yet</b>, so the figures above `
+                + `start from zero and will look negative as sales come in. Enter it in the box below and everything corrects itself.`);
+        } else {
+            notes.push(`Counted from <b>${escapeHtml(abayaOpening.openingDate)}</b> onwards. Reports older than that date are `
+                + `already inside the opening count and are deliberately not subtracted again.`);
+        }
+        // مطابقة تحويلات المحلات: خارجٌ من محل يجب أن يكون واردًا في الآخر.
+        const mm = abayaTransferMismatches();
+        if (mm.length) {
+            notes.push(`<b style="color: var(--danger);">Transfers that do not match:</b><br>`
+                + mm.map(x => `${escapeHtml(x.from)} recorded <b>${x.out}</b> ${escapeHtml(x.item)} sent to ${escapeHtml(x.to)}, `
+                    + `but ${escapeHtml(x.to)} recorded <b>${x.in}</b> received. Difference of ${Math.abs(x.out - x.in)}.`).join('<br>')
+                + `<br>Pieces do not vanish between two shops — one of the two reports is wrong.`);
+        }
+        // شانتون: تُعرض ولا تُخلط
+        const shSold = ABAYA_SHOPS.map(s => {
+            let n = 0;
+            allAbayaReports.forEach(r => {
+                if (r.shop !== s) return;
+                if (abayaOpening.openingDate && String(r.date || '') < abayaOpening.openingDate) return;
+                n += Number(r.shTotalQty) || 0;
+            });
+            return { shop: s, n };
+        }).filter(x => x.n);
+        if (shSold.length) {
+            notes.push(`<b>Shanton's abayas are not counted above</b> — they are her goods, not yours, and mixing them would `
+                + `make your stock look bigger than it is. Sold since the count: `
+                + shSold.map(x => `${escapeHtml(x.shop)} ${x.n}`).join(' · ')
+                + `. There is no line yet for <i>receiving</i> her pieces, so her own stock cannot be tracked yet — tell me if you want one.`);
+        }
+        const el = document.getElementById('abStockNote');
+        if (el) el.innerHTML = notes.join('<br><br>');
+    };
+
+    /**
+     * تحويلات المحلات: «خرجت من فندوم إلى فيستفال» يجب أن يقابلها في فيستفال
+     * «وصلت من فندوم». الاختلاف يعني أن قطعًا اختفت بين محلين — وهذا ما لا
+     * يظهر إلا بالمطابقة، ولهذا كُتبت.
+     */
+    function abayaTransferMismatches() {
+        const since = abayaOpening.openingDate || '';
+        const outMap = new Map(), inMap = new Map();
+        allAbayaReports.forEach(r => {
+            if (since && String(r.date || '') < since) return;
+            (Array.isArray(r.movements) ? r.movements : []).forEach(m => {
+                if (!m || !m.shop) return;
+                const qty = Number(m.qty) || 0;
+                if (qty <= 0) return;
+                if (m.kind === 'out_to_shop') {
+                    const k = `${r.shop}|${m.shop}|${m.item}`;
+                    outMap.set(k, (outMap.get(k) || 0) + qty);
+                } else if (m.kind === 'in_from_shop') {
+                    // الوارد يُقيَّد باتجاه المصدر ← المستلم
+                    const k = `${m.shop}|${r.shop}|${m.item}`;
+                    inMap.set(k, (inMap.get(k) || 0) + qty);
+                }
+            });
+        });
+        const keys = new Set([...outMap.keys(), ...inMap.keys()]);
+        const out = [];
+        keys.forEach(k => {
+            const o = outMap.get(k) || 0, i = inMap.get(k) || 0;
+            if (o === i) return;
+            const [from, to, item] = k.split('|');
+            const it = ABAYA_STOCK_ITEMS.find(x => x.key === item);
+            out.push({ from, to, item: it ? it.en : item, out: o, in: i });
+        });
+        return out.sort((a, b) => Math.abs(b.out - b.in) - Math.abs(a.out - a.in));
+    }
+
+    // =====================================================================
+    // الجرد الافتتاحي
+    // =====================================================================
+    function renderAbayaOpeningEditor() {
+        const heads = document.getElementById('abOpeningHeads');
+        const body = document.getElementById('abOpeningBody');
+        if (!body) return;
+        // ترويسة واحدة تحمل الأنواع: العمود الثاني يتّسع لكل الخانات.
+        if (heads) heads.innerHTML = ABAYA_STOCK_ITEMS.map(it => escapeHtml(it.en)).join(' · ');
+        const editable = canEditAbayaSetup();
+        body.innerHTML = ABAYA_SHOPS.map((shop, si) => {
+            const cur = abayaOpening.opening[shop] || {};
+            const inputs = ABAYA_STOCK_ITEMS.map((it, ii) => `
+                <div style="min-width: 118px;">
+                    <label for="abOpen_${si}_${ii}" style="font-size: 10.5px;">${escapeHtml(it.en)}</label>
+                    <input type="number" id="abOpen_${si}_${ii}" step="1" min="0" placeholder="0"
+                           value="${cur[it.key] != null ? Number(cur[it.key]) : ''}"${editable ? '' : ' readonly style="opacity:.65;"'}>
+                </div>`).join('');
+            return `<tr>
+                <td style="vertical-align: top;"><b>${escapeHtml(shop)}</b><br><small dir="rtl" style="color: var(--text-dim);">${escapeHtml(ABAYA_SHOPS_AR[shop] || '')}</small></td>
+                <td><div style="display: flex; gap: 10px; flex-wrap: wrap;">${inputs}</div></td>
+            </tr>`;
+        }).join('');
+        const dEl = document.getElementById('abOpeningDate');
+        if (dEl && !dEl.value) dEl.value = abayaOpening.openingDate || todayISO();
+        if (!editable) {
+            const st = document.getElementById('abOpeningStatus');
+            if (st) { st.innerText = 'Only the owner can set the opening count.'; st.style.color = 'var(--text-dim)'; }
+        }
+    }
+
+    window.saveAbayaOpening = async function() {
+        const st = document.getElementById('abOpeningStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        if (!canEditAbayaSetup()) { show('Only the owner can set the opening count.', 'var(--danger)'); return; }
+        const dateISO = document.getElementById('abOpeningDate').value;
+        if (!dateISO) { show('Choose the date you counted the stock.', 'var(--danger)'); return; }
+        if (dateISO > todayISO()) { show('The count date cannot be in the future.', 'var(--danger)'); return; }
+
+        const opening = {};
+        for (let si = 0; si < ABAYA_SHOPS.length; si++) {
+            const shop = ABAYA_SHOPS[si];
+            opening[shop] = {};
+            for (let ii = 0; ii < ABAYA_STOCK_ITEMS.length; ii++) {
+                const raw = (document.getElementById(`abOpen_${si}_${ii}`) || {}).value;
+                const v = raw === '' || raw === undefined ? 0 : Number(raw);
+                if (!isFinite(v) || v < 0) {
+                    show(`${shop} — ${ABAYA_STOCK_ITEMS[ii].en}: must be a whole number of zero or more.`, 'var(--danger)');
+                    return;
+                }
+                opening[shop][ABAYA_STOCK_ITEMS[ii].key] = Math.round(v);
+            }
+        }
+        show('Saving...', 'var(--warning)');
+        try {
+            // بلا merge على `opening`: الخريطة تُكتب كاملة فلا يبقى محلٌّ قديم
+            // أُفرغت خاناته محتفظًا برقمه السابق.
+            await setDoc(doc(db, "settings", "abaya_stock_opening"), {
+                opening, openingDate: dateISO,
+                updatedAt: serverTimestamp(),
+                updatedBy: (currentUser && currentUser.email) || 'unknown'
+            });
+            logAudit("Abaya Opening Stock Set",
+                `as of ${dateISO} — ` + ABAYA_SHOPS.map(s =>
+                    `${s}: ${ABAYA_STOCK_ITEMS.map(i => `${i.en} ${opening[s][i.key]}`).join(', ')}`).join(' | '));
+            abayaOpening = { opening, openingDate: dateISO };
+            renderAbayaStock();
+            show(`Saved. Stock is now counted from ${dateISO} onwards.`, 'var(--success)');
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    // =====================================================================
+    // البياعات
+    // =====================================================================
+    function renderAbayaSellers() {
+        const body = document.getElementById('abSellersBody');
+        if (!body) return;
+        const editable = canEditAbayaSetup();
+        if (!abayaSellers.length) {
+            body.innerHTML = `<tr><td colspan="5" style="text-align:center;">No saleswoman added yet. Add the first one above.</td></tr>`;
+            return;
+        }
+        body.innerHTML = abayaSellers.map(s => {
+            const mine = allAbayaReports.filter(r => r.sellerId === s.id);
+            const last = mine.reduce((a, r) => (String(r.date || '') > a ? String(r.date) : a), '');
+            const sid = escapeJsAttr(s.id);
+            return `<tr>
+                <td><b>${escapeHtml(s.name || s.id)}</b></td>
+                <td style="font-family: ui-monospace, monospace;">${escapeHtml(s.pin ? String(s.pin) : '••••')}</td>
+                <td class="money-col">${mine.length}</td>
+                <td>${last ? escapeHtml(salesDateLabel(last)) : '<span style="color: var(--text-faint);">never</span>'}</td>
+                <td style="white-space: nowrap;">${editable
+                    ? `<button class="btn-danger btn-sm" title="Remove this saleswoman" onclick="deleteAbayaSeller('${sid}')">${iconSvg('trash','ic-sm')}</button>`
+                    : ''}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    window.addAbayaSeller = async function() {
+        const st = document.getElementById('abSellerStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        if (!canEditAbayaSetup()) { show('Only the owner can add a saleswoman.', 'var(--danger)'); return; }
+        const name = (document.getElementById('abNewSellerName').value || '').trim();
+        const pin = (document.getElementById('abNewSellerPin').value || '').trim();
+        if (!name) { show('Write her name.', 'var(--danger)'); return; }
+        if (!/^\d{4,8}$/.test(pin)) { show('The PIN must be 4 to 8 digits.', 'var(--danger)'); return; }
+        // اسمان متطابقان يجعلان التقارير غير قابلة للتمييز — نمنع ونشرح.
+        if (abayaSellers.some(s => String(s.name || '').trim().toLowerCase() === name.toLowerCase())) {
+            show(`"${name}" already exists. If this is a second person with the same name, add a distinguishing part `
+                + `(for example "${name} M." and "${name} S.") — otherwise you cannot tell which one sent a report.`, 'var(--danger)');
+            return;
+        }
+        show('Saving...', 'var(--warning)');
+        try {
+            const ref = await addDoc(collection(db, "abaya_sellers"), {
+                name, active: true,
+                createdAt: serverTimestamp(),
+                createdBy: (currentUser && currentUser.email) || 'unknown'
+            });
+            // الرقم السري في مجموعة منفصلة بنفس معرّف البياعة — كما employee_pins
+            await setDoc(doc(db, "abaya_seller_pins", ref.id), { pin });
+            logAudit("Abaya Saleswoman Added", `${name} (PIN set)`);
+            document.getElementById('abNewSellerName').value = '';
+            document.getElementById('abNewSellerPin').value = '';
+            await loadAbayaData();
+            show(`${name} added. She can now sign in on the saleswomen screen with PIN ${pin}.`, 'var(--success)');
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    window.deleteAbayaSeller = async function(sellerId) {
+        const st = document.getElementById('abSellerStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        if (!canEditAbayaSetup()) { show('Only the owner can remove a saleswoman.', 'var(--danger)'); return; }
+        const s = abayaSellers.find(x => x.id === sellerId);
+        const n = allAbayaReports.filter(r => r.sellerId === sellerId).length;
+        if (!confirm(
+            `Remove ${s ? s.name : sellerId} from the saleswomen?\n\n`
+            + `She will no longer be able to sign in and send a report.\n`
+            + `Her ${n} report(s) already sent are NOT deleted — they stay in the daily and monthly reports.`
+        )) return;
+        show('Removing...', 'var(--warning)');
+        try {
+            // التقارير لا تُمسّ: حذفها كان سيمحو مبيعات دخلت فعلًا.
+            await deleteDoc(doc(db, "abaya_seller_pins", sellerId));
+            await deleteDoc(doc(db, "abaya_sellers", sellerId));
+            logAudit("Abaya Saleswoman Removed", `${s ? s.name : sellerId} — ${n} report(s) kept`);
+            await loadAbayaData();
+            show(`Removed. Her ${n} report(s) are still here.`, 'var(--warning)');
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    window.saveAbayaRates = async function() {
+        const st = document.getElementById('abRatesStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        if (!canEditAbayaSetup()) { show('Only the owner can change these.', 'var(--danger)'); return; }
+        const card = Number(document.getElementById('abCardRate').value);
+        const per = Number(document.getElementById('abPerPiece').value);
+        if (!isFinite(card) || card < 0 || card > 100) { show('The bank charge must be between 0 and 100.', 'var(--danger)'); return; }
+        if (!isFinite(per) || per < 0) { show("Shanton's amount per abaya must be zero or more.", 'var(--danger)'); return; }
+        show('Saving...', 'var(--warning)');
+        try {
+            await setDoc(doc(db, "settings", "abaya_rates"), {
+                cardFeePercent: card, shantonPerPiece: Math.round(per),
+                updatedAt: serverTimestamp(),
+                updatedBy: (currentUser && currentUser.email) || 'unknown'
+            }, { merge: true });
+            logAudit("Abaya Rates Updated", `card ${card}%, Shanton ${Math.round(per)} QAR per abaya`);
+            abayaRates = { cardFeePercent: card, shantonPerPiece: Math.round(per) };
+            renderAbayaAll();
+            show(`Saved. Every abaya report is now calculated with ${card}% and ${Math.round(per)} QAR per abaya.`, 'var(--success)');
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    // =====================================================================
+    // رسائل الواتساب — قصيرة كما يريدها المالك
+    // =====================================================================
+    function abayaWaAmount(n) { return `${Math.abs(Math.round(Number(n) || 0))}QAR`; }
+
+    function buildAbayaDailyWaText(rows, t) {
+        const start = document.getElementById('abStartDate')?.value || '';
+        const end = document.getElementById('abEndDate')?.value || '';
+        const shop = document.getElementById('abFilterShop')?.value || '';
+        const L = [];
+        L.push('*ABAYA SALES — AL SHEIKHA STYLE*');
+        L.push(shop || 'ALL SHOPS');
+        L.push(start === end ? targetSlashDate(start) : `${targetSlashDate(start)} - ${targetSlashDate(end)}`);
+        L.push('');
+        L.push(`PIECES : ${t.pieces}`);
+        L.push(`SHOP SALES : ${abayaWaAmount(t.ownSales)}`);
+        if (t.commission > ABAYA_CENT) L.push(`SHANTON COMMISSION : ${abayaWaAmount(t.commission)}`);
+        L.push('');
+        L.push(`*REAL INCOME : ${abayaWaAmount(t.realIncome)}*`);
+        if (t.shDue > ABAYA_CENT) {
+            L.push('');
+            // الدَّين يُذكر صريحًا: مالٌ في الصندوق ليس مالَ المحل.
+            L.push(`_Due to Shanton: ${abayaWaAmount(t.shDue)} — held in the till, not income._`);
+        }
+        if (!t.n) { L.push(''); L.push('_No report received for this period._'); }
+        return L.join('\n');
+    }
+
+    function renderAbayaWhatsApp(rows, t) {
+        wireWhatsappLink(
+            document.getElementById('abWhatsAppLink'),
+            document.getElementById('abWhatsAppFallback'),
+            buildAbayaDailyWaText(rows, t));
+    }
+
+    function buildAbayaMonthWaText(month, all, perShop) {
+        const L = [];
+        L.push('*ABAYA MONTHLY — AL SHEIKHA STYLE*');
+        L.push(month);
+        L.push('');
+        perShop.forEach(({ shop, t }) => {
+            if (!t.n) return;
+            L.push(`*${shop}*`);
+            L.push(`Pieces : ${t.pieces}`);
+            L.push(`Sales : ${abayaWaAmount(t.ownSales)}`);
+            L.push(`Income : ${abayaWaAmount(t.realIncome)}`);
+            L.push('');
+        });
+        L.push(`*ALL SHOPS*`);
+        L.push(`PIECES : ${all.pieces}`);
+        L.push(`SALES : ${abayaWaAmount(all.ownSales)}`);
+        if (all.commission > ABAYA_CENT) L.push(`SHANTON COMMISSION : ${abayaWaAmount(all.commission)}`);
+        L.push(`*REAL INCOME : ${abayaWaAmount(all.realIncome)}*`);
+        if (all.shDue > ABAYA_CENT) L.push(`_Due to Shanton: ${abayaWaAmount(all.shDue)}_`);
+        L.push('');
+        L.push('_Sales only — expenses are not included._');
+        return L.join('\n');
+    }
+
+    function renderAbayaMonthWhatsApp(month, all, perShop) {
+        wireWhatsappLink(
+            document.getElementById('abMonthWaLink'),
+            document.getElementById('abMonthWaFallback'),
+            buildAbayaMonthWaText(month, all, perShop));
+    }
+
+    // =====================================================================
+    // تصدير Excel
+    // =====================================================================
+    window.exportAbayaExcel = function() {
+        const rows = filteredAbayaReports();
+        if (!rows.length) { alert('No abaya reports to export for this period / shop.'); return; }
+        const sheet = rows.map(r => {
+            const o = {
+                "Date": salesDateLabel(r.date) || '-',
+                "Shop": r.shop || '-',
+                "Saleswoman": r.sellerName || '-'
+            };
+            ABAYA_ITEMS.forEach(it => {
+                o[`${it.en} (pcs)`] = Number(r[abQtyField(it.key)]) || 0;
+                o[`${it.en} (QAR)`] = Number((Number(r[abAmtField(it.key)]) || 0).toFixed(2));
+            });
+            o["Total pieces"] = r.pieces;
+            o["Cash (QAR)"] = Number(r.cash.toFixed(2));
+            o["Card (QAR)"] = Number(r.card.toFixed(2));
+            o["Shop sales (QAR)"] = Number(r.ownSales.toFixed(2));
+            o["Bank charge (QAR)"] = Number(r.cardFee.toFixed(2));
+            o["Cash on hand (QAR)"] = Number(r.cashOnHand.toFixed(2));
+            o["Shanton pieces"] = r.shPieces;
+            o["Shanton collected (QAR)"] = Number(r.shCollected.toFixed(2));
+            o["Our commission (QAR)"] = Number(r.commission.toFixed(2));
+            o["Due to Shanton (QAR)"] = Number(r.shDue.toFixed(2));
+            o["Real income (QAR)"] = Number(r.realIncome.toFixed(2));
+            o["Walk-ins local"] = r.walkLocal;
+            o["Walk-ins expat"] = r.walkExpat;
+            o["Stock movement"] = r.movements.map(m => {
+                const k = ABAYA_MOVE_KINDS.find(x => x.key === m.kind);
+                const it = ABAYA_STOCK_ITEMS.find(x => x.key === m.item);
+                return `${k && k.sign < 0 ? '-' : '+'}${m.qty} ${it ? it.en : m.item} ${k ? k.en : m.kind}`
+                    + (m.shop ? ` (${m.shop})` : m.supplier ? ` (${m.supplier})` : '');
+            }).join(' | ');
+            o["Note"] = r.note || '';
+            return o;
+        });
+        const t = abayaTotals(rows);
+        const tot = { "Date": "TOTAL", "Shop": "", "Saleswoman": "" };
+        ABAYA_ITEMS.forEach(it => {
+            tot[`${it.en} (pcs)`] = rows.reduce((s, r) => s + (Number(r[abQtyField(it.key)]) || 0), 0);
+            tot[`${it.en} (QAR)`] = Number(rows.reduce((s, r) => s + (Number(r[abAmtField(it.key)]) || 0), 0).toFixed(2));
+        });
+        tot["Total pieces"] = t.pieces;
+        tot["Cash (QAR)"] = Number(t.cash.toFixed(2));
+        tot["Card (QAR)"] = Number(t.card.toFixed(2));
+        tot["Shop sales (QAR)"] = Number(t.ownSales.toFixed(2));
+        tot["Bank charge (QAR)"] = Number(t.cardFee.toFixed(2));
+        tot["Cash on hand (QAR)"] = "";
+        tot["Shanton pieces"] = t.shPieces;
+        tot["Shanton collected (QAR)"] = Number(t.shCollected.toFixed(2));
+        tot["Our commission (QAR)"] = Number(t.commission.toFixed(2));
+        tot["Due to Shanton (QAR)"] = Number(t.shDue.toFixed(2));
+        tot["Real income (QAR)"] = Number(t.realIncome.toFixed(2));
+        tot["Walk-ins local"] = t.walkLocal;
+        tot["Walk-ins expat"] = t.walkExpat;
+        tot["Stock movement"] = ""; tot["Note"] = "";
+        sheet.push(tot);
+
+        const ws = XLSX.utils.json_to_sheet(sheet);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Abaya Daily");
+        const s = document.getElementById('abStartDate')?.value || 'all';
+        const e = document.getElementById('abEndDate')?.value || 'all';
+        XLSX.writeFile(wb, `Abaya_Daily_Sales_${s}_to_${e}.xlsx`);
+        logAudit("Abaya Daily Reports Exported", `${rows.length} report(s), ${s} to ${e}`);
+    };
+
+    window.exportAbayaMonthExcel = function() {
+        const month = currentAbayaMonth();
+        const rows = abayaMonthRows(month);
+        if (!rows.length) { alert(`No abaya reports for ${month}.`); return; }
+        const shopSheet = ABAYA_SHOPS.map(shop => {
+            const t = abayaTotals(rows.filter(r => r.shop === shop));
+            return {
+                "Shop": shop, "Days with a report": t.dayCount, "Pieces": t.pieces,
+                "Shop sales (QAR)": Number(t.ownSales.toFixed(2)),
+                "Bank charge (QAR)": Number(t.cardFee.toFixed(2)),
+                "After charge (QAR)": Number(t.afterCharge.toFixed(2)),
+                "Shanton pieces": t.shPieces,
+                "Our commission (QAR)": Number(t.commission.toFixed(2)),
+                "Real income (QAR)": Number(t.realIncome.toFixed(2)),
+                "Due to Shanton (QAR)": Number(t.shDue.toFixed(2)),
+                "Walk-ins local": t.walkLocal, "Walk-ins expat": t.walkExpat
+            };
+        });
+        const itemSheet = ABAYA_ITEMS.map(it => ({
+            "Item": it.en,
+            "Pieces": rows.reduce((s, r) => s + (Number(r[abQtyField(it.key)]) || 0), 0),
+            "Amount (QAR)": Number(rows.reduce((s, r) => s + (Number(r[abAmtField(it.key)]) || 0), 0).toFixed(2))
+        }));
+        const stockSheet = ABAYA_SHOPS.flatMap(shop => {
+            const st = abayaStockFor(shop);
+            return ABAYA_STOCK_ITEMS.map(it => ({
+                "Shop": shop, "Item": it.en,
+                "Opening": st.items[it.key].opening, "Received": st.items[it.key].received,
+                "Sold": st.items[it.key].sold, "Sent out": st.items[it.key].sentOut,
+                "In stock now": st.items[it.key].now
+            }));
+        });
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(shopSheet), "By shop");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(itemSheet), "By item");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(stockSheet), "Stock");
+        XLSX.writeFile(wb, `Abaya_Monthly_${month}.xlsx`);
+        logAudit("Abaya Monthly Report Exported", `${month} — ${rows.length} report(s)`);
+    };
+
+    // =====================================================================
+    // تصحيح تقرير وحذفه
+    // ---------------------------------------------------------------------
+    // ⚠️ التصحيح هنا يمسّ المال والستوك معًا: تغييرُ عدد قطعٍ يُحرّك المخزون،
+    // وتغييرُ مبلغٍ يُحرّك الدخل. لذلك تأكيدٌ يُظهر القديم والجديد، وسجلُّ تدقيق.
+    // =====================================================================
+    window.openAbayaEditModal = function(reportId) {
+        const r = allAbayaReports.find(x => x.id === reportId);
+        if (!r) return;
+        if (!canSeeAbaya()) { alert('You do not have permission to correct an abaya report.'); return; }
+        document.getElementById('abEditId').value = reportId;
+        document.getElementById('abEditHead').innerText =
+            `${r.shop || '—'} · ${salesDateLabel(r.date)} · ${r.sellerName || '—'}`;
+        const grid = document.getElementById('abEditGrid');
+        grid.innerHTML = ABAYA_ITEMS.map(it => `
+            <div>
+                <label>${escapeHtml(it.en)} — pcs</label>
+                <input type="number" id="abEdit_${abQtyField(it.key)}" step="1" min="0" value="${Number(r[abQtyField(it.key)]) || 0}" oninput="recalcAbayaEdit()">
+            </div>
+            <div>
+                <label>${escapeHtml(it.en)} — QAR</label>
+                <input type="number" id="abEdit_${abAmtField(it.key)}" step="0.01" min="0" value="${Number(r[abAmtField(it.key)]) || 0}" oninput="recalcAbayaEdit()">
+            </div>`).join('')
+            + [['cashSales', 'Cash QAR'], ['cardSales', 'Card QAR'], ['cashOnHand', 'Cash on hand QAR'],
+               ['shQtyReady', 'Shanton ready pcs'], ['shQtyOrder', 'Shanton order pcs'],
+               ['shCash', 'Shanton cash QAR'], ['shCard', 'Shanton card QAR'],
+               ['walkInsLocal', 'Walk-ins local'], ['walkInsExpat', 'Walk-ins expat']]
+              .map(([k, lbl]) => `
+            <div>
+                <label>${escapeHtml(lbl)}</label>
+                <input type="number" id="abEdit_${k}" step="${k.startsWith('sh') && k.includes('Qty') || k.startsWith('walk') ? '1' : '0.01'}" min="0" value="${Number(r[k]) || 0}" oninput="recalcAbayaEdit()">
+            </div>`).join('');
+        document.getElementById('abEditNote').value = r.note || '';
+        document.getElementById('abEditStatus').innerText = '';
+        recalcAbayaEdit();
+        document.getElementById('abayaEditModal').style.display = 'flex';
+        paintIcons(document.getElementById('abayaEditModal'));
+    };
+    window.closeAbayaEditModal = function() {
+        document.getElementById('abayaEditModal').style.display = 'none';
+    };
+    const abEditVal = (k) => {
+        const el = document.getElementById(`abEdit_${k}`);
+        const v = el ? Number(el.value) : 0;
+        return isFinite(v) && v >= 0 ? v : null;
+    };
+    window.recalcAbayaEdit = function() {
+        let byItem = 0, pieces = 0;
+        ABAYA_ITEMS.forEach(it => {
+            byItem += abEditVal(abAmtField(it.key)) || 0;
+            pieces += abEditVal(abQtyField(it.key)) || 0;
+        });
+        const total = (abEditVal('cashSales') || 0) + (abEditVal('cardSales') || 0);
+        const shPieces = (abEditVal('shQtyReady') || 0) + (abEditVal('shQtyOrder') || 0);
+        const shTotal = (abEditVal('shCash') || 0) + (abEditVal('shCard') || 0);
+        const per = Number(abayaRates.shantonPerPiece) || SHANTON_DEFAULT_PER_PIECE;
+        const commission = Math.min(shPieces * per, shTotal);
+        document.getElementById('abEditTotals').innerHTML =
+            `Pieces <b>${pieces}</b> · By item <b>${money(byItem)}</b> · Cash+Card <b>${money(total)}</b>`
+            + `<br>Shanton <b>${shPieces}</b> pc · commission <b style="color: var(--success);">${money(commission)}</b>`
+            + ` · due <b style="color: var(--danger);">${money(Math.max(0, shTotal - commission))}</b>`
+            + (byItem > ABAYA_CENT && Math.abs(byItem - total) > ABAYA_CENT
+                ? `<br><span style="color: var(--danger); font-weight: 800;">By item and cash+card differ by ${money(Math.abs(byItem - total))} QAR.</span>`
+                : '');
+    };
+    window.saveAbayaEdit = async function() {
+        const st = document.getElementById('abEditStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        const id = document.getElementById('abEditId').value;
+        const r = allAbayaReports.find(x => x.id === id);
+        if (!r) { show('This report is no longer available.', 'var(--danger)'); return; }
+        if (!canSeeAbaya()) { show('You do not have permission for this.', 'var(--danger)'); return; }
+
+        const next = {};
+        let pieces = 0, byItem = 0;
+        for (const it of ABAYA_ITEMS) {
+            const q = abEditVal(abQtyField(it.key)), a = abEditVal(abAmtField(it.key));
+            if (q === null || a === null) { show(`${it.en}: must be a number of zero or more.`, 'var(--danger)'); return; }
+            next[abQtyField(it.key)] = Math.round(q);
+            next[abAmtField(it.key)] = a;
+            pieces += Math.round(q); byItem += a;
+        }
+        for (const k of ['cashSales', 'cardSales', 'cashOnHand', 'shQtyReady', 'shQtyOrder', 'shCash', 'shCard', 'walkInsLocal', 'walkInsExpat']) {
+            const v = abEditVal(k);
+            if (v === null) { show(`${k}: must be a number of zero or more.`, 'var(--danger)'); return; }
+            next[k] = (k.includes('Qty') || k.startsWith('walk')) ? Math.round(v) : v;
+        }
+        next.totalQty = pieces;
+        next.totalItemAmount = byItem;
+        next.totalSales = next.cashSales + next.cardSales;
+        next.shTotalQty = next.shQtyReady + next.shQtyOrder;
+        next.shTotalSales = next.shCash + next.shCard;
+        const per = Number(abayaRates.shantonPerPiece) || SHANTON_DEFAULT_PER_PIECE;
+        next.shPerPiece = per;
+        next.shCommission = Math.min(next.shTotalQty * per, next.shTotalSales);
+        next.shDue = Math.max(0, next.shTotalSales - next.shCommission);
+        next.note = (document.getElementById('abEditNote').value || '').trim();
+
+        if (byItem > ABAYA_CENT && Math.abs(byItem - next.totalSales) > ABAYA_CENT) {
+            show(`The amount by item (${money(byItem)}) does not equal cash + card (${money(next.totalSales)}). Fix one of them.`, 'var(--danger)');
+            return;
+        }
+        if (!confirm(
+            `Correct the abaya report for ${r.shop || '—'} on ${salesDateLabel(r.date)}?\n\n`
+            + `Pieces: ${Number(r.totalQty) || 0} -> ${pieces}\n`
+            + `Shop sales: ${money(r.totalSales)} -> ${money(next.totalSales)} QAR\n`
+            + `Shanton pieces: ${Number(r.shTotalQty) || 0} -> ${next.shTotalQty}\n\n`
+            + `This also changes the stock and the monthly report. It is recorded in the audit log.`
+        )) return;
+
+        show('Saving...', 'var(--warning)');
+        try {
+            await updateDoc(doc(db, "abaya_sales_reports", id), {
+                ...next,
+                editedBy: (currentUser && currentUser.email) || 'unknown',
+                editedAt: serverTimestamp(),
+                previousTotalSales: Number(r.totalSales) || 0,
+                previousTotalQty: Number(r.totalQty) || 0
+            });
+            logAudit("Abaya Report Corrected",
+                `${r.shop || '—'} ${r.date || '—'}: pieces ${Number(r.totalQty) || 0} -> ${pieces}, `
+                + `sales ${money(r.totalSales)} -> ${money(next.totalSales)} QAR`);
+            await loadAbayaData();
+            closeAbayaEditModal();
+        } catch (e) {
+            show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    window.deleteAbayaReport = async function(reportId) {
+        const r = allAbayaReports.find(x => x.id === reportId);
+        if (!canSeeAbaya()) { alert('You do not have permission for this.'); return; }
+        const label = r ? `${r.shop || ''} ${salesDateLabel(r.date)} — ${money(r.totalSales)} QAR, ${Number(r.totalQty) || 0} pc` : reportId;
+        if (!confirm(`Delete this abaya report?\n${label}\n\nThis also removes its pieces from the stock.`)) return;
+        try {
+            await deleteDoc(doc(db, "abaya_sales_reports", reportId));
+            logAudit("Abaya Report Deleted", label);
+            await loadAbayaData();
+        } catch (e) {
+            alert('Error deleting the report: ' + e.message);
+        }
+    };
 
     /* =========================================================================
        Monthly Financial Report tab

@@ -1,0 +1,37 @@
+{
+  "name": "Al Sheikha Style — Daily Sales",
+  "short_name": "Abaya Sales",
+  "id": "./?app=abaya",
+  "description": "For the saleswomen of Al Sheikha Style. Enter the shop's daily sales and send them. Nothing else is accessible from here.",
+  "start_url": "./abaya-seller.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f1e8",
+  "theme_color": "#A89060",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": [
+    "business"
+  ],
+  "icons": [
+    {
+      "src": "./icons/abaya-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/abaya-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/abaya-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

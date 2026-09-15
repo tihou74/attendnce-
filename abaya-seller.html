@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Al Sheikha Style — Daily Sales</title>
+
+<!-- =============================================================================
+     الشيخة ستايل — لوحة البياعات (إدخال المبيعات اليومية)
+     -----------------------------------------------------------------------------
+     ⚠️ عملٌ منفصل تمامًا عن المطاعم. لا تلمس هذه الصفحة أي مجموعة من مجموعات
+     المطاعم: لا employees ولا sales_reports ولا attendance. تكتب في
+     abaya_sales_reports وحدها، وتقرأ abaya_sellers و abaya_seller_pins
+     و settings/abaya_rates فقط.
+     لو تشاركت مع المطاعم لدخلت مبيعات العبايات في التقرير اليومي للمطاعم
+     وفي المالية الشهرية وفي الأرصدة الثلاثة وفي التارقت، ولظهرت البياعات في
+     كشوف حضور المطاعم ورواتبها.
+
+     ⚠️ إرسالٌ أعمى بقرار الإدارة: هذه الصفحة تُنشئ تقريرًا ولا تقرأ تقريرًا
+     أبدًا. القواعد تمنعها من القراءة، لأنها تُسجّل دخولًا **مجهولًا** فأي
+     قراءة تعني كشف مبيعات المحلات لكل من يفتح الرابط. الملخّص الذي تراه
+     البياعة بعد الإرسال يُبنى من الأرقام التي كتبتها هي، لا من استعلام.
+
+     ⚠️ نسخة Firebase هنا مُسمّاة "abaya" عن قصد. صفحة الموظفين على نفس النطاق
+     تسجّل دخولًا مجهولًا أيضًا، ولو تشاركت النسخة الافتراضية معها لتضاربت
+     الجلستان. لا تحذف الاسم.
+
+     ⚠️ قاعدة شانتون (قرار الإدارة): شانتون ديزاينر تعرض عبايتها في المحلات.
+     دخل المحل من كل عباية تبيعها = 200 ريال فقط، والباقي دَينٌ لها. فمبيعاتها
+     لا تُجمع مع مبيعات المحل أبدًا — وهذا مكتوب في كل موضع يمسّها هنا.
+     ============================================================================= -->
+
+<link rel="manifest" href="./manifest-abaya.json">
+<meta name="theme-color" content="#A89060">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/abaya-192.png">
+<link rel="apple-touch-icon" href="./icons/abaya-touch.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Abaya Sales">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="robots" content="noindex, nofollow">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./brand/design-tokens.css">
+
+<style>
+    /* =========================================================================
+       هوية مجموعة الشيخة — كل قيمة من ./brand/design-tokens.css.
+       الذهب #A89060 تباينه على الأبيض 3.08:1 فلا يحمل نصًّا أبدًا: هو للحدود
+       والأسطح والترويسة فقط. النص الذهبي يستخدم --color-brand-text (7.13:1).
+       ========================================================================= */
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+        font-family: var(--font-sans);
+        background: var(--color-bg); color: var(--color-text);
+        font-size: var(--text-base); line-height: var(--leading-normal);
+        -webkit-text-size-adjust: 100%;
+    }
+    .wrap {
+        max-width: 720px; margin: 0 auto;
+        padding: var(--space-5) var(--space-4) calc(var(--space-8) + env(safe-area-inset-bottom));
+        padding-top: calc(var(--space-5) + env(safe-area-inset-top));
+    }
+
+    /* ---- الترويسة: الشعار إن وُجد، وإلا اسم المحل بخطّ أنيق -------------- */
+    header {
+        display: flex; align-items: center; gap: var(--space-4);
+        margin-bottom: var(--space-6); padding-bottom: var(--space-4);
+        border-bottom: var(--border-hairline) solid var(--color-border);
+    }
+    /* الشعار على إطار فاتح دائمًا: ملفّه بخلفية بيضاء لا شفافة، فلو وُضع على
+       سطح غامق ظهر مستطيلًا أبيض. الإطار يجعله يبدو مقصودًا. */
+    header .logobox {
+        flex: 0 0 auto; width: 56px; height: 56px; border-radius: var(--radius-md);
+        background: #FFFFFF; border: var(--border-hairline) solid var(--color-border);
+        display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+    header .logobox img { max-width: 100%; max-height: 100%; display: block; }
+    header .logobox.nologo { background: var(--color-surface-2); }
+    header .logobox .fallback {
+        font-family: var(--font-mono); font-weight: 600; font-size: 19px;
+        color: var(--color-brand-text); letter-spacing: .04em;
+    }
+    header h1 {
+        margin: 0; font-size: var(--text-lg); font-weight: 700;
+        letter-spacing: -.01em; color: var(--color-text);
+    }
+    header p { margin: 3px 0 0; font-size: var(--text-xs); color: var(--color-text-muted); }
+    header .wordmark {
+        display: block; font-size: var(--text-xs); font-weight: 700;
+        letter-spacing: .22em; color: var(--color-brand-text);
+        text-transform: uppercase; margin-top: 4px;
+    }
+
+    .panel {
+        background: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-border);
+        border-top: 3px solid var(--color-brand);
+        border-radius: var(--card-radius);
+        padding: var(--space-5); margin-bottom: var(--space-5);
+        box-shadow: var(--shadow-xs);
+    }
+    .panel > h2 {
+        font-size: var(--text-xs); letter-spacing: .1em; text-transform: uppercase;
+        color: var(--color-text-muted); margin: 0 0 var(--space-2); font-weight: 700;
+    }
+    .panel > .ar {
+        font-size: var(--text-xs); color: var(--color-text-muted);
+        margin: 0 0 var(--space-4); line-height: var(--leading-arabic);
+    }
+
+    label {
+        display: block; font-size: var(--text-xs); font-weight: 700;
+        color: var(--color-text-muted); margin-bottom: 6px;
+        text-transform: uppercase; letter-spacing: .06em;
+    }
+    input, select, textarea {
+        width: 100%; font-family: inherit; font-size: var(--text-sm);
+        background: var(--color-surface); color: var(--color-text);
+        border: var(--input-border); border-radius: var(--input-radius);
+    }
+    input, select { height: var(--input-height); padding: 0 var(--space-3); }
+    textarea { padding: var(--space-3); min-height: 96px; line-height: 1.8; resize: vertical; }
+    input:focus-visible, select:focus-visible, textarea:focus-visible {
+        outline: none; border-color: var(--color-focus);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus) 22%, transparent);
+    }
+    /* الأرقام بخط مونو ومتراصفة: تُقرأ عموديًّا في جدول واحد */
+    input[inputmode="decimal"], input[inputmode="numeric"] {
+        font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+        text-align: end;
+    }
+
+    button {
+        width: 100%; min-height: var(--btn-height); padding: var(--space-3) var(--btn-padding-x);
+        font-family: inherit; font-size: var(--btn-font-size); font-weight: var(--btn-font-weight);
+        background: var(--color-primary); color: var(--color-on-primary);
+        border: 1px solid transparent; border-radius: var(--btn-radius); cursor: pointer;
+        transition: background var(--dur-fast) var(--ease);
+    }
+    button:hover:not([disabled]) { background: var(--ink-700); }
+    button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+    button[disabled] { opacity: .45; cursor: not-allowed; }
+    button.ghost {
+        background: transparent; color: var(--color-text);
+        border-color: var(--color-border-strong);
+    }
+    button.ghost:hover:not([disabled]) { background: var(--color-surface-2); }
+    button.small { min-height: 38px; font-size: var(--text-xs); width: auto; padding: 0 var(--space-4); }
+
+    /* ---- جدول الأنواع: العدد والمبلغ لكل نوع ---------------------------- */
+    .itbl { width: 100%; border-collapse: collapse; }
+    .itbl th {
+        font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: .06em; color: var(--color-text-muted);
+        text-align: end; padding: 0 0 6px; white-space: nowrap;
+    }
+    .itbl th.name { text-align: start; }
+    .itbl td { padding: 3px 0; vertical-align: middle; }
+    .itbl td.name {
+        font-size: var(--text-sm); font-weight: 600; color: var(--color-text);
+        padding-inline-end: var(--space-3); line-height: 1.35;
+    }
+    .itbl td.name small {
+        display: block; font-weight: 400; font-size: var(--text-xs);
+        color: var(--color-text-muted); line-height: var(--leading-arabic);
+    }
+    .itbl td.q { width: 78px; padding-inline-end: 8px; }
+    .itbl td.a { width: 124px; }
+    .itbl input { height: 42px; }
+    @media (max-width: 420px) {
+        .itbl td.q { width: 66px; }
+        .itbl td.a { width: 104px; }
+        .itbl td.name { font-size: var(--text-xs); }
+    }
+
+    /* ---- سطر مجموع محسوب ------------------------------------------------ */
+    .sum {
+        display: flex; justify-content: space-between; align-items: baseline;
+        gap: var(--space-3); padding: var(--space-3) var(--space-4);
+        background: var(--color-surface-2);
+        border: var(--border-hairline) solid var(--color-border);
+        border-radius: var(--radius-md); margin-top: var(--space-3);
+    }
+    .sum .k { font-size: var(--text-xs); font-weight: 700; color: var(--color-text-muted); }
+    .sum .k small { display: block; font-weight: 400; text-transform: none; letter-spacing: 0; }
+    .sum .v {
+        font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+        font-size: var(--text-lg); font-weight: 600; color: var(--color-text);
+        white-space: nowrap;
+    }
+    .sum.ours { border-color: var(--color-success); }
+    .sum.ours .v { color: var(--color-success); }
+    .sum.owed { border-color: var(--color-danger); }
+    .sum.owed .v { color: var(--color-danger); }
+
+    .two { display: grid; gap: var(--space-3); grid-template-columns: 1fr 1fr; }
+
+    /* ---- حركة البضاعة: أسطر تُضاف ---------------------------------------- */
+    .mvform { display: grid; gap: var(--space-3); grid-template-columns: 1fr; }
+    @media (min-width: 520px) { .mvform { grid-template-columns: 1fr 1fr; } }
+    .mvlist { margin: var(--space-4) 0 0; padding: 0; list-style: none; }
+    .mvlist li {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: var(--space-3); font-size: var(--text-sm);
+        padding: 10px var(--space-4); margin-bottom: 8px;
+        background: var(--color-surface-2);
+        border: var(--border-hairline) solid var(--color-border);
+        border-radius: var(--radius-sm);
+    }
+    .mvlist li .txt { min-width: 0; }
+    .mvlist li b { font-family: var(--font-mono); }
+    .mvlist li button {
+        width: auto; min-height: 32px; padding: 0 12px; font-size: var(--text-xs);
+        background: transparent; color: var(--color-danger);
+        border: 1px solid var(--color-danger);
+    }
+    .mvlist li button:hover { background: var(--color-danger); color: #fff; }
+
+    /* ---- شارة المحل المختار --------------------------------------------- */
+    .chip {
+        display: inline-flex; align-items: center; gap: 8px;
+        font-size: var(--text-xs); font-weight: 700;
+        background: var(--color-surface-2);
+        border: var(--border-hairline) solid var(--color-border-strong);
+        border-radius: 999px; padding: 5px 12px; color: var(--color-text);
+    }
+    .shopbtns { display: grid; gap: var(--space-3); grid-template-columns: 1fr; }
+    .shopbtns button { min-height: 56px; font-size: var(--text-base); }
+
+    .status {
+        font-size: var(--text-sm); font-weight: 700; min-height: 20px;
+        margin: 0 0 var(--space-3); line-height: 1.7;
+    }
+    .status.err { color: var(--color-danger); }
+    .status.ok { color: var(--color-success); }
+    .status.warn { color: var(--color-warning); }
+    .status.load { color: var(--color-text-muted); }
+
+    .note {
+        font-size: var(--text-xs); color: var(--color-text-muted);
+        line-height: 1.8; margin: var(--space-4) 0 0;
+    }
+    .bar { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-5); }
+    .bar button { width: auto; flex: 1 1 160px; }
+
+    /* ---- ملخّص ما بعد الإرسال ------------------------------------------- */
+    .sumrow {
+        display: flex; justify-content: space-between; gap: var(--space-3);
+        font-size: var(--text-sm); padding: 7px 0;
+        border-bottom: var(--border-hairline) solid var(--color-border);
+    }
+    .sumrow:last-of-type { border-bottom: 0; }
+    .sumrow span:last-child {
+        font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 600;
+    }
+    .walink {
+        display: block; text-align: center; text-decoration: none;
+        background: #25D366; color: #06281a; font-weight: 700;
+        min-height: var(--btn-height); line-height: var(--btn-height);
+        border-radius: var(--btn-radius); margin-top: var(--space-4);
+    }
+    .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+    <header>
+        <!-- الشعار: يظهر إن وُجد الملف في مستودع الصور، وإلا ظهر البديل النصّي.
+             onerror يُخفي الصورة المكسورة ويُظهر البديل — فلا تظهر أيقونة صورة
+             محطّمة في وجه البياعة إن لم يُرفع الملف بعد. -->
+        <span class="logobox" id="logoBox">
+            <img id="logoImg" alt="Al Sheikha Style"
+                 src="https://raw.githubusercontent.com/tihou74/alsheikha-attendance-admin/main/al-sheikha-style-logo.png">
+            <span class="fallback hidden" id="logoFallback">AS</span>
+        </span>
+        <div>
+            <h1>Daily Sales</h1>
+            <span class="wordmark">Al Sheikha Style</span>
+            <p dir="rtl">الشيخة ستايل &mdash; تقرير المبيعات اليومي</p>
+        </div>
+    </header>
+
+    <p class="status" id="statusMsg"></p>
+
+    <!-- ================= 1) الدخول ================= -->
+    <div class="panel" id="stepLogin">
+        <h2>Sign in</h2>
+        <p class="ar" dir="rtl">اختاري اسمك واكتبي رقمك السري</p>
+        <label for="sellerSelect">Your name</label>
+        <select id="sellerSelect"><option value="">-- Loading... --</option></select>
+        <div style="height: var(--space-4);"></div>
+        <label for="pinInput">PIN code</label>
+        <input type="password" id="pinInput" maxlength="8" inputmode="numeric" placeholder="••••" autocomplete="off">
+        <div style="height: var(--space-4);"></div>
+        <button id="btnLogin">Continue</button>
+    </div>
+
+    <!-- ================= 2) اختيار المحل ================= -->
+    <!-- المحل يُختار في كل تقرير: البياعات لا يعملن في محل ثابت (قرار الإدارة)،
+         فربطُ بياعة بمحل واحد كان سيُسجّل مبيعات المحل الخطأ. -->
+    <div class="panel hidden" id="stepShop">
+        <h2>Which shop are you in today?</h2>
+        <p class="ar" dir="rtl">في أي محل تعملين اليوم؟ &mdash; يُختار في كل تقرير لأن المحل غير ثابت</p>
+        <div class="shopbtns" id="shopButtons"></div>
+        <div class="bar">
+            <button class="ghost" id="btnBackLogin">&#11013; Back</button>
+        </div>
+    </div>
+
+    <!-- ================= 3) النموذج ================= -->
+    <div class="hidden" id="stepForm">
+        <div class="panel">
+            <h2>Report details</h2>
+            <div style="display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin-bottom: var(--space-4);">
+                <span class="chip" id="chipShop">&mdash;</span>
+                <span class="chip" id="chipSeller">&mdash;</span>
+            </div>
+            <label for="repDate">Date</label>
+            <input type="date" id="repDate">
+        </div>
+
+        <!-- ---- مبيعات الشيخة ستايل ---- -->
+        <div class="panel">
+            <h2>Al Sheikha Style sales</h2>
+            <p class="ar" dir="rtl">العدد = كم قطعة بيعت &nbsp;·&nbsp; المبلغ = بالريال</p>
+            <table class="itbl">
+                <thead>
+                    <tr><th class="name">Item</th><th>Qty</th><th>Amount QAR</th></tr>
+                </thead>
+                <tbody id="itemsBody"></tbody>
+            </table>
+            <div class="sum">
+                <span class="k">Total pieces<small dir="rtl">مجموع القطع</small></span>
+                <span class="v" id="sumQty">0</span>
+            </div>
+            <div class="sum">
+                <span class="k">Total by item<small dir="rtl">المجموع بحسب النوع</small></span>
+                <span class="v" id="sumItemAmount">0.00</span>
+            </div>
+        </div>
+
+        <!-- ---- الدفع ---- -->
+        <div class="panel">
+            <h2>Payment</h2>
+            <p class="ar" dir="rtl">نفس المبيعات، مقسومة بطريقة الدفع</p>
+            <div class="two">
+                <div>
+                    <label for="cashSales">Cash sales</label>
+                    <input type="number" id="cashSales" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+                </div>
+                <div>
+                    <label for="cardSales">Card sales</label>
+                    <input type="number" id="cardSales" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+                </div>
+            </div>
+            <div class="sum">
+                <span class="k">Total sales<small dir="rtl">مجموع المبيعات</small></span>
+                <span class="v" id="sumTotalSales">0.00</span>
+            </div>
+            <!-- ⚠️ تحقّق حقيقي: «المجموع بحسب النوع» و«مجموع المبيعات» هما نفس
+                 المال مقسومًا مرتين، فيجب أن يتساويا. الفرق يعني أن أحد
+                 الرقمين خطأ، وتمريره يُفسد الإيرادات والستوك معًا. -->
+            <p class="status" id="matchMsg" style="margin: var(--space-3) 0 0;"></p>
+            <div style="height: var(--space-4);"></div>
+            <label for="cashOnHand">Cash on hand <span style="text-transform: none; font-weight: 400;" dir="rtl">— الموجود في الصندوق</span></label>
+            <input type="number" id="cashOnHand" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+        </div>
+
+        <!-- ---- شانتون ---- -->
+        <div class="panel">
+            <h2>Shanton (designer) — separate account</h2>
+            <p class="ar" dir="rtl">
+                شانتون تعرض عبايتها عندنا. من كل عباية تبيعها يأخذ المحل
+                <b id="perPieceNote">200</b> ريال فقط، والباقي دَينٌ لها.
+                ولذلك <b>لا تُجمع مبيعاتها مع مبيعات المحل</b>.
+            </p>
+            <table class="itbl">
+                <thead>
+                    <tr><th class="name">Shanton abaya</th><th>Qty</th><th>Amount QAR</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="name">Ready<small dir="rtl">بيع جاهز</small></td>
+                        <td class="q"><input type="number" id="shQtyReady" inputmode="numeric" step="1" min="0" placeholder="0"></td>
+                        <td class="a"><input type="number" id="shAmtReady" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></td>
+                    </tr>
+                    <tr>
+                        <td class="name">Order<small dir="rtl">طلب / تفصيل</small></td>
+                        <td class="q"><input type="number" id="shQtyOrder" inputmode="numeric" step="1" min="0" placeholder="0"></td>
+                        <td class="a"><input type="number" id="shAmtOrder" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="two" style="margin-top: var(--space-4);">
+                <div>
+                    <label for="shCash">Cash</label>
+                    <input type="number" id="shCash" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+                </div>
+                <div>
+                    <label for="shCard">Card</label>
+                    <input type="number" id="shCard" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+                </div>
+            </div>
+            <div class="sum">
+                <span class="k">Shanton pieces<small dir="rtl">عدد عباياتها</small></span>
+                <span class="v" id="shSumQty">0</span>
+            </div>
+            <div class="sum">
+                <span class="k">Shanton total sales<small dir="rtl">مجموع مبيعاتها</small></span>
+                <span class="v" id="shSumSales">0.00</span>
+            </div>
+            <div class="sum ours">
+                <span class="k">Our commission<small dir="rtl">عمولتنا &mdash; دخلٌ للمحل</small></span>
+                <span class="v" id="shCommission">0.00</span>
+            </div>
+            <div class="sum owed">
+                <span class="k">Due to Shanton<small dir="rtl">المستحق لشانتون &mdash; دَينٌ علينا</small></span>
+                <span class="v" id="shDue">0.00</span>
+            </div>
+            <p class="status" id="shWarn" style="margin: var(--space-3) 0 0;"></p>
+        </div>
+
+        <!-- ---- الزوار ---- -->
+        <div class="panel">
+            <h2>Walk-ins</h2>
+            <p class="ar" dir="rtl">عدد من دخل المحل اليوم</p>
+            <div class="two">
+                <div>
+                    <label for="walkLocal">Local</label>
+                    <input type="number" id="walkLocal" inputmode="numeric" step="1" min="0" placeholder="0">
+                </div>
+                <div>
+                    <label for="walkExpat">Expat</label>
+                    <input type="number" id="walkExpat" inputmode="numeric" step="1" min="0" placeholder="0">
+                </div>
+            </div>
+        </div>
+
+        <!-- ---- حركة البضاعة ---- -->
+        <div class="panel">
+            <h2>Stock movement</h2>
+            <p class="ar" dir="rtl">
+                أضيفي سطرًا فقط إن دخلت أو خرجت بضاعة اليوم. اتركيه فارغًا إن لم يحدث شيء.
+            </p>
+            <div class="mvform">
+                <div>
+                    <label for="mvKind">What happened</label>
+                    <select id="mvKind"></select>
+                </div>
+                <div>
+                    <label for="mvItem">Item</label>
+                    <select id="mvItem"></select>
+                </div>
+                <div id="mvShopWrap" class="hidden">
+                    <label for="mvShop">Which shop</label>
+                    <select id="mvShop"></select>
+                </div>
+                <div id="mvSupplierWrap" class="hidden">
+                    <label for="mvSupplier">Supplier name</label>
+                    <input type="text" id="mvSupplier" placeholder="Supplier">
+                </div>
+                <div>
+                    <label for="mvQty">How many</label>
+                    <input type="number" id="mvQty" inputmode="numeric" step="1" min="1" placeholder="0">
+                </div>
+                <div style="display: flex; align-items: flex-end;">
+                    <button class="ghost small" id="btnAddMove" style="width: 100%;">+ Add line</button>
+                </div>
+            </div>
+            <p class="status" id="mvMsg" style="margin: var(--space-3) 0 0;"></p>
+            <ul class="mvlist" id="mvList"></ul>
+        </div>
+
+        <!-- ---- ملاحظة ---- -->
+        <div class="panel">
+            <h2>Note</h2>
+            <p class="ar" dir="rtl">اكتبي ملاحظتك عن اليوم كما ترسلينها عادةً</p>
+            <textarea id="repNote" dir="auto" placeholder="How was the day? Anything management should know?"></textarea>
+        </div>
+
+        <div class="bar">
+            <button id="btnSubmit">Send report</button>
+            <button class="ghost" id="btnBackShop">&#11013; Change shop</button>
+        </div>
+        <p class="note">
+            Once sent, this report goes straight to management. You cannot open it again from here,
+            so please check the figures before sending.
+            <span dir="rtl">&mdash; بعد الإرسال لا يمكن فتح التقرير من هنا، فراجعي الأرقام قبل الإرسال.</span>
+        </p>
+    </div>
+
+    <!-- ================= 4) الملخّص ================= -->
+    <div class="panel hidden" id="stepDone">
+        <h2>Sent successfully</h2>
+        <p class="ar" dir="rtl">تم إرسال التقرير &mdash; هذا ملخّص ما أُرسل</p>
+        <div id="doneSummary"></div>
+        <a class="walink" id="waLink">Send a copy on WhatsApp</a>
+        <p class="note" id="waFallback"></p>
+        <div class="bar">
+            <button class="ghost" id="btnNewReport">New report</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import {
+        getFirestore, collection, addDoc, doc, getDoc, getDocs, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCWZb0GwAeMgLtJIfq3kuRfmEQ1POBNSp0",
+      authDomain: "attendance-system-f32d6.firebaseapp.com",
+      projectId: "attendance-system-f32d6",
+      storageBucket: "attendance-system-f32d6.firebasestorage.app",
+      messagingSenderId: "302261734220",
+      appId: "1:302261734220:web:50cb9e10965ed3ddcf1de9",
+      measurementId: "G-W88XGV8E1Q"
+    };
+
+    // نسخة مُسمّاة — انظر التحذير في رأس الملف. لا تحذف الاسم.
+    const app = initializeApp(firebaseConfig, "abaya");
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    // =====================================================================
+    // ثوابت العبايات
+    // ---------------------------------------------------------------------
+    // ⚠️ هذه الثوابت مكتوبة أيضًا في admin.html. المشروع بلا خطوة بناء ولا
+    // وحدات مشتركة، فلا سبيل لاستيرادها. أي تعديل هنا يجب أن يُنقل إلى هناك
+    // حرفيًّا، ويحرس التطابقَ اختبارٌ يقارن القائمتين نصًّا وترتيبًا.
+    // =====================================================================
+    const ABAYA_SHOPS = ['GULF MALL', 'VENDOME MALL', 'DOHA FESTIVAL CITY'];
+    const ABAYA_SHOPS_AR = {
+        'GULF MALL': 'جلف مول',
+        'VENDOME MALL': 'فندوم مول',
+        'DOHA FESTIVAL CITY': 'دوحة فيستفال سيتي'
+    };
+    // «طلب/تفصيل» للعباية فقط — بقية الأنواع بيع جاهز وحده (قرار الإدارة).
+    const ABAYA_ITEMS = [
+        { key: 'abayaReady', en: 'Abaya — ready',      ar: 'عباية — بيع جاهز' },
+        { key: 'abayaOrder', en: 'Abaya — order',      ar: 'عباية — طلب / تفصيل' },
+        { key: 'kaftan',     en: 'Kaftan',             ar: 'قفطان' },
+        { key: 'shela',      en: 'Shela',              ar: 'شيلا' },
+        { key: 'travel',     en: 'Travel Collection',  ar: 'ترافل كولكشن' },
+        { key: 'jalabiya',   en: 'Jalabiya',           ar: 'جلابية' }
+    ];
+    // أنواع البضاعة في حركة المخزون — بلا تفريق بين جاهز وطلب: الحركة قطعة.
+    const ABAYA_STOCK_ITEMS = [
+        { key: 'abaya',    en: 'Abaya',            ar: 'عباية' },
+        { key: 'kaftan',   en: 'Kaftan',           ar: 'قفطان' },
+        { key: 'shela',    en: 'Shela',            ar: 'شيلا' },
+        { key: 'travel',   en: 'Travel Collection', ar: 'ترافل كولكشن' },
+        { key: 'jalabiya', en: 'Jalabiya',         ar: 'جلابية' }
+    ];
+    const ABAYA_MOVE_KINDS = [
+        { key: 'out_to_shop',      en: 'Sent to another shop',       ar: 'خرجت إلى محل آخر',  needsShop: true,  sign: -1 },
+        { key: 'in_from_shop',     en: 'Received from another shop', ar: 'وصلت من محل آخر',   needsShop: true,  sign: +1 },
+        { key: 'in_from_workshop', en: 'Received from the workshop', ar: 'وصلت من الورشة',                      sign: +1 },
+        { key: 'in_from_supplier', en: 'Received from a supplier',   ar: 'وصلت من مورّد',    needsSupplier: true, sign: +1 }
+    ];
+    const SHANTON_DEFAULT_PER_PIECE = 200;
+    const ABAYA_DEFAULT_CARD_FEE_PCT = 1.5;
+
+    const LOCKOUT_MAX_ATTEMPTS = 5;
+    const LOCKOUT_WINDOW_MS = 5 * 60 * 1000;
+    // فرقٌ أقل من قرش لا يُعتبر اختلافًا: حساب الفاصلة العائمة ينتج 0.00000001
+    const CENT = 0.005;
+
+    let sellers = [];
+    let state = { sellerId: null, sellerName: null, shop: null };
+    let movements = [];
+    let rates = { cardFeePercent: ABAYA_DEFAULT_CARD_FEE_PCT, shantonPerPiece: SHANTON_DEFAULT_PER_PIECE };
+    let isSubmitting = false;
+    let lastReport = null;
+
+    const el = (id) => document.getElementById(id);
+    const money = (n) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    function todayISO() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    /** 15/09/2026 — نفس صيغة رسائل الإدارة */
+    function slashDate(iso) {
+        return iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '';
+    }
+    function showStatus(msg, kind) {
+        const s = el('statusMsg');
+        s.innerText = msg || '';
+        s.className = 'status' + (kind ? ' ' + kind : '');
+    }
+    function setMsg(id, msg, kind) {
+        const s = el(id);
+        if (!s) return;
+        s.innerText = msg || '';
+        s.className = 'status' + (kind ? ' ' + kind : '');
+    }
+    /** رقم غير سالب، والفراغ صفر. يُعيد null إن كان غير صالح. */
+    function num(id, integer) {
+        const raw = (el(id) && el(id).value || '').trim();
+        if (raw === '') return 0;
+        const v = Number(raw);
+        if (!isFinite(v) || v < 0) return null;
+        return integer ? Math.round(v) : v;
+    }
+
+    function showStep(which) {
+        ['stepLogin', 'stepShop', 'stepForm', 'stepDone'].forEach(id => {
+            el(id).classList.toggle('hidden', id !== which);
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ---- قفل الرقم السري: نفس منطق صفحة الموظفين ------------------------
+    // حماية لكل متصفح لا حماية حقيقية على الخادم. الحاجز الفعلي هو القواعد
+    // مع Firebase App Check.
+    function getLockout(id) {
+        try {
+            const raw = localStorage.getItem(`abaya_pin_attempts_${id}`);
+            return raw ? JSON.parse(raw) : { count: 0, lockedUntil: 0 };
+        } catch (e) { return { count: 0, lockedUntil: 0 }; }
+    }
+    function setLockout(id, s) {
+        try { localStorage.setItem(`abaya_pin_attempts_${id}`, JSON.stringify(s)); } catch (e) {}
+    }
+    function checkLockout(id) {
+        const s = getLockout(id);
+        if (s.lockedUntil && Date.now() < s.lockedUntil) {
+            return { locked: true, secondsLeft: Math.ceil((s.lockedUntil - Date.now()) / 1000) };
+        }
+        return { locked: false };
+    }
+    function recordAttempt(id, success) {
+        if (success) { setLockout(id, { count: 0, lockedUntil: 0 }); return; }
+        const s = getLockout(id);
+        const count = (s.count || 0) + 1;
+        setLockout(id, count >= LOCKOUT_MAX_ATTEMPTS
+            ? { count, lockedUntil: Date.now() + LOCKOUT_WINDOW_MS }
+            : { count, lockedUntil: 0 });
+    }
+    async function verifyPin(sellerId, entered) {
+        try {
+            const snap = await getDoc(doc(db, "abaya_seller_pins", sellerId));
+            if (!snap.exists()) return false;
+            return String(snap.data().pin) === String(entered);
+        } catch (e) {
+            console.error("PIN verification failed:", e);
+            return false;
+        }
+    }
+
+    // =====================================================================
+    // بناء النموذج
+    // =====================================================================
+    function buildItemsTable() {
+        el('itemsBody').innerHTML = ABAYA_ITEMS.map(it => `
+            <tr>
+                <td class="name">${escapeHtml(it.en)}<small dir="rtl">${escapeHtml(it.ar)}</small></td>
+                <td class="q"><input type="number" id="qty_${it.key}" inputmode="numeric" step="1" min="0" placeholder="0"></td>
+                <td class="a"><input type="number" id="amt_${it.key}" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></td>
+            </tr>`).join('');
+        ABAYA_ITEMS.forEach(it => {
+            el(`qty_${it.key}`).addEventListener('input', recalc);
+            el(`amt_${it.key}`).addEventListener('input', recalc);
+        });
+    }
+
+    function buildShopButtons() {
+        el('shopButtons').innerHTML = ABAYA_SHOPS.map((s, i) =>
+            `<button type="button" data-shop="${escapeHtml(s)}">${escapeHtml(s)}<br>
+             <span style="font-weight:400; font-size:var(--text-xs);" dir="rtl">${escapeHtml(ABAYA_SHOPS_AR[s] || '')}</span></button>`
+        ).join('');
+        el('shopButtons').querySelectorAll('button[data-shop]').forEach(b => {
+            b.addEventListener('click', () => pickShop(b.dataset.shop));
+        });
+    }
+
+    function buildMoveSelects() {
+        el('mvKind').innerHTML = ABAYA_MOVE_KINDS.map(k =>
+            `<option value="${k.key}">${escapeHtml(k.en)} — ${escapeHtml(k.ar)}</option>`).join('');
+        el('mvItem').innerHTML = ABAYA_STOCK_ITEMS.map(i =>
+            `<option value="${i.key}">${escapeHtml(i.en)} — ${escapeHtml(i.ar)}</option>`).join('');
+        el('mvKind').addEventListener('change', syncMoveFields);
+        syncMoveFields();
+    }
+
+    /** يُظهر خانة المحل أو المورّد بحسب نوع الحركة، ويُخفي ما لا يلزم. */
+    function syncMoveFields() {
+        const kind = ABAYA_MOVE_KINDS.find(k => k.key === el('mvKind').value);
+        const needsShop = !!(kind && kind.needsShop);
+        const needsSupplier = !!(kind && kind.needsSupplier);
+        el('mvShopWrap').classList.toggle('hidden', !needsShop);
+        el('mvSupplierWrap').classList.toggle('hidden', !needsSupplier);
+        if (needsShop) {
+            // المحل الحالي يُستبعد: لا تنتقل بضاعة من المحل إلى نفسه.
+            const others = ABAYA_SHOPS.filter(s => s !== state.shop);
+            el('mvShop').innerHTML = others.map(s =>
+                `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+        }
+    }
+
+    // =====================================================================
+    // الحساب اللحظي
+    // =====================================================================
+    function readItems() {
+        const out = { qty: {}, amt: {}, totalQty: 0, totalAmount: 0, bad: null };
+        for (const it of ABAYA_ITEMS) {
+            const q = num(`qty_${it.key}`, true);
+            const a = num(`amt_${it.key}`, false);
+            if (q === null || a === null) { out.bad = it.en; return out; }
+            out.qty[it.key] = q;
+            out.amt[it.key] = a;
+            out.totalQty += q;
+            out.totalAmount += a;
+        }
+        return out;
+    }
+
+    function readShanton() {
+        const qr = num('shQtyReady', true), qo = num('shQtyOrder', true);
+        const ar = num('shAmtReady', false), ao = num('shAmtOrder', false);
+        const cash = num('shCash', false), card = num('shCard', false);
+        if ([qr, qo, ar, ao, cash, card].some(v => v === null)) return { bad: true };
+        const pieces = qr + qo;
+        // مجموع مبيعاتها: من طريقة الدفع إن كُتبت، وإلا من مبالغ الأنواع.
+        // البياعة قد تكتب إحداهما فقط، ولا نُلزمها بالاثنتين هنا.
+        const byPay = cash + card;
+        const byItem = ar + ao;
+        const total = byPay > CENT ? byPay : byItem;
+        const perPiece = Number(rates.shantonPerPiece) || SHANTON_DEFAULT_PER_PIECE;
+        const commission = pieces * perPiece;
+        return {
+            qtyReady: qr, qtyOrder: qo, pieces,
+            amtReady: ar, amtOrder: ao, cash, card,
+            byPay, byItem, total, perPiece,
+            commission,
+            // الدَّين لا يكون سالبًا: لو نقص المُحصَّل عن العمولة فذلك خطأ
+            // إدخال يُنبَّه عليه أدناه، ولا يُحوَّل إلى رقم سالب بهدوء.
+            due: Math.max(0, total - commission)
+        };
+    }
+
+    function recalc() {
+        const items = readItems();
+        el('sumQty').innerText = items.bad ? '—' : String(items.totalQty);
+        el('sumItemAmount').innerText = items.bad ? '—' : money(items.totalAmount);
+
+        const cash = num('cashSales', false), card = num('cardSales', false);
+        const totalSales = (cash === null || card === null) ? null : cash + card;
+        el('sumTotalSales').innerText = totalSales === null ? '—' : money(totalSales);
+
+        // ⚠️ التحقّق الصحيح: مالٌ مقابل مال. (المجموع بحسب النوع) يجب أن يساوي
+        // (نقدًا + شبكة). ولا يُقارَن أبدًا بمجموع القطع — فذاك عدد لا ريالات،
+        // ومقارنتهما كانت ستمنع كل تقرير صحيح من الإرسال.
+        if (items.bad || totalSales === null) {
+            setMsg('matchMsg', '', '');
+        } else if (items.totalAmount <= CENT && totalSales <= CENT) {
+            setMsg('matchMsg', '', '');
+        } else if (items.totalAmount <= CENT) {
+            setMsg('matchMsg', 'Amounts per item are empty. Fill them so management knows which item brought the money.', 'warn');
+        } else if (Math.abs(items.totalAmount - totalSales) > CENT) {
+            const d = items.totalAmount - totalSales;
+            setMsg('matchMsg',
+                `These two totals must match. By item: ${money(items.totalAmount)} · by payment: ${money(totalSales)} `
+                + `— a difference of ${money(Math.abs(d))} QAR. Check one of them.`, 'err');
+        } else {
+            setMsg('matchMsg', 'The two totals match.', 'ok');
+        }
+
+        const sh = readShanton();
+        if (sh.bad) {
+            ['shSumQty', 'shSumSales', 'shCommission', 'shDue'].forEach(id => el(id).innerText = '—');
+            setMsg('shWarn', '', '');
+        } else {
+            el('shSumQty').innerText = String(sh.pieces);
+            el('shSumSales').innerText = money(sh.total);
+            el('shCommission').innerText = money(sh.commission);
+            el('shDue').innerText = money(sh.due);
+            // حارس حقيقي: عمولةٌ أكبر من المُحصَّل مستحيلة. إمّا العدد خطأ
+            // وإمّا المبلغ، وتمريرها يجعل «المستحق لشانتون» صفرًا بلا سبب.
+            if (sh.pieces > 0 && sh.total <= CENT) {
+                setMsg('shWarn', `${sh.pieces} piece(s) entered but no amount. Fill Shanton's cash or card.`, 'err');
+            } else if (sh.commission - sh.total > CENT) {
+                setMsg('shWarn',
+                    `Our commission (${money(sh.commission)}) is more than what was collected (${money(sh.total)}). `
+                    + `Check the number of pieces or the amount.`, 'err');
+            } else if (sh.pieces === 0 && sh.total > CENT) {
+                setMsg('shWarn', 'An amount without a piece count — the commission cannot be calculated. Enter how many abayas.', 'err');
+            } else {
+                setMsg('shWarn', '', '');
+            }
+        }
+    }
+
+    // =====================================================================
+    // حركة البضاعة
+    // =====================================================================
+    function renderMoves() {
+        if (!movements.length) {
+            el('mvList').innerHTML = '';
+            return;
+        }
+        el('mvList').innerHTML = movements.map((m, i) => {
+            const kind = ABAYA_MOVE_KINDS.find(k => k.key === m.kind);
+            const item = ABAYA_STOCK_ITEMS.find(x => x.key === m.item);
+            const where = m.shop ? ` — ${escapeHtml(m.shop)}` : (m.supplier ? ` — ${escapeHtml(m.supplier)}` : '');
+            return `<li>
+                <span class="txt">${kind && kind.sign < 0 ? '&minus;' : '+'}<b>${m.qty}</b>
+                    ${escapeHtml(item ? item.en : m.item)} · ${escapeHtml(kind ? kind.en : m.kind)}${where}</span>
+                <button type="button" data-i="${i}">Remove</button>
+            </li>`;
+        }).join('');
+        el('mvList').querySelectorAll('button[data-i]').forEach(b => {
+            b.addEventListener('click', () => {
+                movements.splice(Number(b.dataset.i), 1);
+                renderMoves();
+            });
+        });
+    }
+
+    el('btnAddMove').addEventListener('click', () => {
+        const kind = ABAYA_MOVE_KINDS.find(k => k.key === el('mvKind').value);
+        const item = el('mvItem').value;
+        const qty = num('mvQty', true);
+        if (!kind) { setMsg('mvMsg', 'Choose what happened.', 'err'); return; }
+        if (qty === null || qty <= 0) { setMsg('mvMsg', 'Enter how many pieces (1 or more).', 'err'); return; }
+        const line = { kind: kind.key, item, qty };
+        if (kind.needsShop) {
+            const shop = el('mvShop').value;
+            if (!shop) { setMsg('mvMsg', 'Choose the other shop.', 'err'); return; }
+            line.shop = shop;
+        }
+        if (kind.needsSupplier) {
+            const sup = (el('mvSupplier').value || '').trim();
+            if (!sup) { setMsg('mvMsg', "Write the supplier's name.", 'err'); return; }
+            line.supplier = sup;
+        }
+        movements.push(line);
+        el('mvQty').value = '';
+        el('mvSupplier').value = '';
+        setMsg('mvMsg', 'Line added.', 'ok');
+        renderMoves();
+    });
+
+    // =====================================================================
+    // التحميل والدخول
+    // =====================================================================
+    async function loadSellers() {
+        try {
+            const snap = await getDocs(collection(db, "abaya_sellers"));
+            sellers = [];
+            snap.forEach(d => {
+                const v = d.data();
+                if (v.active === false) return;   // مَن تركت العمل تُخفى
+                sellers.push({ id: d.id, name: v.name || d.id });
+            });
+            sellers.sort((a, b) => a.name.localeCompare(b.name));
+            const sel = el('sellerSelect');
+            sel.innerHTML = sellers.length
+                ? '<option value="">-- Choose your name --</option>'
+                    + sellers.map(s => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)}</option>`).join('')
+                : '<option value="">-- No saleswoman added yet --</option>';
+            if (!sellers.length) {
+                showStatus('No saleswoman has been added yet. Ask management to add you from the dashboard.', 'err');
+            }
+        } catch (e) {
+            console.error("Could not load the saleswomen:", e);
+            el('sellerSelect').innerHTML = '<option value="">-- Could not load --</option>';
+            showStatus('Could not load the list of names: ' + e.message, 'err');
+        }
+    }
+
+    async function loadRates() {
+        try {
+            const snap = await getDoc(doc(db, "settings", "abaya_rates"));
+            if (snap.exists()) {
+                const d = snap.data();
+                const card = Number(d.cardFeePercent);
+                const per = Number(d.shantonPerPiece);
+                rates = {
+                    cardFeePercent: isFinite(card) && card >= 0 ? card : ABAYA_DEFAULT_CARD_FEE_PCT,
+                    shantonPerPiece: isFinite(per) && per >= 0 ? per : SHANTON_DEFAULT_PER_PIECE
+                };
+            }
+        } catch (e) {
+            // قيمة افتراضية أفضل من شاشة معطّلة: البياعة لا تُدخل النسبة أصلًا.
+            console.error("Could not load the abaya rates, using defaults:", e);
+        }
+        el('perPieceNote').innerText = String(rates.shantonPerPiece);
+    }
+
+    el('btnLogin').addEventListener('click', async () => {
+        const id = el('sellerSelect').value;
+        const pin = (el('pinInput').value || '').trim();
+        if (!id) { showStatus('Choose your name first.', 'err'); return; }
+        if (!pin) { showStatus('Enter your PIN code.', 'err'); return; }
+
+        const lock = checkLockout(id);
+        if (lock.locked) {
+            showStatus(`Too many wrong PIN attempts. Try again in ${lock.secondsLeft}s.`, 'err');
+            return;
+        }
+        el('btnLogin').disabled = true;
+        showStatus('Checking your PIN...', 'load');
+        const ok = await verifyPin(id, pin);
+        recordAttempt(id, ok);
+        el('btnLogin').disabled = false;
+        if (!ok) { showStatus('Wrong PIN code.', 'err'); return; }
+
+        const s = sellers.find(x => x.id === id);
+        state.sellerId = id;
+        state.sellerName = s ? s.name : id;
+        el('pinInput').value = '';
+        showStatus('', '');
+        showStep('stepShop');
+    });
+
+    el('btnBackLogin').addEventListener('click', () => {
+        state = { sellerId: null, sellerName: null, shop: null };
+        showStep('stepLogin');
+    });
+
+    function pickShop(shop) {
+        state.shop = shop;
+        el('chipShop').innerText = shop;
+        el('chipSeller').innerText = state.sellerName || '';
+        if (!el('repDate').value) el('repDate').value = todayISO();
+        syncMoveFields();
+        recalc();
+        showStep('stepForm');
+    }
+    el('btnBackShop').addEventListener('click', () => showStep('stepShop'));
+
+    // =====================================================================
+    // الإرسال
+    // =====================================================================
+    el('btnSubmit').addEventListener('click', async () => {
+        if (isSubmitting) return;   // حماية من الضغط المزدوج مثل صفحة الحضور
+        showStatus('', '');
+
+        if (!state.sellerId || !state.shop) {
+            showStatus('Session expired. Please sign in again.', 'err');
+            showStep('stepLogin');
+            return;
+        }
+        const date = el('repDate').value;
+        if (!date) { showStatus('Choose the report date.', 'err'); return; }
+        if (date > todayISO()) { showStatus('The date cannot be in the future.', 'err'); return; }
+
+        const items = readItems();
+        if (items.bad) { showStatus(`"${items.bad}" must be a number of zero or more.`, 'err'); return; }
+
+        const cash = num('cashSales', false), card = num('cardSales', false);
+        if (cash === null || card === null) { showStatus('Cash and card must be numbers of zero or more.', 'err'); return; }
+        const totalSales = cash + card;
+        const cashOnHand = num('cashOnHand', false);
+        if (cashOnHand === null) { showStatus('Cash on hand must be a number of zero or more.', 'err'); return; }
+
+        const sh = readShanton();
+        if (sh.bad) { showStatus("Shanton's figures must be numbers of zero or more.", 'err'); return; }
+
+        const walkLocal = num('walkLocal', true), walkExpat = num('walkExpat', true);
+        if (walkLocal === null || walkExpat === null) { showStatus('Walk-ins must be whole numbers.', 'err'); return; }
+
+        // ⚠️ حارس التساوي: مالٌ مقابل مال. نمنع الإرسال فقط إذا كُتبت مبالغ
+        // الأنواع فعلًا واختلفت — فمن كتبت المجموع وحده لا تُحبَس هنا، ولا
+        // يُفقد تقريرها.
+        if (items.totalAmount > CENT && Math.abs(items.totalAmount - totalSales) > CENT) {
+            showStatus(
+                `The two totals do not match: by item ${money(items.totalAmount)} but by payment ${money(totalSales)} QAR. `
+                + `Fix one of them before sending.`, 'err');
+            el('matchMsg').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+        if (sh.pieces > 0 && sh.total <= CENT) {
+            showStatus("Shanton has pieces but no amount. Fill her cash or card.", 'err'); return;
+        }
+        if (sh.pieces === 0 && sh.total > CENT) {
+            showStatus("Shanton has an amount but no piece count. Enter how many abayas she sold.", 'err'); return;
+        }
+        if (sh.commission - sh.total > CENT) {
+            showStatus(`Shanton: our commission (${money(sh.commission)}) is more than what was collected (${money(sh.total)}). Check the pieces or the amount.`, 'err');
+            return;
+        }
+        // تقرير فارغ تمامًا لا معنى لإرساله، وقد يكون ضغطًا بالخطأ.
+        const nothing = items.totalQty === 0 && items.totalAmount <= CENT && totalSales <= CENT
+            && sh.pieces === 0 && sh.total <= CENT && !movements.length
+            && walkLocal === 0 && walkExpat === 0 && !(el('repNote').value || '').trim();
+        if (nothing) {
+            showStatus('The report is completely empty. Enter the day\'s figures, or at least a note.', 'err');
+            return;
+        }
+
+        isSubmitting = true;
+        el('btnSubmit').disabled = true;
+        showStatus('Sending the report...', 'load');
+
+        const now = new Date();
+        const report = {
+            shop: state.shop,
+            date,
+            sellerId: state.sellerId,
+            sellerName: state.sellerName,
+
+            // أعداد القطع لكل نوع — عليها يُبنى الستوك
+            qtyAbayaReady: items.qty.abayaReady, qtyAbayaOrder: items.qty.abayaOrder,
+            qtyKaftan: items.qty.kaftan, qtyShela: items.qty.shela,
+            qtyTravel: items.qty.travel, qtyJalabiya: items.qty.jalabiya,
+            totalQty: items.totalQty,
+
+            // مبالغ كل نوع — عليها يُبنى «أي نوع يجلب أكثر مال»
+            amtAbayaReady: items.amt.abayaReady, amtAbayaOrder: items.amt.abayaOrder,
+            amtKaftan: items.amt.kaftan, amtShela: items.amt.shela,
+            amtTravel: items.amt.travel, amtJalabiya: items.amt.jalabiya,
+            totalItemAmount: items.totalAmount,
+
+            cashSales: cash, cardSales: card, totalSales, cashOnHand,
+
+            // شانتون — حسابٌ منفصل تمامًا. لا يُجمع أي رقم منها مع مبيعات
+            // المحل: دخل المحل هو shCommission وحده، والباقي دَينٌ لها.
+            shQtyReady: sh.qtyReady, shQtyOrder: sh.qtyOrder, shTotalQty: sh.pieces,
+            shAmtReady: sh.amtReady, shAmtOrder: sh.amtOrder,
+            shCash: sh.cash, shCard: sh.card, shTotalSales: sh.total,
+            shPerPiece: sh.perPiece,
+            shCommission: sh.commission,
+            shDue: sh.due,
+
+            walkInsLocal: walkLocal, walkInsExpat: walkExpat,
+            movements: movements.slice(),
+            note: (el('repNote').value || '').trim(),
+
+            submittedAt: now.toISOString(),
+            deviceTz: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })()
+        };
+
+        try {
+            await addDoc(collection(db, "abaya_sales_reports"), {
+                ...report,
+                timestamp: serverTimestamp(),
+                // ساعة الخادم: ساعة الجهاز قابلة للتغيير، وهذا الحقل هو المرجع
+                // في اللوحة كما في نظام الحضور.
+                serverTime: serverTimestamp()
+            });
+            lastReport = report;
+            showStatus('', '');
+            showSummary(report);
+            resetForm();
+            showStep('stepDone');
+        } catch (e) {
+            console.error("Could not send the report:", e);
+            showStatus('Could not send the report. Check your internet connection and try again.', 'err');
+        } finally {
+            isSubmitting = false;
+            el('btnSubmit').disabled = false;
+        }
+    });
+
+    /** جهاز مشترك بين البياعات: نُفرّغ النموذج فورًا فلا تُرسل أرقام محل لمحل آخر. */
+    function resetForm() {
+        ABAYA_ITEMS.forEach(it => { el(`qty_${it.key}`).value = ''; el(`amt_${it.key}`).value = ''; });
+        ['cashSales', 'cardSales', 'cashOnHand', 'shQtyReady', 'shQtyOrder', 'shAmtReady',
+         'shAmtOrder', 'shCash', 'shCard', 'walkLocal', 'walkExpat', 'mvQty', 'mvSupplier'
+        ].forEach(id => { if (el(id)) el(id).value = ''; });
+        el('repNote').value = '';
+        movements = [];
+        renderMoves();
+        setMsg('matchMsg', '', ''); setMsg('shWarn', '', ''); setMsg('mvMsg', '', '');
+        recalc();
+    }
+
+    // =====================================================================
+    // الملخّص ورسالة الواتساب
+    // =====================================================================
+    function buildWhatsAppText(r) {
+        const L = [];
+        L.push(`*AL SHEIKHA STYLE — DAILY SALES*`);
+        L.push(`${r.shop}`);
+        L.push(slashDate(r.date));
+        L.push('');
+        ABAYA_ITEMS.forEach(it => {
+            const q = r[`qty${it.key.charAt(0).toUpperCase()}${it.key.slice(1)}`];
+            const a = r[`amt${it.key.charAt(0).toUpperCase()}${it.key.slice(1)}`];
+            if (q || a > 0) L.push(`${it.en}: ${q} pc · ${money(a)} QAR`);
+        });
+        L.push('');
+        L.push(`Total pieces: ${r.totalQty}`);
+        L.push(`Cash: ${money(r.cashSales)} QAR`);
+        L.push(`Card: ${money(r.cardSales)} QAR`);
+        L.push(`*Total sales: ${money(r.totalSales)} QAR*`);
+        L.push(`Cash on hand: ${money(r.cashOnHand)} QAR`);
+        if (r.shTotalQty > 0 || r.shTotalSales > 0) {
+            L.push('');
+            L.push(`*SHANTON (designer)*`);
+            L.push(`Abayas sold: ${r.shTotalQty} pc`);
+            L.push(`Collected: ${money(r.shTotalSales)} QAR`);
+            L.push(`Our commission: ${money(r.shCommission)} QAR`);
+            L.push(`Due to Shanton: ${money(r.shDue)} QAR`);
+        }
+        L.push('');
+        L.push(`Walk-ins: ${r.walkInsLocal} local · ${r.walkInsExpat} expat`);
+        if (r.movements.length) {
+            L.push('');
+            L.push('*Stock movement*');
+            r.movements.forEach(m => {
+                const k = ABAYA_MOVE_KINDS.find(x => x.key === m.kind);
+                const it = ABAYA_STOCK_ITEMS.find(x => x.key === m.item);
+                L.push(`${k && k.sign < 0 ? '-' : '+'}${m.qty} ${it ? it.en : m.item} · ${k ? k.en : m.kind}`
+                    + (m.shop ? ` (${m.shop})` : m.supplier ? ` (${m.supplier})` : ''));
+            });
+        }
+        if (r.note) { L.push(''); L.push(`Note: ${r.note}`); }
+        L.push('');
+        L.push(`Sent by: ${r.sellerName}`);
+        return L.join('\n');
+    }
+
+    function showSummary(r) {
+        const rows = [];
+        const add = (k, v) => rows.push(`<div class="sumrow"><span>${escapeHtml(k)}</span><span>${escapeHtml(v)}</span></div>`);
+        add('Shop', r.shop);
+        add('Date', slashDate(r.date));
+        add('Total pieces', String(r.totalQty));
+        add('Cash', money(r.cashSales) + ' QAR');
+        add('Card', money(r.cardSales) + ' QAR');
+        add('Total sales', money(r.totalSales) + ' QAR');
+        add('Cash on hand', money(r.cashOnHand) + ' QAR');
+        if (r.shTotalQty > 0 || r.shTotalSales > 0) {
+            add('Shanton pieces', String(r.shTotalQty));
+            add('Our commission', money(r.shCommission) + ' QAR');
+            add('Due to Shanton', money(r.shDue) + ' QAR');
+        }
+        add('Walk-ins', `${r.walkInsLocal} local · ${r.walkInsExpat} expat`);
+        if (r.movements.length) add('Stock lines', String(r.movements.length));
+        el('doneSummary').innerHTML = rows.join('');
+
+        // واتساب: المخطط الأصلي على الهاتف لا wa.me — الأخير يمرّ بصفحة تحويل
+        // قد تنتهي في واتساب الويب. وبلا رقم حتى تُتاح المجموعات في المشاركة.
+        const text = buildWhatsAppText(r);
+        const encoded = encodeURIComponent(text);
+        const webUrl = `https://wa.me/?text=${encoded}`;
+        const isPhone = /android|iphone|ipad|ipod|iemobile|blackberry|opera mini|webos/i.test(navigator.userAgent || '');
+        const link = el('waLink');
+        if (isPhone) {
+            link.href = `whatsapp://send?text=${encoded}`;
+            link.removeAttribute('target');   // مخطط مخصّص في تبويب جديد يترك تبويبًا فارغًا
+        } else {
+            link.href = webUrl;
+            link.target = '_blank';
+            link.rel = 'noopener';
+        }
+        // على الهاتف بلا واتساب مثبَّت لا يحدث شيء عند الضغط بلا أي إشعار.
+        el('waFallback').innerHTML = isPhone
+            ? `Nothing happens when you tap? <a href="${escapeHtml(webUrl)}" target="_blank" rel="noopener">open WhatsApp in the browser</a>.`
+            : '';
+    }
+
+    el('btnNewReport').addEventListener('click', () => {
+        // يعود إلى اختيار المحل لا إلى الدخول: البياعة نفسها قد تُرسل عن محل
+        // آخر في نفس اليوم، ولا سبب لإعادة الرقم السري.
+        showStep('stepShop');
+    });
+
+    // =====================================================================
+    // البداية
+    // =====================================================================
+    buildItemsTable();
+    buildShopButtons();
+    buildMoveSelects();
+    ['cashSales', 'cardSales', 'shQtyReady', 'shQtyOrder', 'shAmtReady', 'shAmtOrder',
+     'shCash', 'shCard'].forEach(id => el(id).addEventListener('input', recalc));
+    el('repDate').value = todayISO();
+    el('repDate').max = todayISO();
+
+    // دخول مجهول قبل أي قراءة، فالقواعد تطلب request.auth != null.
+    signInAnonymously(auth)
+        .then(async () => {
+            await Promise.all([loadSellers(), loadRates()]);
+            recalc();
+        })
+        .catch(err => {
+            console.error("Anonymous sign-in failed:", err);
+            showStatus('Could not connect securely. Check your internet connection and refresh.', 'err');
+        });
+
+    // الشعار: إن لم يُرفع ملفه بعد نُخفي الصورة ونُظهر البديل النصّي، فلا تظهر
+    // أيقونة صورة محطّمة. ومتى رُفع الملف ظهر تلقائيًّا بلا تعديل كود.
+    el('logoImg').addEventListener('error', () => {
+        el('logoImg').classList.add('hidden');
+        el('logoFallback').classList.remove('hidden');
+        el('logoBox').classList.add('nologo');
+    });
+</script>
+
+<script>
+    // خدمة العمل: تُخزّن القشرة فقط ليعمل الفتح بلا شبكة. لا تُخزَّن أي بيانات.
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').catch(function () { /* غير حرج */ });
+    }
+</script>
+</body>
+</html>
