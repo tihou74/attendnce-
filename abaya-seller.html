@@ -284,7 +284,7 @@
         <div>
             <h1>Daily Sales</h1>
             <span class="wordmark">Al Sheikha Style</span>
-            <p dir="rtl">الشيخة ستايل &mdash; تقرير المبيعات اليومي</p>
+            <p>Al Sheikha Style &mdash; daily sales report</p>
         </div>
     </header>
 
@@ -293,7 +293,7 @@
     <!-- ================= 1) الدخول ================= -->
     <div class="panel" id="stepLogin">
         <h2>Sign in</h2>
-        <p class="ar" dir="rtl">اختاري اسمك واكتبي رقمك السري</p>
+        <p class="ar">Choose your name and enter your PIN code</p>
         <label for="sellerSelect">Your name</label>
         <select id="sellerSelect"><option value="">-- Loading... --</option></select>
         <div style="height: var(--space-4);"></div>
@@ -308,7 +308,7 @@
          فربطُ بياعة بمحل واحد كان سيُسجّل مبيعات المحل الخطأ. -->
     <div class="panel hidden" id="stepShop">
         <h2>Which shop are you in today?</h2>
-        <p class="ar" dir="rtl">في أي محل تعملين اليوم؟ &mdash; يُختار في كل تقرير لأن المحل غير ثابت</p>
+        <p class="ar">Pick it every time &mdash; you are not tied to one shop</p>
         <div class="shopbtns" id="shopButtons"></div>
         <div class="bar">
             <button class="ghost" id="btnBackLogin">&#11013; Back</button>
@@ -330,7 +330,7 @@
         <!-- ---- مبيعات الشيخة ستايل ---- -->
         <div class="panel">
             <h2>Al Sheikha Style sales</h2>
-            <p class="ar" dir="rtl">العدد = كم قطعة بيعت &nbsp;·&nbsp; المبلغ = بالريال</p>
+            <p class="ar">QTY = how many pieces were sold &nbsp;·&nbsp; AMOUNT = in Qatari Riyals</p>
             <table class="itbl">
                 <thead>
                     <tr><th class="name">Item</th><th>Qty</th><th>Amount QAR</th></tr>
@@ -338,11 +338,11 @@
                 <tbody id="itemsBody"></tbody>
             </table>
             <div class="sum">
-                <span class="k">Total pieces<small dir="rtl">مجموع القطع</small></span>
+                <span class="k">Total pieces</span>
                 <span class="v" id="sumQty">0</span>
             </div>
             <div class="sum">
-                <span class="k">Total by item<small dir="rtl">المجموع بحسب النوع</small></span>
+                <span class="k">Total by item<small>added up from the amounts above</small></span>
                 <span class="v" id="sumItemAmount">0.00</span>
             </div>
         </div>
@@ -350,7 +350,7 @@
         <!-- ---- الدفع ---- -->
         <div class="panel">
             <h2>Payment</h2>
-            <p class="ar" dir="rtl">نفس المبيعات، مقسومة بطريقة الدفع</p>
+            <p class="ar">The same sales, split by how the customer paid</p>
             <div class="two">
                 <div>
                     <label for="cashSales">Cash sales</label>
@@ -362,7 +362,7 @@
                 </div>
             </div>
             <div class="sum">
-                <span class="k">Total sales<small dir="rtl">مجموع المبيعات</small></span>
+                <span class="k">Total sales<small>cash + card</small></span>
                 <span class="v" id="sumTotalSales">0.00</span>
             </div>
             <!-- ⚠️ تحقّق حقيقي: «المجموع بحسب النوع» و«مجموع المبيعات» هما نفس
@@ -370,7 +370,7 @@
                  الرقمين خطأ، وتمريره يُفسد الإيرادات والستوك معًا. -->
             <p class="status" id="matchMsg" style="margin: var(--space-3) 0 0;"></p>
             <div style="height: var(--space-4);"></div>
-            <label for="cashOnHand">Cash on hand <span style="text-transform: none; font-weight: 400;" dir="rtl">— الموجود في الصندوق</span></label>
+            <label for="cashOnHand">Cash on hand <span style="text-transform: none; font-weight: 400;">&mdash; what is in the till now</span></label>
             <input type="number" id="cashOnHand" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
         </div>
 
@@ -381,9 +381,9 @@
              فيها معروضٌ لكل من يفتح الرابط. تكتب البياعة ما باعته فقط. -->
         <div class="panel hidden" id="shantonPanel">
             <h2>Shanton (designer) — recorded separately</h2>
-            <p class="ar" dir="rtl">
-                شانتون ديزاينر تعرض عبايتها في هذا المحل. سجّلي مبيعاتها هنا
-                <b>منفصلة عن مبيعات المحل</b> — لا تجمعيها مع الأرقام أعلاه.
+            <p class="ar">
+                Shanton is a designer whose abayas are displayed in this shop.
+                Enter her sales here, <b>separately</b> &mdash; do not add them to the shop's figures above.
             </p>
             <table class="itbl">
                 <thead>
@@ -391,12 +391,12 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="name">Ready<small dir="rtl">بيع جاهز</small></td>
+                        <td class="name">Ready<small>sold off the rail</small></td>
                         <td class="q"><input type="number" id="shQtyReady" inputmode="numeric" step="1" min="0" placeholder="0"></td>
                         <td class="a"><input type="number" id="shAmtReady" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></td>
                     </tr>
                     <tr>
-                        <td class="name">Order<small dir="rtl">طلب / تفصيل</small></td>
+                        <td class="name">Order<small>made to order</small></td>
                         <td class="q"><input type="number" id="shQtyOrder" inputmode="numeric" step="1" min="0" placeholder="0"></td>
                         <td class="a"><input type="number" id="shAmtOrder" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></td>
                     </tr>
@@ -413,11 +413,11 @@
                 </div>
             </div>
             <div class="sum">
-                <span class="k">Shanton pieces<small dir="rtl">عدد عباياتها</small></span>
+                <span class="k">Shanton pieces<small>how many of her abayas were sold</small></span>
                 <span class="v" id="shSumQty">0</span>
             </div>
             <div class="sum">
-                <span class="k">Shanton total sales<small dir="rtl">مجموع مبيعاتها</small></span>
+                <span class="k">Shanton total sales<small>cash + card for her abayas</small></span>
                 <span class="v" id="shSumSales">0.00</span>
             </div>
             <p class="status" id="shWarn" style="margin: var(--space-3) 0 0;"></p>
@@ -426,7 +426,7 @@
         <!-- ---- الزوار ---- -->
         <div class="panel">
             <h2>Walk-ins</h2>
-            <p class="ar" dir="rtl">عدد من دخل المحل اليوم</p>
+            <p class="ar">How many people came into the shop today</p>
             <div class="two">
                 <div>
                     <label for="walkLocal">Local</label>
@@ -442,9 +442,10 @@
         <!-- ---- حركة البضاعة ---- -->
         <div class="panel">
             <h2>Stock movement</h2>
-            <p class="ar" dir="rtl">
-                أضيفي سطرًا فقط إن دخلت أو خرجت بضاعة اليوم. اتركيه فارغًا إن لم يحدث شيء.
-                <br><b>بضاعة شانتون لها مخزنها المستقل</b> — اختاري حركتها من القسم الثاني في القائمة.
+            <p class="ar">
+                Add a line only if goods came in or went out today. Leave it empty if nothing moved.
+                <br><b>Shanton's pieces have their own separate stock</b> &mdash; choose her movements from the second
+                group in the list.
             </p>
             <div class="mvform">
                 <div>
@@ -478,7 +479,7 @@
         <!-- ---- ملاحظة ---- -->
         <div class="panel">
             <h2>Note</h2>
-            <p class="ar" dir="rtl">اكتبي ملاحظتك عن اليوم كما ترسلينها عادةً</p>
+            <p class="ar">Write your note about the day, the same way you send it now. It goes to management and it appears in the WhatsApp message.</p>
             <textarea id="repNote" dir="auto" placeholder="How was the day? Anything management should know?"></textarea>
         </div>
 
@@ -489,24 +490,24 @@
         <p class="note">
             Once sent, this report goes straight to management. You cannot open it again from here,
             so please check the figures before sending.
-            <span dir="rtl">&mdash; بعد الإرسال لا يمكن فتح التقرير من هنا، فراجعي الأرقام قبل الإرسال.</span>
+            
         </p>
     </div>
 
     <!-- ================= 4) الملخّص ================= -->
     <div class="panel hidden" id="stepDone">
         <h2>Sent successfully &mdash; now send it on WhatsApp</h2>
-        <p class="ar" dir="rtl">
-            تم إرسال التقرير إلى الإدارة ✅<br>
-            <b>الخطوة الثانية:</b> اضغطي الزر الأخضر لإرساله في الواتساب.
+        <p class="ar">
+            The report reached management &#9989;<br>
+            <b>Step 2:</b> tap the green button to send it on WhatsApp.
         </p>
         <!-- الزر أولًا لا بعد الملخّص: هذه هي الخطوة المطلوبة، ولو كان أسفل
              جدول طويل لَمرّت البياعة عنه على الهاتف. -->
         <a class="walink" id="waLink" style="margin-top: 0;">
-            <span style="font-size: 17px;">&#128172;</span> Send on WhatsApp &mdash; إرسال في الواتساب
+            <span style="font-size: 17px;">&#128172;</span> Send on WhatsApp
         </a>
         <p class="note" id="waFallback"></p>
-        <p class="ar" dir="rtl" style="margin-top: var(--space-5);">ملخّص ما أُرسل:</p>
+        <p class="ar" style="margin-top: var(--space-5);">This is what was sent:</p>
         <div id="doneSummary"></div>
         <div class="bar">
             <button class="ghost" id="btnNewReport">New report</button>
@@ -689,9 +690,11 @@
     // بناء النموذج
     // =====================================================================
     function buildItemsTable() {
+        // ⚠️ الاسم الإنجليزي وحده. حقل `it.ar` موجود في الثابت لأن لوحة المالك
+        // تستخدمه، لكن البياعات لا يفهمن العربية (قرار المالك) فلا يُعرض هنا.
         el('itemsBody').innerHTML = ABAYA_ITEMS.map(it => `
             <tr>
-                <td class="name">${escapeHtml(it.en)}<small dir="rtl">${escapeHtml(it.ar)}</small></td>
+                <td class="name">${escapeHtml(it.en)}</td>
                 <td class="q"><input type="number" id="qty_${it.key}" inputmode="numeric" step="1" min="0" placeholder="0"></td>
                 <td class="a"><input type="number" id="amt_${it.key}" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></td>
             </tr>`).join('');
@@ -702,9 +705,9 @@
     }
 
     function buildShopButtons() {
-        el('shopButtons').innerHTML = ABAYA_SHOPS.map((s, i) =>
-            `<button type="button" data-shop="${escapeHtml(s)}">${escapeHtml(s)}<br>
-             <span style="font-weight:400; font-size:var(--text-xs);" dir="rtl">${escapeHtml(ABAYA_SHOPS_AR[s] || '')}</span></button>`
+        // الاسم الإنجليزي وحده — انظر الملاحظة في buildItemsTable.
+        el('shopButtons').innerHTML = ABAYA_SHOPS.map((s) =>
+            `<button type="button" data-shop="${escapeHtml(s)}">${escapeHtml(s)}</button>`
         ).join('');
         el('shopButtons').querySelectorAll('button[data-shop]').forEach(b => {
             b.addEventListener('click', () => pickShop(b.dataset.shop));
@@ -715,13 +718,13 @@
         // مجموعتان في القائمة: بضاعتنا وبضاعة شانتون. الفصل بصريًّا يمنع
         // اختيار حركة الملك الخطأ بالسهو.
         const group = (label, arr) => `<optgroup label="${escapeHtml(label)}">`
-            + arr.map(k => `<option value="${k.key}">${escapeHtml(k.en)} — ${escapeHtml(k.ar)}</option>`).join('')
+            + arr.map(k => `<option value="${k.key}">${escapeHtml(k.en)}</option>`).join('')
             + `</optgroup>`;
         // حركات بضاعة شانتون لا تُعرض إلا في محلّها.
         el('mvKind').innerHTML =
-            group('Our own stock — بضاعتنا', ABAYA_MOVE_KINDS.filter(k => k.owner === 'own'))
+            group('Our own stock', ABAYA_MOVE_KINDS.filter(k => k.owner === 'own'))
             + (isShantonShop(state.shop)
-                ? group('Shanton — بضاعة شانتون', ABAYA_MOVE_KINDS.filter(k => k.owner === 'shanton'))
+                ? group('Shanton — her pieces', ABAYA_MOVE_KINDS.filter(k => k.owner === 'shanton'))
                 : '');
         if (!moveSelectsWired) {
             el('mvKind').addEventListener('change', syncMoveFields);
@@ -752,7 +755,7 @@
             : ABAYA_STOCK_ITEMS;
         const keep = el('mvItem').value;
         el('mvItem').innerHTML = items.map(i =>
-            `<option value="${i.key}">${escapeHtml(i.en)} — ${escapeHtml(i.ar)}</option>`).join('');
+            `<option value="${i.key}">${escapeHtml(i.en)}</option>`).join('');
         if (!isShanton && items.some(i => i.key === keep)) el('mvItem').value = keep;
         el('mvItem').disabled = isShanton;
         el('mvItem').style.opacity = isShanton ? '.7' : '';
@@ -1130,11 +1133,27 @@
         L.push(`${r.shop}`);
         L.push(slashDate(r.date));
         L.push('');
-        ABAYA_ITEMS.forEach(it => {
-            const q = r[`qty${it.key.charAt(0).toUpperCase()}${it.key.slice(1)}`];
-            const a = r[`amt${it.key.charAt(0).toUpperCase()}${it.key.slice(1)}`];
-            if (q || a > 0) L.push(`${it.en}: ${q} pc · ${money(a)} QAR`);
-        });
+        // ---- العباية أولًا وبتفصيلها ----------------------------------
+        // قرار المالك: الرسالة تُظهر عدد العبايات الجاهزة وعدد الأوردر
+        // منفصلين، ومجموعهما — وهو نفس شكل تقريره القديم
+        // (ABAYA SALE / ABAYA ORDER / TOTAL ABAYA).
+        // وتُعرض الثلاثة **دائمًا** ولو كانت أصفارًا: العباية أساس العمل،
+        // وغيابُ السطر يُقرأ «نسيت» لا «لم يُبَع شيء».
+        const abaQty = (Number(r.qtyAbayaReady) || 0) + (Number(r.qtyAbayaOrder) || 0);
+        const abaAmt = (Number(r.amtAbayaReady) || 0) + (Number(r.amtAbayaOrder) || 0);
+        L.push('*ABAYA*');
+        L.push(`ABAYA SALE : ${Number(r.qtyAbayaReady) || 0} pc · ${money(r.amtAbayaReady)} QAR`);
+        L.push(`ABAYA ORDER : ${Number(r.qtyAbayaOrder) || 0} pc · ${money(r.amtAbayaOrder)} QAR`);
+        L.push(`*TOTAL ABAYA : ${abaQty} pc · ${money(abaAmt)} QAR*`);
+        // بقية الأنواع: ما بيع منها فقط، فلا تُطوَّل الرسالة بأصفار
+        const others = ABAYA_ITEMS.filter(it => !it.key.startsWith('abaya'))
+            .map(it => ({ it, q: Number(r[`qty${it.key.charAt(0).toUpperCase()}${it.key.slice(1)}`]) || 0,
+                              a: Number(r[`amt${it.key.charAt(0).toUpperCase()}${it.key.slice(1)}`]) || 0 }))
+            .filter(x => x.q || x.a > 0);
+        if (others.length) {
+            L.push('');
+            others.forEach(x => L.push(`${x.it.en}: ${x.q} pc · ${money(x.a)} QAR`));
+        }
         L.push('');
         L.push(`Total pieces: ${r.totalQty}`);
         L.push(`Cash: ${money(r.cashSales)} QAR`);
@@ -1164,7 +1183,9 @@
             const shMoves = r.movements.filter(m => m.owner === 'shanton').length;
             if (shMoves) L.push(`_${shMoves} of these are Shanton's own pieces, kept in a separate stock._`);
         }
-        if (r.note) { L.push(''); L.push(`Note: ${r.note}`); }
+        // ملاحظة البياعة بعنوان بارز: هي أحيانًا أهمّ من الأرقام (سبب يوم ضعيف،
+        // سعرٌ نفر منه العميل...)، وسطرٌ بلا عنوان يضيع بين الأرقام.
+        if (r.note) { L.push(''); L.push('*NOTE*'); L.push(r.note); }
         L.push('');
         L.push(`Sent by: ${r.sellerName}`);
         return L.join('\n');
@@ -1175,6 +1196,16 @@
         const add = (k, v) => rows.push(`<div class="sumrow"><span>${escapeHtml(k)}</span><span>${escapeHtml(v)}</span></div>`);
         add('Shop', r.shop);
         add('Date', slashDate(r.date));
+        // تفصيل العباية: جاهز وأوردر منفصلان دائمًا (قرار المالك)
+        add('Abaya sale (ready)', `${Number(r.qtyAbayaReady) || 0} pc · ${money(r.amtAbayaReady)} QAR`);
+        add('Abaya order', `${Number(r.qtyAbayaOrder) || 0} pc · ${money(r.amtAbayaOrder)} QAR`);
+        add('Total abaya', `${(Number(r.qtyAbayaReady) || 0) + (Number(r.qtyAbayaOrder) || 0)} pc`);
+        // وبقية الأنواع: ما بيع منها فقط
+        ABAYA_ITEMS.filter(it => !it.key.startsWith('abaya')).forEach(it => {
+            const q = Number(r[`qty${it.key.charAt(0).toUpperCase()}${it.key.slice(1)}`]) || 0;
+            const a = Number(r[`amt${it.key.charAt(0).toUpperCase()}${it.key.slice(1)}`]) || 0;
+            if (q || a > 0) add(it.en, `${q} pc · ${money(a)} QAR`);
+        });
         add('Total pieces', String(r.totalQty));
         add('Cash', money(r.cashSales) + ' QAR');
         add('Card', money(r.cardSales) + ' QAR');
@@ -1186,7 +1217,18 @@
         }
         add('Walk-ins', `${r.walkInsLocal} local · ${r.walkInsExpat} expat`);
         if (r.movements.length) add('Stock lines', String(r.movements.length));
-        el('doneSummary').innerHTML = rows.join('');
+        // ⚠️ الملاحظة كانت غائبة من الملخّص كليًّا: البياعة تكتبها ثم لا تراها
+        // في «ما أُرسل»، فتظن أنها لم تُرسل. تُعرض كاملة بأسطرها لا في خانة ضيقة.
+        el('doneSummary').innerHTML = rows.join('')
+            + (r.note
+                ? `<div style="margin-top: var(--space-4); padding: var(--space-4);
+                        background: var(--color-surface-2); border: var(--border-hairline) solid var(--color-border);
+                        border-inline-start: 3px solid var(--color-brand); border-radius: var(--radius-sm);">
+                     <div style="font-size: var(--text-xs); font-weight: 700; text-transform: uppercase;
+                          letter-spacing: .08em; color: var(--color-text-muted); margin-bottom: 6px;">Your note</div>
+                     <div dir="auto" style="font-size: var(--text-sm); line-height: 1.8; white-space: pre-wrap;">${escapeHtml(r.note)}</div>
+                   </div>`
+                : '');
 
         // واتساب: المخطط الأصلي على الهاتف لا wa.me — الأخير يمرّ بصفحة تحويل
         // قد تنتهي في واتساب الويب. وبلا رقم حتى تُتاح المجموعات في المشاركة.
