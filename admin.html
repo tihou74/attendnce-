@@ -3352,6 +3352,24 @@
             document.getElementById("loginOverlay").style.display = "none";
             document.getElementById("dashboard").style.display = "block";
             applyRoleToUi();
+            // =============================================================
+            // ⭐⭐ انتظار رمز الدخول قبل أي قراءة — سببُ «اختفى كل شيء» ثلاث مرات
+            // -------------------------------------------------------------
+            // onAuthStateChanged يُنادى بمجرّد أن يستعيد فايربيس الجلسة من
+            // ذاكرة المتصفّح، **وقبل أن يتأكّد أن رمز الدخول صالح**. والرمز
+            // يعيش ساعة واحدة فقط. فمن فتح اللوحة بعد ساعة أو أكثر — أو استيقظ
+            // جهازه من نوم — يبدأ بجلسة رمزُها منتهٍ.
+            //
+            // وكانت initDashboard تُنادى هنا فورًا، فتنطلق عشرون قراءة برمز
+            // منتهٍ فتُرفض كلها بـ«insufficient permissions»، وكل دالة تحميل
+            // تُبقي رقمها على صفره. فيرى المالك **كل شيء صفرًا** ويظنّ بياناته
+            // مُحيت. ثم يُجدِّد فايربيس الرمز من نفسه بعد ثوانٍ، فيرجع كل شيء
+            // عند أول تحديث — وهو ما وقع ثلاث مرات بالحرف.
+            //
+            // getIdToken() يُجبر إتمام التجديد **قبل** أول قراءة. وفشلُه لا
+            // يمنع الدخول: نُكمل ونترك الحارس أدناه يُعيد المحاولة.
+            // =============================================================
+            try { await user.getIdToken(); } catch (e) { console.error('Token not ready yet:', e); }
             initDashboard();
         } else {
             currentRole = ROLE_ADMIN;
@@ -3602,6 +3620,7 @@
     });
 
     window.initDashboard = async function() {
+        beginLoadCycle();
         await loadEmployees();
         await loadDeductions();
         await loadAllowancePayments();
@@ -3625,6 +3644,8 @@
         renderHomeExtraStats();
         renderRecentActivity();
         renderNotifDropdown();
+        // دورةٌ تمّت بلا فشل: يُصفَّر عدّاد المحاولات فيبدأ من جديد لو تعثّر لاحقًا.
+        loadCycleSucceeded();
     };
 
 
@@ -3799,10 +3820,53 @@
     // يُفعل. ولا يُترك المالك يُخمّن.
     // =====================================================================
     let loadFailures = [];
+    // ⭐⭐ إعادة المحاولة تلقائيًّا: الفشل العابر (رمز دخول لم يجهز، أو شبكة
+    // تعثّرت لحظة) كان يُترك أصفارًا على الشاشة حتى يُحدّث المالك بنفسه — وهو ما
+    // أفزعه ثلاث مرات. الآن تُعاد المحاولة بنفسها، ومع **تجديد قسري للرمز**،
+    // ولا تُعرض اللافتة إلا إن فشلت المحاولات كلها.
+    // ⚠️ ومحدودة بثلاث محاولات وبمُهَل متزايدة: حلقةٌ بلا حدّ تُغرق قاعدة
+    // البيانات بالقراءات وتُعطّل جهازه، وهي أسوأ من رسالة خطأ صادقة.
+    const MAX_LOAD_RETRIES = 3;
+    let loadAttempt = 0;
+    let retryTimer = null;
+
+    /** يُصفَّر عند بداية كل تحميل كامل، فلا تتراكم أخطاء محاولةٍ ماضية. */
+    function beginLoadCycle() {
+        loadFailures = [];
+        const box = document.getElementById('loadErrorBanner');
+        if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+    }
+    /** يُنادى بعد نجاح دورة كاملة: يُنسي المحاولات فيبدأ العدّ من جديد لاحقًا. */
+    function loadCycleSucceeded() {
+        if (!loadFailures.length) loadAttempt = 0;
+    }
+
     function reportLoadFailure(what, error) {
         const msg = String((error && error.message) || error || 'unknown error');
         loadFailures.push({ what, msg });
         console.error('Load failed:', what, error);
+
+        // فشلٌ عابر؟ نُعيد المحاولة بأنفسنا بدل أن نُخيف صاحب اللوحة بأصفار.
+        const transient = /permission|insufficient|unavailable|network|offline|failed to get|deadline/i.test(msg);
+        if (transient && loadAttempt < MAX_LOAD_RETRIES) {
+            const box0 = document.getElementById('loadErrorBanner');
+            if (box0) {
+                box0.style.display = 'block';
+                box0.innerHTML = `<b>&#8635; Loading did not go through &mdash; trying again by itself`
+                    + ` (attempt ${loadAttempt + 1} of ${MAX_LOAD_RETRIES})...</b>`
+                    + `<br>The figures on screen are not final yet. Nothing has been lost.`;
+            }
+            if (retryTimer) clearTimeout(retryTimer);
+            retryTimer = setTimeout(async () => {
+                loadAttempt++;
+                // ⭐ تجديد قسري للرمز: أشهر سبب لهذا الفشل رمزٌ انتهى عمره.
+                try { if (auth.currentUser) await auth.currentUser.getIdToken(true); }
+                catch (e) { console.error('Forced token refresh failed:', e); }
+                initDashboard();
+            }, 1200 * (loadAttempt + 1));
+            return;
+        }
+
         const box = document.getElementById('loadErrorBanner');
         if (!box) return;
         // تشخيصٌ صريح لأشهر سببين، فلا يبقى نصّ فايربيس وحده أمام غير التقني.
