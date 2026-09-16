@@ -2191,7 +2191,7 @@
                     <table>
                         <thead><tr>
                             <th style="width: 42px;">Remove</th><th>Name as it shows to her</th><th>Record</th>
-                            <th>Employee file</th><th>Photo card</th>
+                            <th>Employee file</th><th>Photo card</th><th>Which board?</th>
                             <th class="money-col">Manager rows</th><th class="money-col">Supervisor rows</th>
                             <th>Verdict</th>
                         </tr></thead>
@@ -3866,11 +3866,41 @@
         logAudit('Employee Sync Started', `${existingCount} existing record(s) before sync`);
         if (statusEl) { statusEl.innerText = "Syncing (creating missing employees only)..."; statusEl.style.color = "var(--warning)"; }
         try {
-            const existingNames = new Set(allEmployees.map(e => (e.name || "").trim().toUpperCase()));
+            // =============================================================
+            // ⭐⭐ المطابقة بالكلمات لا بالحرف — وهذا سببُ الكارثة التي وقعت
+            // -------------------------------------------------------------
+            // ⚠️⚠️ ما كان هنا: `existingNames.has(upperName)` — مطابقةٌ **حرفية**
+            // للاسم كاملًا. والقائمة المدفونة في الكود تحمل الأسماء **مختصرة**:
+            // "BILLEL ABDESSAMAD" و"VIKAS CHIRAVANGATTE" و"ACHRAF SHILI"،
+            // بينما سجلات هؤلاء الحقيقية أطول: "BILLEL ABDESSAMAD FODIL"،
+            // "VIKAS CHIRAVANGATTE CHIRAVANGATTE"، "SHEFEEQ PUTHUVEETIL APPAKUTTY".
+            // فلم يتطابق نصٌّ بنصّ، فأنشأت المزامنة نسخةً ثانية **للمدراء
+            // الثلاثة بالذات** — وهم أخطر السجلات في النظام. ثم حُذفت السجلات
+            // الأصلية في التنظيف، فتهدّمت لوحة المدراء ولوحة السيدة فاطمة معها.
+            // هذا وقع فعلًا صباح اليوم، وبلا أن يدري المالك أنه ضغط زرًّا مؤذيًا.
+            //
+            // فالمطابقة الآن بنفس قواعد كشف التكرار الثلاث:
+            //   1) الاسم حرفيًّا.
+            //   2) نفس الكلمات بأي ترتيب أو بتكرار (nameKey).
+            //   3) اسمٌ كلماته كلها داخل اسمٍ أطول (nameContains) — بشرط كلمتين.
+            // فيستحيل على هذا الزرّ أن يُنشئ سجلًا ثانيًا لموجودٍ أصلًا.
+            // =============================================================
+            const existingKeys = new Set(allEmployees.map(e => nameKey(e.name)).filter(Boolean));
+            const existingWordSets = allEmployees
+                .map(e => nameKey(e.name).split(' ').filter(Boolean))
+                .filter(w => w.length);
+            const alreadyThere = (upperName) => {
+                const key = nameKey(upperName);
+                if (!key) return true;                 // اسمٌ فارغ لا يُنشأ بحال
+                if (existingKeys.has(key)) return true;
+                const words = key.split(' ').filter(Boolean);
+                return existingWordSets.some(w => nameContains(words, w));
+            };
+            const skippedByName = [];
             let createdCount = 0;
             for (const emp of initialEmployeesData) {
                 const upperName = emp.name.trim().toUpperCase();
-                if (existingNames.has(upperName)) continue;
+                if (alreadyThere(upperName)) { skippedByName.push(upperName); continue; }
                 const id = generateEmployeeId(upperName);
                 await setDoc(doc(db, "employees", id), {
                     name: upperName,
@@ -3885,7 +3915,19 @@
                 await setDoc(doc(db, "employee_pins", id), { pin: emp.pin || "1234", employeeName: upperName });
                 createdCount++;
             }
-            if (statusEl) { statusEl.innerText = `Sync completed (${createdCount} new employee(s) created, existing ones untouched)`; statusEl.style.color = "var(--success)"; }
+            if (statusEl) {
+                // ⚠️ ويُقال ما **لم** يُنشأ ولماذا: «تمّت المزامنة» وحدها هي التي
+                // جعلت المالك لا يدري أن شيئًا حدث. والعدد المتروك هو الخبر.
+                statusEl.innerHTML = `Sync completed &mdash; <b>${createdCount} new employee(s) created</b>.`
+                    + (skippedByName.length
+                        ? `<br><b style="color: var(--success);">${skippedByName.length} name(s) were skipped</b> because `
+                          + `somebody with the same words in their name already exists, even if it is written `
+                          + `differently. Nothing of theirs was touched or duplicated.`
+                        : '');
+                statusEl.style.color = "var(--text)";
+            }
+            logAudit('Employee Sync Finished',
+                `${createdCount} created, ${skippedByName.length} skipped as already present`);
             await loadEmployees();
         } catch (error) {
             if (statusEl) { statusEl.innerText = "Error: " + error.message; statusEl.style.color = "var(--danger)"; }
@@ -14071,13 +14113,27 @@
         byKey.forEach((members, key) => {
             if (members.length < 2) return;
             const withFile = members.filter(m => m.emp);
+            // ⭐⭐ الملف الحقيقي الوحيد في المجموعة — وإليه تُنقل الصورة.
+            const real = withFile.length === 1 ? withFile[0] : null;
             brdGroups.push({
                 key,
+                realId: real ? real.id : null,
                 rows: members.map(m => {
                     // بقيّةٌ مهجورة: لا ملفَّ لها، وفي مجموعتها من له ملف.
                     // ⚠️ الشرط الثاني ضروري: لو لم يكن لأيٍّ منهما ملف فقد تكون
                     // الملفّات هي التي لم تُقرأ، فلا يُقترح حذف كل شيء.
-                    if (!m.emp && withFile.length) {
+                    if (!m.emp && real) {
+                        // ⭐⭐ وهنا الفرق بين إصلاحٍ وإصلاحٍ من الجذر: البطاقة
+                        // المهجورة تحمل **صورةً رفعها المالك بيده**. فحذفُها
+                        // يعني أن يعيد رفعها لكل مدير من جديد. فإن كان الملف
+                        // الحقيقي بلا صورة، تُنقل إليه الصورة والمسمّى ثم تُحذف
+                        // البقيّة — فلا يفقد شيئًا ولا يبقى سطرٌ مكرّر.
+                        const realCard = seen.get(real.id);
+                        const realHasPhoto = !!(realCard && realCard.card && realCard.card.photoBase64);
+                        if (m.card && m.card.photoBase64 && !realHasPhoto) {
+                            return { ...m, verdict: { move: true, toId: real.id,
+                                why: `Leftover — its photo will be moved to ${real.shown}, then removed` } };
+                        }
                         return { ...m, verdict: { drop: true,
                             why: 'Leftover — no employee file exists for this record any more' } };
                     }
@@ -14108,12 +14164,37 @@
         renderBoardTable();
     };
 
+    /**
+     * في أي لوحة يظهر هذا الشخص — من ملفِّه لا من بطاقته.
+     * ⚠️⚠️ هذا العمود هو جواب سؤال المالك: «أشرف مدير، ويسجّل حضوره، ولا يظهر
+     * للسيدة فاطمة». والسبب أن اللوحتين مختلفتان: خانة `canSubmitSalesReport`
+     * تُظهره في لوحة **المدراء** ويسجّل من شاشة التقرير، وخانة `isSupervisor`
+     * تُظهره في لوحة **السوبرفايزر** ويسجّل ببصمته على كشك الموظفين. فمن أُعطي
+     * الخانة الخطأ يسجّل في مكانٍ ويُنتظر في مكانٍ آخر — بلا رسالة خطأ واحدة.
+     */
+    function boardMembership(emp) {
+        if (!emp) return { html: '<span style="color: var(--text-dim);">no file</span>', none: false };
+        const mgr = emp.canSubmitSalesReport === true;
+        const sup = emp.isSupervisor === true;
+        if (!mgr && !sup) {
+            return { none: true, html: '<b style="color: var(--danger);">NEITHER board</b>'
+                + '<br><small style="color: var(--danger);">not enabled as manager or supervisor</small>' };
+        }
+        const parts = [];
+        if (mgr) parts.push('<span style="color: var(--success); font-weight: 800;">Managers</span>');
+        if (sup) parts.push('<span style="color: var(--accent); font-weight: 800;">Supervisors</span>');
+        return { none: false, html: parts.join(' + ')
+            + `<br><small style="color: var(--text-dim);">records from ${mgr && sup ? 'both screens'
+                : (mgr ? 'the manager screen' : 'the staff kiosk')}</small>` };
+    }
+
     function renderBoardTable() {
         document.getElementById('brdTableBody').innerHTML = brdGroups.map(g => g.rows.map(r => {
             const v = r.verdict;
-            const tint = v.needsYou ? 'rgba(245,158,11,0.10)' : (v.drop ? 'rgba(220,38,38,0.07)' : 'rgba(22,163,74,0.07)');
+            const pick = v.drop || v.move;
+            const tint = v.needsYou ? 'rgba(245,158,11,0.10)' : (pick ? 'rgba(220,38,38,0.07)' : 'rgba(22,163,74,0.07)');
             return `<tr style="background: ${tint};">
-                <td>${v.drop
+                <td>${pick
                     ? `<input type="checkbox" class="brdPick" data-id="${escapeHtml(r.id)}" checked
                          onchange="renderBoardSummary()" style="width:17px;height:17px;cursor:pointer;">`
                     : '<span style="color: var(--text-dim); font-size: 11px; font-weight: 700;">keep</span>'}</td>
@@ -14123,7 +14204,12 @@
                 <td>${r.emp
                     ? '<b style="color: var(--success);">&#10004; exists</b>'
                     : '<b style="color: var(--danger);">&#10008; none</b>'}</td>
-                <td>${r.card ? '&#10004;' : '<span style="color: var(--text-dim);">—</span>'}</td>
+                <td>${r.card
+                    ? (r.card.photoBase64
+                        ? `<img src="${r.card.photoBase64}" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;">`
+                        : '&#10004; <small>no photo</small>')
+                    : '<span style="color: var(--text-dim);">—</span>'}</td>
+                <td style="font-size: 12px;">${boardMembership(r.emp).html}</td>
                 <td class="money-col">${r.mgrRows || '—'}</td>
                 <td class="money-col">${r.supRows || '—'}</td>
                 <td style="font-size: 12px; font-weight: 700; color: ${v.needsYou ? 'var(--warning)' : (v.drop ? 'var(--danger)' : 'var(--success)')};">${escapeHtml(v.why)}</td>
@@ -14135,15 +14221,31 @@
 
     window.renderBoardSummary = function() {
         const picked = Array.from(document.querySelectorAll('.brdPick:checked')).map(cb => cb.getAttribute('data-id'));
-        let cards = 0, rows = 0;
+        let cards = 0, rows = 0, moves = 0;
+        const orphaned = [];
         brdGroups.forEach(g => g.rows.forEach(r => {
-            if (picked.includes(r.id)) { if (r.card) cards++; rows += r.mgrRows + r.supRows; }
+            if (picked.includes(r.id)) {
+                if (r.card) cards++;
+                rows += r.mgrRows + r.supRows;
+                if (r.verdict.move) moves++;
+            }
+            // من ليس على أي لوحة: هذا سببُ «يسجّل ولا يظهر» — يُقال ولو لم يُوسم.
+            if (r.emp && boardMembership(r.emp).none) orphaned.push(r.shown);
         }));
         const needs = brdGroups.filter(g => g.rows.some(r => r.verdict.needsYou)).length;
         document.getElementById('brdSummary').innerHTML =
             `<b>${picked.length} leftover record(s) ticked</b> &mdash; ${cards} photo card(s) and ${rows} board row(s) `
             + `will be removed, and nothing else. <b>No employee file, no attendance log, no deduction and no salary `
             + `is touched by this.</b> A safety copy downloads first.`
+            + (moves ? `<br><b style="color: var(--success);">${moves} photo(s) will be moved to the real file first</b>, `
+                + `so you do not have to upload them again. The moved card is marked for whichever board the person's `
+                + `file actually says &mdash; Managers, Supervisors, or both.` : '')
+            + (orphaned.length ? `<br><br><b style="color: var(--danger);">&#9888; ${orphaned.length} of these people `
+                + `are not enabled as a manager or a supervisor:</b> ${escapeHtml([...new Set(orphaned)].join(', '))}. `
+                + `They will appear on <b>neither</b> board no matter what you clean here, and their records go `
+                + `nowhere. Fix that in <b>Make managers / supervisors</b> above &mdash; and mind the difference: a `
+                + `<b>manager</b> records from the manager screen, a <b>supervisor</b> records with his normal punch `
+                + `on the staff kiosk.` : '')
             + (needs ? `<br><b style="color: var(--warning);">${needs} name(s) need your own decision</b> because a real `
                 + `employee file exists for more than one of them. Those are left ticked off &mdash; open the two `
                 + `profiles and compare them yourself before removing anything.` : '');
@@ -14173,8 +14275,11 @@
                 + `never removed by this tool. Scan again.`;
             return;
         }
-        if (!confirm(`Remove ${ids.length} leftover record(s) from Mrs Fatima's board?\n\n`
-            + `Only her photo cards and her board rows are deleted.\n`
+        const toMove = brdGroups.reduce((n, g) => n + g.rows.filter(r => r.verdict.move && ids.includes(r.id)).length, 0);
+        if (!confirm(`Repair ${ids.length} leftover record(s) on Mrs Fatima's board?\n\n`
+            + (toMove ? `${toMove} photo(s) will first be MOVED to the real employee file, so you do not have to `
+                        + `upload them again.\n\n` : '')
+            + `Then only her photo cards and her board rows are deleted.\n`
             + `Employee files, attendance, deductions and salaries are NOT touched.\n`
             + `A safety copy downloads first.`)) return;
 
@@ -14186,6 +14291,38 @@
                                       { name: 'supervisor_presence' }]);
             // تُقرأ المصادر من جديد قبل الحذف: النسخة المعروضة قد مضى عليها وقت.
             const src = await readBoardSources();
+
+            // ---- ⭐⭐ أولًا: نقل الصور إلى الملفّات الحقيقية ------------------
+            // ⚠️ النقل **قبل** الحذف بترتيب مقصود: لو انقطع الاتصال بينهما، فقد
+            // نُقلت الصورة وبقيت البقيّة (فوضى ظاهرة تُصلَح بضغطة)، ولا العكس
+            // (صورةٌ ضاعت إلى الأبد ويعيد رفعها لكل مدير).
+            // ⚠️ وعلامتا اللوحة تُؤخذان من **ملف الموظف الحقيقي** لا من البطاقة
+            // المنقولة: البطاقة القديمة كانت تقول «مدير»، والملف الحقيقي قد يقول
+            // «سوبرفايزر». ونسخُ العلامة القديمة يُبقي الرجل في اللوحة الخطأ —
+            // وهو عين العطل الذي نُصلحه.
+            let moved = 0;
+            for (const g of brdGroups) {
+                for (const r of g.rows) {
+                    if (!r.verdict.move || !ids.includes(r.id)) continue;
+                    const from = src.cards.find(c => c.id === r.id);
+                    if (!from || !from.photoBase64) continue;
+                    const target = allEmployees.find(e => e.id === r.verdict.toId);
+                    if (!target) continue;
+                    await setDoc(doc(db, "manager_cards", target.id), {
+                        employeeId: target.id,
+                        name: target.name || target.id,
+                        branch: target.branch || '',
+                        title: from.title || target.role || '',
+                        photoBase64: from.photoBase64,
+                        isManager: target.canSubmitSalesReport === true,
+                        isSupervisor: target.isSupervisor === true,
+                        updatedAt: serverTimestamp()
+                    });
+                    moved++;
+                    status.innerText = `Moving photos... ${moved}`;
+                }
+            }
+
             const targets = [];
             src.cards.forEach(c => { if (ids.includes(c.id)) targets.push(['manager_cards', c.id]); });
             src.mgr.forEach(e => { if (ids.includes(e.employeeId)) targets.push(['manager_presence', e.id]); });
@@ -14202,9 +14339,11 @@
             }
             logAudit('Board Leftovers Removed',
                 `${done} leftover document(s) deleted from manager_cards / manager_presence / supervisor_presence `
-                + `for ${ids.length} record(s) with no employee file: ` + ids.slice(0, 30).join(', '));
+                + `for ${ids.length} record(s) with no employee file; ${moved} photo(s) moved to the real file: `
+                + ids.slice(0, 30).join(', '));
             status.style.color = 'var(--success)';
-            status.innerText = `Removed ${done} leftover row(s). Reloading...`;
+            status.innerText = `Removed ${done} leftover row(s)`
+                + (moved ? `, and moved ${moved} photo(s) to the real file` : '') + '. Reloading...';
             setTimeout(() => location.reload(), 2000);
         } catch (e) {
             status.style.color = 'var(--danger)';
