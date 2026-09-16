@@ -81,6 +81,18 @@
         margin-bottom: var(--space-6); padding-bottom: var(--space-4);
         border-bottom: var(--border-hairline) solid var(--color-border);
     }
+    /* الشعار على إطار أبيض دائمًا: ملفّه بخلفية بيضاء لا شفافة، فلو وُضع على
+       سطح غامق ظهر مستطيلًا أبيض. الإطار يجعله يبدو مقصودًا. */
+    header .logobox {
+        flex: 0 0 auto; width: 48px; height: 48px; border-radius: var(--radius-md);
+        background: #FFFFFF; border: var(--border-hairline) solid var(--color-border);
+        display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+    header .logobox img { max-width: 100%; max-height: 100%; display: block; }
+    header .logobox.nologo { background: var(--color-surface-2); }
+    header .logobox .fallback {
+        font-weight: 700; font-size: 17px; color: var(--color-text-muted); letter-spacing: .04em;
+    }
     header img { width: 44px; height: 44px; border-radius: var(--radius-md); display: block; }
     header h1 { margin: 0; font-size: var(--text-lg); font-weight: 700; letter-spacing: -.01em; }
     header p { margin: 3px 0 0; font-size: var(--text-xs); color: var(--color-text-muted); }
@@ -247,7 +259,13 @@
 
 <div class="wrap">
     <header>
-        <img src="./icons/abayaview-192.png" alt="Al Sheikha Style">
+        <!-- ⚠️ كانت تعرض أيقونة التطبيق المولَّدة لا الشعار الحقيقي. وصارت تُشير
+             إلى نفس ملف الشعار الذي تعرضه شاشة البياعة، فلا تختلف الشاشتان.
+             ⚠️ ومعها بديلٌ إن غاب الملف: صورةٌ مكسورة أسوأ من حرفين مقصودين. -->
+        <span class="logobox" id="logoBox">
+            <img id="logoImg" alt="Al Sheikha Style" src="./brand/al-sheikha-style-logo.png">
+            <span class="fallback hidden" id="logoFallback">AS</span>
+        </span>
         <div>
             <h1>Abaya Shops</h1>
             <span class="wordmark">Al Sheikha Style</span>
@@ -1165,6 +1183,14 @@
     el('tgDate').addEventListener('change', renderTarget);
     el('refreshBtn').addEventListener('click', loadAll);
     el('logoutBtn').addEventListener('click', () => signOut(auth));
+
+    // ⚠️ بديلٌ إن لم يُحمَّل الشعار: صورةٌ مكسورة تُقرأ عطلًا، والحرفان مقصودان.
+    // ونفس المنطق حرفيًّا في abaya-seller.html.
+    el('logoImg').addEventListener('error', () => {
+        el('logoImg').classList.add('hidden');
+        el('logoFallback').classList.remove('hidden');
+        el('logoBox').classList.add('nologo');
+    });
 
     // =====================================================================
     // المصادقة
