@@ -413,11 +413,18 @@
         <button class="nav-tab-btn" data-tab="tab-settings"><span class="ic-slot" data-icon="settings"></span> Settings</button>
     </div>
 
+    <!-- ==================================================================
+         لافتة الفشل — **خارج** كل التبويبات عن قصد
+         ------------------------------------------------------------------
+         ⚠️ كانت داخل تبويب Home وحده، فمن كان على «Employee Profiles» يرى
+         جدولًا فارغًا ولا يرى سببًا واحدًا — وهو ما وقع فعلًا وأرهق المالك.
+         موضعها هنا، بعد أزرار التبويبات وقبل محتواها، يجعلها ظاهرة في كل
+         تبويب مهما كان المفتوح. رسالةُ فشلٍ لا تُرى ليست رسالة.
+         ================================================================== -->
+    <div id="loadErrorBanner" style="display: none; background: #fef2f2; border: 2px solid var(--danger); border-left: 6px solid var(--danger); border-radius: 10px; padding: 16px 18px; margin: 0 0 20px; color: #7f1d1d; font-size: 13.5px; line-height: 1.85;"></div>
+
     <!-- 1. الرئيسية -->
     <div id="tab-home" class="tab-content active">
-        <!-- ⚠️ لافتة الفشل: تظهر فقط إذا فشلت قراءةٌ فعلًا. وُجدت لأن الأرقام
-             كانت تبقى أصفارًا بلا سبب ظاهر، فيُفهم الصفر «لا يوجد» وهو كذب. -->
-        <div id="loadErrorBanner" style="display: none; background: #fef2f2; border: 2px solid var(--danger); border-left: 6px solid var(--danger); border-radius: 10px; padding: 16px 18px; margin-bottom: 20px; color: #7f1d1d; font-size: 13.5px; line-height: 1.85;"></div>
         <div class="stats">
             <div class="stat-box"><div class="stat-icon" data-icon="users"></div><div><h3>Active Employees</h3><p id="homeEmpCount">0</p></div></div>
             <div class="stat-box"><div class="stat-icon" data-icon="calendar"></div><div><h3>Attendance Logs</h3><p id="homeLogCount">0</p></div></div>
@@ -3815,11 +3822,57 @@
                 + 'if it happens again.';
         }
         box.style.display = 'block';
-        box.innerHTML = `<b style="font-size: 15px;">&#9888; Some data could not be read &mdash; the zeros below are NOT real</b>`
+        box.innerHTML = `<b style="font-size: 15px;">&#9888; Some data could not be read &mdash; the zeros you see are NOT real</b>`
             + `<br><br>${advice}`
             + `<br><br><b>What failed:</b><br>`
-            + loadFailures.map(f => `&bull; ${escapeHtml(f.what)}: <code style="font-size:12px;">${escapeHtml(f.msg)}</code>`).join('<br>');
+            + loadFailures.map(f => `&bull; ${escapeHtml(f.what)}: <code style="font-size:12px;">${escapeHtml(f.msg)}</code>`).join('<br>')
+            + `<br><br><button class="btn-danger btn-sm" onclick="diagnoseAccess()">Run a full check &mdash; which collection is blocked?</button>`
+            + `<span id="diagnoseOut" style="display:block; margin-top:10px;"></span>`;
     }
+
+    /**
+     * يفحص كل مجموعة على حِدة ويقول أيّها يُقرأ وأيّها مرفوض.
+     * ⚠️ يقرأ مستندًا واحدًا من كل مجموعة (limit 1) لا المجموعة كلها: الغرض
+     * معرفة الإذن لا تنزيل البيانات، وقراءة كل شيء على جهاز بطيء تُعطّل الصفحة.
+     * ⚠️ ولا يكتب شيئًا إطلاقًا — أداة تشخيص لا إصلاح.
+     */
+    window.diagnoseAccess = async function() {
+        const out = document.getElementById('diagnoseOut');
+        if (!out) return;
+        out.innerHTML = 'Checking every collection one by one...';
+        const u = auth.currentUser;
+        const lines = [];
+        lines.push(`<b>Signed in as:</b> <code>${escapeHtml((u && u.email) || '(nobody)')}</code>`
+            + `${u && u.isAnonymous ? ' <b style="color:var(--danger);">(anonymous — wrong account)</b>' : ''}`);
+        lines.push(`<b>Role this dashboard thinks you have:</b> <code>${escapeHtml(String(currentRole))}</code>`);
+        let okCount = 0, denied = [];
+        for (const name of BACKUP_COLLECTIONS) {
+            try {
+                const snap = await getDocs(query(collection(db, name), limit(1)));
+                okCount++;
+                lines.push(`&bull; ${escapeHtml(name)}: <b style="color:var(--success);">readable</b>`
+                    + ` (${snap.empty ? 'and genuinely empty' : 'has records'})`);
+            } catch (e) {
+                denied.push(name);
+                lines.push(`&bull; ${escapeHtml(name)}: <b style="color:var(--danger);">BLOCKED</b>`
+                    + ` &mdash; <code style="font-size:11.5px;">${escapeHtml(String(e.message || e))}</code>`);
+            }
+        }
+        let verdict;
+        if (!denied.length) {
+            verdict = `<b style="color:var(--success);">Every collection is readable.</b> So this is not a permissions `
+                + `problem. If figures still show zero, press Ctrl+Shift+R once more.`;
+        } else if (denied.length === BACKUP_COLLECTIONS.length) {
+            verdict = `<b style="color:var(--danger);">Every collection is blocked.</b> That points at the account, not `
+                + `the rules: this address is not treated as the owner. Sign out and sign in with the owner account.`;
+        } else {
+            verdict = `<b style="color:var(--danger);">${denied.length} collection(s) blocked, ${okCount} readable.</b> `
+                + `The rules published in Firebase do not match this dashboard. Publish firestore.rules again and search `
+                + `it for <code>supervisor_presence</code> to confirm the newest version is live.`;
+        }
+        out.innerHTML = `<div style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:12px; margin-top:6px;">`
+            + verdict + `<br><br>` + lines.join('<br>') + `</div>`;
+    };
 
     window.loadEmployees = async function() {
         try {
