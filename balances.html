@@ -496,8 +496,11 @@
             <button type="button" class="pick" id="pickRest" aria-pressed="false" aria-controls="restWrap">
                 <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v8a3 3 0 0 0 6 0V3"/><path d="M9 11v10"/><path d="M17 3c-1.5 2-2 3.5-2 6s.5 3 2 3 2-.5 2-3-.5-4-2-6z"/><path d="M17 12v9"/></svg></span>
                 <span class="tx">
-                    <span class="t1">Al Sheikha Group &mdash; Restaurants</span>
-                    <span class="t2" dir="rtl">مطاعم الشيخة قروب &mdash; الأرصدة والتارقت</span>
+                    <!-- ⚠️ «Al Sheikha Group» أُزيلت من هذا الاختيار بطلب المالك:
+                         اسم المجموعة مكتوب في رأس الصفحة فوق الاختيارات أصلًا،
+                         فتكرارُه في البطاقة الأولى وحدها كان حشوًا. -->
+                    <span class="t1">Restaurants</span>
+                    <span class="t2" dir="rtl">المطاعم &mdash; الأرصدة والتارقت</span>
                 </span>
             </button>
             <a class="pick" id="pickAbaya" href="./abaya-balances.html">
@@ -532,7 +535,7 @@
         <div id="restWrap" class="hidden">
         <div class="backbar">
             <button type="button" class="ghost" id="restBack">&#9664; Restaurants or Abaya</button>
-            <p class="ttl">Al Sheikha Group &mdash; Restaurants</p>
+            <p class="ttl">Restaurants</p>
         </div>
 
         <!-- ==============================================================
