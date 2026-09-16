@@ -184,6 +184,23 @@
     .btn-sm { padding: 7px 12px; font-size: 12px; border-radius: 8px; }
 
     /* Nav */
+    /* ⭐ اختيار النشاط: بطاقتان كبيرتان يُقرآن بلمحة، على نمط لوحة السيدة فاطمة
+       نفسه — فمن استعمل تلك يعرف هذه بلا تعليم. */
+    .biz-chooser { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .biz-pick {
+        display: flex; align-items: center; gap: 16px; text-align: start;
+        padding: 22px 20px; border-radius: var(--radius); cursor: pointer;
+        background: var(--surface); border: 2px solid var(--border);
+        box-shadow: var(--shadow-sm); transition: all .15s ease; color: var(--text);
+    }
+    .biz-pick:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow); }
+    .biz-ic { flex: 0 0 auto; width: 52px; height: 52px; border-radius: var(--radius-sm);
+        background: var(--surface-2); display: flex; align-items: center; justify-content: center; color: var(--primary); }
+    .biz-ic svg { width: 28px; height: 28px; }
+    .biz-tx { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+    .biz-t1 { font-size: 17px; font-weight: 800; }
+    .biz-t2 { font-size: 12.5px; color: var(--text-dim); font-weight: 600; }
+    .biz-hint { grid-column: 1 / -1; margin: 2px 0 0; font-size: 12.5px; color: var(--text-dim); text-align: center; }
     .nav-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; background: var(--surface); padding: 10px; border-radius: var(--radius); box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
     .nav-tab-btn { padding: 11px 18px; font-size: 13.5px; font-weight: 600; border-radius: var(--radius-sm); border: none; cursor: pointer; background: transparent; color: var(--text-dim); transition: all 0.15s ease; position: relative; display: flex; align-items: center; gap: 9px; }
     .nav-tab-btn:hover { background: var(--surface-2); color: var(--text); }
@@ -332,6 +349,10 @@
                 <div id="notifDropdown" class="notif-dropdown"></div>
             </div>
             <span id="roleBadge" style="display: none; font-size: 12px; font-weight: 800; padding: 7px 13px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent);"></span>
+            <!-- زرّ التبديل بين النشاطين — يظهر بعد الاختيار وحده -->
+            <button class="btn-accent" id="btnSwitchBiz" onclick="showBizChooser()" style="display: none;">
+                <span data-icon="refresh"></span> <span id="btnSwitchBizLabel">Switch business</span>
+            </button>
             <button class="btn-ghost" id="btnThemeToggle" onclick="toggleTheme()" title="Toggle dark/light mode"><span id="icTheme"></span></button>
             <button class="btn-warning" id="btnSyncDb" onclick="syncAllSalariesList()"><span id="icSync"></span> Sync Database</button>
             <button class="btn-ghost" onclick="initDashboard()"><span id="icRefresh"></span> Refresh</button>
@@ -359,58 +380,101 @@
         </div>
     </div>
 
-    <div class="brand-logos">
+    <!-- ==================================================================
+         ⭐⭐ اختيار النشاط — المطاعم أم الشيخة ستايل
+         ------------------------------------------------------------------
+         ⚠️ طلبه المالك: «نوافذ خاصة بالشيخة ستايل، أريد أن أفصلها تمامًا بحيث
+         لا تختلط». والفصل صحيحٌ لأنه **موجود في البيانات أصلًا**: العبايات لها
+         مجموعاتها المستقلة تمامًا (abaya_sellers, abaya_sales_reports)، ولا
+         محلَّ عبايات واحدًا في قوائم فروع المطاعم ولا في تقاريرها المالية.
+         فالفصل هنا يجعل الشاشة تُطابق الحقيقة، لا يخترع فصلًا جديدًا.
+
+         ⚠️ والتبويبات المشتركة تظهر في الاثنين عن قصد: النسخة الاحتياطية وسجل
+         التدقيق والإعدادات وملفات الموظفين تلزم في الحالتين، ولو خُصّت بنشاطٍ
+         واحد لاضطُرّ المالك إلى التنقّل ذهابًا وإيابًا — وذلك أسوأ من الاختلاط.
+
+         ⚠️ ولا صفحة منفصلة للعبايات: من ثبّت أيقونة اللوحة على هاتفه يفتح
+         admin.html، وتحويلُه إلى ملفٍ آخر يكسر أيقونته المثبَّتة (درسٌ كلّفنا
+         خمس محاولات في هذا المشروع). فالاختيار **داخل** الصفحة نفسها.
+         ================================================================== -->
+    <div class="biz-chooser" id="bizChooser">
+        <button type="button" class="biz-pick" onclick="chooseBiz('rest')">
+            <span class="biz-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v8a3 3 0 0 0 6 0V3"/><path d="M9 11v10"/><path d="M17 3c-1.5 2-2 3.5-2 6s.5 3 2 3 2-.5 2-3-.5-4-2-6z"/><path d="M17 12v9"/></svg></span>
+            <span class="biz-tx">
+                <span class="biz-t1">Restaurants</span>
+                <span class="biz-t2" dir="rtl">المطاعم &mdash; الموظفون والرواتب والبصمات والتقارير</span>
+            </span>
+        </button>
+        <button type="button" class="biz-pick" onclick="chooseBiz('abaya')">
+            <span class="biz-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l3 5-3 1v12H9V9L6 8z"/><path d="M9 9h6"/></svg></span>
+            <span class="biz-tx">
+                <span class="biz-t1">Al Sheikha Style</span>
+                <span class="biz-t2" dir="rtl">العبايات &mdash; البياعات والبيع اليومي والشهري</span>
+            </span>
+        </button>
+        <p class="biz-hint">
+            Choose which business you are working on. Nothing from one shows inside the other.
+            <span dir="rtl">&mdash; اختر النشاط. لا يظهر شيءٌ من أحدهما داخل الآخر.</span>
+        </p>
+    </div>
+
+    <div class="brand-logos" id="brandLogosRest">
         <img src="https://raw.githubusercontent.com/tihou74/alsheikha-attendance-admin/main/gaimer-w-kahi-logo.png.png" alt="Gaimer W Kahi">
         <img src="https://raw.githubusercontent.com/tihou74/alsheikha-attendance-admin/main/al-sheikha-group-logo.png.png" alt="Al Sheikha Group" class="main-logo">
         <img src="https://raw.githubusercontent.com/tihou74/alsheikha-attendance-admin/main/shai-bu-hamad-logo.png.png" alt="Shai Bu Hamad">
     </div>
+    <!-- شعار العبايات في وضع العبايات: علامةٌ بصرية فورية أنك في العمل الآخر،
+         فلا تُدخل رقمًا في المكان الخطأ وأنت تظنّ نفسك في المطاعم. -->
+    <div class="brand-logos" id="brandLogosAbaya" style="display: none;">
+        <img src="./brand/al-sheikha-style-logo.png" alt="Al Sheikha Style" class="main-logo">
+    </div>
 
     <div class="nav-tabs">
-        <button class="nav-tab-btn active" data-tab="tab-home"><span class="ic-slot" data-icon="home"></span> Home</button>
-        <button class="nav-tab-btn" data-tab="tab-employees"><span class="ic-slot" data-icon="users"></span> Employee Profiles</button>
-        <button class="nav-tab-btn" data-tab="tab-payroll"><span class="ic-slot" data-icon="dollar"></span> Payroll</button>
-        <button class="nav-tab-btn" data-tab="tab-attendance"><span class="ic-slot" data-icon="calendar"></span> Attendance Logs</button>
-        <button class="nav-tab-btn" data-tab="tab-shifts"><span class="ic-slot" data-icon="clock"></span> Shifts</button>
-        <button class="nav-tab-btn" data-tab="tab-requests">
+        <button class="nav-tab-btn active" data-tab="tab-home" data-biz="both"><span class="ic-slot" data-icon="home"></span> Home</button>
+        <button class="nav-tab-btn" data-tab="tab-employees" data-biz="both"><span class="ic-slot" data-icon="users"></span> Employee Profiles</button>
+        <button class="nav-tab-btn" data-tab="tab-payroll" data-biz="both"><span class="ic-slot" data-icon="dollar"></span> Payroll</button>
+        <button class="nav-tab-btn" data-tab="tab-attendance" data-biz="both"><span class="ic-slot" data-icon="calendar"></span> Attendance Logs</button>
+        <button class="nav-tab-btn" data-tab="tab-shifts" data-biz="both"><span class="ic-slot" data-icon="clock"></span> Shifts</button>
+        <button class="nav-tab-btn" data-tab="tab-requests" data-biz="rest">
             <span class="ic-slot" data-icon="inbox"></span> Requests
             <span id="requestsNavBadge" class="notification-badge">0</span>
         </button>
-        <button class="nav-tab-btn" data-tab="tab-applications">
+        <button class="nav-tab-btn" data-tab="tab-applications" data-biz="rest">
             <span class="ic-slot" data-icon="userPlus"></span> Applications
             <span id="applicationsNavBadge" class="notification-badge">0</span>
         </button>
-        <button class="nav-tab-btn" data-tab="tab-warnings">
+        <button class="nav-tab-btn" data-tab="tab-warnings" data-biz="rest">
             <span class="ic-slot" data-icon="alertTriangle"></span> Warnings
         </button>
-        <button class="nav-tab-btn" data-tab="tab-leaves">
+        <button class="nav-tab-btn" data-tab="tab-leaves" data-biz="both">
             <span class="ic-slot" data-icon="plane"></span> Annual Leaves
         </button>
-        <button class="nav-tab-btn" data-tab="tab-training">
+        <button class="nav-tab-btn" data-tab="tab-training" data-biz="rest">
             <span class="ic-slot" data-icon="graduationCap"></span> Employee Training
         </button>
-        <button class="nav-tab-btn" data-tab="tab-audit">
+        <button class="nav-tab-btn" data-tab="tab-audit" data-biz="both">
             <span class="ic-slot" data-icon="listChecks"></span> Audit Log
         </button>
-        <button class="nav-tab-btn" data-tab="tab-sales">
+        <button class="nav-tab-btn" data-tab="tab-sales" data-biz="rest">
             <span class="ic-slot" data-icon="dollar"></span> Daily Report
         </button>
-        <button class="nav-tab-btn" data-tab="tab-target">
+        <button class="nav-tab-btn" data-tab="tab-target" data-biz="rest">
             <span class="ic-slot" data-icon="check"></span> Daily Target
         </button>
         <!-- العبايات: عملٌ منفصل تمامًا عن المطاعم. التبويبان للمالك والمحاسب فقط. -->
-        <button class="nav-tab-btn" data-tab="tab-abaya">
+        <button class="nav-tab-btn" data-tab="tab-abaya" data-biz="abaya">
             <span class="ic-slot" data-icon="fileText"></span> Abaya &mdash; Daily
         </button>
-        <button class="nav-tab-btn" data-tab="tab-abaya-month">
+        <button class="nav-tab-btn" data-tab="tab-abaya-month" data-biz="abaya">
             <span class="ic-slot" data-icon="dollar"></span> Abaya &mdash; Monthly
         </button>
-        <button class="nav-tab-btn" data-tab="tab-finance">
+        <button class="nav-tab-btn" data-tab="tab-finance" data-biz="rest">
             <span class="ic-slot" data-icon="dollar"></span> Monthly Financial
         </button>
-        <button class="nav-tab-btn" data-tab="tab-former"><span class="ic-slot" data-icon="users"></span> Former Employees</button>
-        <button class="nav-tab-btn" data-tab="tab-fixed"><span class="ic-slot" data-icon="inbox"></span> Fixed Payments</button>
-        <button class="nav-tab-btn" data-tab="tab-variable"><span class="ic-slot" data-icon="inbox"></span> Variable Payments</button>
-        <button class="nav-tab-btn" data-tab="tab-settings"><span class="ic-slot" data-icon="settings"></span> Settings</button>
+        <button class="nav-tab-btn" data-tab="tab-former" data-biz="both"><span class="ic-slot" data-icon="users"></span> Former Employees</button>
+        <button class="nav-tab-btn" data-tab="tab-fixed" data-biz="rest"><span class="ic-slot" data-icon="inbox"></span> Fixed Payments</button>
+        <button class="nav-tab-btn" data-tab="tab-variable" data-biz="rest"><span class="ic-slot" data-icon="inbox"></span> Variable Payments</button>
+        <button class="nav-tab-btn" data-tab="tab-settings" data-biz="both"><span class="ic-slot" data-icon="settings"></span> Settings</button>
     </div>
 
     <!-- ==================================================================
@@ -3413,6 +3477,10 @@
             const first = (allowed && allowed[0]) || 'tab-home';
             window.switchTab(first);
         }
+        // ⭐ ثم يُطبَّق فصل النشاطين **بعد** حارس الدور: الترتيب مقصود، فحارس
+        // الدور هو الأمن، والفصل تنظيمٌ فوقه. ولو عُكس الترتيب لأمكن أن يُفتح
+        // تبويبٌ ينتمي إلى النشاط ولا يملكه الدور.
+        restoreBiz();
     }
 
     onAuthStateChanged(auth, async (user) => {
@@ -3471,6 +3539,88 @@
 
     // ---- Tabs -------------------------------------------------------------
 
+    // =====================================================================
+    // ⭐⭐ فصل النشاطين — المطاعم / الشيخة ستايل
+    // ---------------------------------------------------------------------
+    // ⚠️ الفصل **بصريٌّ وتنظيمي**، ولا يمسّ صلاحيةً ولا قاعدة بيانات: حارس الدور
+    // (canSeeTab) يبقى كما هو وهو الحارس الأمني، وهذا طبقةٌ فوقه لا بديلٌ عنه.
+    // فالخلط بينهما كان سيجعل «تبويب مخفي» يُقرأ «تبويب ممنوع» — وهما مختلفان.
+    // =====================================================================
+    const BIZ_KEY = 'alsheikha_admin_biz';
+    const BIZ_LABEL = { rest: 'Restaurants', abaya: 'Al Sheikha Style' };
+    let activeBiz = '';                      // '' = لم يُختر بعد
+
+    function tabBiz(tabId) {
+        const btn = document.querySelector(`.nav-tab-btn[data-tab="${tabId}"]`);
+        return (btn && btn.dataset.biz) || 'both';
+    }
+    /** هل يظهر هذا التبويب في النشاط المختار؟ */
+    function inActiveBiz(tabId) {
+        if (!activeBiz) return true;         // قبل الاختيار لا يُحجب شيء
+        const b = tabBiz(tabId);
+        return b === 'both' || b === activeBiz;
+    }
+
+    window.chooseBiz = function(biz) {
+        if (biz !== 'rest' && biz !== 'abaya') return;
+        activeBiz = biz;
+        try { localStorage.setItem(BIZ_KEY, biz); } catch (e) { /* وضعٌ خاص — لا يُعطّل */ }
+        applyBiz();
+    };
+    window.showBizChooser = function() {
+        activeBiz = '';
+        try { localStorage.removeItem(BIZ_KEY); } catch (e) {}
+        applyBiz();
+    };
+
+    function applyBiz() {
+        const chooser = document.getElementById('bizChooser');
+        const nav = document.querySelector('.nav-tabs');
+        const sw = document.getElementById('btnSwitchBiz');
+        const showChooser = !activeBiz;
+        if (chooser) chooser.style.display = showChooser ? 'grid' : 'none';
+        if (nav) nav.style.display = showChooser ? 'none' : 'flex';
+        if (sw) {
+            sw.style.display = showChooser ? 'none' : 'inline-flex';
+            const lbl = document.getElementById('btnSwitchBizLabel');
+            // ⚠️ يُكتب اسم النشاط **الحالي** لا «تبديل» وحدها: فيعرف بلمحة أين هو،
+            // وهذا أهمّ من معرفة ما سينتقل إليه.
+            if (lbl) lbl.innerText = activeBiz ? BIZ_LABEL[activeBiz] : 'Switch business';
+        }
+        // الشعارات: علامةٌ بصرية للنشاط الذي يعمل عليه
+        const lr = document.getElementById('brandLogosRest');
+        const la = document.getElementById('brandLogosAbaya');
+        if (lr) lr.style.display = (!activeBiz || activeBiz === 'rest') ? '' : 'none';
+        if (la) la.style.display = (activeBiz === 'abaya') ? '' : 'none';
+        // إخفاء أزرار التبويبات التي لا تنتمي إلى النشاط
+        document.querySelectorAll('.nav-tab-btn').forEach(btn => {
+            const b = btn.dataset.biz || 'both';
+            const visible = !activeBiz || b === 'both' || b === activeBiz;
+            btn.style.display = visible ? '' : 'none';
+        });
+        if (showChooser) {
+            // شاشة الاختيار وحدها: تُخفى كل المحتويات فلا يبقى جدولٌ معلّق أسفلها
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            return;
+        }
+        // التبويب المفتوح لا ينتمي إلى النشاط الجديد؟ نفتح أول تبويب ينتمي إليه.
+        const active = document.querySelector('.tab-content.active');
+        if (!active || !inActiveBiz(active.id) || !canSeeTab(active.id)) {
+            const first = [...document.querySelectorAll('.nav-tab-btn')]
+                .map(b => b.dataset.tab)
+                .find(t => inActiveBiz(t) && canSeeTab(t));
+            window.switchTab(first || 'tab-home');
+        }
+    }
+
+    /** يُقرأ الاختيار المحفوظ عند الإقلاع. */
+    function restoreBiz() {
+        let saved = '';
+        try { saved = localStorage.getItem(BIZ_KEY) || ''; } catch (e) {}
+        activeBiz = (saved === 'rest' || saved === 'abaya') ? saved : '';
+        applyBiz();
+    }
+
     window.switchTab = function(tabId) {
         // حارس: لا يُفتح تبويب خارج صلاحية الدور مهما كان مصدر النداء (زر مخفي،
         // أو نداء من الكونسول). الحماية الحقيقية في القواعد، وهذا يمنع شاشة
@@ -3478,6 +3628,13 @@
         if (!canSeeTab(tabId)) {
             const t = allowedTabs();
             tabId = (t && t[0]) || 'tab-home';
+        }
+        // ⚠️ وحارسٌ ثانٍ للنشاط: لو نُودي تبويب عبايات ونحن في وضع المطاعم (من
+        // تنبيه، أو من #hash في الرابط)، **يُبدَّل النشاط** ولا يُرفض التبويب —
+        // فالمالك طلب شيئًا موجودًا، ورفضُه بلا تفسير أسوأ من الانتقال إليه.
+        if (activeBiz && !inActiveBiz(tabId)) {
+            const b = tabBiz(tabId);
+            if (b === 'rest' || b === 'abaya') { window.chooseBiz(b); }
         }
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.nav-tab-btn').forEach(el => el.classList.remove('active'));
