@@ -2001,6 +2001,80 @@
             <span id="backupStatus" style="font-weight: 600; display: block; margin-top: 10px; font-size: 13px;"></span>
         </div>
 
+        <!-- ==================================================================
+             الاستعادة من نسخة احتياطية
+             ------------------------------------------------------------------
+             أخطر أداة في اللوحة كلها، فبُنيت على أربعة مبادئ:
+              1) لا تحذف شيئًا أبدًا. لا يوجد فيها «امسح ما ليس في النسخة» —
+                 تلك أسرع طريقة لتدمير بيانات، ولن تُضاف.
+              2) الوضع الافتراضي «الناقص فقط»: لا يلمس مستندًا موجودًا بحال.
+              3) لا تكتب حرفًا قبل أن تُنزّل نسخة أمان من الوضع الحالي تلقائيًّا،
+                 فالرجوع ممكن دائمًا ولو أخطأ صاحبها في الاختيار.
+              4) تُعرض المقارنة قبل التنفيذ: كم في الملف، وكم الآن، وكم سيُنشأ،
+                 وكم سيُستبدل — فلا يُضغط زرٌّ على المجهول.
+             ⚠️ والاستبدال يحتاج كتابة كلمة صريحة، لا مجرّد موافقة.
+             ================================================================== -->
+        <div class="card" style="border-left: 4px solid var(--danger);">
+            <h3><span data-icon="sync"></span> Restore From Backup <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">الاستعادة من نسخة احتياطية</span></h3>
+            <p class="card-sub">
+                Loads a <b>Full Backup (JSON)</b> file back into the database. Nothing is ever deleted by this
+                tool, and by default nothing existing is even touched &mdash; it only creates records that are
+                missing. A safety copy of the current data is downloaded automatically before anything is written.
+            </p>
+            <div class="controls" style="align-items: flex-end; gap: 10px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 260px;">
+                    <label for="restoreFileInput">Backup file</label>
+                    <input type="file" id="restoreFileInput" accept="application/json,.json" onchange="analyseRestoreFile()">
+                </div>
+            </div>
+            <p id="restoreFileInfo" style="font-size: 13px; font-weight: 600; margin: 12px 0 0;"></p>
+
+            <div id="restorePlanBox" style="display: none; margin-top: 16px;">
+                <div class="table-container">
+                    <table>
+                        <thead><tr>
+                            <th style="width: 42px;"></th><th>Collection</th>
+                            <th class="money-col">In file</th><th class="money-col">In database now</th>
+                            <th class="money-col">Would be created</th><th class="money-col">Already exists</th>
+                        </tr></thead>
+                        <tbody id="restorePlanBody"></tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 16px; padding: 14px; background: var(--surface-2); border-radius: 8px;">
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-weight: 600; font-size: 13.5px; margin-bottom: 10px;">
+                        <input type="radio" name="restoreMode" id="restoreModeSafe" value="safe" checked onchange="renderRestorePlan()" style="margin-top: 3px;">
+                        <span>
+                            <b>Create missing records only</b> &mdash; recommended.
+                            <span style="display: block; font-weight: 400; color: var(--text-dim); font-size: 12.5px; margin-top: 3px;">
+                                Records that already exist are left exactly as they are. This is the safe choice and cannot lose anything.
+                            </span>
+                        </span>
+                    </label>
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-weight: 600; font-size: 13.5px;">
+                        <input type="radio" name="restoreMode" id="restoreModeOverwrite" value="overwrite" onchange="renderRestorePlan()" style="margin-top: 3px;">
+                        <span>
+                            <b style="color: var(--danger);">Also overwrite records that already exist</b>
+                            <span style="display: block; font-weight: 400; color: var(--text-dim); font-size: 12.5px; margin-top: 3px;">
+                                Replaces the current version with the one in the file. Any change made after the backup was taken is lost.
+                            </span>
+                        </span>
+                    </label>
+                    <div id="restoreConfirmBox" style="display: none; margin-top: 12px;">
+                        <label for="restoreConfirmWord" style="color: var(--danger);">Type <b>RESTORE</b> to allow overwriting</label>
+                        <input type="text" id="restoreConfirmWord" placeholder="RESTORE" autocomplete="off" style="max-width: 220px;">
+                    </div>
+                </div>
+
+                <p class="card-sub" style="margin: 14px 0 0;" id="restoreSummary"></p>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px;">
+                    <button class="btn-danger" id="btnRunRestore" onclick="runRestore()"><span data-icon="sync"></span> Start restore</button>
+                    <button class="btn-ghost" onclick="cancelRestore()">Cancel</button>
+                </div>
+            </div>
+            <span id="restoreStatus" style="font-weight: 600; display: block; margin-top: 12px; font-size: 13px;"></span>
+        </div>
+
     </div>
 </div>
 
@@ -12644,6 +12718,281 @@
         // نسخة أخرى منها في أي مكان، فبلا هذا السطر تُفقد الصور نهائيًّا.
         "manager_cards", "manager_presence"
     ];
+    // =====================================================================
+    // الاستعادة من نسخة احتياطية
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ الخطر الأول والأكبر: التصدير يحوّل كل Timestamp إلى نصّ ISO
+    // (انظر exportFullBackup أدناه). فلو أُعيد كما هو نصًّا، صار `timestamp`
+    // و`serverTime` نصوصًا، فتنكسر buildSessions التي تُنادي .toDate() عليها،
+    // وينكسر معها حساب الورديات والرواتب كله — بلا أي رسالة خطأ. فالتحويل
+    // العكسي ليس تفصيلًا، هو صحّة الاستعادة نفسها.
+    //
+    // ⚠️ ولا يُحوَّل كل نصّ يشبه التاريخ: `date: "2026-09-15"` و`joinDate`
+    // و`month` و`fromTime` حقولٌ نصّية عن قصد، وتحويلها يُفسدها. فالتحويل
+    // محصورٌ بقائمة أسماء معروفة **و** بنمط وقتٍ كامل فيه T و Z.
+    // =====================================================================
+    const TIMESTAMP_FIELDS = new Set([
+        'timestamp', 'serverTime', 'createdAt', 'updatedAt', 'deviceTime',
+        'approvedAt', 'rejectedAt', 'decidedAt', 'editedAt', 'endedAt',
+        'closedAt', 'probedAt', 'acceptedAt', 'acknowledgedAt', 'markedAt',
+        'submittedAt'
+    ]);
+    const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+    // حدود دفعة فايرستور: 500 عملية و10 ميجابايت. والصور مخزَّنة داخل المستندات
+    // (لا يوجد Storage في هذا المشروع)، فمستندٌ واحد قد يبلغ 700KB — فالعدد
+    // وحده لا يكفي حاجزًا، ويجب الحدّ بالحجم أيضًا وإلا فشلت الدفعة.
+    const RESTORE_BATCH_DOCS = 150;
+    const RESTORE_BATCH_BYTES = 3 * 1024 * 1024;
+
+    let restorePlan = null;   // { exportedAt, perColl: [{ name, docs, liveIds:Set, newCount, existCount }] }
+
+    /** يُعيد حقول الوقت من نصّ ISO إلى كائن Date — والـSDK يخزّنه Timestamp. */
+    function revivePlainDoc(raw) {
+        const out = {};
+        Object.keys(raw).forEach(k => {
+            if (k === 'id') return;                       // المعرّف ليس حقلًا في المستند
+            const v = raw[k];
+            if (typeof v === 'string' && TIMESTAMP_FIELDS.has(k) && ISO_DATETIME.test(v)) {
+                const d = new Date(v);
+                out[k] = isNaN(d.getTime()) ? v : d;      // نصٌّ تالف يبقى كما هو لا يُفقد
+            } else {
+                out[k] = v;
+            }
+        });
+        return out;
+    }
+
+    function restoreMode() {
+        const el = document.getElementById('restoreModeOverwrite');
+        return (el && el.checked) ? 'overwrite' : 'safe';
+    }
+
+    window.cancelRestore = function() {
+        restorePlan = null;
+        document.getElementById('restoreFileInput').value = '';
+        document.getElementById('restorePlanBox').style.display = 'none';
+        document.getElementById('restoreFileInfo').innerText = '';
+        document.getElementById('restoreStatus').innerText = '';
+    };
+
+    window.analyseRestoreFile = async function() {
+        const info = document.getElementById('restoreFileInfo');
+        const status = document.getElementById('restoreStatus');
+        status.innerText = '';
+        document.getElementById('restorePlanBox').style.display = 'none';
+        restorePlan = null;
+        if (currentRole !== ROLE_ADMIN) {
+            info.style.color = 'var(--danger)';
+            info.innerText = 'Only the owner can restore a backup.';
+            return;
+        }
+        const file = document.getElementById('restoreFileInput').files[0];
+        if (!file) return;
+        info.style.color = 'var(--text-dim)';
+        info.innerText = 'Reading the file...';
+        let parsed;
+        try {
+            parsed = JSON.parse(await file.text());
+        } catch (e) {
+            info.style.color = 'var(--danger)';
+            info.innerText = 'That file is not a valid backup: it is not readable JSON.';
+            return;
+        }
+        if (!parsed || typeof parsed.collections !== 'object' || !parsed.collections) {
+            info.style.color = 'var(--danger)';
+            info.innerText = 'That file does not look like a Full Backup from this dashboard (no "collections" section).';
+            return;
+        }
+
+        // ⚠️ لا تُقبل إلا المجموعات المعروفة: ملفٌ فيه اسم مجموعة غريب لا يُكتب
+        // منه شيء — قد يكون نسخة مشروع آخر، وكتابته تُلوّث قاعدة البيانات.
+        const unknown = Object.keys(parsed.collections).filter(c => !BACKUP_COLLECTIONS.includes(c));
+        const perColl = [];
+        info.innerText = 'Comparing the file with the database...';
+        try {
+            for (const name of BACKUP_COLLECTIONS) {
+                const docs = Array.isArray(parsed.collections[name]) ? parsed.collections[name] : [];
+                if (!docs.length) continue;
+                // مستندٌ بلا معرّف لا يُستعاد: كتابته بمعرّف جديد تُنشئ نسخة
+                // ثانية بدل استعادة الأصل، وهذا تكرارٌ لا استعادة.
+                const withId = docs.filter(d => d && typeof d.id === 'string' && d.id);
+                const snap = await getDocs(collection(db, name));
+                const liveIds = new Set();
+                snap.forEach(d => liveIds.add(d.id));
+                const existCount = withId.filter(d => liveIds.has(d.id)).length;
+                perColl.push({
+                    name, docs: withId, liveCount: liveIds.size, liveIds,
+                    skippedNoId: docs.length - withId.length,
+                    newCount: withId.length - existCount, existCount
+                });
+            }
+        } catch (e) {
+            info.style.color = 'var(--danger)';
+            info.innerText = 'Could not read the current database to compare: ' + e.message;
+            return;
+        }
+
+        if (!perColl.length) {
+            info.style.color = 'var(--danger)';
+            info.innerText = 'The file contains no records for any collection this dashboard manages.';
+            return;
+        }
+
+        restorePlan = { exportedAt: parsed.exportedAt || '(not recorded)', perColl, unknown };
+        const total = perColl.reduce((s, c) => s + c.docs.length, 0);
+        info.style.color = 'var(--text)';
+        info.innerHTML = `File read: <b>${total} record(s)</b> across <b>${perColl.length} collection(s)</b>. `
+            + `Backup taken on <b>${escapeHtml(String(restorePlan.exportedAt).slice(0, 19).replace('T', ' '))}</b>.`
+            + (unknown.length ? `<br><span style="color: var(--warning);">Ignoring ${unknown.length} unknown section(s) in the file: ${unknown.map(escapeHtml).join(', ')}.</span>` : '');
+        document.getElementById('restorePlanBox').style.display = 'block';
+        renderRestorePlan();
+    };
+
+    window.renderRestorePlan = function() {
+        if (!restorePlan) return;
+        const mode = restoreMode();
+        document.getElementById('restoreConfirmBox').style.display = mode === 'overwrite' ? 'block' : 'none';
+        document.getElementById('restorePlanBody').innerHTML = restorePlan.perColl.map(c => `
+            <tr>
+                <td><input type="checkbox" class="restorePick" data-coll="${escapeHtml(c.name)}"
+                     onchange="renderRestoreSummary()" style="width:17px;height:17px;cursor:pointer;"></td>
+                <td><b>${escapeHtml(c.name)}</b>${c.skippedNoId
+                    ? `<br><small style="color: var(--warning);">${c.skippedNoId} record(s) in the file have no id and will be skipped</small>` : ''}</td>
+                <td class="money-col">${c.docs.length}</td>
+                <td class="money-col">${c.liveCount}</td>
+                <td class="money-col" style="color: var(--success);">${c.newCount || '—'}</td>
+                <td class="money-col" style="color: ${mode === 'overwrite' && c.existCount ? 'var(--danger)' : 'var(--text-dim)'};">${c.existCount || '—'}</td>
+            </tr>`).join('');
+        renderRestoreSummary();
+    };
+
+    function pickedCollections() {
+        return Array.from(document.querySelectorAll('.restorePick'))
+            .filter(cb => cb.checked)
+            .map(cb => restorePlan.perColl.find(c => c.name === cb.getAttribute('data-coll')))
+            .filter(Boolean);
+    }
+
+    window.renderRestoreSummary = function() {
+        const el = document.getElementById('restoreSummary');
+        const picked = pickedCollections();
+        const mode = restoreMode();
+        if (!picked.length) {
+            el.innerHTML = '<b>Tick the collections you want to restore.</b> Nothing is selected, so nothing would happen.';
+            return;
+        }
+        const create = picked.reduce((s, c) => s + c.newCount, 0);
+        const over = picked.reduce((s, c) => s + c.existCount, 0);
+        el.innerHTML = `About to <b style="color: var(--success);">create ${create} record(s)</b>`
+            + (mode === 'overwrite'
+                ? ` and <b style="color: var(--danger);">overwrite ${over} existing record(s)</b>.`
+                : ` and <b>leave ${over} existing record(s) untouched</b>.`)
+            + ` Nothing will be deleted. A safety copy of the current data is downloaded first.`;
+    };
+
+    /** نسخة أمان من الوضع الحالي للمجموعات المختارة — تُنزَّل قبل أي كتابة. */
+    async function downloadSafetyCopy(colls) {
+        const backup = { exportedAt: new Date().toISOString(), safetyCopyBeforeRestore: true, collections: {} };
+        for (const c of colls) {
+            const snap = await getDocs(collection(db, c.name));
+            backup.collections[c.name] = [];
+            snap.forEach(docSnap => {
+                const data = docSnap.data();
+                Object.keys(data).forEach(k => {
+                    if (data[k] && typeof data[k].toDate === 'function') data[k] = data[k].toDate().toISOString();
+                });
+                backup.collections[c.name].push({ id: docSnap.id, ...data });
+            });
+        }
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `AlSheikha_SAFETY_before_restore_${todayISO()}_${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return Object.values(backup.collections).reduce((s, arr) => s + arr.length, 0);
+    }
+
+    window.runRestore = async function() {
+        if (currentRole !== ROLE_ADMIN) { alert('Only the owner can restore a backup.'); return; }
+        if (!restorePlan) return;
+        const status = document.getElementById('restoreStatus');
+        const btn = document.getElementById('btnRunRestore');
+        const picked = pickedCollections();
+        const mode = restoreMode();
+        if (!picked.length) {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Tick at least one collection first.';
+            return;
+        }
+        if (mode === 'overwrite') {
+            const word = (document.getElementById('restoreConfirmWord').value || '').trim().toUpperCase();
+            if (word !== 'RESTORE') {
+                status.style.color = 'var(--danger)';
+                status.innerText = 'Type RESTORE in the box to allow overwriting existing records.';
+                return;
+            }
+        }
+        const create = picked.reduce((s, c) => s + c.newCount, 0);
+        const over = picked.reduce((s, c) => s + c.existCount, 0);
+        if (!confirm(`Restore ${picked.map(c => c.name).join(', ')}?\n\n`
+            + `Create: ${create} record(s)\n`
+            + (mode === 'overwrite' ? `Overwrite: ${over} existing record(s) — their current version is lost\n` : `Leave untouched: ${over} existing record(s)\n`)
+            + `Delete: nothing\n\n`
+            + `A safety copy of the current data will download first.`)) return;
+
+        btn.disabled = true;
+        try {
+            status.style.color = 'var(--warning)';
+            status.innerText = 'Downloading a safety copy of the current data...';
+            const savedDocs = await downloadSafetyCopy(picked);
+
+            let written = 0, skipped = 0;
+            for (const c of picked) {
+                const targets = mode === 'overwrite' ? c.docs : c.docs.filter(d => !c.liveIds.has(d.id));
+                skipped += c.docs.length - targets.length;
+                let batch = writeBatch(db), n = 0, bytes = 0;
+                for (const raw of targets) {
+                    const data = revivePlainDoc(raw);
+                    batch.set(doc(db, c.name, raw.id), data);
+                    n++;
+                    // تقديرٌ تقريبي للحجم يكفي لتقسيم الدفعات قبل بلوغ الحدّ.
+                    bytes += JSON.stringify(raw).length;
+                    if (n >= RESTORE_BATCH_DOCS || bytes >= RESTORE_BATCH_BYTES) {
+                        await batch.commit();
+                        written += n;
+                        status.innerText = `Restoring... ${written} record(s) written.`;
+                        batch = writeBatch(db); n = 0; bytes = 0;
+                    }
+                }
+                if (n) { await batch.commit(); written += n; }
+                status.innerText = `Restoring... ${written} record(s) written.`;
+            }
+
+            logAudit('Backup Restored',
+                `${written} record(s) written to ${picked.map(c => c.name).join(', ')} — mode: ${mode}`
+                + `, ${skipped} left untouched, safety copy of ${savedDocs} record(s) downloaded`
+                + `, backup dated ${restorePlan.exportedAt}`);
+
+            status.style.color = 'var(--success)';
+            status.innerHTML = `<b>Restore finished.</b> ${written} record(s) written, ${skipped} left untouched, `
+                + `nothing deleted. Reloading the dashboard...`;
+            // إعادة تحميل كاملة: عشرات الجداول في الذاكرة صارت قديمة الآن، ورسمُ
+            // بعضها وترك بعضها يُظهر أرقامًا متعارضة على شاشة واحدة.
+            setTimeout(() => location.reload(), 2500);
+        } catch (e) {
+            status.style.color = 'var(--danger)';
+            status.innerHTML = `<b>Restore stopped:</b> ${escapeHtml(e.message)}<br>`
+                + `Records written before the error are already saved. Nothing was deleted, and the safety copy `
+                + `you just downloaded still holds the state from before this attempt.`;
+        } finally {
+            btn.disabled = false;
+        }
+    };
+
     window.exportFullBackup = async function() {
         // النسخة الاحتياطية تحتوي كل شيء بلا استثناء — رواتب وصور هويات وعقود.
         // فهي للمالك وحده، لا لمن يملك صلاحية مالية فقط.
