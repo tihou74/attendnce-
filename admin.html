@@ -3529,8 +3529,28 @@
         return `${slug}_${rand}`;
     }
 
+    /**
+     * يُنشئ الموظفين الناقصين من القائمة المدفونة في الكود.
+     * ⚠️ لا يُنادى تلقائيًّا بحال — انظر التعليق في loadEmployees. ويسأل قبل
+     * التنفيذ لأنه يكتب 98 سجلًا ويُعيد أرقام الدخول إلى 1234، وضغطُه بالخطأ
+     * على قاعدة فارغة يملأها بما ليس حقيقيًّا فيُخفي أن هناك مشكلة أصلًا.
+     */
     window.syncAllSalariesList = async function() {
         const statusEl = document.getElementById("empActionStatus");
+        const existingCount = allEmployees.length;
+        const msg = existingCount === 0
+            ? `The employee list is currently EMPTY.\n\n`
+              + `This will create ${initialEmployeesData.length} employees from the built-in default list, `
+              + `with old salaries, no joining dates, no QID data, and every PIN set to 1234.\n\n`
+              + `It will NOT restore records that were deleted. If you are here because your employees `
+              + `disappeared, press Cancel and restore from a backup instead.\n\nContinue anyway?`
+            : `Create any of the ${initialEmployeesData.length} built-in employees that are missing?\n\n`
+              + `Existing records are matched by name and left untouched.`;
+        if (!confirm(msg)) {
+            if (statusEl) { statusEl.innerText = 'Cancelled — nothing was created.'; statusEl.style.color = 'var(--text-dim)'; }
+            return;
+        }
+        logAudit('Employee Sync Started', `${existingCount} existing record(s) before sync`);
         if (statusEl) { statusEl.innerText = "Syncing (creating missing employees only)..."; statusEl.style.color = "var(--warning)"; }
         try {
             const existingNames = new Set(allEmployees.map(e => (e.name || "").trim().toUpperCase()));
@@ -3565,8 +3585,37 @@
             allEmployees = [];
             querySnapshot.forEach((docSnap) => allEmployees.push({ id: docSnap.id, ...docSnap.data() }));
 
+            // =============================================================
+            // ⛔ البذر التلقائي أُلغي — وكان خطرًا حقيقيًّا وقع فعلًا
+            // -------------------------------------------------------------
+            // ما كان هنا: إن عادت قائمة الموظفين فارغة، يُنشئ النظام تلقائيًّا
+            // **98 موظفًا** من قائمة مدفونة في الكود (initialEmployeesData)،
+            // برواتب قديمة وبلا تواريخ التحاق، ويُعيد أرقام الدخول إلى 1234.
+            //
+            // الخطر: «فارغة» لا تعني دائمًا «لا يوجد موظفون». قد تكون قراءةً
+            // فشلت، أو مشكلةَ صلاحيات، أو حسابًا خاطئًا، أو خللًا لحظيًّا. وفي
+            // كل تلك الحالات كان النظام يبدأ بالكتابة من نفسه بلا سؤال، فيُنشئ
+            // 98 سجلًا وهميًّا **فوق** بيانات حقيقية موجودة. ووقع هذا فعلًا:
+            // فتح المالك اللوحة فوجد الموظفين قد اختفوا والنظام يُنشئ غيرهم.
+            //
+            // والقرار: النظام لا يكتب من نفسه أبدًا. الزرّ اليدوي
+            // «Sync Database» موجود أصلًا في الأعلى، فمن أراد البذر يطلبه
+            // صريحًا وهو يرى ما يفعل. أما القائمة الفارغة فتُعرض فارغة مع
+            // تحذير واضح — لأن رؤية الفراغ أصدق من امتلائه بما ليس حقيقيًّا.
+            // =============================================================
             if (allEmployees.length === 0) {
-                await window.syncAllSalariesList();
+                const warn = document.getElementById("empActionStatus");
+                if (warn) {
+                    warn.innerHTML = '<b>No employee records were returned.</b> Nothing has been created '
+                        + 'automatically. If you expected employees here, do NOT press "Sync Database" — that '
+                        + 'creates a fresh default list and will not bring your records back. Check the Firestore '
+                        + 'console first, or restore from a backup.';
+                    warn.style.color = 'var(--danger)';
+                }
+                const cnt = document.getElementById("homeEmpCount");
+                if (cnt) cnt.innerText = '0';
+                filterEmployeesList();
+                filterEmployeeDirectory();
                 return;
             }
 
