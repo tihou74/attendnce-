@@ -2002,6 +2002,53 @@
         </div>
 
         <!-- ==================================================================
+             تنظيف الأسماء المكرّرة
+             ------------------------------------------------------------------
+             سببها: البذر التلقائي أنشأ 98 سجلًا فوق سجلات حقيقية موجودة، فصار
+             لكل شخص سجلان. وهذا **خطر مالي** لا مجرّد فوضى: كشف الرواتب يمرّ
+             على كل سجل ويحسب راتبًا لكلٍّ منه، فسجلان = راتبان.
+             ⚠️ الدليل الأقوى على أن السجل حقيقي: **له سجل حضور**. الوهمي أُنشئ
+             بمعرّف جديد قبل دقائق فلا حضور له ولا خصومات ولا إجازات ولا مرفقات.
+             ⚠️ ولا تُقترح أبدًا إزالة سجلٍ في مجموعة ليس فيها سجلٌ حقيقيٌّ واحد،
+             ولا حين يبدو سجلان حقيقيين — تلك حالاتٌ تُعرض ليقرّرها المالك بنفسه.
+             ================================================================== -->
+        <div class="card" style="border-left: 4px solid var(--warning);">
+            <h3><span data-icon="users"></span> Duplicate Employee Cleanup <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">تنظيف الأسماء المكرّرة</span></h3>
+            <p class="card-sub">
+                Finds employees whose name appears more than once and shows the evidence for each record, so the
+                empty copy can be removed and the real file kept. <b>This matters for money:</b> payroll pays every
+                employee record, so two records for one person means two salaries.
+                Nothing is deleted until you review the list and confirm.
+            </p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <button class="btn-warning" onclick="scanDuplicateEmployees()"><span data-icon="search"></span> Scan for duplicates</button>
+                <span id="dupStatus" style="font-weight: 600; font-size: 13px;"></span>
+            </div>
+
+            <div id="dupBox" style="display: none; margin-top: 16px;">
+                <div class="table-container">
+                    <table>
+                        <thead><tr>
+                            <th style="width: 42px;">Remove</th><th>Name</th><th>Record</th>
+                            <th class="money-col">Attendance</th><th class="money-col">Deductions</th>
+                            <th>Joined</th><th>Qatar ID</th><th>Files</th><th class="money-col">Salary</th><th>Verdict</th>
+                        </tr></thead>
+                        <tbody id="dupTableBody"></tbody>
+                    </table>
+                </div>
+                <p class="card-sub" style="margin: 14px 0 0;" id="dupSummary"></p>
+                <div id="dupConfirmBox" style="margin-top: 12px;">
+                    <label for="dupConfirmWord" style="color: var(--danger);">Type <b>DELETE</b> to confirm removing the ticked records</label>
+                    <input type="text" id="dupConfirmWord" placeholder="DELETE" autocomplete="off" style="max-width: 220px;">
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px;">
+                    <button class="btn-danger" id="btnRunDupClean" onclick="runDuplicateCleanup()"><span data-icon="trash"></span> Remove ticked records</button>
+                    <button class="btn-ghost" onclick="document.getElementById('dupBox').style.display='none'">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================================================================
              الاستعادة من نسخة احتياطية
              ------------------------------------------------------------------
              أخطر أداة في اللوحة كلها، فبُنيت على أربعة مبادئ:
@@ -12718,6 +12765,188 @@
         // نسخة أخرى منها في أي مكان، فبلا هذا السطر تُفقد الصور نهائيًّا.
         "manager_cards", "manager_presence"
     ];
+    // =====================================================================
+    // تنظيف الأسماء المكرّرة
+    // ---------------------------------------------------------------------
+    // ⚠️ خطرٌ مالي لا فوضى شكلية: computePayroll يُنادى لكل سجل موظف، فسجلان
+    // لشخص واحد = راتبان في الكشف. ولهذا هذه الأداة عاجلة.
+    //
+    // ⚠️ الدليل الحاكم: السجل الحقيقي **له آثار** — حضور، خصومات، إجازات،
+    // بدلات، تاريخ التحاق، رقم هوية، مرفقات. والسجل الذي أنشأه البذر قبل
+    // دقائق بمعرّف جديد ليس له أثر واحد. فالحكم يُبنى على وجود الأثر لا على
+    // الشكل.
+    //
+    // ⚠️ وثلاث قواعد لا تُخترق:
+    //   1) لا يُقترح حذف سجل إلا إذا كان في مجموعته سجلٌ **له أثر** — فلا
+    //      يُحذف آخر سجل لشخص بحال.
+    //   2) إن بدا سجلان حقيقيين، لا يُقترح شيء ويُعرض للمالك ليقرّر — الدمج
+    //      قرارٌ بشري لا يُخمّن.
+    //   3) إن لم يكن لأي سجل أثر (موظف جديد فعلًا لم يعمل بعد)، لا يُقترح شيء.
+    // =====================================================================
+    const normName = (s) => String(s || '').trim().toUpperCase().replace(/\s+/g, ' ');
+    let dupGroups = null;
+
+    /** يجمع كل الآثار التي تُثبت أن السجل حقيقي. */
+    function employeeEvidence(emp) {
+        const id = emp.id;
+        const att = allAttendance.filter(l => l.employeeId === id).length;
+        const ded = allDeductions.filter(d => d.employeeId === id).length;
+        const lv = (allAnnualLeaves || []).filter(l => l.employeeId === id).length;
+        const alw = (allAllowancePayments || []).filter(a => a.employeeId === id).length;
+        const files = ['qidFront', 'qidBack', 'healthCard', 'contract', 'healthCert']
+            .filter(f => emp[f] && String(emp[f]).length > 20).length;
+        const hasJoin = !!emp.joinDate;
+        const hasQid = !!(emp.qidNumber || emp.qidExpiry);
+        const traces = att + ded + lv + alw + files + (hasJoin ? 1 : 0) + (hasQid ? 1 : 0);
+        return { att, ded, lv, alw, files, hasJoin, hasQid, traces, real: traces > 0 };
+    }
+
+    window.scanDuplicateEmployees = function() {
+        const status = document.getElementById('dupStatus');
+        if (currentRole !== ROLE_ADMIN) {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Only the owner can do this.';
+            return;
+        }
+        const byName = new Map();
+        allEmployees.forEach(e => {
+            const k = normName(e.name);
+            if (!k) return;
+            if (!byName.has(k)) byName.set(k, []);
+            byName.get(k).push(e);
+        });
+        dupGroups = [];
+        byName.forEach((members, name) => {
+            if (members.length < 2) return;
+            const rows = members.map(e => ({ emp: e, ev: employeeEvidence(e) }));
+            const realOnes = rows.filter(r => r.ev.real);
+            let verdictFor;
+            if (realOnes.length === 1) {
+                // الحالة الواضحة: واحدٌ له أثر والباقي بلا أثر.
+                verdictFor = (r) => r.ev.real
+                    ? { keep: true, why: 'Keep — this is the real file' }
+                    : { keep: false, why: 'Empty copy — no attendance, no history, no documents' };
+            } else if (realOnes.length === 0) {
+                verdictFor = () => ({ keep: true, needsYou: true, why: 'No record has any history — decide yourself' });
+            } else {
+                verdictFor = () => ({ keep: true, needsYou: true, why: 'More than one record has real history — decide yourself' });
+            }
+            dupGroups.push({ name, rows: rows.map(r => ({ ...r, verdict: verdictFor(r) })) });
+        });
+        dupGroups.sort((a, b) => a.name.localeCompare(b.name));
+
+        if (!dupGroups.length) {
+            document.getElementById('dupBox').style.display = 'none';
+            status.style.color = 'var(--success)';
+            status.innerText = 'No duplicated names found. Nothing to clean.';
+            return;
+        }
+        status.style.color = 'var(--warning)';
+        status.innerText = `${dupGroups.length} duplicated name(s) found.`;
+        document.getElementById('dupBox').style.display = 'block';
+        renderDuplicateTable();
+    };
+
+    function renderDuplicateTable() {
+        const body = document.getElementById('dupTableBody');
+        body.innerHTML = dupGroups.map(g => g.rows.map((r, i) => {
+            const e = r.emp, ev = r.ev, v = r.verdict;
+            const tint = v.needsYou ? 'rgba(245,158,11,0.10)' : (v.keep ? 'rgba(22,163,74,0.07)' : 'rgba(220,38,38,0.07)');
+            return `<tr style="background: ${tint};">
+                <td>${v.keep ? '<span style="color: var(--text-dim); font-size: 11px; font-weight: 700;">keep</span>'
+                    : `<input type="checkbox" class="dupPick" data-id="${escapeHtml(e.id)}" checked
+                         onchange="renderDupSummary()" style="width:17px;height:17px;cursor:pointer;">`}</td>
+                <td>${i === 0 ? `<b>${escapeHtml(g.name)}</b>` : ''}</td>
+                <td><small style="font-family: monospace; color: var(--text-dim);">${escapeHtml(e.id)}</small></td>
+                <td class="money-col"${ev.att ? ' style="font-weight:800; color: var(--success);"' : ''}>${ev.att || '—'}</td>
+                <td class="money-col">${ev.ded || '—'}</td>
+                <td>${e.joinDate ? escapeHtml(e.joinDate) : '<span style="color: var(--danger);">—</span>'}</td>
+                <td>${e.qidNumber ? escapeHtml(e.qidNumber) : '<span style="color: var(--danger);">—</span>'}</td>
+                <td>${ev.files || '<span style="color: var(--danger);">0</span>'}</td>
+                <td class="money-col">${Number(e.salary) || 0}</td>
+                <td style="font-size: 12px; font-weight: 700; color: ${v.needsYou ? 'var(--warning)' : (v.keep ? 'var(--success)' : 'var(--danger)')};">${escapeHtml(v.why)}</td>
+            </tr>`;
+        }).join('')).join('');
+        if (typeof paintIcons === 'function') paintIcons();
+        renderDupSummary();
+    }
+
+    window.renderDupSummary = function() {
+        const n = document.querySelectorAll('.dupPick:checked').length;
+        const needs = dupGroups.filter(g => g.rows.some(r => r.verdict.needsYou)).length;
+        document.getElementById('dupSummary').innerHTML =
+            `<b>${n} record(s) ticked for removal.</b> Each removal deletes that employee record and its PIN, `
+            + `and nothing else &mdash; attendance logs, deductions and reports are never touched. `
+            + `A safety copy downloads first.`
+            + (needs ? `<br><b style="color: var(--warning);">${needs} name(s) need your own decision</b> and are left ticked off: `
+                + `either no record has any history, or more than one does. Untick nothing there &mdash; open the two `
+                + `profiles and compare them yourself.` : '');
+    };
+
+    window.runDuplicateCleanup = async function() {
+        if (currentRole !== ROLE_ADMIN) { alert('Only the owner can do this.'); return; }
+        const status = document.getElementById('dupStatus');
+        const btn = document.getElementById('btnRunDupClean');
+        const ids = Array.from(document.querySelectorAll('.dupPick:checked')).map(cb => cb.getAttribute('data-id'));
+        if (!ids.length) {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Nothing is ticked.';
+            return;
+        }
+        if ((document.getElementById('dupConfirmWord').value || '').trim().toUpperCase() !== 'DELETE') {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Type DELETE in the box to confirm.';
+            return;
+        }
+        // ⚠️ حاجزٌ أخير مستقلّ عن الشاشة: لا يُحذف معرّفٌ له أيّ أثر، ولو وُسم
+        // للحذف. الشاشة قد تكون قديمة، والأثر هو الحقيقة.
+        const unsafe = ids.filter(id => {
+            const emp = allEmployees.find(e => e.id === id);
+            return !emp || employeeEvidence(emp).real;
+        });
+        if (unsafe.length) {
+            status.style.color = 'var(--danger)';
+            status.innerText = `Stopped: ${unsafe.length} ticked record(s) do have history and will not be deleted. Scan again.`;
+            return;
+        }
+        const names = ids.map(id => (allEmployees.find(e => e.id === id) || {}).name || id);
+        if (!confirm(`Remove ${ids.length} empty duplicate record(s)?\n\n${names.slice(0, 12).join('\n')}`
+            + (names.length > 12 ? `\n...and ${names.length - 12} more` : '')
+            + `\n\nAttendance, deductions, salaries and reports are NOT touched.\nA safety copy downloads first.`)) return;
+
+        btn.disabled = true;
+        try {
+            status.style.color = 'var(--warning)';
+            status.innerText = 'Downloading a safety copy...';
+            await downloadSafetyCopy([{ name: 'employees' }, { name: 'employee_pins' }]);
+
+            let done = 0;
+            // دفعات صغيرة: المستندات تحمل صورًا، وعمليتان لكل موظف (السجل ورقمه).
+            for (let i = 0; i < ids.length; i += 100) {
+                const chunk = ids.slice(i, i + 100);
+                const batch = writeBatch(db);
+                chunk.forEach(id => {
+                    batch.delete(doc(db, "employees", id));
+                    batch.delete(doc(db, "employee_pins", id));
+                });
+                await batch.commit();
+                done += chunk.length;
+                status.innerText = `Removing... ${done} of ${ids.length}`;
+            }
+            logAudit('Duplicate Employees Removed',
+                `${done} empty duplicate record(s) deleted (no attendance/deductions/documents on any of them): `
+                + names.slice(0, 40).join(', ') + (names.length > 40 ? ` +${names.length - 40} more` : ''));
+            status.style.color = 'var(--success)';
+            status.innerText = `Removed ${done} duplicate record(s). Reloading...`;
+            setTimeout(() => location.reload(), 2000);
+        } catch (e) {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Stopped: ' + e.message + ' — records already removed stay removed; the safety copy holds the state from before.';
+        } finally {
+            btn.disabled = false;
+        }
+    };
+
     // =====================================================================
     // الاستعادة من نسخة احتياطية
     // ---------------------------------------------------------------------
