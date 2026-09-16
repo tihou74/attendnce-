@@ -2002,6 +2002,61 @@
         </div>
 
         <!-- ==================================================================
+             تعيين المدراء بضغطة
+             ------------------------------------------------------------------
+             وُجدت لأن المالك احتاج إعادة تعيين مدراء حُذفت سجلاتهم، ورأى مسار
+             الاستعادة معقّدًا. الطريق الأقصر: يكتب الأسماء ويضغط زرًّا.
+             ⚠️ الأسماء لا تُكتب في الكود: أسماء المدراء تتغيّر، فمن يكتبها هو
+             المالك ويُعدّلها متى شاء بلا انتظار أحد.
+             ⚠️ والقاعدة الحاكمة: من كان موجودًا **لا يُعاد بناء سجله**، بل
+             تُضاف إليه خانة المدير وحدها. الكتابة الكاملة على سجل موجود تمحو
+             راتبه وتاريخ التحاقه وصور هويته وعقده — وذلك ما لا يجوز أن يتكرّر.
+             ================================================================== -->
+        <div class="card" style="border-left: 4px solid var(--success);">
+            <h3><span data-icon="userPlus"></span> Set Up Managers <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">تعيين المدراء</span></h3>
+            <p class="card-sub">
+                Write the manager names below, one per line, and press Check. Anyone who already has a file keeps
+                it exactly as it is &mdash; only the manager permission is added, so salaries, joining dates and
+                documents are never touched. Anyone with no file at all gets a new one you can complete afterwards.
+                Each manager then signs in at <b>report.html</b> with the PIN shown.
+            </p>
+            <div class="controls" style="align-items: flex-start; gap: 14px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 280px;">
+                    <label for="mgrSetupNames">Manager names &mdash; one per line</label>
+                    <textarea id="mgrSetupNames" rows="7" dir="auto" placeholder="BILLEL ABDESSAMAD&#10;VIKAS CHIRAVANGATTE&#10;ACHRAF SHILI" style="width: 100%; padding: 11px; font-size: 14px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; background: var(--surface); color: var(--text);"></textarea>
+                </div>
+                <div style="width: 210px;">
+                    <label for="mgrSetupBranch">Branch for new files</label>
+                    <select id="mgrSetupBranch">
+                        <option value="HEAD OFFICE">HEAD OFFICE</option>
+                        <option value="GAIMER W KAHI WEST WALK">GAIMER W KAHI WEST WALK</option>
+                        <option value="GAIMER W KAHI OLD MINA PORT">GAIMER W KAHI OLD MINA PORT</option>
+                        <option value="SHAI BU HAMAD WEST WALK">SHAI BU HAMAD WEST WALK</option>
+                        <option value="SHAI BU HAMAD GULF MALL">SHAI BU HAMAD GULF MALL</option>
+                    </select>
+                    <label for="mgrSetupPin" style="margin-top: 10px;">PIN (4&ndash;8 digits)</label>
+                    <input type="text" id="mgrSetupPin" inputmode="numeric" maxlength="8" placeholder="leave empty to keep existing">
+                    <button class="btn-warning" style="margin-top: 12px; width: 100%;" onclick="checkManagerSetup()"><span data-icon="search"></span> Check</button>
+                </div>
+            </div>
+
+            <div id="mgrSetupBox" style="display: none; margin-top: 16px;">
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Name you wrote</th><th>Matching file</th><th>Manager now?</th><th>PIN</th><th>What will happen</th></tr></thead>
+                        <tbody id="mgrSetupBody"></tbody>
+                    </table>
+                </div>
+                <p class="card-sub" style="margin: 14px 0 0;" id="mgrSetupSummary"></p>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px;">
+                    <button class="btn-success" id="btnRunMgrSetup" onclick="runManagerSetup()"><span data-icon="save"></span> Make them managers</button>
+                    <button class="btn-ghost" onclick="document.getElementById('mgrSetupBox').style.display='none'">Cancel</button>
+                </div>
+            </div>
+            <span id="mgrSetupStatus" style="font-weight: 600; display: block; margin-top: 12px; font-size: 13px;"></span>
+        </div>
+
+        <!-- ==================================================================
              تنظيف الأسماء المكرّرة
              ------------------------------------------------------------------
              سببها: البذر التلقائي أنشأ 98 سجلًا فوق سجلات حقيقية موجودة، فصار
@@ -12766,6 +12821,283 @@
         // نسخة أخرى منها في أي مكان، فبلا هذا السطر تُفقد الصور نهائيًّا.
         "manager_cards", "manager_presence"
     ];
+    // =====================================================================
+    // تعيين المدراء بضغطة
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ القاعدة التي لا تُخترق: سجلٌ موجود **لا يُكتب كاملًا**. تُضاف إليه
+    // خانة canSubmitSalesReport وحدها بـupdateDoc. الكتابة الكاملة (setDoc بلا
+    // دمج) على موظف موجود تمحو راتبه وتاريخ التحاقه ورقم هويته وصورها وعقده —
+    // وهذا بالضبط ما فعله البذر التلقائي وكلّف ما كلّف.
+    // ⚠️ ومن لا سجل له يُنشأ له سجل براتب 0 عن قصد: رقمٌ مُختلق أخطر من صفرٍ
+    // ظاهرٍ يُطالب بالتصحيح.
+    // ⚠️ ومديرٌ بلا رقم سري لا يستطيع الدخول، فلا يُقبل تعيينه بلا رقم.
+    // =====================================================================
+    let mgrSetupPlan = null;
+
+    // async: تقرأ أرقام الدخول من قاعدة البيانات (لا مصفوفة محمَّلة لها).
+    window.checkManagerSetup = async function() {
+        const status = document.getElementById('mgrSetupStatus');
+        if (currentRole !== ROLE_ADMIN) {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Only the owner can set up managers.';
+            return;
+        }
+        const raw = (document.getElementById('mgrSetupNames').value || '')
+            .split('\n').map(s => s.trim()).filter(Boolean);
+        if (!raw.length) {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Write at least one name.';
+            document.getElementById('mgrSetupBox').style.display = 'none';
+            return;
+        }
+        const pin = (document.getElementById('mgrSetupPin').value || '').trim();
+        if (pin && !/^\d{4,8}$/.test(pin)) {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'The PIN must be 4 to 8 digits, or leave it empty to keep the existing one.';
+            return;
+        }
+        const branch = document.getElementById('mgrSetupBranch').value;
+
+        // ⚠️ أرقام الدخول تُقرأ من قاعدة البيانات لا من الذاكرة: لا توجد مصفوفة
+        // محمَّلة لها، ومديرٌ بلا رقم لا يستطيع الدخول فلا يجوز تخمين وجوده.
+        status.style.color = 'var(--text-dim)';
+        status.innerText = 'Reading the employee list and PINs...';
+        const pinIds = new Set();
+        try {
+            const snap = await getDocs(collection(db, "employee_pins"));
+            snap.forEach(d => pinIds.add(d.id));
+        } catch (e) {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Could not read the PINs: ' + e.message;
+            return;
+        }
+
+        // اسمٌ مكتوب مرتين يُوحَّد، فلا يُنشأ له سجلان.
+        const seen = new Set();
+        mgrSetupPlan = [];
+        raw.forEach(name => {
+            const key = normName(name);
+            if (seen.has(key)) return;
+            seen.add(key);
+            mgrSetupPlan.push({
+                name, key, pin, branch,
+                candidates: findNameCandidates(key),
+                pinIds
+            });
+        });
+        document.getElementById('mgrSetupBox').style.display = 'block';
+        renderManagerSetupPlan();
+        status.innerText = '';
+    };
+
+    /**
+     * يقترح السجلات التي قد تكون صاحبة الاسم المكتوب.
+     *
+     * ⚠️⚠️ المطابقة الحرفية وحدها كانت فخًّا حقيقيًّا: المالك كتب «VIKAS»
+     * و«ACHREF SHILI» و«BILLEL FODIL»، والموجود في النظام «VIKAS CHIRAVANGATTE»
+     * و«ACHRAF SHILI» و«BILLEL ABDESSAMAD». لا واحد منها يطابق حرفيًّا، فكانت
+     * الأداة ستُنشئ ثلاثة سجلات جديدة وتترك الحقيقية بلا صلاحية — أي تكرارٌ
+     * جديد، وهو عين المشكلة التي نُصلحها.
+     *
+     * ⚠️ ولا يُختار المرشَّح تلقائيًّا في الحالات الملتبسة: «ACHREF SHILI» يشبه
+     * «ACHRAF SHILI» (نفس اللقب) ويشبه «ACHREF ASSOUKA» (نفس الاسم الأول). وهما
+     * شخصان مختلفان، فالحسم للمالك بقائمة يختار منها لا لخوارزمية تُخمّن.
+     */
+    function editDistance(a, b) {
+        const m = a.length, n = b.length;
+        if (!m || !n) return Math.max(m, n);
+        let prev = Array.from({ length: n + 1 }, (_, j) => j);
+        for (let i = 1; i <= m; i++) {
+            const cur = [i];
+            for (let j = 1; j <= n; j++) {
+                cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+            }
+            prev = cur;
+        }
+        return prev[n];
+    }
+
+    function findNameCandidates(key) {
+        const wroteWords = key.split(' ').filter(Boolean);
+        const scored = allEmployees.map(e => {
+            const en = normName(e.name);
+            const empWords = en.split(' ').filter(Boolean);
+            let score = 0, why = '';
+            if (en === key) { score = 1000; why = 'exact name'; }
+            else if (wroteWords.every(w => empWords.includes(w))) { score = 800; why = 'every word you wrote is in this name'; }
+            else if (empWords.every(w => wroteWords.includes(w))) { score = 780; why = 'this name is contained in what you wrote'; }
+            else {
+                const shared = wroteWords.filter(w => empWords.includes(w)).length;
+                // كلمةٌ مشتركة كاملة (لقب أو اسم أول) دليلٌ قوي
+                if (shared) { score = 500 + shared * 50; why = `${shared} word(s) match exactly`; }
+                // وإلا: تقاربُ الكتابة كلمةً بكلمة — يلتقط ACHREF/ACHRAF
+                const near = wroteWords.filter(w =>
+                    empWords.some(ew => Math.abs(ew.length - w.length) <= 2 && editDistance(w, ew) <= 2)).length;
+                if (near) {
+                    const s = 300 + near * 50;
+                    if (s > score) { score = s; why = `${near} word(s) are spelt almost the same`; }
+                }
+                const d = editDistance(key, en);
+                if (d <= 3) {
+                    const s = 400 - d * 10;
+                    if (s > score) { score = s; why = `spelt almost the same (${d} letter(s) different)`; }
+                }
+            }
+            if (!score) return null;
+            const ev = employeeEvidence(e);
+            return { emp: e, score, why, ev };
+        }).filter(Boolean);
+        // من له أثر أولى بالظهور: هو السجل الحقيقي بين المتشابهين
+        scored.sort((a, b) => (b.score - a.score) || (b.ev.traces - a.ev.traces));
+        return scored.slice(0, 6);
+    }
+
+    /** السجل الذي اختاره المالك لهذا السطر، أو null إن اختار «سجل جديد». */
+    function mgrSetupChoice(i) {
+        const sel = document.querySelector(`.mgrPick[data-i="${i}"]`);
+        const v = sel ? sel.value : '__NEW__';
+        return v === '__NEW__' ? null : allEmployees.find(e => e.id === v) || null;
+    }
+
+    function renderManagerSetupPlan() {
+        const pin = (document.getElementById('mgrSetupPin').value || '').trim();
+        document.getElementById('mgrSetupBody').innerHTML = mgrSetupPlan.map((p, i) => {
+            const exact = p.candidates.find(c => c.score === 1000);
+            // ⚠️ لا يُختار مرشَّحٌ تلقائيًّا إلا إن كان مطابقًا حرفيًّا، أو كان
+            // وحيدًا وقويًّا. وإلا فالافتراضي «اختر» ليضطرّ المالك إلى النظر —
+            // «ACHREF SHILI» يشبه شخصين مختلفين، والتخمين هنا يُنشئ تكرارًا.
+            const strong = p.candidates.filter(c => c.score >= 780);
+            const auto = exact ? exact.emp.id : (strong.length === 1 ? strong[0].emp.id : '');
+            const opts = p.candidates.map(c =>
+                `<option value="${escapeHtml(c.emp.id)}"${c.emp.id === auto ? ' selected' : ''}>`
+                + `${escapeHtml(c.emp.name)}`
+                + `${c.emp.branch ? ' — ' + escapeHtml(c.emp.branch) : ''}`
+                + `${c.emp.canSubmitSalesReport === true ? ' ✔manager' : ''}`
+                + `${c.ev.traces ? ` · ${c.ev.att} attendance, ${c.ev.sales} reports` : ' · NO history'}`
+                + `</option>`).join('');
+            const needChoose = !auto;
+            return `<tr${needChoose ? ' style="background: rgba(245,158,11,0.10);"' : ''}>
+                <td><b>${escapeHtml(p.name)}</b>${p.candidates.length && !exact
+                    ? '<br><small style="color: var(--warning);">no exact match &mdash; check the list</small>' : ''}</td>
+                <td colspan="3">
+                    <select class="mgrPick" data-i="${i}" onchange="renderManagerSetupPlan()" style="width: 100%; max-width: 460px;">
+                        <option value="__NEW__"${!auto ? ' selected' : ''}>${p.candidates.length
+                            ? '— none of these · create a NEW file —' : '— no similar name found · create a NEW file —'}</option>
+                        ${opts}
+                    </select>
+                    ${p.candidates.length ? `<small style="display:block; color: var(--text-dim); margin-top:4px;">closest: ${escapeHtml(p.candidates[0].why)}</small>` : ''}
+                </td>
+                <td id="mgrAct${i}" style="font-size: 12.5px; font-weight: 700;"></td>
+            </tr>`;
+        }).join('');
+
+        // الحكم لكل سطر بعد بناء القوائم، فيُقرأ من اختيار المالك لا من تخمين.
+        let grant = 0, create = 0, already = 0, needPin = 0;
+        mgrSetupPlan.forEach((p, i) => {
+            const t = mgrSetupChoice(i);
+            const cell = document.getElementById('mgrAct' + i);
+            let txt, col;
+            const hasPin = t ? p.pinIds.has(t.id) : false;
+            if (!t) {
+                create++; txt = 'A NEW file will be created (salary 0 — complete it afterwards)'; col = 'var(--accent)';
+                if (!pin) needPin++;
+            } else if (t.canSubmitSalesReport === true) {
+                already++; txt = pin ? 'Already a manager — only the PIN changes' : 'Already a manager — nothing to change'; col = 'var(--text-dim)';
+                if (!pin && !hasPin) needPin++;
+            } else {
+                grant++; txt = 'Manager permission added — the file itself is NOT touched'; col = 'var(--success)';
+                if (!pin && !hasPin) needPin++;
+            }
+            if (cell) { cell.innerText = txt; cell.style.color = col; }
+        });
+
+        const parts = [];
+        if (grant) parts.push(`<b style="color: var(--success);">${grant}</b> existing file(s) get manager permission`);
+        if (create) parts.push(`<b style="color: var(--accent);">${create}</b> NEW file(s) will be created`);
+        if (already) parts.push(`<b>${already}</b> already manager(s)`);
+        document.getElementById('mgrSetupSummary').innerHTML =
+            (parts.length ? parts.join(' · ') + '.' : 'Nothing to change.')
+            + (create ? `<br><b style="color: var(--warning);">Careful:</b> creating a new file for someone who already `
+                + `has one is what made the duplicates. Check each list above before pressing.` : '')
+            + (needPin ? `<br><b style="color: var(--danger);">${needPin} of them have no PIN.</b> Type a PIN above — `
+                + `without one they cannot sign in.` : '')
+            + `<br>Existing files are never rewritten: only the manager permission is added, so salaries, joining `
+            + `dates, QID data and documents stay exactly as they are.`;
+    }
+
+    window.runManagerSetup = async function() {
+        if (currentRole !== ROLE_ADMIN) { alert('Only the owner can set up managers.'); return; }
+        if (!mgrSetupPlan) return;
+        const status = document.getElementById('mgrSetupStatus');
+        const btn = document.getElementById('btnRunMgrSetup');
+        const pin = (document.getElementById('mgrSetupPin').value || '').trim();
+        // القرار من قائمة المالك لا من تخمين الأداة.
+        const todo = mgrSetupPlan.map((p, i) => ({ ...p, target: mgrSetupChoice(i) }));
+        const needPin = todo.filter(p => !pin && !(p.target && p.pinIds.has(p.target.id)));
+        if (needPin.length) {
+            status.style.color = 'var(--danger)';
+            status.innerText = `${needPin.length} manager(s) have no PIN. Type a PIN above first — without one they cannot sign in.`;
+            return;
+        }
+        // ⚠️ إنشاء سجل جديد لمن له سجل أصلًا هو ما أنتج التكرار، فيُسأل عنه صريحًا.
+        const creating = todo.filter(p => !p.target);
+        if (creating.length && !confirm(
+            `${creating.length} NEW file(s) will be created:\n\n${creating.map(p => '· ' + p.name).join('\n')}\n\n`
+            + `If any of these people already has a file, creating another one makes a duplicate — the problem we `
+            + `just fixed. Pick the existing person from the list instead.\n\nCreate them anyway?`)) return;
+
+        btn.disabled = true;
+        status.style.color = 'var(--warning)';
+        status.innerText = 'Saving...';
+        let granted = 0, created = 0, pins = 0;
+        try {
+            for (const p of todo) {
+                let id;
+                if (p.target) {
+                    id = p.target.id;
+                    if (p.target.canSubmitSalesReport !== true) {
+                        // ⚠️ updateDoc لا setDoc: تُلمس خانة واحدة ولا يُعاد بناء
+                        // السجل، فلا يُمحى راتبٌ ولا صورة هوية ولا عقد.
+                        await updateDoc(doc(db, "employees", id), { canSubmitSalesReport: true });
+                        granted++;
+                    }
+                } else {
+                    id = generateEmployeeId(normName(p.name));
+                    await setDoc(doc(db, "employees", id), {
+                        name: normName(p.name),
+                        role: 'Manager',
+                        branch: p.branch,
+                        shift: 'Full Time',
+                        // ⚠️ صفر عن قصد: رقمٌ مُختلق أخطر من صفرٍ يُطالب بالتصحيح.
+                        salary: 0,
+                        phone: '',
+                        canSubmitSalesReport: true,
+                        qidNumber: '', qidExpiry: '',
+                        qidFront: '', qidBack: '', healthCard: '', contract: '', healthCert: '',
+                        createdAt: serverTimestamp()
+                    });
+                    created++;
+                }
+                if (pin) {
+                    await setDoc(doc(db, "employee_pins", id), { pin, employeeName: normName(p.name) });
+                    pins++;
+                }
+            }
+            logAudit('Managers Set Up',
+                `${granted} existing file(s) granted manager permission, ${created} new file(s) created, `
+                + `${pins} PIN(s) set — ${todo.map(p => p.name).join(', ')}`);
+            status.style.color = 'var(--success)';
+            status.innerHTML = `<b>Done.</b> ${granted} file(s) given manager permission, ${created} new file(s) created, `
+                + `${pins} PIN(s) set. They can sign in at <b>report.html</b> now. Reloading...`;
+            setTimeout(() => location.reload(), 2500);
+        } catch (e) {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Stopped: ' + e.message + ' — whatever was saved before the error is already saved.';
+        } finally {
+            btn.disabled = false;
+        }
+    };
+
     // =====================================================================
     // تنظيف الأسماء المكرّرة
     // ---------------------------------------------------------------------
