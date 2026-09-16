@@ -523,9 +523,37 @@
     const money = (n) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c =>
         ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    // ⭐⭐ «اليوم» بتوقيت قطر لا بتوقيت الجهاز — نفس عطل لوحة المدراء.
+    // تقارير البياعات تُكتب بتاريخ قطر، فقراءتها بتاريخ جهازٍ آخر تسأل عن يومٍ
+    // مختلف فترجع فارغة، والاستعلام **ينجح** فلا رسالة خطأ تُنبّه أحدًا.
+    // ولا توقيت صيفي في قطر، فالاحتياط UTC+3 ثابت وصحيح.
+    const QATAR_TZ = 'Asia/Qatar';
+    function qatarParts(dateObj) {
+        try {
+            const parts = {};
+            new Intl.DateTimeFormat('en-GB', {
+                timeZone: QATAR_TZ, hour12: false,
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            }).formatToParts(dateObj).forEach(p => {
+                if (p.type !== 'literal') parts[p.type] = p.value;
+            });
+            if (parts.hour === '24') parts.hour = '00';
+            if (parts.year && parts.hour) return parts;
+        } catch (e) { /* نسقط للاحتياط */ }
+        const t = new Date(dateObj.getTime() + 3 * 3600000);
+        return {
+            year: String(t.getUTCFullYear()),
+            month: String(t.getUTCMonth() + 1).padStart(2, '0'),
+            day: String(t.getUTCDate()).padStart(2, '0'),
+            hour: String(t.getUTCHours()).padStart(2, '0'),
+            minute: String(t.getUTCMinutes()).padStart(2, '0'),
+            second: String(t.getUTCSeconds()).padStart(2, '0')
+        };
+    }
     function todayISO() {
-        const d = new Date();
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const p = qatarParts(new Date());
+        return `${p.year}-${p.month}-${p.day}`;
     }
     function shiftDayISO(iso, delta) {
         const [y, m, d] = String(iso).split('-').map(Number);

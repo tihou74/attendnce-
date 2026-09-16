@@ -11626,7 +11626,70 @@
         }
         renderManagerCardPicker();
         renderManagerCardsTable();
+        repairStaleCardFlags();
     };
+
+    /**
+     * ⭐⭐ إصلاح تلقائي: علامتا اللوحة على البطاقة **مجمَّدتان** من لحظة حفظها.
+     *
+     * ⚠️⚠️ العطل الذي أبلغ عنه المالك بشكله الثاني: لوحة السيدة فاطمة لا تقرأ
+     * مستندات الموظفين، فهي تعتمد على `isManager` و`isSupervisor` **المنسوختين
+     * على البطاقة**. وهاتان تُكتبان مرّة واحدة يوم حفظ الصورة ولا تُحدَّثان
+     * أبدًا. فمن سُحبت عنه صلاحية المدير تبقى بطاقته تظهر في لوحة المدراء إلى
+     * الأبد — وبلا أي حدث، أي «خارج الدوام دائمًا». ومن صار مديرًا بعد حفظ
+     * بطاقته كسوبرفايزر لا يظهر في لوحة المدراء ولو سجّل حضوره.
+     *
+     * فالحقيقة في ملف الموظف، والبطاقة نسخةٌ يجب أن تُلاحقه. وهذا الإصلاح
+     * يُقارنهما عند كل تحميل ويُصحّح ما اختلف — بلا سؤال، لأنه لا يُغيّر شيئًا
+     * من عند نفسه: يُنسخ ما في الملف حرفيًّا.
+     *
+     * ⚠️ ولا يُحذف شيء هنا بحال: بطاقةٌ صاحبُها لم يبقَ مديرًا ولا سوبرفايزر
+     * تبقى، وتُعرض بالأحمر في الجدول ليقرّر المالك — فقد يُعيد تفعيله غدًا،
+     * وصورته أمانة. أما تنظيفها فبأداة لوحة السيدة فاطمة وبموافقته.
+     */
+    async function repairStaleCardFlags() {
+        if (currentRole !== ROLE_ADMIN) return;
+        if (!Array.isArray(allEmployees) || !allEmployees.length) return;   // لا حكم بلا قائمة
+        const fixes = [];
+        managerCards.forEach(c => {
+            const emp = allEmployees.find(e => e.id === c.id);
+            if (!emp) return;                       // بقيّة مهجورة — شأن أداة اللوحة لا هذا
+            const mgr = emp.canSubmitSalesReport === true;
+            const sup = emp.isSupervisor === true;
+            // البطاقات القديمة بلا علامة تُعدّ بطاقات مدراء (انظر cardIsManager)،
+            // فتُقارن على هذا الأساس حتى لا تُعاد كتابتها بلا داعٍ كل مرة.
+            const curMgr = cardIsManager(c);
+            const curSup = cardIsSupervisor(c);
+            if (curMgr === mgr && curSup === sup) return;
+            fixes.push({ id: c.id, name: emp.name || c.id, mgr, sup, curMgr, curSup });
+        });
+        if (!fixes.length) return;
+        try {
+            for (const f of fixes) {
+                await updateDoc(doc(db, "manager_cards", f.id), {
+                    isManager: f.mgr, isSupervisor: f.sup, updatedAt: serverTimestamp()
+                });
+            }
+            logAudit('Manager card flags repaired',
+                fixes.map(f => `${f.name}: ${f.curMgr ? 'M' : ''}${f.curSup ? 'S' : ''}`
+                    + ` -> ${f.mgr ? 'M' : ''}${f.sup ? 'S' : ''}${!f.mgr && !f.sup ? 'none' : ''}`).join(' · '));
+            managerCards.forEach(c => {
+                const f = fixes.find(x => x.id === c.id);
+                if (f) { c.isManager = f.mgr; c.isSupervisor = f.sup; }
+            });
+            renderManagerCardsTable();
+            const st = document.getElementById('mcStatus');
+            if (st) {
+                st.style.color = 'var(--success)';
+                st.innerHTML = `&#10004; <b>${fixes.length} card(s) were pointing at the wrong board and have been `
+                    + `corrected</b> from the employee files: `
+                    + escapeHtml(fixes.map(f => f.name).join(', '))
+                    + `. Mrs Fatima's board follows the employee file now.`;
+            }
+        } catch (e) {
+            console.error('Could not repair the manager card flags:', e);
+        }
+    }
 
     function renderManagerCardPicker() {
         const sel = document.getElementById('mcManagerSelect');
@@ -14165,7 +14228,22 @@
         };
 
         entries.forEach(en => {
-            if (en.emp) return;                       // له ملفٌّ قائم: ليس بقيّة
+            // ⭐⭐ حالةٌ ثانية لا ملفَّ مفقودًا فيها، ومع ذلك سطرٌ ميّت على لوحتها:
+            // صاحبُ الملف **لم يبقَ** مديرًا ولا سوبرفايزر، وبطاقتُه باقية. فتظهر
+            // بلا أي حدث أبدًا — أي «خارج الدوام دائمًا»، وهو ما رآه المالك.
+            // ⚠️ ولا يُكتشف هذا بمعيار «لا ملفَّ له»، فالملف موجود. ولهذا قالت
+            // النسخة السابقة «لوحتها نظيفة» وهو يرى السطر أمامه.
+            // ⚠️ ولا يُقترح إلا إن كانت له **بطاقة**: من له سجلّات قديمة وحدها
+            // فتلك تاريخٌ مضى، ويُعرض في يومه لا في اليوم الحالي.
+            if (en.emp) {
+                const m = boardMembership(en.emp);
+                if (m.none && en.card) {
+                    brdRows.push({ ...en, verdict: { drop: true, stale: true,
+                        why: 'Still on her board, but this person is no longer a manager or a supervisor '
+                            + '— so no status will ever appear for them' } });
+                }
+                return;                               // له ملفٌّ قائم: ليس بقيّة مهجورة
+            }
             const t = findMoveTarget(en.shown);
             // ⚠️ ولا نقل إلى من عنده صورة أصلًا — لا تُطمس صورةٌ صحيحة.
             if (t && (en.card && en.card.photoBase64) && !cardWithPhoto(t.emp.id)) {
@@ -14348,13 +14426,19 @@
             status.innerText = 'Type DELETE in the box to confirm.';
             return;
         }
-        // ⚠️⚠️ الحاجز الأخير، ويُحسب من قائمة الموظفين لحظةَ التنفيذ لا من الشاشة:
-        // معرّفٌ له ملفُّ موظفٍ قائم لا يُلمس بحال، ولو وُسم. الشاشة قد تكون قديمة.
-        const hasFile = ids.filter(id => allEmployees.some(e => e.id === id));
-        if (hasFile.length) {
+        // ⚠️⚠️ الحاجز الأخير، ويُحسب من قائمة الموظفين لحظةَ التنفيذ لا من الشاشة.
+        // ⚠️ ومعرّفٌ له ملفٌّ قائم لا يُلمس **إلا** إن كان صاحبُه لم يبقَ مديرًا ولا
+        // سوبرفايزر: تلك بطاقةٌ لن تُعرض لها حالةٌ أبدًا، وإزالتها إصلاحٌ لا فقدان.
+        // وحتى هذه تُتحقّق من الملف نفسه لحظةَ التنفيذ، لا من وسم الشاشة.
+        const protectedIds = ids.filter(id => {
+            const emp = allEmployees.find(e => e.id === id);
+            if (!emp) return false;                                   // بقيّة مهجورة — تُزال
+            return emp.canSubmitSalesReport === true || emp.isSupervisor === true;
+        });
+        if (protectedIds.length) {
             status.style.color = 'var(--danger)';
-            status.innerText = `Stopped: ${hasFile.length} ticked record(s) do have an employee file and are `
-                + `never removed by this tool. Scan again.`;
+            status.innerText = `Stopped: ${protectedIds.length} ticked record(s) belong to a current manager or `
+                + `supervisor and are never removed by this tool. Scan again.`;
             return;
         }
         const toMove = brdGroups.reduce((n, g) => n + g.rows.filter(r => r.verdict.move && ids.includes(r.id)).length, 0);
