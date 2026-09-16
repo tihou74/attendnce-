@@ -1999,7 +1999,13 @@
             </div>
             <div class="table-container" style="margin-top: 16px;">
                 <table>
-                    <thead><tr><th>Photo</th><th>Name</th><th>Shows on</th><th>Job title</th><th>Branch</th><th>Photo size</th><th></th></tr></thead>
+                    <!-- ⚠️⚠️ عمود الهاتف أُضيف لأن زرّ الواتساب ظهر «No number» للجميع.
+                         والسبب أنه **لا خانة لرقم الهاتف في ملف الموظف إطلاقًا** في
+                         هذه اللوحة، والبذر القديم كتب «+974» وحدها لكل واحد — وهي
+                         علامةٌ فارغة لا رقم. فالرقم يُكتب هنا مباشرةً لمن يحتاجه
+                         (المدراء والسوبرفايزر وحدهم، لا المئة كلهم). -->
+                    <thead><tr><th>Photo</th><th>Name</th><th>Shows on</th><th>Job title</th><th>Branch</th>
+                        <th>Phone &mdash; for WhatsApp</th><th>Photo size</th><th></th></tr></thead>
                     <tbody id="mcTableBody"></tbody>
                 </table>
             </div>
@@ -11615,6 +11621,88 @@
     function cardIsManager(c) { return c.isManager === true || (c.isManager === undefined && c.isSupervisor === undefined); }
     function cardIsSupervisor(c) { return c.isSupervisor === true; }
 
+    /**
+     * ⭐⭐ نفس مُحقّق الأرقام الذي في لوحة السيدة فاطمة، بحرفه.
+     * ⚠️ يجب أن يبقى الاثنان متطابقين: لو قبِل هذا رقمًا ترفضه هي، لأخبر المالك
+     * أن الرقم صحيح ثم لا يظهر الزرّ عندها — وهو أسوأ من رسالة خطأ صريحة. وثمّة
+     * فحصٌ يُقارن الدالتين حرفًا بحرف لهذا السبب.
+     * و«+974» وحدها ليست رقمًا: هي ما كتبه البذر القديم لكل موظف، وهي سببُ ظهور
+     * «No number» أمام الجميع.
+     */
+    function waNumber(raw) {
+        let d = String(raw || '').replace(/[^0-9]/g, '');
+        if (!d) return '';
+        if (d.startsWith('00')) d = d.slice(2);
+        // رقم قطري محلي: ٨ خانات تبدأ بـ3 أو 5 أو 6 أو 7
+        if (d.length === 8 && /^[3567]/.test(d)) return '974' + d;
+        // بمقدّمة قطر: 974 + ٨ خانات
+        if (d.length === 11 && d.startsWith('974')) return d;
+        // أرقام دول أخرى (عمالة بأرقام بلدانها) — تُقبل إن كانت معقولة الطول
+        if (d.length >= 10 && d.length <= 15) return d;
+        return '';                                  // «974» وحدها أو رقمٌ ناقص
+    }
+
+    /**
+     * يحفظ الرقم في **ملف الموظف** (وهو الأصل) وفي البطاقة (وهي ما تقرؤه هي).
+     * ⚠️ الاثنان معًا عن قصد: الملف هو الحقيقة، والبطاقة نسخةٌ تراها السيدة
+     * فاطمة فورًا بلا انتظار إصلاحٍ تلقائي في تحميلٍ قادم.
+     * ⚠️ ولا يُحفظ رقمٌ لا يصلح: كتابتُه تعني زرًّا يفتح رسالة خطأ من واتساب،
+     * فتظنّ أن اللوحة معطوبة. والرفض هنا مع بيان السبب أصدق.
+     * ⚠️ ومحوُ الرقم مسموح صراحةً (خانة فارغة) — قد يكون الرقم خطأً ويريد إزالته.
+     */
+    window.saveManagerPhone = async function(id) {
+        const status = document.getElementById('mcStatus');
+        if (currentRole !== ROLE_ADMIN) {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Only the owner can do this.';
+            return;
+        }
+        const input = document.getElementById('mcPhone_' + id);
+        if (!input) return;
+        const emp = allEmployees.find(e => e.id === id);
+        if (!emp) {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'That employee file no longer exists.';
+            return;
+        }
+        const raw = input.value.trim();
+        const dial = waNumber(raw);
+        if (raw && !dial) {
+            status.style.color = 'var(--danger)';
+            status.innerHTML = `&#9888; <b>Not saved &mdash; that is not a number WhatsApp can open.</b> `
+                + `Write it as <b>+974 5511 2233</b>, or just the 8 digits <b>55112233</b>. `
+                + `A number from another country needs its own country code, like <b>+91 98765 43210</b>. `
+                + `<br>&ldquo;+974&rdquo; on its own is not a phone number &mdash; that is what the old sync wrote `
+                + `for everybody, and it is why the button says &ldquo;No number&rdquo;.`;
+            return;
+        }
+        status.style.color = 'var(--text-dim)';
+        status.innerText = 'Saving...';
+        try {
+            // الملف أولًا: هو الأصل، ولو تعثّرت الثانية بقي الرقم محفوظًا.
+            await updateDoc(doc(db, "employees", id), { phone: raw });
+            emp.phone = raw;
+            if (managerCards.some(c => c.id === id)) {
+                await updateDoc(doc(db, "manager_cards", id), { phone: raw, updatedAt: serverTimestamp() });
+                const c = managerCards.find(x => x.id === id);
+                if (c) c.phone = raw;
+            }
+            logAudit('Manager phone saved', `${emp.name || id}: ${raw || '(cleared)'}`);
+            renderManagerCardsTable();
+            status.style.color = 'var(--success)';
+            status.innerHTML = raw
+                ? `&#10004; <b>Saved for ${escapeHtml(emp.name || id)}.</b> WhatsApp will open <b>+${escapeHtml(dial)}</b>. `
+                  + (managerCards.some(c => c.id === id)
+                      ? `Ask Mrs Fatima to close and reopen her panel once.`
+                      : `<b style="color: var(--warning);">He has no photo card yet</b>, so no button will show on her `
+                        + `panel until you add his photo above &mdash; her panel reads the phone from the card.`)
+                : `&#10004; Number cleared for ${escapeHtml(emp.name || id)}.`;
+        } catch (e) {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Could not save it: ' + e.message;
+        }
+    };
+
     window.loadManagerCards = async function() {
         try {
             const snap = await getDocs(collection(db, "manager_cards"));
@@ -11871,6 +11959,20 @@
                 })()}</td>
                 <td>${escapeHtml((card && card.title) || (emp && emp.role) || '—')}</td>
                 <td>${escapeHtml((card && card.branch) || (emp && emp.branch) || '—')}</td>
+                <td>${(() => {
+                    // ⚠️ لا تُعرض خانة لبقيّةٍ مهجورة: لا ملفَّ لها لتُكتب فيه.
+                    if (!emp) return '<span style="color: var(--text-dim); font-size: 12px;">no employee file</span>';
+                    const raw = String(emp.phone || '');
+                    const dial = waNumber(raw);
+                    return `<input type="tel" id="mcPhone_${escapeHtml(id)}" value="${escapeHtml(raw)}"
+                                placeholder="+974 5xxx xxxx" inputmode="tel" autocomplete="off"
+                                style="width: 150px; font-size: 13px;">
+                        <button class="btn-ghost btn-sm" onclick="saveManagerPhone('${escapeHtml(id)}')"
+                                style="margin-left: 6px;">Save</button>
+                        <br><small style="color: ${dial ? 'var(--success)' : 'var(--danger)'}; font-weight: 700;">${
+                            dial ? '&#10004; WhatsApp will open +' + escapeHtml(dial)
+                                 : '&#10008; not a usable number &mdash; the button shows "No number"'}</small>`;
+                })()}</td>
                 <td>${kb}</td>
                 <td>${card
                     ? `<button class="btn-danger btn-sm" onclick="deleteManagerCard('${escapeHtml(id)}')"><span data-icon="trash"></span> Remove</button>`
