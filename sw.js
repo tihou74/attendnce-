@@ -27,7 +27,7 @@
 // تبويبًا جديدًا بعد نشره. v3: أُزيل التحويل التلقائي من report.html (كان يُبطل تثبيت تطبيق المديرين على
 // iOS)، ويجب إبطال
 // الكاش القديم حتى لا يبقى من ثبّت التطبيق سابقًا على النسخة القديمة.
-const CACHE_VERSION = 'v79';
+const CACHE_VERSION = 'v80';
 const SHELL_CACHE = `alsheikha-shell-${CACHE_VERSION}`;
 const ASSET_CACHE = `alsheikha-assets-${CACHE_VERSION}`;
 
@@ -69,7 +69,21 @@ const SHELL_FILES = [
     './icons/balances-192.png',
     './icons/balances-512.png',
     './icons/balances-maskable-512.png',
-    './icons/balances-touch.png'
+    './icons/balances-touch.png',
+    // ⚠️ أيقونات العبايات كانت غائبة عن هذه القائمة كليًّا، مع أن الصفحتين
+    // والبيانين يُشيرون إليها — فكانت تُطلب من الشبكة في كل مرة، ولا تظهر
+    // إطلاقًا في أول تشغيل بلا إنترنت.
+    './icons/abaya-192.png',
+    './icons/abaya-512.png',
+    './icons/abaya-maskable-512.png',
+    './icons/abaya-touch.png',
+    './icons/abayaview-192.png',
+    './icons/abayaview-512.png',
+    './icons/abayaview-maskable-512.png',
+    './icons/abayaview-touch.png',
+    // ⚠️ وشعار الشيخة ستايل يُخزَّن مع القشرة لا عند أول طلب: كانت الترويسة
+    // تعرض الحرفين «AS» حتى يُحمَّل، وشاشة البياعة تُفتح في المحلّ بشبكة ضعيفة.
+    './brand/al-sheikha-style-logo.png'
 ];
 
 // نطاقات يجب أن تمر إلى الشبكة دائمًا بلا اعتراض ولا تخزين.

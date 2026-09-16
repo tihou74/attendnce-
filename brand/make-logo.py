@@ -65,26 +65,88 @@ full.thumbnail((1024, 1024), Image.LANCZOS)
 full.save(os.path.join(BRAND, "al-sheikha-style-logo.png"), "PNG", optimize=True)
 print("brand/al-sheikha-style-logo.png")
 
-# ---- 4) الأيقونات: مربّعة، والشعار في وسطها -------------------------------
-def square(size, inset_ratio, out_name):
+# ---- 4) الرمز وحده للأيقونات (بلا كلمة AL SHEIKHA STYLE) ------------------
+# ⚠️⚠️ أيقونة 192 بكسل لا تتّسع للشعار كاملًا: سطر «AL SHEIKHA STYLE» يصير خطًّا
+# رماديًّا لا يُقرأ، ويسرق نصف المساحة من الرمز فيصغر الرمز حتى لا يُميَّز على
+# شاشة الهاتف. وهذا ما ظهر فعلًا في أول توليد. فالأيقونة تحمل **الرمز وحده**،
+# وهو المتعارف عليه في تصميم الأيقونات.
+#
+# وكيف يُعرف سطر الكلمة من الرمز بلا تحديد يدوي: الصفوف التي فيها حبرٌ تُجمَّع
+# في نطاقات متّصلة يفصلها بياض. وسطر الكلمة **نطاقٌ منفصل ورقيق** في الأسفل.
+# فإن كان آخر نطاق أقصر من 18% من الطول ويفصله بياضٌ واضح، فهو الكلمة فتُقصّ.
+# ⚠️ وإن لم يتحقّق الشرط لا يُقصّ شيء: الأيقونة بشعارٍ كامل أهون من رمزٍ مقطوع.
+def emblem_only(im):
+    g = im.convert("L")
+    w, h = g.size
+    px = g.load()
+    step = max(1, w // 400)                      # عيّنة من الصفّ، لا كل بكسل
+    inked = [any(px[x, y] < 245 for x in range(0, w, step)) for y in range(h)]
+    bands, start = [], None
+    for y, has in enumerate(inked):
+        if has and start is None:
+            start = y
+        elif not has and start is not None:
+            bands.append((start, y)); start = None
+    if start is not None:
+        bands.append((start, h))
+    if len(bands) < 2:
+        return im
+    top, bot = bands[-2], bands[-1]
+    band_h = bot[1] - bot[0]
+    gap = bot[0] - top[1]
+    if band_h < h * 0.18 and gap > h * 0.01:
+        return im.crop((0, 0, w, top[1]))
+    return im
+
+
+emblem = emblem_only(img)
+if emblem.size != img.size:
+    print(f"الرمز وحده للأيقونات: {emblem.width}x{emblem.height} (قُصّ سطر الكلمة)")
+else:
+    print("لم يُعثر على سطر كلمةٍ منفصل — الأيقونة بالشعار كاملًا")
+# وتُقصّ حواف الرمز من جديد، فقصُّ السطر يترك بياضًا أسفله.
+g2 = emblem.convert("L").point(lambda v: 255 if v < 245 else 0)
+b2 = g2.getbbox()
+if b2:
+    pad2 = int(max(emblem.size) * 0.02)
+    l2, t2, r2, bb2 = b2
+    emblem = emblem.crop((max(0, l2 - pad2), max(0, t2 - pad2),
+                          min(emblem.width, r2 + pad2), min(emblem.height, bb2 + pad2)))
+
+
+def square(size, inset_ratio, out_name, bg):
     """
-    ⚠️ الأيقونة **مربّعة دائمًا** وبخلفية بيضاء: أندرويد يقصّ الأيقونة دائرةً،
-    وشعارٌ يملأ المربّع تُقطع أطرافه. و`inset` يترك هامشًا آمنًا.
+    ⚠️ الأيقونة **مربّعة دائمًا**: أندرويد يقصّ الأيقونة دائرةً، وشعارٌ يملأ
+    المربّع تُقطع أطرافه. و`inset` يترك هامشًا آمنًا.
     ⚠️ وmaskable يحتاج هامشًا أكبر (المنطقة الآمنة 80% من الضلع فقط).
+    ⚠️ ولا شفافية: الشعار ذهبيّ فاتح، فعلى خلفية شفافة يظهر على سطحٍ غامق
+    فيكاد يختفي. فالخلفية صريحة دائمًا.
     """
-    canvas = Image.new("RGB", (size, size), "#FFFFFF")
+    canvas = Image.new("RGB", (size, size), bg)
     inner = int(size * inset_ratio)
-    logo = img.copy()
+    logo = emblem.copy()                          # الرمز وحده، لا الشعار كاملًا
     logo.thumbnail((inner, inner), Image.LANCZOS)
     canvas.paste(logo, ((size - logo.width) // 2, (size - logo.height) // 2))
     canvas.save(os.path.join(ICONS, out_name), "PNG", optimize=True)
-    print("icons/" + out_name)
+    print(f"icons/{out_name}  (خلفية {bg})")
 
-# نفس الشعار لأيقونتي الشاشتين: نشاطٌ واحد، فلا معنى لأن تختلف صورتاهما.
-for prefix in ("abaya", "abayaview"):
-    square(192, 0.86, f"{prefix}-192.png")
-    square(512, 0.86, f"{prefix}-512.png")
-    square(512, 0.66, f"{prefix}-maskable-512.png")   # هامش المنطقة الآمنة
-    square(180, 0.86, f"{prefix}-touch.png")          # apple-touch-icon
+
+# ⚠️⚠️ الشعار واحد للشاشتين — نشاطٌ واحد — لكن **الخلفية تختلف**، وهذا مقصود:
+# قرارٌ سابق في هذا المشروع أن لكل تطبيق أيقونةً مميّزة، لأن أربعة تطبيقات
+# بأيقونة واحدة أربكت المستخدم فعلًا فلم يعرف أيّها يفتح. وثمّة فحصٌ يمنع
+# تطابق أيقونتَي التطبيقين بايتًا ببايت.
+# وأول توليد جعلهما متطابقتين فأسقط ذلك الفحص — فبقي الشعار كما هو ولم يُمَسّ،
+# واختلفت اللوحة تحته: البياعة على أبيض، وشاشة العرض على لون خلفية بيانها
+# (#F5F1E8) وهو لونٌ من هوية العلامة نفسها. فيُميَّزان على الشاشة بلمحة، بلا
+# أي تشويه للشعار ولا إضافة رمزٍ دخيل عليه.
+ICON_BG = {
+    "abaya": "#FFFFFF",        # شاشة البياعة
+    "abayaview": "#F5F1E8"     # شاشة العرض — نفس background_color في بيانها
+}
+for prefix, bg in ICON_BG.items():
+    square(192, 0.86, f"{prefix}-192.png", bg)
+    square(512, 0.86, f"{prefix}-512.png", bg)
+    square(512, 0.66, f"{prefix}-maskable-512.png", bg)   # هامش المنطقة الآمنة
+    square(180, 0.86, f"{prefix}-touch.png", bg)          # apple-touch-icon
 
 print("\nتمّ. لا تنسَ رفع رقم CACHE_VERSION في sw.js حتى تُحدَّث الأيقونات المخزَّنة.")
