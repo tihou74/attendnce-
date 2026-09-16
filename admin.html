@@ -2126,6 +2126,63 @@
         </div>
 
         <!-- ==================================================================
+             ⭐⭐ تنظيف لوحة السيدة فاطمة — الاسم الذي يظهر مرتين عندها
+             ------------------------------------------------------------------
+             ⚠️⚠️ سبب وجود هذه الأداة، وهو درسٌ يجب ألّا يُنسى: المالك رأى بلال
+             **مرتين في لوحة السيدة فاطمة**، وأداة تنظيف التكرار أعلاه أجابته
+             بصدق «لا يوجد تكرار». والجوابان صحيحان معًا: لوحة السيدة فاطمة لا
+             تقرأ مجموعة `employees` إطلاقًا (فيها الرواتب وصور الهويات)، بل
+             تقرأ `manager_cards` و`manager_presence` و`supervisor_presence`.
+             فحين حُذف سجل الموظف المكرّر، **بقيت بطاقته وسجلّاته** في تلك
+             المجموعات، فبقي ظاهرًا عندها إلى الأبد، وأداة الموظفين لا ترى ذلك.
+
+             فالمعيار الحاسم هنا: بطاقةٌ أو سجلٌّ بمعرّفٍ **لا ملفَّ موظفٍ له**
+             هو بقيّةٌ مهجورة يقينًا. أما إن كان الملف موجودًا فالأمر قرارُ
+             المالك، ولا تُخمّن الأداة.
+             ⚠️ ولا تمسّ هذه الأداة `attendance` ولا الرواتب بحال: هذه المجموعات
+             الثلاث لا تدخل في حسابٍ مالي واحد، وحذف بقيّةٍ منها يُصلح شاشةً
+             ولا يُنقص ريالًا.
+             ================================================================== -->
+        <div class="card" style="border-left: 4px solid var(--accent);">
+            <h3><span data-icon="users"></span> Mrs Fatima's Board &mdash; leftover rows
+                <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">تنظيف لوحة السيدة فاطمة</span></h3>
+            <p class="card-sub">
+                Use this when a name appears <b>twice on Mrs Fatima's board</b> even though the employee list is
+                clean. Her board does not read employee files at all &mdash; it reads the photo cards and the
+                &ldquo;I have started my shift&rdquo; records. Deleting a duplicated employee file does
+                <b>not</b> remove those, so the old row keeps showing. This finds them.
+                <b>Nothing here affects salaries, attendance or any money.</b>
+            </p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <button class="btn-warning" onclick="scanBoardLeftovers()"><span data-icon="search"></span> Scan Mrs Fatima's board</button>
+                <span id="brdStatus" style="font-weight: 600; font-size: 13px;"></span>
+            </div>
+
+            <div id="brdBox" style="display: none; margin-top: 16px;">
+                <div class="table-container">
+                    <table>
+                        <thead><tr>
+                            <th style="width: 42px;">Remove</th><th>Name as it shows to her</th><th>Record</th>
+                            <th>Employee file</th><th>Photo card</th>
+                            <th class="money-col">Manager rows</th><th class="money-col">Supervisor rows</th>
+                            <th>Verdict</th>
+                        </tr></thead>
+                        <tbody id="brdTableBody"></tbody>
+                    </table>
+                </div>
+                <p class="card-sub" style="margin: 14px 0 0;" id="brdSummary"></p>
+                <div style="margin-top: 12px;">
+                    <label for="brdConfirmWord" style="color: var(--danger);">Type <b>DELETE</b> to confirm removing the ticked leftovers</label>
+                    <input type="text" id="brdConfirmWord" placeholder="DELETE" autocomplete="off" style="max-width: 220px;">
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px;">
+                    <button class="btn-danger" id="btnRunBrdClean" onclick="runBoardCleanup()"><span data-icon="trash"></span> Remove ticked leftovers</button>
+                    <button class="btn-ghost" onclick="document.getElementById('brdBox').style.display='none'">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================================================================
              الاستعادة من نسخة احتياطية
              ------------------------------------------------------------------
              أخطر أداة في اللوحة كلها، فبُنيت على أربعة مبادئ:
@@ -13757,6 +13814,245 @@
         } catch (e) {
             status.style.color = 'var(--danger)';
             status.innerText = 'Stopped: ' + e.message + ' — records already removed stay removed; the safety copy holds the state from before.';
+        } finally {
+            btn.disabled = false;
+        }
+    };
+
+    // =====================================================================
+    // ⭐⭐ تنظيف لوحة السيدة فاطمة — الاسم الذي يظهر مرتين عندها
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ لماذا لا تكفي أداة تنظيف الموظفين أعلاه: المالك رأى اسمًا مكرّرًا في
+    // لوحة السيدة فاطمة، وتلك الأداة أجابته «لا يوجد تكرار» — وكان **صادقًا**.
+    // لأن لوحتها لا تقرأ `employees` إطلاقًا (فيها الرواتب وصور الهويات)، بل
+    // تقرأ ثلاث مجموعات مستقلة: `manager_cards` و`manager_presence`
+    // و`supervisor_presence`. فحذف ملف الموظف المكرّر **لا يمسّها**، فتبقى
+    // البطاقة والسجلّات ظاهرةً عندها إلى الأبد.
+    //
+    // ⚠️ والمعيار الحاسم: معرّفٌ **لا ملفَّ موظفٍ له** هو بقيّةٌ مهجورة يقينًا —
+    // لا أحد يستطيع الدخول به ولا سيُكتب تحته شيءٌ جديد أبدًا. أما معرّفٌ له ملفٌ
+    // قائم فالقرار للمالك ولا تُخمّن الأداة، فقد يكون شخصين متشابهي الاسم.
+    //
+    // ⚠️ ولا تُلمس `attendance` ولا أي مجموعة مالية: هذه الثلاث لا تدخل في
+    // حسابٍ واحد من حسابات الرواتب، فحذف بقيّةٍ منها يُصلح شاشةً ولا يُنقص ريالًا.
+    // =====================================================================
+    let brdGroups = null;
+
+    /** يقرأ المجموعات الثلاث كما تقرؤها لوحتها بالضبط، ويُظهر أي فشل صريحًا. */
+    async function readBoardSources() {
+        const out = { cards: [], mgr: [], sup: [] };
+        const grab = async (name, key, label) => {
+            const snap = await getDocs(collection(db, name));
+            snap.forEach(d => out[key].push({ id: d.id, ...d.data() }));
+            return label;
+        };
+        // ⚠️ تُقرأ الآن من القاعدة لا من الذاكرة: سجلّات الحضور المُعلَن لا
+        // تُحمَّل عند الإقلاع إطلاقًا، ولا نحكم على ما لم نقرأه.
+        await grab('manager_cards', 'cards', 'Photo cards');
+        await grab('manager_presence', 'mgr', 'Managers board rows');
+        await grab('supervisor_presence', 'sup', 'Supervisors board rows');
+        return out;
+    }
+
+    window.scanBoardLeftovers = async function() {
+        const status = document.getElementById('brdStatus');
+        if (currentRole !== ROLE_ADMIN) {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Only the owner can do this.';
+            return;
+        }
+        // ⚠️ نفس حاجز الحكم: بلا قائمة الموظفين لا معنى لسؤال «هل له ملف؟» —
+        // كلُّ معرّفٍ سيبدو مهجورًا، فتُقترح إزالة بطاقات المدراء كلها.
+        if (!Array.isArray(allEmployees) || !allEmployees.length) {
+            document.getElementById('brdBox').style.display = 'none';
+            status.style.color = 'var(--danger)';
+            status.innerHTML = '&#9888; <b>Not scanned</b> &mdash; the employee list in this page is empty, so every '
+                + 'row would look abandoned. Press Ctrl+Shift+R, wait for the numbers, then scan again.';
+            return;
+        }
+        status.style.color = 'var(--text-dim)';
+        status.innerText = 'Reading her board...';
+        let src;
+        try {
+            src = await readBoardSources();
+        } catch (e) {
+            document.getElementById('brdBox').style.display = 'none';
+            status.style.color = 'var(--danger)';
+            status.innerHTML = `&#9888; <b>Not scanned</b> &mdash; her board could not be read: ${escapeHtml(e.message)}`;
+            return;
+        }
+
+        // كل معرّف يظهر عندها، ومن أي مصدر جاء.
+        const seen = new Map();
+        const touch = (id, name) => {
+            if (!id) return null;
+            if (!seen.has(id)) {
+                seen.set(id, { id, names: new Set(), card: null, mgrRows: 0, supRows: 0 });
+            }
+            const rec = seen.get(id);
+            if (name) rec.names.add(normName(name));
+            return rec;
+        };
+        src.cards.forEach(c => { const r = touch(c.id, c.name); if (r) r.card = c; });
+        src.mgr.forEach(e => { const r = touch(e.employeeId, e.employeeName); if (r) r.mgrRows++; });
+        src.sup.forEach(e => { const r = touch(e.employeeId, e.employeeName); if (r) r.supRows++; });
+
+        // الاسم المعروض والملف المقابل
+        const entries = [...seen.values()].map(r => {
+            const emp = allEmployees.find(e => e.id === r.id) || null;
+            const shown = [...r.names][0] || (emp && normName(emp.name)) || r.id;
+            return { ...r, emp, shown, key: nameKey(shown || r.id) };
+        });
+
+        // التجميع بنفس قاعدة الأسماء: الترتيب المختلف لا يُغيّر الشخص.
+        const byKey = new Map();
+        entries.forEach(en => {
+            if (!byKey.has(en.key)) byKey.set(en.key, []);
+            byKey.get(en.key).push(en);
+        });
+
+        brdGroups = [];
+        byKey.forEach((members, key) => {
+            if (members.length < 2) return;
+            const withFile = members.filter(m => m.emp);
+            brdGroups.push({
+                key,
+                rows: members.map(m => {
+                    // بقيّةٌ مهجورة: لا ملفَّ لها، وفي مجموعتها من له ملف.
+                    // ⚠️ الشرط الثاني ضروري: لو لم يكن لأيٍّ منهما ملف فقد تكون
+                    // الملفّات هي التي لم تُقرأ، فلا يُقترح حذف كل شيء.
+                    if (!m.emp && withFile.length) {
+                        return { ...m, verdict: { drop: true,
+                            why: 'Leftover — no employee file exists for this record any more' } };
+                    }
+                    if (!m.emp) {
+                        return { ...m, verdict: { keep: true, needsYou: true,
+                            why: 'No employee file for either row — decide yourself' } };
+                    }
+                    return { ...m, verdict: { keep: true, needsYou: withFile.length > 1,
+                        why: withFile.length > 1
+                            ? 'A real employee file exists for this one too — decide yourself'
+                            : 'Keep — this is the real one' } };
+                })
+            });
+        });
+        brdGroups.sort((a, b) => a.key.localeCompare(b.key));
+
+        if (!brdGroups.length) {
+            document.getElementById('brdBox').style.display = 'none';
+            status.style.color = 'var(--success)';
+            status.innerHTML = `&#10004; <b>Her board is clean.</b> ${src.cards.length} photo card(s), `
+                + `${src.mgr.length} manager row(s) and ${src.sup.length} supervisor row(s) were checked, `
+                + `and no person appears under two different records.`;
+            return;
+        }
+        status.style.color = 'var(--warning)';
+        status.innerText = `${brdGroups.length} name(s) appear twice on her board.`;
+        document.getElementById('brdBox').style.display = 'block';
+        renderBoardTable();
+    };
+
+    function renderBoardTable() {
+        document.getElementById('brdTableBody').innerHTML = brdGroups.map(g => g.rows.map(r => {
+            const v = r.verdict;
+            const tint = v.needsYou ? 'rgba(245,158,11,0.10)' : (v.drop ? 'rgba(220,38,38,0.07)' : 'rgba(22,163,74,0.07)');
+            return `<tr style="background: ${tint};">
+                <td>${v.drop
+                    ? `<input type="checkbox" class="brdPick" data-id="${escapeHtml(r.id)}" checked
+                         onchange="renderBoardSummary()" style="width:17px;height:17px;cursor:pointer;">`
+                    : '<span style="color: var(--text-dim); font-size: 11px; font-weight: 700;">keep</span>'}</td>
+                <td><b>${escapeHtml(r.shown)}</b>${r.names.size > 1
+                    ? `<br><small style="color: var(--warning); font-weight:700;">written ${r.names.size} different ways</small>` : ''}</td>
+                <td><small style="font-family: monospace; color: var(--text-dim);">${escapeHtml(r.id)}</small></td>
+                <td>${r.emp
+                    ? '<b style="color: var(--success);">&#10004; exists</b>'
+                    : '<b style="color: var(--danger);">&#10008; none</b>'}</td>
+                <td>${r.card ? '&#10004;' : '<span style="color: var(--text-dim);">—</span>'}</td>
+                <td class="money-col">${r.mgrRows || '—'}</td>
+                <td class="money-col">${r.supRows || '—'}</td>
+                <td style="font-size: 12px; font-weight: 700; color: ${v.needsYou ? 'var(--warning)' : (v.drop ? 'var(--danger)' : 'var(--success)')};">${escapeHtml(v.why)}</td>
+            </tr>`;
+        }).join('')).join('');
+        if (typeof paintIcons === 'function') paintIcons();
+        renderBoardSummary();
+    }
+
+    window.renderBoardSummary = function() {
+        const picked = Array.from(document.querySelectorAll('.brdPick:checked')).map(cb => cb.getAttribute('data-id'));
+        let cards = 0, rows = 0;
+        brdGroups.forEach(g => g.rows.forEach(r => {
+            if (picked.includes(r.id)) { if (r.card) cards++; rows += r.mgrRows + r.supRows; }
+        }));
+        const needs = brdGroups.filter(g => g.rows.some(r => r.verdict.needsYou)).length;
+        document.getElementById('brdSummary').innerHTML =
+            `<b>${picked.length} leftover record(s) ticked</b> &mdash; ${cards} photo card(s) and ${rows} board row(s) `
+            + `will be removed, and nothing else. <b>No employee file, no attendance log, no deduction and no salary `
+            + `is touched by this.</b> A safety copy downloads first.`
+            + (needs ? `<br><b style="color: var(--warning);">${needs} name(s) need your own decision</b> because a real `
+                + `employee file exists for more than one of them. Those are left ticked off &mdash; open the two `
+                + `profiles and compare them yourself before removing anything.` : '');
+    };
+
+    window.runBoardCleanup = async function() {
+        if (currentRole !== ROLE_ADMIN) { alert('Only the owner can do this.'); return; }
+        const status = document.getElementById('brdStatus');
+        const btn = document.getElementById('btnRunBrdClean');
+        const ids = Array.from(document.querySelectorAll('.brdPick:checked')).map(cb => cb.getAttribute('data-id'));
+        if (!ids.length) {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Nothing is ticked.';
+            return;
+        }
+        if ((document.getElementById('brdConfirmWord').value || '').trim().toUpperCase() !== 'DELETE') {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Type DELETE in the box to confirm.';
+            return;
+        }
+        // ⚠️⚠️ الحاجز الأخير، ويُحسب من قائمة الموظفين لحظةَ التنفيذ لا من الشاشة:
+        // معرّفٌ له ملفُّ موظفٍ قائم لا يُلمس بحال، ولو وُسم. الشاشة قد تكون قديمة.
+        const hasFile = ids.filter(id => allEmployees.some(e => e.id === id));
+        if (hasFile.length) {
+            status.style.color = 'var(--danger)';
+            status.innerText = `Stopped: ${hasFile.length} ticked record(s) do have an employee file and are `
+                + `never removed by this tool. Scan again.`;
+            return;
+        }
+        if (!confirm(`Remove ${ids.length} leftover record(s) from Mrs Fatima's board?\n\n`
+            + `Only her photo cards and her board rows are deleted.\n`
+            + `Employee files, attendance, deductions and salaries are NOT touched.\n`
+            + `A safety copy downloads first.`)) return;
+
+        btn.disabled = true;
+        try {
+            status.style.color = 'var(--warning)';
+            status.innerText = 'Downloading a safety copy...';
+            await downloadSafetyCopy([{ name: 'manager_cards' }, { name: 'manager_presence' },
+                                      { name: 'supervisor_presence' }]);
+            // تُقرأ المصادر من جديد قبل الحذف: النسخة المعروضة قد مضى عليها وقت.
+            const src = await readBoardSources();
+            const targets = [];
+            src.cards.forEach(c => { if (ids.includes(c.id)) targets.push(['manager_cards', c.id]); });
+            src.mgr.forEach(e => { if (ids.includes(e.employeeId)) targets.push(['manager_presence', e.id]); });
+            src.sup.forEach(e => { if (ids.includes(e.employeeId)) targets.push(['supervisor_presence', e.id]); });
+
+            let done = 0;
+            for (let i = 0; i < targets.length; i += 200) {
+                const chunk = targets.slice(i, i + 200);
+                const batch = writeBatch(db);
+                chunk.forEach(([coll, docId]) => batch.delete(doc(db, coll, docId)));
+                await batch.commit();
+                done += chunk.length;
+                status.innerText = `Removing... ${done} of ${targets.length}`;
+            }
+            logAudit('Board Leftovers Removed',
+                `${done} leftover document(s) deleted from manager_cards / manager_presence / supervisor_presence `
+                + `for ${ids.length} record(s) with no employee file: ` + ids.slice(0, 30).join(', '));
+            status.style.color = 'var(--success)';
+            status.innerText = `Removed ${done} leftover row(s). Reloading...`;
+            setTimeout(() => location.reload(), 2000);
+        } catch (e) {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Stopped: ' + e.message + ' — the safety copy holds the state from before.';
         } finally {
             btn.disabled = false;
         }
