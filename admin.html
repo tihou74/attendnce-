@@ -1956,16 +1956,17 @@
              دقيقة، وصورةٌ بحجم 700KB لكل مدير كانت ستستهلك بياناتها بلا داعٍ.
              ================================================================== -->
         <div class="card">
-            <h3><span data-icon="users"></span> Manager Cards <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">بطاقات المدراء</span></h3>
+            <h3><span data-icon="users"></span> Manager &amp; Supervisor Cards <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">بطاقات المدراء والسوبرفايزر</span></h3>
             <p class="card-sub">
-                The photo and job title that appear beside each manager in the management panel, next to the
-                green or red dot showing whether he is on duty. Only the managers enabled for the Daily Sales
-                Report are listed here. <b>Never</b> upload a QID picture &mdash; use an ordinary photograph.
+                The photo and job title that appear beside each person in the management panel, next to the
+                green or red dot. Everyone marked as a <b>manager</b> or as a <b>supervisor</b> is listed here,
+                and whoever is both appears on both boards.
+                <b>Never</b> upload a QID picture &mdash; use an ordinary photograph.
                 The picture is shrunk automatically, so any size is fine.
             </p>
             <div class="controls" style="align-items: flex-end; gap: 10px; flex-wrap: wrap;">
                 <div style="flex: 1; min-width: 220px;">
-                    <label for="mcManagerSelect">Manager</label>
+                    <label for="mcManagerSelect">Manager or supervisor</label>
                     <select id="mcManagerSelect" onchange="onManagerCardPick()">
                         <option value="">-- Choose a manager --</option>
                     </select>
@@ -1988,7 +1989,7 @@
             </div>
             <div class="table-container" style="margin-top: 16px;">
                 <table>
-                    <thead><tr><th>Photo</th><th>Manager</th><th>Job title</th><th>Branch</th><th>Photo size</th><th></th></tr></thead>
+                    <thead><tr><th>Photo</th><th>Name</th><th>Shows on</th><th>Job title</th><th>Branch</th><th>Photo size</th><th></th></tr></thead>
                     <tbody id="mcTableBody"></tbody>
                 </table>
             </div>
@@ -2013,20 +2014,30 @@
              راتبه وتاريخ التحاقه وصور هويته وعقده — وذلك ما لا يجوز أن يتكرّر.
              ================================================================== -->
         <div class="card" style="border-left: 4px solid var(--success);">
-            <h3><span data-icon="userPlus"></span> Set Up Managers <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">تعيين المدراء</span></h3>
+            <h3><span data-icon="userPlus"></span> Set Up Managers &amp; Supervisors <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">تعيين المدراء والسوبرفايزر</span></h3>
             <p class="card-sub">
-                Write the manager names below, one per line, and press Check. Anyone who already has a file keeps
-                it exactly as it is &mdash; only the manager permission is added, so salaries, joining dates and
-                documents are never touched. Anyone with no file at all gets a new one you can complete afterwards.
-                Each manager then signs in at <b>report.html</b> with the PIN shown.
+                Write the names below, one per line, choose which role, and press Check. Anyone who already has a
+                file keeps it exactly as it is &mdash; only the one permission is added, so salaries, joining dates
+                and documents are never touched. Anyone with no file at all gets a new one you can complete later.
+            </p>
+            <p class="card-sub" style="margin-top: -4px;">
+                <b>Manager</b> signs in at <b>report.html</b> to send the daily sales report and set his duty status.
+                <b>Supervisor</b> changes nothing about how he works &mdash; he keeps clocking in on the staff
+                attendance page as usual, and the only effect is that he appears on the management panel's
+                <b>Supervisors</b> board with a green or red dot.
             </p>
             <div class="controls" style="align-items: flex-start; gap: 14px; flex-wrap: wrap;">
                 <div style="flex: 1; min-width: 280px;">
-                    <label for="mgrSetupNames">Manager names &mdash; one per line</label>
+                    <label for="mgrSetupNames">Names &mdash; one per line</label>
                     <textarea id="mgrSetupNames" rows="7" dir="auto" placeholder="BILLEL ABDESSAMAD&#10;VIKAS CHIRAVANGATTE&#10;ACHRAF SHILI" style="width: 100%; padding: 11px; font-size: 14px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; background: var(--surface); color: var(--text);"></textarea>
                 </div>
                 <div style="width: 210px;">
-                    <label for="mgrSetupBranch">Branch for new files</label>
+                    <label for="mgrSetupRole">Role to give</label>
+                    <select id="mgrSetupRole" onchange="onSetupRoleChange()">
+                        <option value="manager">Manager</option>
+                        <option value="supervisor">Supervisor</option>
+                    </select>
+                    <label for="mgrSetupBranch" style="margin-top: 10px;">Branch for new files</label>
                     <select id="mgrSetupBranch">
                         <option value="HEAD OFFICE">HEAD OFFICE</option>
                         <option value="GAIMER W KAHI WEST WALK">GAIMER W KAHI WEST WALK</option>
@@ -2043,13 +2054,13 @@
             <div id="mgrSetupBox" style="display: none; margin-top: 16px;">
                 <div class="table-container">
                     <table>
-                        <thead><tr><th>Name you wrote</th><th>Matching file</th><th>Manager now?</th><th>PIN</th><th>What will happen</th></tr></thead>
+                        <thead><tr><th>Name you wrote</th><th>Matching file</th><th id="mgrSetupRoleCol">Manager now?</th><th>PIN</th><th>What will happen</th></tr></thead>
                         <tbody id="mgrSetupBody"></tbody>
                     </table>
                 </div>
                 <p class="card-sub" style="margin: 14px 0 0;" id="mgrSetupSummary"></p>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px;">
-                    <button class="btn-success" id="btnRunMgrSetup" onclick="runManagerSetup()"><span data-icon="save"></span> Make them managers</button>
+                    <button class="btn-success" id="btnRunMgrSetup" onclick="runManagerSetup()"><span data-icon="save"></span> <span id="btnRunMgrSetupLabel">Make them managers</span></button>
                     <button class="btn-ghost" onclick="document.getElementById('mgrSetupBox').style.display='none'">Cancel</button>
                 </div>
             </div>
@@ -2239,6 +2250,15 @@
                 <label style="display: flex; align-items: center; gap: 9px; font-weight: 500; font-size: 13px; cursor: pointer; padding: 12px 0;">
                     <input type="checkbox" id="editEmpCanSubmitSalesReport" style="width: 18px; height: 18px; flex-shrink: 0; cursor: pointer;">
                     Can submit the Daily Sales Report
+                </label>
+            </div>
+            <!-- ⚠️ علامةٌ للعرض لا صلاحية: لا تُغيّر شيئًا في عمل الموظف ولا في
+                 راتبه ولا في بصمته. أثرها الوحيد أنه يظهر في لوحة الإدارة
+                 بنقطة خضراء أو حمراء تُشتقّ من بصمته على الكشك. -->
+            <div><label>Supervisors board</label>
+                <label style="display: flex; align-items: center; gap: 9px; font-weight: 500; font-size: 13px; cursor: pointer; padding: 12px 0;">
+                    <input type="checkbox" id="editEmpIsSupervisor" style="width: 18px; height: 18px; flex-shrink: 0; cursor: pointer;">
+                    Show on the Supervisors board
                 </label>
             </div>
         </div>
@@ -11155,12 +11175,27 @@
         });
     }
 
-    /** المدراء = المفعَّل لهم التقرير اليومي، وهم من يضغط زرّ حالة الدوام. */
+    /**
+     * من تُرفع له بطاقة صورة: المدراء **والسوبرفايزر**.
+     * ⚠️ البطاقة الواحدة تخدم اللوحتين: لوحة المدراء تعرض من عليه علامة المدير،
+     * ولوحة السوبرفايزر من عليه علامة السوبرفايزر، ومن عليه الاثنتان يظهر في
+     * الاثنتين. ولهذا لا مجموعة ثانية للصور — نفس manager_cards التي تقرؤها
+     * السيدة فاطمة أصلًا، ولا شيء حسّاس فيها.
+     */
     function managerCandidates() {
         return activeEmployees()
-            .filter(e => e.canSubmitSalesReport === true)
+            .filter(e => e.canSubmitSalesReport === true || e.isSupervisor === true)
             .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
     }
+
+    /**
+     * دور البطاقة كما تقرؤه لوحة العرض.
+     * ⚠️ البطاقات التي رُفعت قبل وجود السوبرفايزر لا تحمل أي علامة، فتُعدّ
+     * بطاقات مدراء — لأنها لم تكن تُرفع إلا لهم. وبلا هذا الاستدراك تختفي
+     * صور المدراء الحالية من لوحتهم فجأة.
+     */
+    function cardIsManager(c) { return c.isManager === true || (c.isManager === undefined && c.isSupervisor === undefined); }
+    function cardIsSupervisor(c) { return c.isSupervisor === true; }
 
     window.loadManagerCards = async function() {
         try {
@@ -11251,6 +11286,11 @@
                 branch: emp.branch || '',
                 title: title,
                 photoBase64: photo,
+                // ⚠️ الدوران يُنسخان على البطاقة لحظة الحفظ: لوحة العرض لا تقرأ
+                // مستندات الموظفين إطلاقًا، فبلا هذين الحقلين لا تعرف في أي
+                // لوحة تُظهر هذه الصورة.
+                isManager: emp.canSubmitSalesReport === true,
+                isSupervisor: emp.isSupervisor === true,
                 updatedAt: serverTimestamp()
             });
             logAudit('Manager card saved', `${emp.name || id}${title ? ' — ' + title : ''}`);
@@ -11297,7 +11337,7 @@
             if (!cands.some(e => e.id === c.id)) rows.push({ emp: null, card: c });
         });
         if (!rows.length) {
-            body.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-dim);">No manager is enabled for the Daily Sales Report yet.</td></tr>';
+            body.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--text-dim);">Nobody is marked as a manager or a supervisor yet.</td></tr>';
             return;
         }
         body.innerHTML = rows.map(({ emp, card }) => {
@@ -11310,7 +11350,17 @@
                     ? `<img src="${card.photoBase64}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">`
                     : '<span style="color: var(--warning); font-weight: 700; font-size: 12px;">no photo</span>'}</td>
                 <td><b>${escapeHtml(name)}</b>${stray
-                    ? ' <span style="color: var(--danger); font-size: 11px; font-weight: 800;">⚠ no longer a manager</span>' : ''}</td>
+                    ? ' <span style="color: var(--danger); font-size: 11px; font-weight: 800;">⚠ no longer a manager or supervisor</span>' : ''}</td>
+                <td style="font-size: 12px; font-weight: 700;">${(() => {
+                    // الدور من ملف الموظف إن وُجد — فهو الحقيقة الحالية. وإن لم
+                    // يبقَ موظفًا، فمن البطاقة، ليُعرف في أي لوحة تظهر صورته.
+                    const mgr = emp ? emp.canSubmitSalesReport === true : (card ? cardIsManager(card) : false);
+                    const sup = emp ? emp.isSupervisor === true : (card ? cardIsSupervisor(card) : false);
+                    const parts = [];
+                    if (mgr) parts.push('<span style="color: var(--success);">Managers</span>');
+                    if (sup) parts.push('<span style="color: var(--accent);">Supervisors</span>');
+                    return parts.length ? parts.join(' + ') : '<span style="color: var(--text-dim);">—</span>';
+                })()}</td>
                 <td>${escapeHtml((card && card.title) || (emp && emp.role) || '—')}</td>
                 <td>${escapeHtml((card && card.branch) || (emp && emp.branch) || '—')}</td>
                 <td>${kb}</td>
@@ -11666,6 +11716,7 @@
             renderQidInfo(emp);
             // الحقل غائب عن الموظفين المنشَئين قبل هذه الميزة، فالغياب = غير مفعّل.
             document.getElementById("editEmpCanSubmitSalesReport").checked = emp.canSubmitSalesReport === true;
+            document.getElementById("editEmpIsSupervisor").checked = emp.isSupervisor === true;
             document.getElementById("editEmpEndType").value = emp.endType === 'termination' ? 'termination' : 'resignation';
             renderEndServicePanel(empId);
 
@@ -11896,6 +11947,7 @@
         const qidNumber = document.getElementById("editEmpQidNumber").value.trim();
         const qidExpiry = document.getElementById("editEmpQidExpiry").value;
         const canSubmitSalesReport = document.getElementById("editEmpCanSubmitSalesReport").checked;
+        const isSupervisor = document.getElementById("editEmpIsSupervisor").checked;
         const statusEl = document.getElementById("editProfileStatus");
 
         if (!canEditProfiles()) { statusEl.innerText = "You do not have permission to edit profiles."; statusEl.style.color = "var(--danger)"; return; }
@@ -11948,7 +12000,7 @@
             let healthCert = await readFileIfPresent(document.getElementById("editHealthCertInput"), emp.healthCert || "");
 
             // Base fields any signed-in admin (Accountant OR Secretary) may edit.
-            const payload = { name, role, branch, phone, shift, housingType, joinDate, qidNumber, qidExpiry, canSubmitSalesReport, qidFront, qidBack, healthCard, contract, healthCert };
+            const payload = { name, role, branch, phone, shift, housingType, joinDate, qidNumber, qidExpiry, canSubmitSalesReport, isSupervisor, qidFront, qidBack, healthCard, contract, healthCert };
             // Salary / OT rate are only ever sent for Accountants — Secretaries
             // never include these fields in the update at all, and
             // firestore.rules independently rejects them server-side too if a
@@ -12817,9 +12869,11 @@
         "petty_cash_requests", "warning_requests",
         // العبايات: نشاط كامل مستقل — تقاريره وبياعاته وأرقامهن السرية.
         "abaya_sales_reports", "abaya_sellers", "abaya_seller_pins",
-        // وبطاقات المدراء وسجل حالة دوامهم. البطاقة تحمل الصورة نفسها ولا
-        // نسخة أخرى منها في أي مكان، فبلا هذا السطر تُفقد الصور نهائيًّا.
-        "manager_cards", "manager_presence"
+        // وبطاقات المدراء والسوبرفايزر وسجل حالة دوامهم. البطاقة تحمل الصورة
+        // نفسها ولا نسخة أخرى منها في أي مكان، فبلا هذا السطر تُفقد الصور نهائيًّا.
+        "manager_cards", "manager_presence",
+        // ومرآة بصمات السوبرفايزر: سجلٌّ مستقل لا يُعاد بناؤه من غيره.
+        "supervisor_presence"
     ];
     // =====================================================================
     // تعيين المدراء بضغطة
@@ -12833,6 +12887,52 @@
     // ⚠️ ومديرٌ بلا رقم سري لا يستطيع الدخول، فلا يُقبل تعيينه بلا رقم.
     // =====================================================================
     let mgrSetupPlan = null;
+
+    // =====================================================================
+    // الأداة تخدم دورين بحقلٍ واحد لكلٍّ منهما
+    // ---------------------------------------------------------------------
+    // ⚠️ حقلان مستقلان تمامًا، ولا يُلمس أحدهما عند منح الآخر: شخصٌ قد يكون
+    // مديرًا وسوبرفايزر في الوقت نفسه، ومنحُه دورًا لا يجوز أن يسلبه الآخر.
+    // ⚠️ ومعنى الدورين مختلف جوهريًّا:
+    //    مدير      = يدخل report.html ويُرسل التقرير ويُعلن حالة دوامه بنفسه.
+    //    سوبرفايزر = لا يتغيّر شيء في عمله. يبصم على كشك الموظفين كما هو،
+    //                وأثر العلامة الوحيد أنه يظهر في لوحة الإدارة بنقطة.
+    // =====================================================================
+    const SETUP_ROLES = {
+        manager: {
+            field: 'canSubmitSalesReport',
+            label: 'Manager', labelPlural: 'managers',
+            col: 'Manager now?', btn: 'Make them managers',
+            newRole: 'Manager',
+            // المدير لا يستطيع الدخول إلى شاشته بلا رقم، فالرقم شرط.
+            pinRequired: true
+        },
+        supervisor: {
+            field: 'isSupervisor',
+            label: 'Supervisor', labelPlural: 'supervisors',
+            col: 'Supervisor now?', btn: 'Make them supervisors',
+            newRole: 'Supervisor',
+            // السوبرفايزر يبصم على الكشك، والبصمة تحتاج رقمًا — فالرقم شرط كذلك.
+            pinRequired: true
+        }
+    };
+    function setupRole() {
+        const el = document.getElementById('mgrSetupRole');
+        return SETUP_ROLES[(el && el.value) || 'manager'] || SETUP_ROLES.manager;
+    }
+    window.onSetupRoleChange = function() {
+        const r = setupRole();
+        const col = document.getElementById('mgrSetupRoleCol');
+        if (col) col.innerText = r.col;
+        const btn = document.getElementById('btnRunMgrSetupLabel');
+        if (btn) btn.innerText = r.btn;
+        // الخطة القديمة بُنيت على الدور السابق، فلا تُعرض بحكم دورٍ آخر.
+        const box = document.getElementById('mgrSetupBox');
+        if (box) box.style.display = 'none';
+        mgrSetupPlan = null;
+        const st = document.getElementById('mgrSetupStatus');
+        if (st) { st.innerText = 'Role changed — press Check again.'; st.style.color = 'var(--text-dim)'; }
+    };
 
     // async: تقرأ أرقام الدخول من قاعدة البيانات (لا مصفوفة محمَّلة لها).
     window.checkManagerSetup = async function() {
@@ -12962,6 +13062,7 @@
     function renderManagerSetupPlan() {
         const pin = (document.getElementById('mgrSetupPin').value || '').trim();
         document.getElementById('mgrSetupBody').innerHTML = mgrSetupPlan.map((p, i) => {
+            const R = setupRole();
             const exact = p.candidates.find(c => c.score === 1000);
             // ⚠️ لا يُختار مرشَّحٌ تلقائيًّا إلا إن كان مطابقًا حرفيًّا، أو كان
             // وحيدًا وقويًّا. وإلا فالافتراضي «اختر» ليضطرّ المالك إلى النظر —
@@ -12972,7 +13073,7 @@
                 `<option value="${escapeHtml(c.emp.id)}"${c.emp.id === auto ? ' selected' : ''}>`
                 + `${escapeHtml(c.emp.name)}`
                 + `${c.emp.branch ? ' — ' + escapeHtml(c.emp.branch) : ''}`
-                + `${c.emp.canSubmitSalesReport === true ? ' ✔manager' : ''}`
+                + `${c.emp[R.field] === true ? ' ✔' + R.label.toLowerCase() : ''}`
                 + `${c.ev.traces ? ` · ${c.ev.att} attendance, ${c.ev.sales} reports` : ' · NO history'}`
                 + `</option>`).join('');
             const needChoose = !auto;
@@ -12992,6 +13093,7 @@
         }).join('');
 
         // الحكم لكل سطر بعد بناء القوائم، فيُقرأ من اختيار المالك لا من تخمين.
+        const R = setupRole();
         let grant = 0, create = 0, already = 0, needPin = 0;
         mgrSetupPlan.forEach((p, i) => {
             const t = mgrSetupChoice(i);
@@ -13001,20 +13103,21 @@
             if (!t) {
                 create++; txt = 'A NEW file will be created (salary 0 — complete it afterwards)'; col = 'var(--accent)';
                 if (!pin) needPin++;
-            } else if (t.canSubmitSalesReport === true) {
-                already++; txt = pin ? 'Already a manager — only the PIN changes' : 'Already a manager — nothing to change'; col = 'var(--text-dim)';
+            } else if (t[R.field] === true) {
+                already++; txt = pin ? `Already a ${R.label.toLowerCase()} — only the PIN changes`
+                                     : `Already a ${R.label.toLowerCase()} — nothing to change`; col = 'var(--text-dim)';
                 if (!pin && !hasPin) needPin++;
             } else {
-                grant++; txt = 'Manager permission added — the file itself is NOT touched'; col = 'var(--success)';
+                grant++; txt = `${R.label} permission added — the file itself is NOT touched`; col = 'var(--success)';
                 if (!pin && !hasPin) needPin++;
             }
             if (cell) { cell.innerText = txt; cell.style.color = col; }
         });
 
         const parts = [];
-        if (grant) parts.push(`<b style="color: var(--success);">${grant}</b> existing file(s) get manager permission`);
+        if (grant) parts.push(`<b style="color: var(--success);">${grant}</b> existing file(s) get ${R.label.toLowerCase()} permission`);
         if (create) parts.push(`<b style="color: var(--accent);">${create}</b> NEW file(s) will be created`);
-        if (already) parts.push(`<b>${already}</b> already manager(s)`);
+        if (already) parts.push(`<b>${already}</b> already ${R.label.toLowerCase()}(s)`);
         document.getElementById('mgrSetupSummary').innerHTML =
             (parts.length ? parts.join(' · ') + '.' : 'Nothing to change.')
             + (create ? `<br><b style="color: var(--warning);">Careful:</b> creating a new file for someone who already `
@@ -13049,29 +13152,32 @@
         btn.disabled = true;
         status.style.color = 'var(--warning)';
         status.innerText = 'Saving...';
+        const R = setupRole();
         let granted = 0, created = 0, pins = 0;
         try {
             for (const p of todo) {
                 let id;
                 if (p.target) {
                     id = p.target.id;
-                    if (p.target.canSubmitSalesReport !== true) {
+                    if (p.target[R.field] !== true) {
                         // ⚠️ updateDoc لا setDoc: تُلمس خانة واحدة ولا يُعاد بناء
                         // السجل، فلا يُمحى راتبٌ ولا صورة هوية ولا عقد.
-                        await updateDoc(doc(db, "employees", id), { canSubmitSalesReport: true });
+                        // ⚠️ وخانة الدور الآخر لا تُذكر هنا إطلاقًا، فمن كان
+                        // مديرًا وسوبرفايزر يبقى كذلك — منح دورٍ لا يسلب غيره.
+                        await updateDoc(doc(db, "employees", id), { [R.field]: true });
                         granted++;
                     }
                 } else {
                     id = generateEmployeeId(normName(p.name));
                     await setDoc(doc(db, "employees", id), {
                         name: normName(p.name),
-                        role: 'Manager',
+                        role: R.newRole,
                         branch: p.branch,
                         shift: 'Full Time',
                         // ⚠️ صفر عن قصد: رقمٌ مُختلق أخطر من صفرٍ يُطالب بالتصحيح.
                         salary: 0,
                         phone: '',
-                        canSubmitSalesReport: true,
+                        [R.field]: true,
                         qidNumber: '', qidExpiry: '',
                         qidFront: '', qidBack: '', healthCard: '', contract: '', healthCert: '',
                         createdAt: serverTimestamp()
@@ -13083,12 +13189,16 @@
                     pins++;
                 }
             }
-            logAudit('Managers Set Up',
-                `${granted} existing file(s) granted manager permission, ${created} new file(s) created, `
+            logAudit(`${R.label}s Set Up`,
+                `${granted} existing file(s) granted ${R.label.toLowerCase()} permission, ${created} new file(s) created, `
                 + `${pins} PIN(s) set — ${todo.map(p => p.name).join(', ')}`);
             status.style.color = 'var(--success)';
-            status.innerHTML = `<b>Done.</b> ${granted} file(s) given manager permission, ${created} new file(s) created, `
-                + `${pins} PIN(s) set. They can sign in at <b>report.html</b> now. Reloading...`;
+            status.innerHTML = `<b>Done.</b> ${granted} file(s) given ${R.label.toLowerCase()} permission, `
+                + `${created} new file(s) created, ${pins} PIN(s) set. `
+                + (R.field === 'canSubmitSalesReport'
+                    ? 'They can sign in at <b>report.html</b> now.'
+                    : 'They keep clocking in on the staff page as usual, and now appear on the <b>Supervisors</b> board.')
+                + ' Reloading...';
             setTimeout(() => location.reload(), 2500);
         } catch (e) {
             status.style.color = 'var(--danger)';
@@ -13154,14 +13264,18 @@
         const hasQid = !!(emp.qidNumber || emp.qidExpiry);
         // ⭐ الحقل الذي يجعل المدير مديرًا — والبذر لا يكتبه أبدًا
         const isManager = emp.canSubmitSalesReport === true;
+        // ⭐ وعلامة السوبرفايزر مثله: البذر لا يكتبها، فوجودها يعني أن المالك
+        // أعدّ هذا السجل بيده. نفس الدرس الذي كلّف حذف سجلات المدراء.
+        const isSup = emp.isSupervisor === true;
         const hasPhone = !!(emp.phone && String(emp.phone).replace(/[^0-9]/g, '').length > 4);
         const hasEnd = !!emp.endDate;              // من انتهت خدمته سجلٌ حقيقي بلا شك
-        const managerTraces = sales + petty + warnReq + (hasCard ? 1 : 0) + (isManager ? 1 : 0);
+        const managerTraces = sales + petty + warnReq + (hasCard ? 1 : 0)
+            + (isManager ? 1 : 0) + (isSup ? 1 : 0);
         const traces = att + ded + lv + alw + warns + leaveReq + files + managerTraces
             + (hasJoin ? 1 : 0) + (hasQid ? 1 : 0) + (hasPhone ? 1 : 0) + (hasEnd ? 1 : 0);
         return {
             att, ded, lv, alw, sales, petty, warnReq, warns, leaveReq, hasCard,
-            files, hasJoin, hasQid, isManager, hasPhone, hasEnd,
+            files, hasJoin, hasQid, isManager, isSup, hasPhone, hasEnd,
             managerTraces, traces, real: traces > 0
         };
     }
@@ -13189,7 +13303,9 @@
             if (realOnes.length === 1) {
                 // الحالة الواضحة: واحدٌ له أثر والباقي بلا أثر.
                 verdictFor = (r) => r.ev.real
-                    ? { keep: true, why: r.ev.isManager ? 'Keep — real file, and this is a MANAGER' : 'Keep — this is the real file' }
+                    ? { keep: true, why: (r.ev.isManager || r.ev.isSup)
+                            ? `Keep — real file, and this is a ${r.ev.isManager ? 'MANAGER' : 'SUPERVISOR'}`
+                            : 'Keep — this is the real file' }
                     : { keep: false, why: 'Empty copy — no history anywhere, not a manager, no documents' };
             } else if (realOnes.length === 0) {
                 verdictFor = () => ({ keep: true, needsYou: true, why: 'No record has any history — decide yourself' });
@@ -13223,8 +13339,8 @@
                          onchange="renderDupSummary()" style="width:17px;height:17px;cursor:pointer;">`}</td>
                 <td>${i === 0 ? `<b>${escapeHtml(g.name)}</b>` : ''}</td>
                 <td><small style="font-family: monospace; color: var(--text-dim);">${escapeHtml(e.id)}</small></td>
-                <td>${ev.isManager
-                    ? '<b style="color: var(--success);">✔ MANAGER</b>'
+                <td>${ev.isManager || ev.isSup
+                    ? `<b style="color: var(--success);">✔ ${ev.isManager ? 'MANAGER' : ''}${ev.isManager && ev.isSup ? ' + ' : ''}${ev.isSup ? 'SUPERVISOR' : ''}</b>`
                     : '<span style="color: var(--text-dim);">—</span>'}</td>
                 <td class="money-col"${ev.att ? ' style="font-weight:800; color: var(--success);"' : ''}>${ev.att || '—'}</td>
                 <td class="money-col"${ev.sales ? ' style="font-weight:800; color: var(--success);"' : ''}>${ev.sales || '—'}</td>
@@ -13276,12 +13392,12 @@
         // شاشته ولا إرسال التقرير اليومي.
         const managerIds = ids.filter(id => {
             const emp = allEmployees.find(e => e.id === id);
-            return emp && emp.canSubmitSalesReport === true;
+            return emp && (emp.canSubmitSalesReport === true || emp.isSupervisor === true);
         });
         if (managerIds.length) {
             status.style.color = 'var(--danger)';
-            status.innerText = `Stopped: ${managerIds.length} ticked record(s) belong to MANAGERS and are never `
-                + `deleted by this tool. Scan again.`;
+            status.innerText = `Stopped: ${managerIds.length} ticked record(s) belong to MANAGERS or SUPERVISORS `
+                + `and are never deleted by this tool. Scan again.`;
             return;
         }
         const unsafe = ids.filter(id => {

@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v13   (2026-09-15)  <<<
+//   >>>  RULES REVISION: v14   (2026-09-16)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,17 +12,20 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       manager_presence
+//       supervisor_presence
 //
 //   (This exact text exists nowhere in any earlier revision, which is the whole
-//    point of a marker. Earlier wrong attempts worth avoiding: for v12 the
-//    marker "abaya_sales_reports" was useless because it is in v11 AND v12, and
-//    "isAccountant() || isViewer();" already existed before the abaya work.
-//    "abaya-balances.html" was the correct v12 marker but is now in v12 AND
-//    v13, so it can no longer tell those two apart either.
-//    Pick a marker that is NEW in the revision you are publishing.)
+//    point of a marker. Every earlier marker is now useless for telling the
+//    latest revision apart, and that is normal — each one only ever works for
+//    the single revision that introduced it:
+//      "abaya_sales_reports"        is in v11 AND v12  -> never worked
+//      "isAccountant() || isViewer();" predates the abaya work -> never worked
+//      "abaya-balances.html"        introduced in v12, still here in v13/v14
+//      "manager_presence"           introduced in v13, still here in v14
+//    Always search for the marker named directly above, and when publishing a
+//    new revision, change that name to something introduced by it.)
 //
-//   FOUND     -> v12 is live. Good.
+//   FOUND     -> v14 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -41,6 +44,35 @@ rules_version = '2';
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
 //
+//  v14  2026-09-16  + THE SUPERVISORS' BOARD — supervisor_presence.
+//                     Management's request: a fourth window in the viewing panel
+//                     showing which supervisors are at work right now, each with
+//                     his photo and a green or red dot, laid out like the
+//                     managers' board.
+//                     The important difference from v13: a supervisor does NOT
+//                     declare anything. He clocks in on the staff attendance page
+//                     exactly as before, with his PIN and the location check, and
+//                     this collection is a small MIRROR of that punch written at
+//                     the same moment — the name, the branch, in or out, and the
+//                     time. Nothing else.
+//                     Why a mirror instead of simply letting the viewers read
+//                     `attendance`: that collection carries EVERY employee's
+//                     complete history and the GPS coordinates of every punch,
+//                     and Firestore cannot hide some rows or some fields on a
+//                     read. The owner was asked and said no. So attendance stays
+//                     closed to viewers — deliberately unchanged in this
+//                     revision — and the mirror carries only what the board
+//                     needs and no location at all.
+//                     Append-only for the kiosk, exactly like manager_presence:
+//                     the staff page signs in anonymously, so update permission
+//                     would let anyone with that link rewrite a record. The
+//                     current state of a supervisor is his latest event that day.
+//                     No viewer gains any write anywhere, as always.
+//                     The photo and job title come from manager_cards, which
+//                     viewers may already read and which now serves supervisors
+//                     too — it holds only a name, a branch, a title and a small
+//                     picture, nothing confidential. It still must NEVER hold a
+//                     QID image.
 //  v13  2026-09-15  + MANAGERS' PRESENCE — manager_presence and manager_cards.
 //                     Management's request: Mrs Fatima opens the panel and sees
 //                     which managers are on duty at that moment, each with his
@@ -600,6 +632,39 @@ service cloud.firestore {
       allow read: if isAdmin() || isStaff() || isViewer();
       allow create: if isKiosk() || isAdmin();
       // History is not rewritable — a mistake is corrected by a NEW event.
+      allow update: if false;
+      // The owner alone may remove a test entry.
+      allow delete: if isAdmin();
+    }
+
+    // ---- supervisor_presence (the Supervisors board) --------------------------
+    // A small MIRROR of a supervisor's real punch on the staff attendance page,
+    // written at the same moment as the attendance record itself: name, branch,
+    // Check-In or Check-Out, and the time. Nothing else — and deliberately NO
+    // location, even though the attendance record it mirrors has one.
+    //
+    // Why this collection exists at all, rather than letting the viewers read
+    // `attendance` directly: that collection holds every employee's complete
+    // history and the GPS coordinates of every single punch, and Firestore cannot
+    // hide some rows or some fields on a read. It is all or nothing. The owner
+    // was asked and chose not to open it. So `attendance` above stays closed to
+    // viewers, and this carries only what the board needs.
+    //
+    // Append-only for the kiosk, for the same reason as manager_presence: the
+    // staff page signs in anonymously, so granting update would let anyone who
+    // opens that link rewrite an existing record. Creating a new event is the
+    // weakest permission that still does the job. The current state of a
+    // supervisor on a given day is simply his latest event of that day.
+    //
+    // ⚠️ This is NOT the attendance record and must never be treated as one. It
+    // does not feed payroll, it carries no worked-hours figure, and a missing
+    // mirror event does not mean the person did not clock in — it means the
+    // mirror write did not land. The board says "no record" for that, never
+    // "absent", because the truth about attendance lives in `attendance`.
+    match /supervisor_presence/{eventId} {
+      allow read: if isAdmin() || isStaff() || isViewer();
+      allow create: if isKiosk() || isAdmin();
+      // History is not rewritable — a correction is a NEW event.
       allow update: if false;
       // The owner alone may remove a test entry.
       allow delete: if isAdmin();

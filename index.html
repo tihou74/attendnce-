@@ -1161,7 +1161,11 @@
                     // المسمّى الوظيفي — يُنسخ على حدث حالة الدوام ليظهر للسيدة
                     // فاطمة، فهي لا تستطيع قراءة مستند الموظف نفسه.
                     role: d.role || "",
-                    canSubmitSalesReport: d.canSubmitSalesReport === true
+                    canSubmitSalesReport: d.canSubmitSalesReport === true,
+                    // علامةٌ للعرض لا صلاحية: لا تُغيّر شيئًا في بصمة الموظف ولا
+                    // في راتبه. أثرها الوحيد أن بصمته تُنسخ نسخةً صغيرة تظهر في
+                    // لوحة الإدارة بنقطة خضراء أو حمراء.
+                    isSupervisor: d.isSupervisor === true
                 });
             });
             employees.sort((a, b) => a.name.localeCompare(b.name));
@@ -1508,6 +1512,49 @@
                     }
                     showStatus(successMessage, "success");
                     document.getElementById('pinInput').value = '';
+
+                    // =========================================================
+                    // مرآة السوبرفايزر — للوحة الإدارة وحدها
+                    // ---------------------------------------------------------
+                    // ⚠️ لماذا نسخةٌ ثانية بدل قراءة سجل الحضور مباشرة؟ لأن
+                    // مستند الحضور يحمل تاريخ كل الموظفين **وإحداثيات موقع كل
+                    // بصمة**، وفايرستور لا يستطيع إخفاء بعض الأسطر أو الحقول عند
+                    // القراءة — إما الكل أو لا شيء. وقرار المالك: لا يُفتح.
+                    // فهذه النسخة تحمل ما تحتاجه اللوحة فقط: الاسم والفرع
+                    // وداخل/خارج والوقت. **بلا موقع وبلا دقائق عمل.**
+                    //
+                    // ⚠️ ولا تُفشل البصمة بحال: البصمة نجحت وحُفظت قبل هذا
+                    // السطر، وفشل المرآة شأنٌ عرضيٌّ لا يجوز أن يُظهر للموظف
+                    // خطأً يجعله يبصم مرتين. ولهذا حارس try/catch مستقل.
+                    //
+                    // ⚠️ وفترة الدوام المقسوم تُنسخ بعلامتها: هي خروجٌ فعلًا
+                    // (فالنقطة حمراء بحق)، لكن «في استراحة» أصدق من «انصرف».
+                    // =========================================================
+                    if (emp && emp.isSupervisor === true) {
+                        try {
+                            await addDoc(collection(db, "supervisor_presence"), {
+                                employeeId: empId,
+                                // الاسم والفرع والمسمّى يُنسخون هنا لأن لوحة
+                                // الإدارة لا تقرأ مستندات الموظفين إطلاقًا.
+                                employeeName: empName,
+                                branch: empBranch,
+                                title: (emp.role || ''),
+                                type: type,                       // Check-In | Check-Out
+                                ...(isSplit ? { splitBreak: true } : {}),
+                                date: formatDateEnglish(now),
+                                time: formatTimeEnglish(now),
+                                // ⭐ ساعة الخادم هي مرجع الترتيب، لا ساعة الجهاز.
+                                serverTime: serverTimestamp(),
+                                deviceTime: now,
+                                deviceTz: deviceTimeZoneName(),
+                                deviceTzOffsetMin: now.getTimezoneOffset()
+                            });
+                        } catch (mirrorErr) {
+                            // لا رسالة للموظف: بصمته سُجِّلت وهي المهمة. واللوحة
+                            // تقول «لا سجل» لا «غائب» عند غياب الحدث.
+                            console.error('Supervisor board mirror failed (attendance itself was saved):', mirrorErr);
+                        }
+                    }
                 } catch (error) {
                     showStatus("Error saving attendance data. Please try again.", "error");
                 } finally {

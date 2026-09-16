@@ -261,6 +261,9 @@
     @media (min-width: 560px) { .chooser { grid-template-columns: 1fr 1fr; } }
     /* اختيار النشاط صار ثلاثة: مطاعم · عبايات · حضور المدراء */
     @media (min-width: 980px) { .chooser.three { grid-template-columns: repeat(3, 1fr); } }
+    /* ثم أربعة: + حضور السوبرفايزر. عند 1180 وحدها تُصفّ الأربعة في سطر،
+       وقبلها تبقى اثنتين في السطر فلا يضيق الزرّ على نصّه. */
+    @media (min-width: 1180px) { .chooser.four { grid-template-columns: repeat(4, 1fr); } }
 
     /* ---- حضور المدراء: بطاقة لكل مدير ------------------------------------ */
     .mgrs { display: grid; gap: var(--space-4); grid-template-columns: 1fr; }
@@ -468,7 +471,7 @@
              نفسه، وتُسمّي نسخة Firebase "balances" فتتشارك الجلسة — فلا يُطلب
              تسجيل دخول ثانٍ عند الانتقال.
              ============================================================== -->
-        <div class="chooser three" id="biz">
+        <div class="chooser four" id="biz">
             <button type="button" class="pick" id="pickRest" aria-pressed="false" aria-controls="restWrap">
                 <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v8a3 3 0 0 0 6 0V3"/><path d="M9 11v10"/><path d="M17 3c-1.5 2-2 3.5-2 6s.5 3 2 3 2-.5 2-3-.5-4-2-6z"/><path d="M17 12v9"/></svg></span>
                 <span class="tx">
@@ -483,6 +486,13 @@
                     <span class="t2" dir="rtl">عبايات الشيخة ستايل &mdash; الحساب والتارقت والستوك</span>
                 </span>
             </a>
+            <button type="button" class="pick" id="pickSup" aria-pressed="false" aria-controls="supWrap">
+                <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16.5 11.5l2 2 3.5-3.5"/></svg></span>
+                <span class="tx">
+                    <span class="t1">Supervisors</span>
+                    <span class="t2" dir="rtl">السوبرفايزر &mdash; من موجود الآن</span>
+                </span>
+            </button>
             <button type="button" class="pick" id="pickMgr" aria-pressed="false" aria-controls="mgrWrap">
                 <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg></span>
                 <span class="tx">
@@ -636,7 +646,7 @@
              ============================================================== -->
         <div id="mgrWrap" class="hidden">
             <div class="backbar">
-                <button type="button" class="ghost" id="mgrBack">&#9664; Restaurants or Abaya</button>
+                <button type="button" class="ghost" id="mgrBack">&#9664; Back to the four boards</button>
                 <p class="ttl">Managers on duty <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--color-text-muted);">&mdash; حضور المدراء</span></p>
             </div>
             <div class="bar">
@@ -647,6 +657,32 @@
             <p class="err" id="mgrError"></p>
             <div class="mgrs" id="mgrList"></div>
             <p class="note" id="mgrNote"></p>
+        </div>
+
+        <!-- ==============================================================
+             حضور السوبرفايزر — صورته ونقطة حالته
+             --------------------------------------------------------------
+             ⚠️ الفرق الجوهري عن لوحة المدراء: المدير **يُعلن** حالته بزرّ،
+             والسوبرفايزر **يبصم** على كشك الموظفين بالـPIN وبفحص الموقع. فما
+             هنا مأخوذ من بصمة حقيقية لا من تصريح.
+             ⚠️ والصورة والمسمّى من manager_cards (تخدم اللوحتين) لا من مستند
+             الموظف: هذه الصفحة لا تقرؤه إطلاقًا.
+             ⚠️ ولا تُقرأ مجموعة الحضور نفسها: فيها تاريخ كل الموظفين وإحداثيات
+             مواقعهم، وقرار المالك ألّا تُفتح. فهذه نسخةٌ صغيرة بلا موقع.
+             ============================================================== -->
+        <div id="supWrap" class="hidden">
+            <div class="backbar">
+                <button type="button" class="ghost" id="supBack">&#9664; Back to the four boards</button>
+                <p class="ttl">Supervisors <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--color-text-muted);">&mdash; حضور السوبرفايزر</span></p>
+            </div>
+            <div class="bar">
+                <button class="ghost" id="supPrev">&#9664; Previous day</button>
+                <div><label for="supDate">Day</label><input type="date" id="supDate"></div>
+                <button class="ghost" id="supNext">Next day &#9654;</button>
+            </div>
+            <p class="err" id="supError"></p>
+            <div class="mgrs" id="supList"></div>
+            <p class="note" id="supNote"></p>
         </div>
 
         <!-- التحديث والخروج يبقيان ظاهرين دائمًا: لا يخصّان قسمًا بعينه،
@@ -1020,17 +1056,22 @@
         el('bizHint').classList.toggle('hidden', !!which);
         el('restWrap').classList.toggle('hidden', which !== 'rest');
         el('mgrWrap').classList.toggle('hidden', which !== 'mgr');
+        el('supWrap').classList.toggle('hidden', which !== 'sup');
         el('pickRest').setAttribute('aria-pressed', String(which === 'rest'));
         el('pickMgr').setAttribute('aria-pressed', String(which === 'mgr'));
+        el('pickSup').setAttribute('aria-pressed', String(which === 'sup'));
         if (which !== 'rest') showView('');
-        // حضور المدراء يُحمَّل عند اختياره لا عند كل دخول: من يفتح الأرصدة لا
-        // يحتاج تنزيل صور المدراء، وهي أثقل ما في الصفحة.
+        // الحضور يُحمَّل عند اختياره لا عند كل دخول: من يفتح الأرصدة لا يحتاج
+        // تنزيل الصور، وهي أثقل ما في الصفحة.
         if (which === 'mgr') loadManagers();
+        if (which === 'sup') loadSupervisors();
     }
     el('pickRest').addEventListener('click', () => showBiz('rest'));
     el('restBack').addEventListener('click', () => showBiz(''));
     el('pickMgr').addEventListener('click', () => showBiz('mgr'));
     el('mgrBack').addEventListener('click', () => showBiz(''));
+    el('pickSup').addEventListener('click', () => showBiz('sup'));
+    el('supBack').addEventListener('click', () => showBiz(''));
 
     // =====================================================================
     // حضور المدراء
@@ -1045,6 +1086,15 @@
     let mgrCardsLoaded = false;
     let mgrEvents = [];         // أحداث اليوم المعروض
     let mgrEventsDate = '';
+
+    /**
+     * دور البطاقة — تخدم manager_cards اللوحتين معًا.
+     * ⚠️ بطاقةٌ رُفعت قبل وجود لوحة السوبرفايزر لا تحمل أي علامة، فتُعدّ بطاقة
+     * مدير — لأنها لم تكن تُرفع إلا لهم. وبلا هذا الاستدراك تختفي صور المدراء
+     * الحالية من لوحتهم فجأة. ونفس المنطق حرفيًّا في admin.html.
+     */
+    function cardIsManager(c) { return c.isManager === true || (c.isManager === undefined && c.isSupervisor === undefined); }
+    function cardIsSupervisor(c) { return c.isSupervisor === true; }
 
     /** ترتيب الأحداث بساعة الخادم — لا بساعة جهاز من كتبها. */
     function mgrEventMillis(e) {
@@ -1149,7 +1199,8 @@
         // القائمة = أصحاب البطاقات + أي مدير سجّل حدثًا اليوم بلا بطاقة.
         // ⚠️ لولا الثاني لكان مديرٌ ضغط الزرّ ولم تُرفع له صورة **غائبًا تمامًا**
         // عن الشاشة، فتظنّ أنه لم يسجّل شيئًا.
-        const rows = mgrCards.map(c => ({ id: c.id, name: c.name || c.id, title: c.title || '', photo: safePhoto(c.photoBase64) }));
+        const rows = mgrCards.filter(cardIsManager)
+            .map(c => ({ id: c.id, name: c.name || c.id, title: c.title || '', photo: safePhoto(c.photoBase64) }));
         mgrEvents.forEach(e => {
             if (!e.employeeId || rows.some(r => r.id === e.employeeId)) return;
             rows.push({ id: e.employeeId, name: e.employeeName || e.employeeId, title: e.title || '', photo: '', noCard: true });
@@ -1200,6 +1251,137 @@
             + `it is not the same as him confirming it.`);
         el('mgrNote').innerHTML = notes.join('<br><br>');
     }
+
+    // =====================================================================
+    // حضور السوبرفايزر — من بصمته الحقيقية على كشك الموظفين
+    // ---------------------------------------------------------------------
+    // ⚠️ الفرق الجوهري عن لوحة المدراء: لا تصريح هنا ولا ساعةَ انتهاءٍ معلنة.
+    // الحالة = آخر بصمة في ذلك اليوم: دخول → أخضر، خروج → أحمر. لا استنتاج
+    // ولا «انتهى تلقائيًّا»، فالبصمة فعلٌ وقع لا نيّةٌ أُعلنت.
+    // ⚠️ وغياب الحدث يُقال «لا سجل» لا «غائب»: قد يكون بصم فعلًا وفشلت نسخة
+    // المرآة وحدها، والحقيقة في سجل الحضور الذي لا تقرؤه هذه الصفحة. ادّعاءُ
+    // الغياب على أحد بلا دليل ظلمٌ، والشاشة لا تقوله.
+    // =====================================================================
+    let supEvents = [];
+    let supEventsDate = '';
+
+    function currentSupDay() {
+        return el('supDate').value || todayISOLocal();
+    }
+
+    async function loadSupervisors() {
+        el('supError').innerText = '';
+        if (!el('supDate').value) el('supDate').value = todayISOLocal();
+        const day = currentSupDay();
+        try {
+            // نفس البطاقات — ونفس الحارس: تُحمَّل مرة واحدة لا كل دقيقة.
+            if (!mgrCardsLoaded) {
+                const snap = await getDocs(collection(db, "manager_cards"));
+                mgrCards = [];
+                snap.forEach(d => mgrCards.push({ id: d.id, ...d.data() }));
+                mgrCards.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+                mgrCardsLoaded = true;
+            }
+            const snap2 = await getDocs(query(collection(db, "supervisor_presence"), where("date", "==", day)));
+            supEvents = [];
+            snap2.forEach(d => supEvents.push({ id: d.id, ...d.data() }));
+            supEventsDate = day;
+            renderSupervisors();
+        } catch (e) {
+            console.error(e);
+            // لا نُظهر حالة قديمة كأنها حالية عند فشل القراءة.
+            el('supList').innerHTML = '';
+            el('supNote').innerHTML = '';
+            el('supError').innerText = 'Could not load the supervisors: ' + e.message;
+        }
+    }
+
+    /** حالة سوبرفايزر في يوم: آخر بصمة له في ذلك اليوم. */
+    function supStateFor(empId) {
+        const evs = supEvents.filter(e => e.employeeId === empId)
+            .sort((a, b) => mgrEventMillis(a) - mgrEventMillis(b));
+        if (!evs.length) return { state: 'none', ev: null };
+        const last = evs[evs.length - 1];
+        if (last.type === 'Check-In') return { state: 'in', ev: last };
+        // خروج — وفترة الدوام المقسوم خروجٌ فعلًا، لكن «في استراحة» أصدق من
+        // «انصرف»: هو عائد، والعلامة تُميّز الحالتين.
+        return { state: last.splitBreak === true ? 'break' : 'out', ev: last };
+    }
+
+    const SUP_CLASS = { in: 'on', out: 'off', break: 'rest', none: '' };
+    const SUP_WORD = {
+        in: 'At work now',
+        out: 'Left',
+        break: 'On a break',
+        none: 'No record for this day'
+    };
+
+    function renderSupervisors() {
+        const day = supEventsDate;
+        el('supNext').disabled = day >= todayISOLocal();
+
+        // القائمة = أصحاب بطاقات السوبرفايزر + أي من بصم اليوم بلا بطاقة، حتى
+        // لا تكون بصمته غير مرئية لأن صورته لم تُرفع بعد.
+        const rows = mgrCards.filter(cardIsSupervisor)
+            .map(c => ({ id: c.id, name: c.name || c.id, title: c.title || '', photo: safePhoto(c.photoBase64) }));
+        supEvents.forEach(e => {
+            if (!e.employeeId || rows.some(r => r.id === e.employeeId)) return;
+            rows.push({ id: e.employeeId, name: e.employeeName || e.employeeId, title: e.title || '', photo: '', noCard: true });
+        });
+
+        if (!rows.length) {
+            el('supList').innerHTML = '';
+            el('supNote').innerHTML = `<b>No supervisor has been set up yet.</b> `
+                + `The owner marks who is a supervisor from the dashboard, under Settings, and adds a photo there too.`;
+            return;
+        }
+        rows.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+
+        el('supList').innerHTML = rows.map(r => {
+            const st = supStateFor(r.id);
+            const cls = SUP_CLASS[st.state] || '';
+            const initial = String(r.name).trim().charAt(0).toUpperCase() || '?';
+            let why = '';
+            if (st.state === 'in') why = `Clocked in at ${escapeHtml(String(st.ev.time || '—'))}.`;
+            else if (st.state === 'break') why = `On a split break since ${escapeHtml(String(st.ev.time || '—'))} — he is coming back.`;
+            else if (st.state === 'out') why = `Clocked out at ${escapeHtml(String(st.ev.time || '—'))}.`;
+            else why = 'Nothing was recorded for him on this day.';
+            return `<div class="mgr ${cls}">
+                ${r.photo
+                    ? `<img class="ph" src="${r.photo}" alt="">`
+                    : `<span class="ph none" aria-hidden="true">${escapeHtml(initial)}</span>`}
+                <span class="bd">
+                    <p class="nm"><span class="dot" aria-hidden="true"></span>${escapeHtml(r.name)}</p>
+                    <p class="ttl">${escapeHtml(r.title || '—')}${r.noCard ? ' · <b>no photo added yet</b>' : ''}</p>
+                    <p class="st">${escapeHtml(SUP_WORD[st.state] || '')}</p>
+                    ${st.ev && st.ev.branch ? `<p class="why">${escapeHtml(String(st.ev.branch))}</p>` : ''}
+                    <p class="why">${why}</p>
+                </span>
+            </div>`;
+        }).join('');
+
+        const atWork = rows.filter(r => supStateFor(r.id).state === 'in').length;
+        const notes = [];
+        notes.push(`<b>${atWork} of ${rows.length} supervisor(s)</b> at work on ${escapeHtml(day)}.`);
+        notes.push(`This comes from each supervisor's own clock-in on the staff attendance page, `
+            + `with his PIN and the location check &mdash; not from anything he types here.`);
+        notes.push(`<b>"No record" is not the same as absent.</b> The full attendance record lives in the `
+            + `dashboard; this board only mirrors the moment of clocking in and out, so a missing line means `
+            + `nothing was mirrored, not that the person did not come.`);
+        el('supNote').innerHTML = notes.join('<br><br>');
+    }
+
+    el('supPrev').addEventListener('click', () => {
+        el('supDate').value = shiftISO(currentSupDay(), -1);
+        loadSupervisors();
+    });
+    el('supNext').addEventListener('click', () => {
+        const d = currentSupDay();
+        if (d >= todayISOLocal()) return;
+        el('supDate').value = shiftISO(d, 1);
+        loadSupervisors();
+    });
+    el('supDate').addEventListener('change', loadSupervisors);
 
     el('mgrPrev').addEventListener('click', () => {
         el('mgrDate').value = shiftISO(currentMgrDay(), -1);
@@ -1370,6 +1552,7 @@
     async function refreshShown() {
         await loadAll();
         if (activeBiz === 'mgr') await loadManagers();
+        if (activeBiz === 'sup') await loadSupervisors();
     }
     el('refreshBtn').addEventListener('click', () => {
         mgrCardsLoaded = false;
