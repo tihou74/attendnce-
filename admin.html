@@ -2078,6 +2078,34 @@
         </div>
 
         <!-- ==================================================================
+             ⭐⭐ قائمة الأسماء الخفيفة للكشك — سببُ انتظار خمس دقائق
+             ------------------------------------------------------------------
+             ⚠️⚠️ العطل: شاشة الموظفين والمدراء تبقى «Loading» أكثر من خمس دقائق
+             على الهاتف. والسبب أن الكشك كان يقرأ مجموعة employees كاملة، ومستند
+             كل موظف يحمل صورة هويته وعقده وبطاقته الصحية داخله (لا Storage في
+             هذا المشروع) — فكان يُنزّل عشرات الميغابايت لبناء قائمة أسماء.
+             والحلّ مستندٌ واحد صغير في settings/employee_roster تكتبه هذه اللوحة.
+             ⚠️ ويُكتب تلقائيًّا عند كل فتح للوحة وعند كل تعديل على موظف — وهذا
+             الزرّ للتأكيد اليدوي وليرى المالك **بعينه** عدد المدراء المفعَّلين،
+             فذلك هو سبب رسالة «No manager has been enabled yet».
+             ================================================================== -->
+        <div class="card" style="border-left: 4px solid var(--success);">
+            <h3><span data-icon="refresh"></span> Speed up the staff &amp; manager screens
+                <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">تسريع شاشة الموظفين</span></h3>
+            <p class="card-sub">
+                The staff and manager screens used to download every employee file &mdash; including the ID
+                photographs and contracts stored inside them &mdash; just to build a list of names. On a phone that
+                took minutes. They now read one small list instead, which this dashboard writes for them
+                automatically. <b>It carries names, branches and job titles only &mdash; no salary, no ID number and
+                no photograph.</b> Press this if you want to publish it right now and see what it contains.
+            </p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <button class="btn-success" onclick="publishRosterNow()"><span data-icon="refresh"></span> Publish the name list now</button>
+                <span id="rosterStatus" style="font-weight: 600; font-size: 13px;"></span>
+            </div>
+        </div>
+
+        <!-- ==================================================================
              تنظيف الأسماء المكرّرة
              ------------------------------------------------------------------
              سببها: البذر التلقائي أنشأ 98 سجلًا فوق سجلات حقيقية موجودة، فصار
@@ -4040,9 +4068,137 @@
             // النافذتان تُرسمان معًا: الفصل بصري لا في البيانات، ومصدرهما واحد.
             filterEmployeesList();
             filterEmployeeDirectory();
+            // ⭐⭐ وتُحدَّث قائمة الأسماء الخفيفة التي يقرؤها الكشك (انظر أدناه).
+            publishEmployeeRoster();
         } catch (error) {
             // ⚠️ لا يُترك صفرًا صامتًا: الصفر يُقرأ «لا يوجد موظفون» وهو كذب.
             reportLoadFailure('Employee files', error);
+        }
+    };
+
+    // =====================================================================
+    // ⭐⭐ قائمة الأسماء الخفيفة — سببُ انتظار الموظفين خمس دقائق
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ العطل الذي أبلغ عنه المالك: شاشة الموظفين وشاشة المدراء تبقيان
+    // «Loading...» أكثر من خمس دقائق على الهاتف. والسبب ليس الشبكة ولا فايربيس:
+    // صفحة الكشك كانت تقرأ مجموعة `employees` **كاملة**، ومستند كل موظف يحمل
+    // صورة الهوية وجهيها والعقد والبطاقة الصحية **مخزَّنةً داخله** (لا يوجد
+    // Storage في هذا المشروع، فكلُّ مرفق base64 داخل المستند بحدّ 700KB للملف).
+    // فقراءةُ قائمة الأسماء كانت تُنزّل **عشرات الميغابايت** على هاتف بشبكة
+    // جوّال، في كل فتحة، بلا أي حاجة — والكشك لا يعرض من ذلك حرفًا واحدًا.
+    //
+    // ولا يمكن طلب حقولٍ بعينها من فايربيس في المتصفح (لا select() في هذا
+    // الـSDK)، فالحل قائمةٌ خفيفة تُكتب هنا ويقرؤها الكشك: مستندٌ واحد صغير
+    // فيه الاسم والفرع والمسمّى وعلامتا المدير والسوبرفايزر وتاريخ الانتهاء.
+    // لا راتب، ولا رقم هوية، ولا صورة — فلا شيء حسّاس فيها.
+    //
+    // ⚠️ ولماذا في `settings` تحديدًا: الكشك يقرأ `settings` أصلًا بالقواعد
+    // المنشورة (isKiosk)، والمالك يكتبها. فلا حاجة إلى نشر قواعد جديدة —
+    // ونشرُ القواعد أفزع المالك مرّتين، فلا يُطلب منه بلا ضرورة.
+    //
+    // ⚠️ وأمانُ هذا: القائمة للعرض فقط. التحقّق من الرقم السري يبقى على
+    // `employee_pins`، ومستند الرقم يُحذف مع الموظف في نفس الدفعة — فموظفٌ
+    // محذوف لا يستطيع الدخول ولو بقي اسمه في قائمة قديمة لحظات.
+    // =====================================================================
+    const EMPLOYEE_ROSTER_DOC = 'employee_roster';
+
+    /** يبني الصيغة المضغوطة: مفاتيح بحرف واحد لأن العدد قد يبلغ المئات. */
+    function buildRosterList() {
+        return allEmployees.map(e => {
+            const row = { i: e.id, n: String(e.name || e.id) };
+            if (e.branch) row.b = String(e.branch);
+            if (e.role) row.r = String(e.role);
+            if (e.canSubmitSalesReport === true) row.m = 1;
+            if (e.isSupervisor === true) row.s = 1;
+            // ⚠️ تاريخ الانتهاء يُنقل ولا يُطبَّق هنا: القائمة تُكتب مرّة وتُقرأ
+            // أيامًا، فمن تنتهي خدمته غدًا يجب أن يُرشَّح **لحظةَ الفتح** لا
+            // لحظةَ الكتابة. والترشيح في الكشك نفسه.
+            if (e.endDate) row.e = String(e.endDate);
+            return row;
+        });
+    }
+
+    async function publishEmployeeRoster() {
+        // ⚠️⚠️ لا تُكتب قائمةٌ فارغة بحال: قراءةٌ فشلت تُفرّغ allEmployees، وكتابةُ
+        // الفراغ فوق قائمةٍ سليمة تُطفئ الكشك كلّه — لا اسم يظهر لأحد. والفراغ
+        // ليس معلومة، وهو نفس الدرس الذي أُلغي من أجله البذر التلقائي.
+        if (!Array.isArray(allEmployees) || !allEmployees.length) return;
+        // الأدوار المحدودة لا تكتب `settings` بالقواعد، فلا تُحاول ولا تُخيف.
+        if (currentRole !== ROLE_ADMIN && currentRole !== ROLE_ACCOUNTANT) return;
+        try {
+            const list = buildRosterList();
+            await setDoc(doc(db, "settings", EMPLOYEE_ROSTER_DOC), {
+                updatedAt: serverTimestamp(),
+                count: list.length,
+                managers: list.filter(r => r.m).length,
+                supervisors: list.filter(r => r.s).length,
+                list
+            });
+        } catch (e) {
+            // فشلُ هذه الكتابة لا يُعطّل اللوحة: الكشك يعود إلى القراءة الكاملة
+            // البطيئة، وهي تعمل. فيُسجَّل ولا يُقاطع المالك.
+            console.error('Could not publish the employee roster for the kiosk:', e);
+        }
+    }
+
+    /**
+     * نشرٌ يدوي بنتيجةٍ مرئية.
+     * ⚠️⚠️ وأهمُّ ما فيه ليس النشر: أنه يقول للمالك **عدد المدراء المفعَّلين**.
+     * فرسالة «No manager has been enabled yet» على شاشة المدير ليست عطلًا في
+     * الشبكة — معناها أن أحدًا لم تُفعَّل له خانة التقرير اليومي. وقد رآها
+     * المالك وظنّها بطئًا. فتُقال الحقيقة هنا بالرقم، ومعها ما يُفعل بالضبط.
+     */
+    window.publishRosterNow = async function() {
+        const status = document.getElementById('rosterStatus');
+        if (currentRole !== ROLE_ADMIN && currentRole !== ROLE_ACCOUNTANT) {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Only the owner or the accountant can do this.';
+            return;
+        }
+        if (!Array.isArray(allEmployees) || !allEmployees.length) {
+            status.style.color = 'var(--danger)';
+            status.innerHTML = '&#9888; <b>Not published</b> &mdash; the employee list in this page is empty. '
+                + 'Publishing an empty list would leave every screen with no names at all. '
+                + 'Press Ctrl+Shift+R, wait for the numbers, then try again.';
+            return;
+        }
+        status.style.color = 'var(--text-dim)';
+        status.innerText = 'Publishing...';
+        try {
+            const list = buildRosterList();
+            await setDoc(doc(db, "settings", EMPLOYEE_ROSTER_DOC), {
+                updatedAt: serverTimestamp(),
+                count: list.length,
+                managers: list.filter(r => r.m).length,
+                supervisors: list.filter(r => r.s).length,
+                list
+            });
+            const mgrs = list.filter(r => r.m);
+            const sups = list.filter(r => r.s);
+            const kb = (new Blob([JSON.stringify(list)]).size / 1024).toFixed(1);
+            let msg = `&#10004; <b>Published ${list.length} name(s)</b> (${kb}KB &mdash; this is what the phones now `
+                + `download instead of every ID photograph).`;
+            if (!mgrs.length) {
+                msg += `<br><br><b style="color: var(--danger);">&#9888; Nobody is enabled as a manager.</b> `
+                    + `That is exactly why the manager screen says &ldquo;No manager has been enabled yet&rdquo; `
+                    + `&mdash; it is not a slow connection. To fix it: open <b>Employees &amp; Payroll</b>, open the `
+                    + `manager's file, tick <b>Can submit the Daily Sales Report</b>, save, then press this button `
+                    + `again. Or use <b>Make managers / supervisors</b> above.`;
+            } else {
+                msg += `<br><b style="color: var(--success);">${mgrs.length} manager(s) enabled:</b> `
+                    + escapeHtml(mgrs.map(r => r.n).join(', '));
+            }
+            msg += `<br><b>${sups.length} supervisor(s) enabled`
+                + (sups.length ? ':</b> ' + escapeHtml(sups.map(r => r.n).join(', ')) : '.</b>');
+            msg += `<br><br>The staff and manager screens pick this up the next time they are opened. `
+                + `Ask them to close and reopen the app once.`;
+            status.style.color = 'var(--text)';
+            status.innerHTML = msg;
+            logAudit('Kiosk Name List Published',
+                `${list.length} name(s), ${mgrs.length} manager(s), ${sups.length} supervisor(s)`);
+        } catch (e) {
+            status.style.color = 'var(--danger)';
+            status.innerText = 'Could not publish: ' + e.message;
         }
     };
 

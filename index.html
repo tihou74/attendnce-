@@ -420,8 +420,15 @@
         <div class="form-group">
             <label for="employeeSelect">Select Employee Name:</label>
             <select id="employeeSelect">
-                <option value="">-- Loading Employees... --</option>
+                <option value="">-- Loading names... --</option>
             </select>
+            <!-- ⚠️ مخرجٌ يدوي ظاهر عند الفشل: قبل اليوم كانت الشاشة تبقى على
+                 «Loading» إلى الأبد، والموظف لا يعرف أن عليه تحديث الصفحة —
+                 فيقف أمام الجهاز دقائق. الزرّ مخفيّ حتى تفشل كل المحاولات. -->
+            <button type="button" class="action-btn" id="retryLoadBtn" onclick="retryLoadNames()"
+                    style="display: none; margin-top: 10px; background: #b45309;">
+                Try again &#8635;
+            </button>
         </div>
 
         <div class="form-group">
@@ -645,8 +652,11 @@
             </p>
             <div class="form-group">
                 <label for="reportManagerSelect">Manager Name:</label>
+                <!-- ⚠️ النصّ الأول «Loading» لا «Choose Name»: كان يُظهر أنه جاهز
+                     والقائمة لم تُقرأ بعد. ورسالة «لا مدير مفعَّل» لا تُكتب إلا
+                     بعد قراءةٍ نجحت فعلًا — انظر paintEmployeeLists. -->
                 <select id="reportManagerSelect">
-                    <option value="">-- Choose Name --</option>
+                    <option value="">-- Loading names... --</option>
                 </select>
             </div>
             <div class="form-group">
@@ -1136,72 +1146,232 @@
     // source of truth also used by admin.html) instead of "employee_pins",
     // so a deleted employee disappears from this dropdown immediately (admin
     // deletes employees + their pin together in one batch).
-    async function loadData() {
-        const empSelect = document.getElementById('employeeSelect');
-        const leaveEmpSelect = document.getElementById('leaveEmployeeSelect');
-        const trainEmpSelect = document.getElementById('trainEmployeeSelect');
+    // =====================================================================
+    // ⭐⭐ سببُ انتظار خمس دقائق أمام «Loading» — وحلُّه
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ العطل كما وصفه المالك: كلّما دخل موظف أو مدير ليسجّل، بقيت القائمة
+    // فارغة أكثر من خمس دقائق. والسبب لم يكن الشبكة ولا فايربيس:
+    //
+    // هذه الصفحة كانت تقرأ مجموعة `employees` **كاملة** لتبني قائمة أسماء. ولا
+    // يوجد Storage في هذا المشروع، فصورة الهوية بوجهيها والعقد والبطاقة الصحية
+    // كلها مخزَّنة **داخل مستند الموظف** بصيغة base64 (بحدّ 700KB للملف الواحد).
+    // فبناءُ قائمة أسماء كان يُنزّل **عشرات الميغابايت** على هاتف بشبكة جوّال،
+    // في كل فتحة، والصفحة لا تعرض من ذلك حرفًا واحدًا.
+    //
+    // والحلّ ثلاث طبقات، كلٌّ منها تُنقذ حالةً مختلفة:
+    //   1) نسخةٌ على الجهاز نفسه (localStorage): الأسماء تظهر **فورًا** عند
+    //      الفتح، قبل أن تُجيب الشبكة بشيء. فلا ينتظر أحد شاشة فارغة أبدًا.
+    //   2) قائمةٌ خفيفة في `settings/employee_roster` تكتبها لوحة الإدارة:
+    //      مستندٌ واحد صغير بالأسماء والفروع والعلامات — بلا رواتب ولا أرقام
+    //      هويات ولا صور. تُقرأ في أجزاء من الثانية.
+    //   3) القراءة الكاملة القديمة تبقى **احتياطًا** إن لم تكن القائمة الخفيفة
+    //      قد كُتبت بعد. فلا شيء يتوقّف عن العمل بحال.
+    //
+    // ⚠️ وإعادة المحاولة تلقائيًّا عند الفشل: قبل اليوم كانت `loadData` تُنادى
+    // مرّة واحدة، فإن تعثّرت لحظةً بقيت الشاشة على «Loading» **إلى الأبد** حتى
+    // يُحدّث الموظف الصفحة بنفسه — وهو لا يعرف أن عليه ذلك. وهذا بعينه ما أبلغ
+    // عنه المالك.
+    // =====================================================================
+    const EMPLOYEE_ROSTER_DOC = 'employee_roster';
+    const ROSTER_CACHE_KEY = 'alsheikha_roster_v1';
+    const MAX_ROSTER_ATTEMPTS = 4;
+    let rosterAttempt = 0;
+    let rosterIsReal = false;        // نجحت قراءةٌ من القاعدة (لا من نسخة الجهاز)
+    let rosterRetryTimer = null;
 
+    /** يوحّد الصيغتين: المضغوطة من القائمة الخفيفة، والكاملة من المجموعة. */
+    function normaliseRoster(rows) {
+        const todayStr = formatDateEnglish(new Date());
+        return rows
+            // ⚠️ الترشيح بتاريخ **اليوم** لا بتاريخ كتابة القائمة: القائمة تُكتب
+            // مرّة وتُقرأ أيامًا، فمن تنتهي خدمته غدًا يجب أن يبقى اليوم.
+            // والشرط `endDate < اليوم` لا مجرّد وجوده، فمن قدّم استقالته بإشعار
+            // يبقى يعمل حتى آخر يوم له.
+            .filter(r => !(r.end && String(r.end) < todayStr))
+            .map(r => ({
+                id: r.id, name: r.name || r.id, branch: r.branch || '', role: r.role || '',
+                canSubmitSalesReport: r.mgr === true, isSupervisor: r.sup === true
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }
+    /** الصيغة المضغوطة التي تكتبها لوحة الإدارة (مفاتيح بحرف واحد). */
+    const fromCompact = (list) => list.map(x => ({
+        id: x.i, name: x.n, branch: x.b || '', role: x.r || '',
+        mgr: x.m === 1, sup: x.s === 1, end: x.e || ''
+    }));
+
+    function readCachedRoster() {
+        try {
+            const raw = localStorage.getItem(ROSTER_CACHE_KEY);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) && parsed.length ? parsed : null;
+        } catch (e) { return null; }
+    }
+    function writeCachedRoster(rows) {
+        // ⚠️ لا تُكتب نسخةٌ فارغة بحال: تمحو نسخةً سليمة فتعود الشاشة فارغة.
+        if (!Array.isArray(rows) || !rows.length) return;
+        try { localStorage.setItem(ROSTER_CACHE_KEY, JSON.stringify(rows)); }
+        catch (e) { /* الوضع الخاص أو مخزنٌ ممتلئ — لا يُعطّل شيئًا */ }
+    }
+
+    /** يضع نصًّا واحدًا في كل القوائم — للانتظار أو للفشل. */
+    function setListsMessage(text) {
+        const html = `<option value="">${escapeHtml(text)}</option>`;
+        ['employeeSelect', 'leaveEmployeeSelect', 'trainEmployeeSelect', 'reportManagerSelect']
+            .forEach(id => {
+                const el = document.getElementById(id);
+                // ⚠️ لا تُمحى قائمةٌ معروضة فعلًا برسالة انتظار: من كان أمامه
+                // أسماء (من نسخة الجهاز) لا يجوز أن تُسلب منه.
+                if (el && el.options.length <= 1) el.innerHTML = html;
+            });
+    }
+
+    /** يرسم القوائم من صفٍّ موحَّد. */
+    function paintEmployeeLists(rows) {
+        employees = rows;
+        let optionsHtml = '<option value="">-- Choose Name --</option>';
+        employees.forEach(emp => {
+            // Escaped even though these come from our own admin UI, in case
+            // a name ever contains a quote/apostrophe.
+            optionsHtml += `<option value="${escapeHtml(emp.id)}">${escapeHtml(emp.name)}</option>`;
+        });
+        ['employeeSelect', 'leaveEmployeeSelect', 'trainEmployeeSelect'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = optionsHtml;
+        });
+        // قائمة مديري التقرير اليومي: الموظفون المفعَّل لهم الخيار فقط.
+        const reportSelect = document.getElementById('reportManagerSelect');
+        if (reportSelect) {
+            const managers = employees.filter(e => e.canSubmitSalesReport);
+            reportSelect.innerHTML = managers.length
+                ? '<option value="">-- Choose Name --</option>' +
+                  managers.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.name)}</option>`).join('')
+                // ⚠️ هذه الرسالة تُقال **فقط** بعد قراءةٍ نجحت فعلًا، وإلا كانت
+                // كذبًا: «لا مدير مفعَّل» دعوى عن بياناته، و«لم أستطع القراءة»
+                // شيء آخر تمامًا. والمالك رأى هذه الرسالة وظنّها عطلًا، وكان
+                // سببها الحقيقي أنّ أحدًا لم يُفعَّل له الخيار.
+                : `<option value="">${rosterIsReal
+                        ? '-- Nobody is enabled as a manager yet --'
+                        : '-- Loading names... --'}</option>`;
+        }
+    }
+
+    async function loadGeofences() {
+        // Per-branch geofences (branch_geofences/{branchName} -> {lat,lng,radius}),
+        // matching the collection admin.html's Settings tab now actually writes to.
+        const geoSnapshot = await getDocs(collection(db, "branch_geofences"));
+        geofences = {};
+        geoSnapshot.forEach(docSnap => {
+            const d = docSnap.data();
+            geofences[d.branch || docSnap.id] = d;
+        });
+    }
+
+    function scheduleRosterRetry(err) {
+        console.error('Could not load the name list:', err);
+        if (rosterAttempt >= MAX_ROSTER_ATTEMPTS) {
+            // ⚠️ ولا حلقةٌ بلا حدّ: تُغرق القاعدة وتُسخّن هاتفه. رسالةٌ صادقة
+            // وزرٌّ يضغطه أصدق من محاولاتٍ لا تنتهي.
+            setListsMessage('-- Could not load the names --');
+            showStatus('Could not load the names. Check the internet connection, then press "Try again".', 'error');
+            const btn = document.getElementById('retryLoadBtn');
+            if (btn) btn.style.display = 'inline-block';
+            return;
+        }
+        rosterAttempt++;
+        setListsMessage(`-- Loading names... (try ${rosterAttempt + 1}) --`);
+        if (rosterRetryTimer) clearTimeout(rosterRetryTimer);
+        rosterRetryTimer = setTimeout(() => loadData(), 1500 * rosterAttempt);
+    }
+
+    window.retryLoadNames = function() {
+        rosterAttempt = 0;
+        const btn = document.getElementById('retryLoadBtn');
+        if (btn) btn.style.display = 'none';
+        setListsMessage('-- Loading names... --');
+        loadData();
+    };
+
+    async function loadData() {
+        // ⚠️⚠️ خطأٌ مكتوم كان يُفشل كل شيء بصمت: `signInAnonymously(...).catch(...)`
+        // يُبلع الفشل، فيُعدّ `authReady` **ناجحًا** وتنطلق القراءة **بلا تسجيل
+        // دخول**، فترفضها القواعد. فيرى الموظف شاشة عالقة وسببها الحقيقي أن
+        // التسجيل لم يتمّ. فهنا يُتحقّق منه ويُعاد إن لزم، قبل أي قراءة.
+        if (!auth.currentUser) {
+            try { await signInAnonymously(auth); }
+            catch (e) { console.error('Anonymous sign-in retry failed:', e); }
+        }
+
+        // ---- 1) نسخة الجهاز: تُرسم فورًا، فلا ينتظر أحد شاشة فارغة ---------
+        if (!rosterIsReal) {
+            const cached = readCachedRoster();
+            if (cached && cached.length) paintEmployeeLists(normaliseRoster(cached));
+            else setListsMessage('-- Loading names... --');
+        }
+
+        // ---- 2) القائمة الخفيفة: مستندٌ واحد صغير ------------------------
+        try {
+            const snap = await getDoc(doc(db, "settings", EMPLOYEE_ROSTER_DOC));
+            const data = snap.exists() ? snap.data() : null;
+            if (data && Array.isArray(data.list) && data.list.length) {
+                const rows = fromCompact(data.list);
+                rosterIsReal = true;
+                rosterAttempt = 0;
+                paintEmployeeLists(normaliseRoster(rows));
+                writeCachedRoster(rows);
+                try { await loadGeofences(); }
+                catch (ge) { console.error('Could not load the branch locations:', ge); }
+                return;
+            }
+        } catch (e) {
+            // ليست نهاية الطريق: القراءة الكاملة أدناه قد تنجح.
+            console.error('Could not read the light name list:', e);
+        }
+
+        // ---- 3) القراءة الكاملة: احتياطٌ إن لم تُكتب القائمة الخفيفة بعد ---
+        // ⚠️ بطيئة جدًّا على الهاتف (مستندات الموظفين تحمل الصور)، فلا تُستخدم
+        // إلا عند غياب القائمة الخفيفة.
         try {
             const querySnapshot = await getDocs(collection(db, "employees"));
-            employees = [];
+            const rows = [];
             // من انتهت خدمته يُستبعد من هذه الصفحة كلها: لا يسجّل حضورًا، ولا
             // يطلب إجازة، ولا يظهر في قائمة المديرين، ولا في قائمة الإنذارات.
             // الشرط `endDate < اليوم` وليس مجرد وجود التاريخ، فمن قدّم استقالته
             // بإشعار مسبق يبقى يعمل عادةً حتى آخر يوم عمله.
-            const todayStr = formatDateEnglish(new Date());
             querySnapshot.forEach(docSnap => {
                 const d = docSnap.data();
-                if (d.endDate && String(d.endDate) < todayStr) return;
                 // canSubmitSalesReport يُفعّله المشرف من ملف الموظف في لوحة
                 // الإدارة، وهو ما يحدّد من يظهر في قائمة مديري التقرير اليومي.
-                employees.push({
+                rows.push({
                     id: docSnap.id,
                     name: d.name || docSnap.id,
                     branch: d.branch || "",
                     // المسمّى الوظيفي — يُنسخ على حدث حالة الدوام ليظهر للسيدة
                     // فاطمة، فهي لا تستطيع قراءة مستند الموظف نفسه.
                     role: d.role || "",
-                    canSubmitSalesReport: d.canSubmitSalesReport === true,
+                    mgr: d.canSubmitSalesReport === true,
                     // علامةٌ للعرض لا صلاحية: لا تُغيّر شيئًا في بصمة الموظف ولا
                     // في راتبه. أثرها الوحيد أن بصمته تُنسخ نسخةً صغيرة تظهر في
                     // لوحة الإدارة بنقطة خضراء أو حمراء.
-                    isSupervisor: d.isSupervisor === true
+                    sup: d.isSupervisor === true,
+                    end: d.endDate || ''
                 });
             });
-            employees.sort((a, b) => a.name.localeCompare(b.name));
-
-            let optionsHtml = '<option value="">-- Choose Name --</option>';
-            employees.forEach(emp => {
-                // Escaped even though these come from our own admin UI, in case
-                // a name ever contains a quote/apostrophe.
-                optionsHtml += `<option value="${escapeHtml(emp.id)}">${escapeHtml(emp.name)}</option>`;
-            });
-
-            empSelect.innerHTML = optionsHtml;
-            leaveEmpSelect.innerHTML = optionsHtml;
-            if (trainEmpSelect) trainEmpSelect.innerHTML = optionsHtml;
-
-            // قائمة مديري التقرير اليومي: الموظفون المفعَّل لهم الخيار فقط.
-            const reportSelect = document.getElementById('reportManagerSelect');
-            if (reportSelect) {
-                const managers = employees.filter(e => e.canSubmitSalesReport);
-                reportSelect.innerHTML = managers.length
-                    ? '<option value="">-- Choose Name --</option>' +
-                      managers.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.name)}</option>`).join('')
-                    : '<option value="">-- No manager has been enabled yet --</option>';
+            // ⚠️ قراءةٌ نجحت وعادت فارغة ليست معلومة: قد تكون خللًا. فلا تُمحى
+            // بها قائمةٌ معروضة، ولا تُحدَّث نسخة الجهاز بالفراغ.
+            if (!rows.length) {
+                scheduleRosterRetry(new Error('The employee list came back empty.'));
+                return;
             }
-
-            // Per-branch geofences (branch_geofences/{branchName} -> {lat,lng,radius}),
-            // matching the collection admin.html's Settings tab now actually writes to.
-            const geoSnapshot = await getDocs(collection(db, "branch_geofences"));
-            geofences = {};
-            geoSnapshot.forEach(docSnap => {
-                const d = docSnap.data();
-                geofences[d.branch || docSnap.id] = d;
-            });
+            rosterIsReal = true;
+            rosterAttempt = 0;
+            paintEmployeeLists(normaliseRoster(rows));
+            writeCachedRoster(rows);
+            try { await loadGeofences(); }
+            catch (ge) { console.error('Could not load the branch locations:', ge); }
         } catch (e) {
-            console.error("Error loading data: ", e);
-            showStatus("Failed to load employee list. Please refresh the page.", "error");
+            scheduleRosterRetry(e);
         }
     }
 
