@@ -415,6 +415,9 @@
 
     <!-- 1. الرئيسية -->
     <div id="tab-home" class="tab-content active">
+        <!-- ⚠️ لافتة الفشل: تظهر فقط إذا فشلت قراءةٌ فعلًا. وُجدت لأن الأرقام
+             كانت تبقى أصفارًا بلا سبب ظاهر، فيُفهم الصفر «لا يوجد» وهو كذب. -->
+        <div id="loadErrorBanner" style="display: none; background: #fef2f2; border: 2px solid var(--danger); border-left: 6px solid var(--danger); border-radius: 10px; padding: 16px 18px; margin-bottom: 20px; color: #7f1d1d; font-size: 13.5px; line-height: 1.85;"></div>
         <div class="stats">
             <div class="stat-box"><div class="stat-icon" data-icon="users"></div><div><h3>Active Employees</h3><p id="homeEmpCount">0</p></div></div>
             <div class="stat-box"><div class="stat-icon" data-icon="calendar"></div><div><h3>Attendance Logs</h3><p id="homeLogCount">0</p></div></div>
@@ -3776,6 +3779,48 @@
         }
     };
 
+    // =====================================================================
+    // ⭐⭐ لافتة الفشل الظاهرة — لأن الصمت أرهق المالك مرتين
+    // ---------------------------------------------------------------------
+    // كل دوال التحميل كانت تلتقط خطأها وتكتبه في console.error فقط. والنتيجة
+    // أن المالك يرى **صفرًا** في كل الأرقام ولا يرى سببًا واحدًا، فيظنّ أن
+    // بياناته حُذفت. وقع هذا مرتين: في الأولى كانت البيانات موجودة كلها ورجعت
+    // من نفسها، وفي الثانية نفس الفزع.
+    //
+    // «صفر» جوابٌ عن سؤال «كم عندك؟». وهو جوابٌ **كاذب** عن سؤال «هل قرأتَ؟».
+    // فالفشل من اليوم يُقال صريحًا وبنصّ الخطأ كما جاء من فايربيس، ومعه ما
+    // يُفعل. ولا يُترك المالك يُخمّن.
+    // =====================================================================
+    let loadFailures = [];
+    function reportLoadFailure(what, error) {
+        const msg = String((error && error.message) || error || 'unknown error');
+        loadFailures.push({ what, msg });
+        console.error('Load failed:', what, error);
+        const box = document.getElementById('loadErrorBanner');
+        if (!box) return;
+        // تشخيصٌ صريح لأشهر سببين، فلا يبقى نصّ فايربيس وحده أمام غير التقني.
+        const denied = /permission|insufficient/i.test(msg);
+        const offline = /offline|unavailable|network|failed to get/i.test(msg);
+        let advice;
+        if (denied) {
+            advice = '<b>This is a permissions problem, not lost data.</b> Your records are still in the database. '
+                + 'Either the security rules published in Firebase do not match this dashboard, or you are signed in '
+                + 'with an account that is not the owner. Sign out and sign in with the owner account, and check the '
+                + 'rules in Firebase &gt; Firestore Database &gt; Rules.';
+        } else if (offline) {
+            advice = '<b>The dashboard could not reach the database.</b> Check the internet connection and press '
+                + 'Ctrl+Shift+R. Nothing has been lost.';
+        } else {
+            advice = 'Nothing has been deleted by this. Press Ctrl+Shift+R to reload, and send this message text '
+                + 'if it happens again.';
+        }
+        box.style.display = 'block';
+        box.innerHTML = `<b style="font-size: 15px;">&#9888; Some data could not be read &mdash; the zeros below are NOT real</b>`
+            + `<br><br>${advice}`
+            + `<br><br><b>What failed:</b><br>`
+            + loadFailures.map(f => `&bull; ${escapeHtml(f.what)}: <code style="font-size:12px;">${escapeHtml(f.msg)}</code>`).join('<br>');
+    }
+
     window.loadEmployees = async function() {
         try {
             const querySnapshot = await getDocs(collection(db, "employees"));
@@ -3822,7 +3867,8 @@
             filterEmployeesList();
             filterEmployeeDirectory();
         } catch (error) {
-            console.error(error);
+            // ⚠️ لا يُترك صفرًا صامتًا: الصفر يُقرأ «لا يوجد موظفون» وهو كذب.
+            reportLoadFailure('Employee files', error);
         }
     };
 
@@ -3838,7 +3884,7 @@
             allDeductions = [];
             snap.forEach(d => allDeductions.push({ id: d.id, ...d.data() }));
         } catch (e) {
-            console.error("Error loading deductions:", e);
+            reportLoadFailure('Deductions', e);
             allDeductions = [];
         }
     };
@@ -5237,8 +5283,8 @@
                 renderCancelledDays();
                 maybeAutoCloseOnce();
             } catch (err) {
-                console.error(err);
-            }
+            reportLoadFailure('Attendance logs', err);
+        }
         }
     };
 
@@ -9413,7 +9459,7 @@
                 allPettyRequests = [];
                 snap.forEach(d => allPettyRequests.push({ id: d.id, ...d.data() }));
             } catch (e) {
-                console.error("Error loading petty cash requests:", e);
+                reportLoadFailure('Petty cash requests', e);
                 allPettyRequests = [];
                 pettyLoadError = e.message;
             }
@@ -9425,7 +9471,7 @@
                 allWarningRequests = [];
                 snap.forEach(d => allWarningRequests.push({ id: d.id, ...d.data() }));
             } catch (e) {
-                console.error("Error loading warning requests:", e);
+                reportLoadFailure('Warning requests', e);
                 allWarningRequests = [];
                 warningLoadError = e.message;
             }
@@ -12067,8 +12113,8 @@
                 const querySnapshot = await getDocs(collection(db, "leave_requests"));
                 processRequestsData(querySnapshot);
             } catch (err) {
-                console.error(err);
-            }
+            reportLoadFailure('Leave requests', err);
+        }
         }
     };
 
@@ -12172,8 +12218,8 @@
                 allApplications = [];
                 snap.forEach(d => allApplications.push({ id: d.id, ...d.data() }));
             } catch (err) {
-                console.error("Error loading applications:", err);
-            }
+            reportLoadFailure('New applications', err);
+        }
         }
         renderApplicationsTable();
     };
@@ -12301,8 +12347,8 @@
                 allWarnings = [];
                 snap.forEach(d => allWarnings.push({ id: d.id, ...d.data() }));
             } catch (err) {
-                console.error("Error loading warning letters:", err);
-            }
+            reportLoadFailure('Warning letters', err);
+        }
         }
         renderWarningsTable();
     };
@@ -12455,7 +12501,7 @@
             allAllowancePayments = [];
             snap.forEach(d => allAllowancePayments.push({ id: d.id, ...d.data() }));
         } catch (e) {
-            console.error("Error loading allowance payments:", e);
+            reportLoadFailure('Allowance payments', e);
             allAllowancePayments = [];
         }
     };
@@ -12472,8 +12518,8 @@
                 allAnnualLeaves = [];
                 snap.forEach(d => allAnnualLeaves.push({ id: d.id, ...d.data() }));
             } catch (err) {
-                console.error("Error loading annual leaves:", err);
-            }
+            reportLoadFailure('Annual leaves', err);
+        }
         }
         renderLeavesTable();
     };
