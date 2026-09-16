@@ -14035,6 +14035,8 @@
     // حسابٍ واحد من حسابات الرواتب، فحذف بقيّةٍ منها يُصلح شاشةً ولا يُنقص ريالًا.
     // =====================================================================
     let brdGroups = null;
+    let brdRows = [];          // البقيّات المهجورة — لا ملفَّ موظفٍ لها
+    let brdAmbiguous = [];     // معرّفان لكليهما ملفٌّ حقيقي — قرارُ المالك
 
     /** يقرأ المجموعات الثلاث كما تقرؤها لوحتها بالضبط، ويُظهر أي فشل صريحًا. */
     async function readBoardSources() {
@@ -14102,64 +14104,140 @@
             return { ...r, emp, shown, key: nameKey(shown || r.id) };
         });
 
-        // التجميع بنفس قاعدة الأسماء: الترتيب المختلف لا يُغيّر الشخص.
-        const byKey = new Map();
+        // =================================================================
+        // ⭐⭐ المعيار صار «لا ملفَّ موظفٍ لهذا المعرّف» — لا «اسمٌ مكرّر»
+        // -----------------------------------------------------------------
+        // ⚠️⚠️ ثغرةٌ حقيقية في النسخة الأولى من هذه الأداة، وكانت ستُفشلها في
+        // حالة المالك بعينها: كانت تُجمّع بالأسماء (nameKey)، فلا تكتشف شيئًا
+        // إلا إن تطابقت الكلمات. واسم أشرف في النظام «ACHREF SHILI» والبطاقة
+        // القديمة قد تكون «ACHRAF SHILI» — حرفٌ واحد يختلف، فلا nameKey يجمعهما
+        // ولا nameContains. فكانت الأداة ستقول «لوحتها نظيفة» وهو يرى أشرف
+        // قديمًا أمام عينه. وهذا هو نفس جنس الخطأ الذي أوقعنا فيه أول مرة.
+        //
+        // فالمعيار الآن أبسط وأقوى ولا يعتمد على الأسماء إطلاقًا: **كل معرّف
+        // يظهر على لوحتها ولا ملفَّ موظفٍ له هو بقيّة مهجورة يقينًا** — لا أحد
+        // يستطيع الدخول به، ولا سيُكتب تحته سجلٌّ جديد أبدًا، فهو صفٌّ ميّت.
+        // ويُكتشف هذا ولو كان اسمه فريدًا لا شبيه له.
+        //
+        // والأسماء تبقى مفيدةً لشيء واحد فقط: معرفة **إلى مَن** تُنقل الصورة.
+        // =================================================================
+        brdRows = [];
+        brdAmbiguous = [];
+
+        /** أقرب ملفٍّ حقيقي يصلح هدفًا لنقل الصورة، أو null. */
+        function findMoveTarget(shownName) {
+            const key = nameKey(shownName);
+            if (!key) return null;
+            const words = key.split(' ').filter(Boolean);
+            const scored = [];
+            allEmployees.forEach(e => {
+                const ek = nameKey(e.name);
+                if (!ek) return;
+                const ew = ek.split(' ').filter(Boolean);
+                if (ek === key) { scored.push({ emp: e, exact: true }); return; }
+                if (nameContains(words, ew)) { scored.push({ emp: e, exact: true }); return; }
+                // ⭐⭐ وهنا يُلتقط فرقُ الحرف الواحد: ACHRAF / ACHREF.
+                // ⚠️ ويُشترط أن يكون **كل** ما اختلف كلمةً واحدة بفارق حرفين على
+                // الأكثر، وأن تتطابق بقيّة الكلمات — فلا يُخلط MOHAMED ALI
+                // بـMOHAMED ADIL. ويُوسم غيرُ المتطابق تمامًا ليراه المالك.
+                if (ew.length === words.length && words.length >= 2) {
+                    const diff = words.filter(w => !ew.includes(w));
+                    const diffE = ew.filter(w => !words.includes(w));
+                    if (diff.length === 1 && diffE.length === 1
+                        && Math.abs(diff[0].length - diffE[0].length) <= 2
+                        && editDistance(diff[0], diffE[0]) <= 2) {
+                        scored.push({ emp: e, exact: false });
+                    }
+                }
+            });
+            if (!scored.length) return null;
+            const exact = scored.filter(s => s.exact);
+            // ⚠️ هدفٌ واحد فقط يجوز: تعدُّد المرشَّحين يعني احتمال نقل صورةٍ إلى
+            // الشخص الخطأ، وذلك أسوأ من بقاء الصورة حيث هي.
+            if (exact.length === 1) return exact[0];
+            if (exact.length > 1) return null;
+            return scored.length === 1 ? scored[0] : null;
+        }
+
+        const cardWithPhoto = (id) => {
+            const rec = seen.get(id);
+            return !!(rec && rec.card && rec.card.photoBase64);
+        };
+
         entries.forEach(en => {
+            if (en.emp) return;                       // له ملفٌّ قائم: ليس بقيّة
+            const t = findMoveTarget(en.shown);
+            // ⚠️ ولا نقل إلى من عنده صورة أصلًا — لا تُطمس صورةٌ صحيحة.
+            if (t && (en.card && en.card.photoBase64) && !cardWithPhoto(t.emp.id)) {
+                brdRows.push({ ...en, verdict: {
+                    move: true, toId: t.emp.id, similar: !t.exact,
+                    why: t.exact
+                        ? `Leftover — its photo moves to ${normName(t.emp.name)}, then this row goes`
+                        : `Leftover — the name is spelt differently (${normName(t.emp.name)}). `
+                          + `Look at the photo before you accept the move.`
+                } });
+            } else {
+                brdRows.push({ ...en, verdict: { drop: true,
+                    // ⚠️ ويُحفظ الملفُّ الشبيه ولو لم تُنقل صورة: يُعرض للسياق
+                    // وحده. صفٌّ أحمر بلا الحقيقي بجانبه يترك المالك لا يعرف
+                    // هل للرجل ملفٌّ أصلًا أم لا.
+                    nearId: t ? t.emp.id : null,
+                    why: 'Leftover — no employee file exists for this record any more' } });
+            }
+        });
+
+        // والحالة الثانية المستقلّة: معرّفان **لكليهما ملفٌّ حقيقي** بنفس الاسم.
+        // هذه ليست بقيّة، بل قرارُ المالك — وقد تكون شخصين متشابهي الاسم.
+        const byKey = new Map();
+        entries.filter(en => en.emp).forEach(en => {
             if (!byKey.has(en.key)) byKey.set(en.key, []);
             byKey.get(en.key).push(en);
         });
-
-        brdGroups = [];
-        byKey.forEach((members, key) => {
+        byKey.forEach((members) => {
             if (members.length < 2) return;
-            const withFile = members.filter(m => m.emp);
-            // ⭐⭐ الملف الحقيقي الوحيد في المجموعة — وإليه تُنقل الصورة.
-            const real = withFile.length === 1 ? withFile[0] : null;
-            brdGroups.push({
-                key,
-                realId: real ? real.id : null,
-                rows: members.map(m => {
-                    // بقيّةٌ مهجورة: لا ملفَّ لها، وفي مجموعتها من له ملف.
-                    // ⚠️ الشرط الثاني ضروري: لو لم يكن لأيٍّ منهما ملف فقد تكون
-                    // الملفّات هي التي لم تُقرأ، فلا يُقترح حذف كل شيء.
-                    if (!m.emp && real) {
-                        // ⭐⭐ وهنا الفرق بين إصلاحٍ وإصلاحٍ من الجذر: البطاقة
-                        // المهجورة تحمل **صورةً رفعها المالك بيده**. فحذفُها
-                        // يعني أن يعيد رفعها لكل مدير من جديد. فإن كان الملف
-                        // الحقيقي بلا صورة، تُنقل إليه الصورة والمسمّى ثم تُحذف
-                        // البقيّة — فلا يفقد شيئًا ولا يبقى سطرٌ مكرّر.
-                        const realCard = seen.get(real.id);
-                        const realHasPhoto = !!(realCard && realCard.card && realCard.card.photoBase64);
-                        if (m.card && m.card.photoBase64 && !realHasPhoto) {
-                            return { ...m, verdict: { move: true, toId: real.id,
-                                why: `Leftover — its photo will be moved to ${real.shown}, then removed` } };
-                        }
-                        return { ...m, verdict: { drop: true,
-                            why: 'Leftover — no employee file exists for this record any more' } };
-                    }
-                    if (!m.emp) {
-                        return { ...m, verdict: { keep: true, needsYou: true,
-                            why: 'No employee file for either row — decide yourself' } };
-                    }
-                    return { ...m, verdict: { keep: true, needsYou: withFile.length > 1,
-                        why: withFile.length > 1
-                            ? 'A real employee file exists for this one too — decide yourself'
-                            : 'Keep — this is the real one' } };
-                })
-            });
+            brdAmbiguous.push(...members.map(m => ({ ...m, verdict: { keep: true, needsYou: true,
+                why: 'A real employee file exists for this one too — decide yourself' } })));
         });
-        brdGroups.sort((a, b) => a.key.localeCompare(b.key));
+
+        brdRows.sort((a, b) => a.shown.localeCompare(b.shown));
+
+        // ⭐⭐ ويُعرض الملفُّ الحقيقي الذي تُنقل إليه الصورة **بجانب** البقيّة، ولو
+        // لم يكن له بطاقة ولا سطر على لوحتها بعد. بلا هذا السطر يرى المالك صفًّا
+        // أحمر وحده بلا سياق، ولا يعرف إلى مَن يذهب، ولا يرى أن الحقيقي موجود
+        // أصلًا — وعمود «في أي لوحة يظهر» عليه هو جوابُ سؤاله الأصلي.
+        const contextIds = [...new Set(brdRows
+            .map(r => r.verdict.toId || r.verdict.nearId)
+            .filter(Boolean))];
+        const contextRows = contextIds.map(id => {
+            const emp = allEmployees.find(e => e.id === id);
+            const rec = seen.get(id);
+            return {
+                id, emp, shown: normName(emp ? emp.name : id),
+                names: rec ? rec.names : new Set(),
+                card: rec ? rec.card : null,
+                mgrRows: rec ? rec.mgrRows : 0,
+                supRows: rec ? rec.supRows : 0,
+                verdict: { keep: true, why: brdRows.some(r => r.verdict.toId === id)
+                    ? 'Keep — this is the real file the photo moves to'
+                    : 'Keep — this is the real file for that name' }
+            };
+        }).filter(r => r.emp && !brdAmbiguous.some(a => a.id === r.id));
+
+        brdGroups = brdRows.length || brdAmbiguous.length
+            ? [{ rows: brdRows.concat(contextRows, brdAmbiguous) }] : [];
 
         if (!brdGroups.length) {
             document.getElementById('brdBox').style.display = 'none';
             status.style.color = 'var(--success)';
             status.innerHTML = `&#10004; <b>Her board is clean.</b> ${src.cards.length} photo card(s), `
                 + `${src.mgr.length} manager row(s) and ${src.sup.length} supervisor row(s) were checked, `
-                + `and no person appears under two different records.`;
+                + `and every one of them belongs to a real employee file.`;
             return;
         }
         status.style.color = 'var(--warning)';
-        status.innerText = `${brdGroups.length} name(s) appear twice on her board.`;
+        status.innerHTML = `<b>${brdRows.length} leftover record(s)</b> on her board belong to nobody`
+            + (brdAmbiguous.length ? `, and <b>${brdAmbiguous.length} record(s)</b> need your decision` : '')
+            + `.`;
         document.getElementById('brdBox').style.display = 'block';
         renderBoardTable();
     };
@@ -14212,7 +14290,7 @@
                 <td style="font-size: 12px;">${boardMembership(r.emp).html}</td>
                 <td class="money-col">${r.mgrRows || '—'}</td>
                 <td class="money-col">${r.supRows || '—'}</td>
-                <td style="font-size: 12px; font-weight: 700; color: ${v.needsYou ? 'var(--warning)' : (v.drop ? 'var(--danger)' : 'var(--success)')};">${escapeHtml(v.why)}</td>
+                <td style="font-size: 12px; font-weight: 700; color: ${v.needsYou ? 'var(--warning)' : (v.drop ? 'var(--danger)' : (v.similar ? 'var(--warning)' : 'var(--success)'))};">${escapeHtml(v.why)}</td>
             </tr>`;
         }).join('')).join('');
         if (typeof paintIcons === 'function') paintIcons();
@@ -14221,18 +14299,18 @@
 
     window.renderBoardSummary = function() {
         const picked = Array.from(document.querySelectorAll('.brdPick:checked')).map(cb => cb.getAttribute('data-id'));
-        let cards = 0, rows = 0, moves = 0;
+        let cards = 0, rows = 0, moves = 0, similar = 0;
         const orphaned = [];
         brdGroups.forEach(g => g.rows.forEach(r => {
             if (picked.includes(r.id)) {
                 if (r.card) cards++;
                 rows += r.mgrRows + r.supRows;
-                if (r.verdict.move) moves++;
+                if (r.verdict.move) { moves++; if (r.verdict.similar) similar++; }
             }
             // من ليس على أي لوحة: هذا سببُ «يسجّل ولا يظهر» — يُقال ولو لم يُوسم.
             if (r.emp && boardMembership(r.emp).none) orphaned.push(r.shown);
         }));
-        const needs = brdGroups.filter(g => g.rows.some(r => r.verdict.needsYou)).length;
+        const needs = brdAmbiguous.length;
         document.getElementById('brdSummary').innerHTML =
             `<b>${picked.length} leftover record(s) ticked</b> &mdash; ${cards} photo card(s) and ${rows} board row(s) `
             + `will be removed, and nothing else. <b>No employee file, no attendance log, no deduction and no salary `
@@ -14240,6 +14318,10 @@
             + (moves ? `<br><b style="color: var(--success);">${moves} photo(s) will be moved to the real file first</b>, `
                 + `so you do not have to upload them again. The moved card is marked for whichever board the person's `
                 + `file actually says &mdash; Managers, Supervisors, or both.` : '')
+            + (similar ? `<br><b style="color: var(--warning);">&#9888; ${similar} of those move(s) matched a name that `
+                + `is spelt slightly differently</b> (one letter apart, like ACHRAF and ACHREF). That is usually the `
+                + `same person, but <b>look at the photo in the table</b> and untick it if the face is not who the row `
+                + `says it goes to.` : '')
             + (orphaned.length ? `<br><br><b style="color: var(--danger);">&#9888; ${orphaned.length} of these people `
                 + `are not enabled as a manager or a supervisor:</b> ${escapeHtml([...new Set(orphaned)].join(', '))}. `
                 + `They will appear on <b>neither</b> board no matter what you clean here, and their records go `
