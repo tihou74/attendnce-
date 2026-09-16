@@ -558,6 +558,15 @@
                 <!-- الهوية القطرية: الرقم وتاريخ الانتهاء. التنبيه يبدأ قبل 10 أيام. -->
                 <div style="width: 165px;"><label for="newEmpQidNumber" title="Qatar ID number — 11 digits">Qatar ID Number</label><input type="text" id="newEmpQidNumber" inputmode="numeric" maxlength="11" placeholder="11 digits"></div>
                 <div style="width: 165px;"><label for="newEmpQidExpiry" title="Qatar ID expiry date — an alert appears 10 days before">QID Expiry Date</label><input type="date" id="newEmpQidExpiry"></div>
+                <!-- ⭐⭐ النشاط: يُملأ تلقائيًّا من النشاط المفتوح، ولا يُترك للنسيان.
+                     ⚠️ ويُغيّر قائمة الفروع أدناه: محلات العبايات ليست فروع مطاعم،
+                     ووضعُ بياعة في «GAIMER W KAHI WEST WALK» يُفسد كل تقرير. -->
+                <div style="width: 175px;"><label for="newEmpBusiness">Business</label>
+                    <select id="newEmpBusiness" onchange="onNewEmpBusinessChange()">
+                        <option value="RESTAURANTS">Restaurants</option>
+                        <option value="ABAYA">Al Sheikha Style</option>
+                    </select>
+                </div>
                 <div style="flex: 1; min-width: 180px;"><label>Assigned Branch</label>
                     <select id="newEmpBranch">
                         <option value="GAIMER W KAHI WEST WALK">GAIMER W KAHI - WEST WALK</option>
@@ -574,7 +583,9 @@
                         <option value="Full Time">Full Time</option>
                     </select>
                 </div>
-                <div style="width: 160px;"><label>Housing</label>
+                <!-- ⚠️ السكن يُخفى في وضع العبايات: المالك قال «لا يوجد سكن»، وخانةٌ
+                     ظاهرة قد تُختار سهوًا فتُخصم ٥٠ ريالًا من راتب بياعة بلا سبب. -->
+                <div style="width: 160px;" id="newEmpHousingWrap"><label>Housing</label>
                     <select id="newEmpHousingType">
                         <option value="external" selected>External Housing</option>
                         <option value="company">Company Housing (-50 QAR/mo)</option>
@@ -3306,13 +3317,45 @@
         if (!emp || !emp.endDate) return false;
         return String(emp.endDate) < String(asOfISO || todayISO());
     }
-    /** الموظفون العاملون حاليًا — القوائم والإحصاءات كلها تمرّ من هنا. */
-    function activeEmployees(asOfISO) {
-        return allEmployees.filter(e => !isFormerEmployee(e, asOfISO));
+    // =====================================================================
+    // ⭐⭐ نشاط الموظف — المطاعم أم العبايات
+    // ---------------------------------------------------------------------
+    // ⚠️ الافتراضي **المطاعم** عن قصد: مئة وأربعة موظف موجودون اليوم بلا هذا
+    // الحقل، ولو كان الافتراضي «غير محدَّد» لاختفوا كلهم من كل قائمة لحظة نشر
+    // هذا التعديل. فغيابُ الحقل يُقرأ «مطاعم»، ولا تُلمس بياناتهم إطلاقًا.
+    //
+    // ⚠️ ولماذا حقلٌ على الموظف لا مجموعةٌ ثانية: محرّك الرواتب أخطر كود في
+    // النظام (أوفرتايم، يوم راحة، غياب، خصومات، إجازة سنوية). ونسخُه نسخةً
+    // ثانية للعبايات يعني محرّكين يفترقان مع الوقت، فكل إصلاح أُجريه في واحد
+    // وأنساه في الآخر يصير **راتبًا خطأً بلا رسالة خطأ**. فالمحرّك واحد،
+    // والعلامة تفرّق بين من يظهر في أي كشف.
+    // =====================================================================
+    const BIZ_RESTAURANTS = 'RESTAURANTS';
+    const BIZ_ABAYA = 'ABAYA';
+    /** نشاط الموظف كما يفهمه الفصل: 'abaya' أو 'rest'. */
+    function empBiz(emp) {
+        return (emp && emp.business === BIZ_ABAYA) ? 'abaya' : 'rest';
     }
-    /** الموظفون السابقون — لنافذة الأرشيف. */
+    /** هل يدخل هذا الموظف في النشاط المعروض الآن؟ */
+    function inBizScope(emp) {
+        return !activeBiz || empBiz(emp) === activeBiz;
+    }
+
+    /**
+     * الموظفون العاملون حاليًا — القوائم والإحصاءات كلها تمرّ من هنا.
+     * ⚠️ وهنا يقع فصل النشاطين: مصفاةٌ واحدة تخدم ملفات الموظفين والرواتب
+     * والورديات وأرقام الرئيسية وقوائم المدراء معًا. ولو رُشِّح كلٌّ منها على
+     * حِدة لَنُسي واحدٌ منها، فظهرت بياعة في كشف رواتب المطاعم.
+     * ⚠️ ولا تُستعمل هذه في أدوات البيانات (التكرار، الاستعادة، النسخة
+     * الاحتياطية): تلك تقرأ allEmployees مباشرةً عن قصد، فهي تعمل على كل
+     * السجلات مهما كان النشاط المعروض.
+     */
+    function activeEmployees(asOfISO) {
+        return allEmployees.filter(e => !isFormerEmployee(e, asOfISO) && inBizScope(e));
+    }
+    /** الموظفون السابقون — لنافذة الأرشيف، وبنفس الفصل. */
     function formerEmployees() {
-        return allEmployees.filter(e => isFormerEmployee(e));
+        return allEmployees.filter(e => isFormerEmployee(e) && inBizScope(e));
     }
     /**
      * أيام الفترة التي تلي آخر يوم عمل — لا يستحق عنها راتبًا ولا تُحسب غيابًا.
@@ -3603,6 +3646,28 @@
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             return;
         }
+        // ⭐⭐ نموذج إضافة الموظف يتبع النشاط المفتوح: من يعمل في وضع العبايات
+        // يُضيف بياعة، ولا يحتاج أن يتذكّر ضبط الخانة — والنسيان هنا يعني بياعةً
+        // في كشف رواتب المطاعم.
+        const bsel = document.getElementById('newEmpBusiness');
+        if (bsel && activeBiz) {
+            bsel.value = activeBiz === 'abaya' ? BIZ_ABAYA : BIZ_RESTAURANTS;
+            if (typeof window.onNewEmpBusinessChange === 'function') window.onNewEmpBusinessChange();
+        }
+        // ⭐ وتُعاد رسم القوائم المرشَّحة بالنشاط: بلا هذا تبقى قائمة الموظفين
+        // القديمة معروضة بعد التبديل، فيرى بياعات في وضع المطاعم حتى يُحدّث.
+        // ⚠️ كلٌّ في try خاصّ: بعضها يقرأ عناصر تبويبٍ قد لا يكون مبنيًّا بعد،
+        // وفشلُ واحدة لا يجوز أن يمنع البقية من التحديث.
+        const redraws = [filterEmployeeDirectory, filterEmployeesList, renderShiftsTable,
+                         renderLeavesTable, filterData, renderFormerEmployees,
+                         renderManagerCardPicker, renderManagerCardsTable];
+        redraws.forEach(fn => {
+            try { if (typeof fn === 'function') fn(); }
+            catch (e) { console.error('Redraw after business switch failed:', e); }
+        });
+        const cnt = document.getElementById('homeEmpCount');
+        if (cnt && allEmployees.length) cnt.innerText = activeEmployees().length;
+
         // التبويب المفتوح لا ينتمي إلى النشاط الجديد؟ نفتح أول تبويب ينتمي إليه.
         const active = document.querySelector('.tab-content.active');
         if (!active || !inActiveBiz(active.id) || !canSeeTab(active.id)) {
@@ -3612,6 +3677,37 @@
             window.switchTab(first || 'tab-home');
         }
     }
+
+    // فروع كل نشاط. ⚠️ محلات العبايات ليست فروع مطاعم، ووضعُ بياعة في فرع مطعم
+    // يُفسد كل تقريرٍ يُرشَّح بالفرع.
+    const REST_BRANCHES = [
+        ['GAIMER W KAHI WEST WALK', 'GAIMER W KAHI - WEST WALK'],
+        ['GAIMER W KAHI OLD MINA PORT', 'GAIMER W KAHI - OLD MINA PORT'],
+        ['SHAI BU HAMAD GULF MALL', 'SHAI BU HAMAD - GULF MALL'],
+        ['SHAI BU HAMAD WEST WALK', 'SHAI BU HAMAD - WEST WALK'],
+        ['HEAD OFFICE', 'HEAD OFFICE']
+    ];
+    const ABAYA_BRANCHES = [
+        ['GULF MALL', 'GULF MALL'],
+        ['VENDOME MALL', 'VENDOME MALL'],
+        ['DOHA FESTIVAL CITY', 'DOHA FESTIVAL CITY']
+    ];
+
+    /** يُبدّل قائمة الفروع وخانة السكن حسب النشاط المختار في نموذج الإضافة. */
+    window.onNewEmpBusinessChange = function() {
+        const sel = document.getElementById('newEmpBusiness');
+        const br = document.getElementById('newEmpBranch');
+        const hw = document.getElementById('newEmpHousingWrap');
+        if (!sel || !br) return;
+        const isAbaya = sel.value === BIZ_ABAYA;
+        const list = isAbaya ? ABAYA_BRANCHES : REST_BRANCHES;
+        const keep = br.value;
+        br.innerHTML = list.map(([v, t]) =>
+            `<option value="${escapeHtml(v)}">${escapeHtml(t)}</option>`).join('');
+        if (list.some(([v]) => v === keep)) br.value = keep;
+        // السكن يُخفى للعبايات — لا سكن لهنّ، وخانةٌ ظاهرة تُختار سهوًا.
+        if (hw) hw.style.display = isAbaya ? 'none' : '';
+    };
 
     /** يُقرأ الاختيار المحفوظ عند الإقلاع. */
     function restoreBiz() {
@@ -5833,7 +5929,16 @@
         // الفرع فقط يُرشَّح على السجلات الخام؛ التاريخ يُرشَّح على *الجلسات*
         // بتاريخ بدايتها (sessionsInRange) حتى لا تُقطع وردية عابرة لمنتصف
         // الليل عند حدّ الفترة فتظهر كأنها بلا انصراف.
-        let branchLogs = allAttendance.filter(l => !filterBranch || (l.branch || "") === filterBranch);
+        // ⚠️ وفصل النشاطين يُطبَّق على **صاحب البصمة** لا على اسم الفرع: أسماء
+        // الفروع تتشابه (محلّ عبايات في «GULF MALL» ومطعمٌ في «SHAI BU HAMAD
+        // GULF MALL»)، فالترشيح بالاسم كان سيخلط الاثنين. والحقيقة في ملف الموظف.
+        // ⚠️ وبصمةٌ لا نجد لها ملفًّا (موظفٌ حُذف) تُعرض دائمًا: إخفاؤها يُضيّع
+        // سجلًّا حقيقيًّا من الشاشة بلا أن يعرف أحد.
+        const bizIds = new Set(allEmployees.filter(inBizScope).map(e => e.id));
+        let branchLogs = allAttendance.filter(l =>
+            (!filterBranch || (l.branch || "") === filterBranch)
+            && (!activeBiz || !l.employeeId || bizIds.has(l.employeeId)
+                || !allEmployees.some(e => e.id === l.employeeId)));
 
         let sessions = sessionsInRange(branchLogs, startDate, endDate);
         sessions = sessions.filter(s => {
@@ -12200,7 +12305,14 @@
         const pin = document.getElementById("newEmpPinInput").value.trim() || "1234";
         const branch = document.getElementById("newEmpBranch").value;
         const shift = document.getElementById("newEmpShift").value;
-        const housingType = document.getElementById("newEmpHousingType").value; // 'company' or 'external'
+        // ⭐⭐ النشاط: مطاعم أم عبايات. يُكتب صريحًا على الملف دائمًا.
+        const business = document.getElementById("newEmpBusiness").value === BIZ_ABAYA
+            ? BIZ_ABAYA : BIZ_RESTAURANTS;
+        // ⚠️ ولا سكن للعبايات مهما كانت الخانة: قال المالك «لا يوجد سكن». وضبطُه
+        // هنا لا في الشاشة وحدها، فالشاشة قد تُخفي الخانة وتبقى قيمتها القديمة.
+        const housingType = business === BIZ_ABAYA
+            ? 'external'
+            : document.getElementById("newEmpHousingType").value; // 'company' or 'external'
         const joinDate = document.getElementById("newEmpJoinDate").value;
         const qidNumber = document.getElementById("newEmpQidNumber").value.trim();
         const qidExpiry = document.getElementById("newEmpQidExpiry").value;
@@ -12248,6 +12360,7 @@
             const id = generateEmployeeId(name);
             await setDoc(doc(db, "employees", id), {
                 name, role, phone, branch, shift, housingType, salary, joinDate,
+                business,
                 qidNumber, qidExpiry,
                 qidFront, qidBack, healthCard, contract, healthCert,
                 createdAt: serverTimestamp()
@@ -13255,6 +13368,9 @@
         let html = "";
         allAnnualLeaves.forEach((lv) => {
             const emp = allEmployees.find(e => e.id === lv.employeeId);
+            // ⚠️ فصل النشاطين: إجازةُ بياعة لا تظهر في نافذة المطاعم. ومن لا
+            // ملفَّ له يُعرض دائمًا — سجلٌّ حقيقي لا يُخفى.
+            if (emp && !inBizScope(emp)) return;
             const empName = emp ? emp.name : (lv.employeeName || "-");
             const safeId = escapeJsAttr(lv.id);
             const payoutMonth = (lv.startDate || '').slice(0, 7) || '-';
