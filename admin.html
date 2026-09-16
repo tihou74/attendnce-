@@ -3920,7 +3920,12 @@
         }
 
         const results = [];
-        allEmployees.filter(e => (e.name || '').toLowerCase().includes(q)).slice(0, 8).forEach(e => {
+        // ⚠️ والبحث السريع يتبع النشاط أيضًا: إيجادُ موظف مطعم وأنت في وضع
+        // العبايات ثم فتح ملفه يُخرجك من النشاط بلا أن تدري — وهو عين الاختلاط
+        // الذي طُلب رفعُه. أما أدوات البيانات (التكرار، الاستعادة) فتبقى على
+        // القائمة الكاملة عن قصد: شغلُها كل السجلات مهما كان المعروض.
+        allEmployees.filter(inBizScope)
+            .filter(e => (e.name || '').toLowerCase().includes(q)).slice(0, 8).forEach(e => {
             results.push({ icon: 'users', label: `${e.name} — ${e.role || 'Staff'}`, sub: e.branch || '-',
                 action: `closeGlobalSearch(); switchTab('tab-employees'); openProfileModal('${escapeJsAttr(e.id)}');` });
         });
@@ -13522,16 +13527,28 @@
         if (!list) return;
 
         const events = [];
-        allEmployees.forEach(emp => {
+        // ⚠️⚠️ ثقبٌ وجده المالك بعينه: «فتحتُ شاشة الشيخة ستايل فوجدتُ موظفي
+        // المطعم». وهذا كان مصدره — «النشاط الأخير» كان يقرأ allEmployees
+        // مباشرةً بلا مصفاة النشاط، فتظهر أسماء المطاعم في وضع العبايات.
+        // ⚠️ والدرس: كل ما يعرض **اسم موظف** يجب أن يمرّ بـinBizScope، ولا يكفي
+        // أن تُرشَّح القوائم الكبيرة وحدها. والإحصاءات والتنبيهات تمرّ بـ
+        // activeEmployees أصلًا، وهذا كان الاستثناء الوحيد.
+        allEmployees.filter(inBizScope).forEach(emp => {
             const ms = tsToMillis({ timestamp: emp.createdAt, date: null });
             if (ms) events.push({ ms, icon: 'userPlus', color: 'var(--success)', text: `New employee added: <b>${escapeHtml(emp.name)}</b>` });
         });
-        allWarnings.forEach(w => {
+        // ⚠️ والإنذار والإجازة يعرضان **اسم موظف** كذلك، فيتبعان نفس المصفاة.
+        // ومن لا نجد له ملفًّا يُعرض دائمًا: حدثٌ حقيقي لا يُخفى لأن ملفه حُذف.
+        const ownerInScope = (empId) => {
+            const emp = allEmployees.find(e => e.id === empId);
+            return !emp || inBizScope(emp);
+        };
+        allWarnings.filter(w => ownerInScope(w.employeeId)).forEach(w => {
             const ms = tsToMillis({ timestamp: w.createdAt, date: w.date });
             const empName = (allEmployees.find(e => e.id === w.employeeId) || {}).name || w.employeeName || 'Unknown';
             events.push({ ms, icon: 'alertTriangle', color: 'var(--danger)', text: `Warning letter issued to <b>${escapeHtml(empName)}</b>` });
         });
-        allAnnualLeaves.forEach(lv => {
+        allAnnualLeaves.filter(lv => ownerInScope(lv.employeeId)).forEach(lv => {
             const ms = tsToMillis({ timestamp: lv.createdAt, date: lv.startDate });
             const empName = (allEmployees.find(e => e.id === lv.employeeId) || {}).name || lv.employeeName || 'Unknown';
             events.push({ ms, icon: 'plane', color: 'var(--accent)', text: `Annual leave granted to <b>${escapeHtml(empName)}</b> (${escapeHtml(lv.startDate || '-')})` });
