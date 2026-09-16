@@ -2030,7 +2030,8 @@
                     <table>
                         <thead><tr>
                             <th style="width: 42px;">Remove</th><th>Name</th><th>Record</th>
-                            <th class="money-col">Attendance</th><th class="money-col">Deductions</th>
+                            <th>Manager?</th><th class="money-col">Attendance</th><th class="money-col">Reports sent</th>
+                            <th class="money-col">Deductions</th>
                             <th>Joined</th><th>Qatar ID</th><th>Files</th><th class="money-col">Salary</th><th>Verdict</th>
                         </tr></thead>
                         <tbody id="dupTableBody"></tbody>
@@ -12786,19 +12787,51 @@
     const normName = (s) => String(s || '').trim().toUpperCase().replace(/\s+/g, ' ');
     let dupGroups = null;
 
-    /** يجمع كل الآثار التي تُثبت أن السجل حقيقي. */
+    /**
+     * يجمع كل الآثار التي تُثبت أن السجل حقيقي.
+     *
+     * ⚠️⚠️ خطأٌ وقع فعلًا وكلّف حذف سجلات المدراء الحقيقيين: أول نسخة من هذه
+     * الدالة كانت تحسب الحضور والخصومات والإجازات والمرفقات وحدها. والمدير قد
+     * لا يسجّل حضوره على كشك الموظفين إطلاقًا — عملُه إرسال التقرير اليومي من
+     * شاشته. فسجله كان يظهر «بلا أثر» فيُقترح حذفه، وهو أثمن سجل في النظام.
+     *
+     * ⭐ والدليل القاطع الذي كان غائبًا: `canSubmitSalesReport`. البذر التلقائي
+     * لا يكتب هذا الحقل أبدًا، فوجودُه يعني أن المالك أعدّ هذا السجل بيده — أي
+     * أنه حقيقيٌّ يقينًا. وله وحده وزنٌ كافٍ.
+     *
+     * والقاعدة المستفادة: الأثر ليس الحضور، بل **كل** ما يربط السجل ببقية
+     * النظام. فكل مجموعة تُشير إلى معرّف الموظف تُحسب هنا.
+     */
     function employeeEvidence(emp) {
         const id = emp.id;
-        const att = allAttendance.filter(l => l.employeeId === id).length;
-        const ded = allDeductions.filter(d => d.employeeId === id).length;
-        const lv = (allAnnualLeaves || []).filter(l => l.employeeId === id).length;
-        const alw = (allAllowancePayments || []).filter(a => a.employeeId === id).length;
+        const cnt = (arr, key) => (arr || []).filter(x => x && x[key] === id).length;
+        const att = cnt(allAttendance, 'employeeId');
+        const ded = cnt(allDeductions, 'employeeId');
+        const lv = cnt(allAnnualLeaves, 'employeeId');
+        const alw = cnt(allAllowancePayments, 'employeeId');
+        // ⭐ آثار المدير — هذه هي التي كانت غائبة
+        const sales = cnt(typeof allSalesReports !== 'undefined' ? allSalesReports : [], 'managerId');
+        const petty = cnt(typeof allPettyRequests !== 'undefined' ? allPettyRequests : [], 'managerId');
+        const warnReq = cnt(typeof allWarningRequests !== 'undefined' ? allWarningRequests : [], 'managerId');
+        const warns = cnt(typeof allWarnings !== 'undefined' ? allWarnings : [], 'employeeId');
+        const leaveReq = cnt(typeof allPendingLeaveRequests !== 'undefined' ? allPendingLeaveRequests : [], 'employeeId');
+        const hasCard = (typeof managerCards !== 'undefined' ? managerCards : []).some(c => c && c.id === id);
         const files = ['qidFront', 'qidBack', 'healthCard', 'contract', 'healthCert']
             .filter(f => emp[f] && String(emp[f]).length > 20).length;
         const hasJoin = !!emp.joinDate;
         const hasQid = !!(emp.qidNumber || emp.qidExpiry);
-        const traces = att + ded + lv + alw + files + (hasJoin ? 1 : 0) + (hasQid ? 1 : 0);
-        return { att, ded, lv, alw, files, hasJoin, hasQid, traces, real: traces > 0 };
+        // ⭐ الحقل الذي يجعل المدير مديرًا — والبذر لا يكتبه أبدًا
+        const isManager = emp.canSubmitSalesReport === true;
+        const hasPhone = !!(emp.phone && String(emp.phone).replace(/[^0-9]/g, '').length > 4);
+        const hasEnd = !!emp.endDate;              // من انتهت خدمته سجلٌ حقيقي بلا شك
+        const managerTraces = sales + petty + warnReq + (hasCard ? 1 : 0) + (isManager ? 1 : 0);
+        const traces = att + ded + lv + alw + warns + leaveReq + files + managerTraces
+            + (hasJoin ? 1 : 0) + (hasQid ? 1 : 0) + (hasPhone ? 1 : 0) + (hasEnd ? 1 : 0);
+        return {
+            att, ded, lv, alw, sales, petty, warnReq, warns, leaveReq, hasCard,
+            files, hasJoin, hasQid, isManager, hasPhone, hasEnd,
+            managerTraces, traces, real: traces > 0
+        };
     }
 
     window.scanDuplicateEmployees = function() {
@@ -12824,8 +12857,8 @@
             if (realOnes.length === 1) {
                 // الحالة الواضحة: واحدٌ له أثر والباقي بلا أثر.
                 verdictFor = (r) => r.ev.real
-                    ? { keep: true, why: 'Keep — this is the real file' }
-                    : { keep: false, why: 'Empty copy — no attendance, no history, no documents' };
+                    ? { keep: true, why: r.ev.isManager ? 'Keep — real file, and this is a MANAGER' : 'Keep — this is the real file' }
+                    : { keep: false, why: 'Empty copy — no history anywhere, not a manager, no documents' };
             } else if (realOnes.length === 0) {
                 verdictFor = () => ({ keep: true, needsYou: true, why: 'No record has any history — decide yourself' });
             } else {
@@ -12858,7 +12891,11 @@
                          onchange="renderDupSummary()" style="width:17px;height:17px;cursor:pointer;">`}</td>
                 <td>${i === 0 ? `<b>${escapeHtml(g.name)}</b>` : ''}</td>
                 <td><small style="font-family: monospace; color: var(--text-dim);">${escapeHtml(e.id)}</small></td>
+                <td>${ev.isManager
+                    ? '<b style="color: var(--success);">✔ MANAGER</b>'
+                    : '<span style="color: var(--text-dim);">—</span>'}</td>
                 <td class="money-col"${ev.att ? ' style="font-weight:800; color: var(--success);"' : ''}>${ev.att || '—'}</td>
+                <td class="money-col"${ev.sales ? ' style="font-weight:800; color: var(--success);"' : ''}>${ev.sales || '—'}</td>
                 <td class="money-col">${ev.ded || '—'}</td>
                 <td>${e.joinDate ? escapeHtml(e.joinDate) : '<span style="color: var(--danger);">—</span>'}</td>
                 <td>${e.qidNumber ? escapeHtml(e.qidNumber) : '<span style="color: var(--danger);">—</span>'}</td>
@@ -12900,6 +12937,21 @@
         }
         // ⚠️ حاجزٌ أخير مستقلّ عن الشاشة: لا يُحذف معرّفٌ له أيّ أثر، ولو وُسم
         // للحذف. الشاشة قد تكون قديمة، والأثر هو الحقيقة.
+        // ⚠️⚠️ حاجزٌ مطلق أُضيف بعد أن حُذفت سجلات مدراء حقيقيين فعلًا: سجلٌ
+        // عليه canSubmitSalesReport لا تحذفه هذه الأداة بحال، مهما قال الحكم
+        // ومهما وُسم على الشاشة. المدير قد لا يسجّل حضورًا على الكشك، فيبدو
+        // «بلا أثر» وهو أثمن سجل في النظام — بلا سجله لا يستطيع الدخول إلى
+        // شاشته ولا إرسال التقرير اليومي.
+        const managerIds = ids.filter(id => {
+            const emp = allEmployees.find(e => e.id === id);
+            return emp && emp.canSubmitSalesReport === true;
+        });
+        if (managerIds.length) {
+            status.style.color = 'var(--danger)';
+            status.innerText = `Stopped: ${managerIds.length} ticked record(s) belong to MANAGERS and are never `
+                + `deleted by this tool. Scan again.`;
+            return;
+        }
         const unsafe = ids.filter(id => {
             const emp = allEmployees.find(e => e.id === id);
             return !emp || employeeEvidence(emp).real;
