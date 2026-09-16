@@ -13390,6 +13390,34 @@
     //   3) إن لم يكن لأي سجل أثر (موظف جديد فعلًا لم يعمل بعد)، لا يُقترح شيء.
     // =====================================================================
     const normName = (s) => String(s || '').trim().toUpperCase().replace(/\s+/g, ' ');
+
+    /**
+     * مفتاح التجميع: الكلمات مرتَّبةً ومنزوعةَ التكرار.
+     *
+     * ⚠️⚠️ المقارنة الحرفية وحدها فاتها تكرارٌ حقيقيٌّ رآه المالك بعينه: سجلان
+     * لشخص واحد باسم «BILLEL ABDESSAMAD FODIL» و«BILLEL FODIL ABDESSAMAD» —
+     * نفس الكلمات بترتيب مختلف، فلم تتطابق نصًّا ولم تُكتشف، وظهر الرجل مرتين
+     * في لوحة المدراء. وكذلك «VIKAS CHIRAVANGATTE CHIRAVANGATTE» بكلمة مكرّرة
+     * داخل الاسم نفسه.
+     *
+     * فالترتيب لا يُغيّر الشخص، وتكرار الكلمة كذلك. والمفتاح يُلغي أثرهما معًا.
+     */
+    const nameKey = (s) => [...new Set(normName(s).split(' ').filter(Boolean))].sort().join(' ');
+
+    /**
+     * وحالةٌ ثالثة لا يكفيها المفتاح: اسمٌ كلماته **كلها** داخل اسمٍ أطول —
+     * «SHEFEEQ PUTHUVEETIL» داخل «SHEFEEQ PUTHUVEETIL APPAKUTTY». هذا سجلٌ
+     * أُعيد إنشاؤه باسمٍ أكمل، لا شخصان.
+     * ⚠️ ويُشترط كلمتان على الأقل: كلمة واحدة مشتركة («MOHAMED») تجمع أشخاصًا
+     * لا علاقة بينهم، وذلك أسوأ من تكرارٍ يبقى ظاهرًا.
+     */
+    function nameContains(aWords, bWords) {
+        if (aWords.length < 2 || bWords.length < 2) return false;
+        const shorter = aWords.length <= bWords.length ? aWords : bWords;
+        const longer = aWords.length <= bWords.length ? bWords : aWords;
+        return shorter.every(w => longer.includes(w));
+    }
+
     let dupGroups = null;
 
     /**
@@ -13450,15 +13478,38 @@
             status.innerText = 'Only the owner can do this.';
             return;
         }
+        // ---- التجميع على ثلاث قواعد -------------------------------------
+        // 1) الاسم نفسه حرفيًّا.
+        // 2) نفس الكلمات بترتيب مختلف أو بكلمة مكرّرة (nameKey).
+        // 3) اسمٌ كلماته كلها داخل اسمٍ أطول (nameContains) — يُدمج بعد التجميع.
         const byName = new Map();
         allEmployees.forEach(e => {
-            const k = normName(e.name);
+            const k = nameKey(e.name);
             if (!k) return;
             if (!byName.has(k)) byName.set(k, []);
             byName.get(k).push(e);
         });
+        // دمج المجموعات التي يحتوي اسمُ إحداها اسمَ الأخرى.
+        let buckets = [...byName.entries()].map(([k, members]) => ({ k, words: k.split(' '), members }));
+        let merged = true;
+        while (merged) {
+            merged = false;
+            for (let i = 0; i < buckets.length && !merged; i++) {
+                for (let j = i + 1; j < buckets.length && !merged; j++) {
+                    if (nameContains(buckets[i].words, buckets[j].words)) {
+                        // الاسم الأطول يُصبح عنوان المجموعة: هو الأكمل.
+                        const keep = buckets[i].words.length >= buckets[j].words.length ? buckets[i] : buckets[j];
+                        const drop = keep === buckets[i] ? buckets[j] : buckets[i];
+                        keep.members = keep.members.concat(drop.members);
+                        buckets = buckets.filter(b => b !== drop);
+                        merged = true;
+                    }
+                }
+            }
+        }
         dupGroups = [];
-        byName.forEach((members, name) => {
+        buckets.forEach(({ k, members }) => {
+            const name = k;
             if (members.length < 2) return;
             const rows = members.map(e => ({ emp: e, ev: employeeEvidence(e) }));
             const realOnes = rows.filter(r => r.ev.real);
@@ -13475,7 +13526,14 @@
             } else {
                 verdictFor = () => ({ keep: true, needsYou: true, why: 'More than one record has real history — decide yourself' });
             }
-            dupGroups.push({ name, rows: rows.map(r => ({ ...r, verdict: verdictFor(r) })) });
+            // ⚠️ أسماء الأعضاء قد تختلف نصًّا (ترتيبًا أو طولًا)، فتُحفظ لتُعرض
+            // كما هي — عرضُ عنوان المجموعة وحده كان سيُخفي عن المالك **سببَ**
+            // عدم اكتشافها من قبل، وهو أول ما يريد رؤيته.
+            const distinct = [...new Set(rows.map(r => normName(r.emp.name)))];
+            dupGroups.push({
+                name, distinct, mixedSpelling: distinct.length > 1,
+                rows: rows.map(r => ({ ...r, verdict: verdictFor(r) }))
+            });
         });
         dupGroups.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -13500,7 +13558,9 @@
                 <td>${v.keep ? '<span style="color: var(--text-dim); font-size: 11px; font-weight: 700;">keep</span>'
                     : `<input type="checkbox" class="dupPick" data-id="${escapeHtml(e.id)}" checked
                          onchange="renderDupSummary()" style="width:17px;height:17px;cursor:pointer;">`}</td>
-                <td>${i === 0 ? `<b>${escapeHtml(g.name)}</b>` : ''}</td>
+                <td><b>${escapeHtml(normName(e.name))}</b>${i === 0 && g.mixedSpelling
+                    ? '<br><small style="color: var(--warning); font-weight: 700;">⚠ same person, name written differently &mdash;'
+                      + ' that is why this was never spotted before</small>' : ''}</td>
                 <td><small style="font-family: monospace; color: var(--text-dim);">${escapeHtml(e.id)}</small></td>
                 <td>${ev.isManager || ev.isSup
                     ? `<b style="color: var(--success);">✔ ${ev.isManager ? 'MANAGER' : ''}${ev.isManager && ev.isSup ? ' + ' : ''}${ev.isSup ? 'SUPERVISOR' : ''}</b>`
