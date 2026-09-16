@@ -13420,6 +13420,73 @@
 
     let dupGroups = null;
 
+    // =====================================================================
+    // ⭐⭐ حاجز «هل وصلت البيانات أصلًا؟» — قبل أي حكم وقبل أي حذف
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ «لا يوجد تكرار» جوابٌ يُطمئن، وهو **كاذبٌ خطير** إن كانت القائمة لم
+    // تُقرأ أصلًا. المالك عاش ثلاث مرّات على شاشةٍ أصفارُها ليست حقيقية، ولو
+    // ضغط «Scan» في تلك اللحظة لكتبت له الأداة **بالأخضر** «لا يوجد تكرار،
+    // لا شيء لتنظيفه» — فيُغلق الصفحة مطمئنًّا على أمرٍ لم يُفحص.
+    //
+    // وأخطر منها بمراحل: لو قُرئت **أسماء** الموظفين ولم يُقرأ **تاريخهم**
+    // (حضور، خصومات، تقارير، مرفقات)، لعادت employeeEvidence() بصفرٍ للجميع،
+    // فبدا كل سجل حقيقيٍّ «نسخةً فارغة» ووُسم للحذف تلقائيًّا — والحاجز الأخير
+    // في runDuplicateCleanup يستخدم **نفس** الأثر المعطوب فلا يمنع شيئًا. هذا
+    // بالضبط جنس الخطأ الذي حذف سجلات مدراء حقيقيين من قبل.
+    //
+    // فالفحص يتأكّد أولًا أن ما يحكم عليه موجودٌ فعلًا في الذاكرة: يقرأ مستندًا
+    // واحدًا (limit 1) من كل مجموعة، فإن كان فيها مستندٌ ومصفوفتُنا فارغة فقراءتنا
+    // فشلت بصمت → يُمنع الحكم كلّه. قراءةٌ واحدة لكل مجموعة، لا تُثقل شيئًا.
+    // =====================================================================
+    const DUP_EVIDENCE_PROBES = [
+        { coll: 'employees',           label: 'Employee files',      get: () => allEmployees },
+        { coll: 'attendance',          label: 'Attendance logs',     get: () => allAttendance },
+        { coll: 'deductions',          label: 'Deductions',          get: () => allDeductions },
+        { coll: 'annual_leaves',       label: 'Annual leaves',       get: () => allAnnualLeaves },
+        { coll: 'allowance_payments',  label: 'Allowance payments',  get: () => allAllowancePayments },
+        { coll: 'employee_warnings',   label: 'Warning letters',     get: () => allWarnings },
+        { coll: 'petty_cash_requests', label: 'Petty cash requests', get: () => allPettyRequests },
+        { coll: 'warning_requests',    label: 'Warning requests',    get: () => allWarningRequests },
+        { coll: 'manager_cards',       label: 'Manager cards',       get: () => managerCards },
+        { coll: 'sales_reports',       label: 'Daily sales reports',  get: () => allSalesReports }
+    ];
+
+    /** يُعيد نصّ السبب إن كان الحكم غير آمن، أو null إن كان كل شيء حاضرًا. */
+    async function dupDataNotReady() {
+        if (loadFailures.length) {
+            return 'some data could not be read a moment ago (see the red banner above). A record whose '
+                + 'history did not load looks empty even when it is real. Press Ctrl+Shift+R, wait for the '
+                + 'numbers to appear, then scan again.';
+        }
+        if (!Array.isArray(allEmployees) || !allEmployees.length) {
+            return 'the employee list in this page is empty, so there was nothing to compare. This is NOT '
+                + 'proof that there are no duplicates. Press Ctrl+Shift+R and wait for the numbers.';
+        }
+        // ⚠️ تقارير المبيعات لا تُحمَّل عند الإقلاع (تُحمَّل عند فتح تبويبها وحده)،
+        // وهي أثرُ مديرٍ معتبر. فتُحمَّل الآن بدل الحكم بأثرٍ ناقص.
+        if (typeof loadSalesReports === 'function' && (!Array.isArray(allSalesReports) || !allSalesReports.length)) {
+            try { await loadSalesReports(); } catch (e) { console.error('Sales preload for dup scan failed:', e); }
+        }
+        const silent = [];
+        for (const p of DUP_EVIDENCE_PROBES) {
+            let hasDoc = false;
+            try {
+                const snap = await getDocs(query(collection(db, p.coll), limit(1)));
+                hasDoc = !snap.empty;
+            } catch (e) {
+                return `the list "${p.label}" (${p.coll}) could not be read: ${e.message}. Judging duplicates `
+                    + `without it would mark real records as empty copies. Nothing was scanned.`;
+            }
+            const arr = p.get();
+            if (hasDoc && (!Array.isArray(arr) || arr.length === 0)) silent.push(`${p.label} (${p.coll})`);
+        }
+        if (silent.length) {
+            return `these lists exist in the database but did not load into this page: ${silent.join(', ')}. `
+                + `Without them a real record looks like an empty copy. Press Ctrl+Shift+R and scan again.`;
+        }
+        return null;
+    }
+
     /**
      * يجمع كل الآثار التي تُثبت أن السجل حقيقي.
      *
@@ -13471,11 +13538,21 @@
         };
     }
 
-    window.scanDuplicateEmployees = function() {
+    window.scanDuplicateEmployees = async function() {
         const status = document.getElementById('dupStatus');
         if (currentRole !== ROLE_ADMIN) {
             status.style.color = 'var(--danger)';
             status.innerText = 'Only the owner can do this.';
+            return;
+        }
+        // ⭐⭐ لا حكم قبل التأكّد أن ما نحكم عليه وصل فعلًا.
+        status.style.color = 'var(--text-dim)';
+        status.innerText = 'Checking first that everything has loaded...';
+        const notReady = await dupDataNotReady();
+        if (notReady) {
+            document.getElementById('dupBox').style.display = 'none';
+            status.style.color = 'var(--danger)';
+            status.innerHTML = `&#9888; <b>Not scanned</b> &mdash; ${escapeHtml(notReady)}`;
             return;
         }
         // ---- التجميع على ثلاث قواعد -------------------------------------
@@ -13540,7 +13617,11 @@
         if (!dupGroups.length) {
             document.getElementById('dupBox').style.display = 'none';
             status.style.color = 'var(--success)';
-            status.innerText = 'No duplicated names found. Nothing to clean.';
+            // ⚠️ الجواب يُقال بما فُحص لا بكلمة «لا يوجد» وحدها: العدد هو الدليل
+            // على أن الفحص جرى على بياناتٍ حاضرة، وبه يعرف المالك أن الجواب
+            // حقيقي لا نتيجةَ شاشةٍ فارغة.
+            status.innerHTML = `&#10004; <b>${allEmployees.length} employee record(s) compared &mdash; no duplicates.</b> `
+                + `No two records share the same name, in any word order, and no name sits inside a longer one.`;
             return;
         }
         status.style.color = 'var(--warning)';
@@ -13604,6 +13685,17 @@
         if ((document.getElementById('dupConfirmWord').value || '').trim().toUpperCase() !== 'DELETE') {
             status.style.color = 'var(--danger)';
             status.innerText = 'Type DELETE in the box to confirm.';
+            return;
+        }
+        // ⭐⭐ ويُعاد الحاجز هنا أيضًا لا في الفحص وحده: بين الفحص والحذف قد تمرّ
+        // دقائق ينقطع فيها الاتصال أو ينتهي رمز الدخول، فتُفرَّغ المصفوفات، فيرى
+        // الحاجز الأخير أدناه «لا أثر» لسجلٍ حقيقي فيسمح بحذفه. الحذف لا رجعة فيه.
+        status.style.color = 'var(--text-dim)';
+        status.innerText = 'Checking first that everything is still loaded...';
+        const notReadyNow = await dupDataNotReady();
+        if (notReadyNow) {
+            status.style.color = 'var(--danger)';
+            status.innerHTML = `&#9888; <b>Stopped, nothing deleted</b> &mdash; ${escapeHtml(notReadyNow)}`;
             return;
         }
         // ⚠️ حاجزٌ أخير مستقلّ عن الشاشة: لا يُحذف معرّفٌ له أيّ أثر، ولو وُسم
