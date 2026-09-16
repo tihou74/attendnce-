@@ -5064,11 +5064,39 @@
         // the SAME for every month regardless of it having 30 or 31 days
         // (per management policy) — it does NOT affect whether overtime is
         // triggered, only the QAR value of one overtime hour.
-        let basicHourlyRate = basicSalary / STANDARD_MONTHLY_HOURS;
-        let otAmount = (otDayHours * basicHourlyRate * OT_DAY_MULTIPLIER) + (otNightHours * basicHourlyRate * OT_NIGHT_MULTIPLIER);
+        // =============================================================
+        // ⭐⭐ الفرق الأول والوحيد في الأوفرتايم: قيمة الساعة عند العبايات
+        // -------------------------------------------------------------
+        // ⚠️ سياسة المالك صريحةً للعبايات: قيمة ساعة الأوفرتايم = **إجمالي
+        // الراتب ÷ ٣٠ ÷ ١٠**، و**بلا مضاعف** (لا 1.25 نهارًا ولا 1.5 ليلًا).
+        // فمن راتبها 3000 تُقبض 10 ريالات للساعة، و3 ساعات = 30 ريالًا.
+        //
+        // ⚠️ وهذا يختلف عن المطاعم في أمرين، وكلاهما مقصود:
+        //   1) الأساس هو **إجمالي** الراتب لا الأساسي الثابت (1000).
+        //   2) لا مضاعف — فليلها كنهارها.
+        // أما **متى** يبدأ الأوفرتايم فهو واحدٌ في النشاطين: لا شيء حتى يتجاوز
+        // اليوم 12 ساعة، ثم يُحسب كل ما زاد على 10. (13 ساعة = 3 ساعات.)
+        // فالفرق في قيمة الساعة وحدها، لا في شروط استحقاقها.
+        // =============================================================
+        const isAbayaPay = empBiz(emp) === 'abaya';
+        let basicHourlyRate, otAmount;
+        if (isAbayaPay) {
+            // إجمالي الراتب ÷ 30 يومًا ÷ 10 ساعات
+            basicHourlyRate = totalSalary / (PAYROLL_DAYS_PER_MONTH * STANDARD_DAILY_HOURS);
+            otAmount = (otDayHours + otNightHours) * basicHourlyRate;
+        } else {
+            // Basic hourly rate for overtime purposes is derived from the fixed
+            // monthly standard-hours figure (STANDARD_MONTHLY_HOURS), which is
+            // the SAME for every month regardless of it having 30 or 31 days
+            // (per management policy) — it does NOT affect whether overtime is
+            // triggered, only the QAR value of one overtime hour.
+            basicHourlyRate = basicSalary / STANDARD_MONTHLY_HOURS;
+            otAmount = (otDayHours * basicHourlyRate * OT_DAY_MULTIPLIER) + (otNightHours * basicHourlyRate * OT_NIGHT_MULTIPLIER);
+        }
         // Kept for backward compatibility with any code/report still reading
         // `otRate` as a single blended QAR/hour figure.
-        let otRate = otHours > 0 ? otAmount / otHours : (basicHourlyRate * OT_DAY_MULTIPLIER);
+        let otRate = otHours > 0 ? otAmount / otHours
+            : (isAbayaPay ? basicHourlyRate : basicHourlyRate * OT_DAY_MULTIPLIER);
 
         const ded = deductionsInRange(emp.id, startDate, endDate);
         let deductionDays = ded.days;
@@ -5108,13 +5136,24 @@
         if (periodDayCount && notEmployedDays > periodDayCount) notEmployedDays = periodDayCount;
         let notEmployedAmount = notEmployedDays * dailyRate;
         let extraWorkedDays = auto.extraWorkedDays;
-        let extraWorkedAmount = extraWorkedDays * basicHourlyRate * STANDARD_DAILY_HOURS * OT_DAY_MULTIPLIER;
+        // ⭐ اليوم الزائد (عملت أكثر من أيام راحتها المستحقة) يتبع نفس قاعدة
+        // ساعتها: عشر ساعات بقيمة ساعتها وبلا مضاعف = إجمالي الراتب ÷ ٣٠، أي
+        // **أجرُ يومٍ كامل**. فيومٌ زائد يُدفع بما يُخصم عن يومِ غياب بالضبط —
+        // وهذا أعدل ما يترتّب على «بلا مضاعف»، ولا يحتاج قاعدةً جديدة.
+        let extraWorkedAmount = isAbayaPay
+            ? extraWorkedDays * basicHourlyRate * STANDARD_DAILY_HOURS
+            : extraWorkedDays * basicHourlyRate * STANDARD_DAILY_HOURS * OT_DAY_MULTIPLIER;
 
         // Housing: a flat, non-prorated 50 QAR deducted every payroll period
         // for any employee living in COMPANY housing (accommodation cost) —
         // employees in EXTERNAL housing have no deduction at all. This is
         // fully independent of the manual/automatic-absence deductions.
-        let housingDeductionAmount = (emp.housingType === 'company') ? HOUSING_DEDUCTION_QAR : 0;
+        // ⚠️⚠️ ولا سكن للعبايات إطلاقًا: قال المالك «لا يوجد سكن». والشرط هنا
+        // لا في نموذج الإضافة وحده عن قصد — فملفٌّ قديم قد يحمل housingType
+        // قديمة، أو يُحوّل موظف من نشاط إلى آخر، فيُخصم منها ٥٠ ريالًا بلا سبب
+        // ولا يظهر لأحدٍ سببُه.
+        let housingDeductionAmount = (!isAbayaPay && emp.housingType === 'company')
+            ? HOUSING_DEDUCTION_QAR : 0;
 
         // "Other Amounts Deducted" — a single dedicated per-period figure
         // the admin types directly into the employee's profile (see the
