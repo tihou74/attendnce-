@@ -766,10 +766,13 @@
 
             <div id="presentNowBox" style="background: #f1f8f4; border: 1px solid #cfe8d8; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 13px; line-height: 1.8; color: #14532d; font-weight: 700;"></div>
 
-            <div class="form-group">
-                <label for="presentEndTime">I will finish at:</label>
-                <input type="time" id="presentEndTime">
-            </div>
+            <!-- ⚠️⚠️ خانة «I will finish at» أُزيلت بطلب المالك صريحًا: «لا فائدة
+                 منها، اترك فقط الزر الأحمر هو يضغط أن دوامه انتهى».
+                 وأثرها لم يكن شكليًّا: كانت لوحة الإدارة تُنهي دوامه **تلقائيًّا**
+                 عند بلوغ الساعة التي كتبها، فيُعرض «انتهى دوامه» وهو ما زال
+                 يعمل. فالإنهاء الآن بضغطةٍ منه وحده — وهذا أصدق.
+                 ⚠️ والسجلّات القديمة التي فيها ساعة انتهاء تبقى تُعرض كما
+                 سُجّلت، فلا يُغيَّر تاريخٌ مضى. -->
             <button class="action-btn btn-in" id="btnPresentStart" style="margin-top: 4px;" onclick="submitPresence('start')">I am starting my shift now &#9989;</button>
 
             <button class="action-btn" id="btnPresentEnd" style="margin-top: 10px; background-color: #b91c1c;" onclick="submitPresence('end')">I have finished my shift &#128308;</button>
@@ -2568,12 +2571,6 @@
 
     window.openPresenceForm = function() {
         const now = new Date();
-        // ساعة الانتهاء المقترحة: بعد عشر ساعات من الآن، وله تغييرها.
-        const endEl = document.getElementById('presentEndTime');
-        if (endEl && !endEl.value) {
-            const later = new Date(now.getTime() + 10 * 60 * 60 * 1000);
-            endEl.value = qatarHM(later);
-        }
         // يوم الراحة: الغد افتراضًا — وهو ما طلبته الإدارة («غدًا أوف»).
         const offEl = document.getElementById('presentOffDate');
         if (offEl && !offEl.value) {
@@ -2599,8 +2596,9 @@
         let fromTime = '', toTime = '';
 
         if (event === 'start') {
-            toTime = (document.getElementById('presentEndTime') || {}).value || '';
-            if (!toTime) { showStatus("Please choose the hour you will finish at.", "error"); return; }
+            // ⚠️ لا ساعة انتهاء بعد اليوم: أُزيلت الخانة بطلب المالك، ومعها زال
+            // الإنهاء التلقائي. `toTime` تبقى في المستند فارغةً حتى لا يتغيّر
+            // شكل السجلّات ولا تنكسر قراءةُ ما سُجّل قبل اليوم.
             fromTime = qatarHM(now);
         } else if (event === 'off') {
             date = (document.getElementById('presentOffDate') || {}).value || '';
@@ -2635,7 +2633,8 @@
             });
 
             let msg;
-            if (event === 'start') msg = `Recorded: on duty from ${fromTime} until ${toTime}. The management panel now shows you as available.`;
+            if (event === 'start') msg = `Recorded: on duty from ${fromTime}. The management panel now shows you as available `
+                + `until you press "I have finished my shift".`;
             else if (event === 'end') msg = `Recorded: your shift has ended. The panel now shows that you have finished for today.`;
             else msg = `Recorded: you are off on ${date}. The panel will show that on the day.`;
             showStatus(msg, "success");

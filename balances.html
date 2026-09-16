@@ -308,6 +308,27 @@
         padding: 10px 12px; color: var(--color-text);
     }
     .mgr .why { margin: 6px 0 0; font-size: 11.5px; color: var(--color-text-muted); }
+    /* ⭐ زرّ الواتساب — بطلب السيدة فاطمة. مساحة لمسٍ مريحة على الهاتف (44px). */
+    .mgr .wabar { margin: 10px 0 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .mgr .wa {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-height: 40px; padding: 0 18px; border-radius: 999px;
+        background: #25D366; color: #073b23; font-weight: 800; font-size: 13.5px;
+        text-decoration: none; letter-spacing: .2px;
+    }
+    .mgr .wa:hover { filter: brightness(1.06); }
+    .mgr .wa.alt {
+        background: transparent; color: var(--color-text-muted);
+        border: 1px solid var(--color-border); min-height: 34px; padding: 0 12px;
+        font-weight: 700; font-size: 12px;
+    }
+    /* ولا رقم عنده: يُقال صريحًا بلا زرٍّ يُوهم أنه يعمل ثم لا يفتح شيئًا. */
+    .mgr .wa.none {
+        background: transparent; color: var(--color-text-muted);
+        border: 1px dashed var(--color-border); min-height: 34px; padding: 0 12px;
+        display: inline-flex; align-items: center; border-radius: 999px;
+        font-size: 12px; font-weight: 700;
+    }
     .pick {
         display: flex; align-items: center; gap: var(--space-4);
         width: 100%; height: auto; text-align: start;
@@ -1142,6 +1163,62 @@
     function cardIsManager(c) { return c.isManager === true || (c.isManager === undefined && c.isSupervisor === undefined); }
     function cardIsSupervisor(c) { return c.isSupervisor === true; }
 
+    // =====================================================================
+    // ⭐⭐ زرّ واتساب أمام كل واحد — بطلب السيدة فاطمة
+    // ---------------------------------------------------------------------
+    // ⚠️ الرقم يُقرأ من **البطاقة** لا من ملف الموظف: هذه الصفحة لا تقرأ مستندات
+    // الموظفين إطلاقًا (فيها الرواتب وصور الهويات). فلوحة الإدارة تنسخ الهاتف
+    // على البطاقة، وتُحدّثه تلقائيًّا كلّما تغيّر في الملف.
+    //
+    // ⚠️⚠️ وعلى الهاتف يُستعمل النظام الأصلي `whatsapp://` لا `wa.me`: رابط wa.me
+    // رابطُ **ويب**، يمرّ بصفحة تحويل ويعتمد على ربطٍ في نظام التشغيل ليُسلّم
+    // للتطبيق — وذلك يفشل كثيرًا (خاصةً داخل متصفّحات التطبيقات) فيُلقي بها في
+    // web.whatsapp.com بدل التطبيق. أما الكمبيوتر فـwa.me هو الصحيح فيه.
+    //
+    // ⚠️ ولا `target="_blank"` مع النظام الأصلي: يترك تبويبًا فارغًا خلفه.
+    // ⚠️ وعنصر <a> لا زرٌّ يُنادي window.open: المتصفّحات تحجب النوافذ المُبرمجة
+    // ولا تحجب انتقال الرابط.
+    // =====================================================================
+    const IS_PHONE = /android|iphone|ipad|ipod|iemobile|blackberry|opera mini|webos/i.test(navigator.userAgent || '');
+
+    /**
+     * يُحوّل الرقم المخزَّن إلى صيغةٍ دولية يفهمها واتساب، أو '' إن لم يصلح.
+     * ⚠️ الأرقام مخزَّنة بصيغٍ مختلفة: «+974XXXXXXXX» و«974XXXXXXXX» و«XXXXXXXX»
+     * محليًّا، وبعضها «+974» وحدها كعلامةٍ فارغة كتبها البذر القديم. وفتحُ محادثة
+     * برقمٍ ناقص يُخرج رسالة خطأ من واتساب فتظنّ أن اللوحة معطوبة — فالأصدق ألّا
+     * يظهر الزرّ إطلاقًا.
+     */
+    function waNumber(raw) {
+        let d = String(raw || '').replace(/[^0-9]/g, '');
+        if (!d) return '';
+        if (d.startsWith('00')) d = d.slice(2);
+        // رقم قطري محلي: ٨ خانات تبدأ بـ3 أو 5 أو 6 أو 7
+        if (d.length === 8 && /^[3567]/.test(d)) return '974' + d;
+        // بمقدّمة قطر: 974 + ٨ خانات
+        if (d.length === 11 && d.startsWith('974')) return d;
+        // أرقام دول أخرى (عمالة بأرقام بلدانها) — تُقبل إن كانت معقولة الطول
+        if (d.length >= 10 && d.length <= 15) return d;
+        return '';                                  // «974» وحدها أو رقمٌ ناقص
+    }
+
+    /** زرّ الواتساب، أو تنبيهٌ صادق أنه لا رقم له. */
+    function waButton(name, rawPhone) {
+        const num = waNumber(rawPhone);
+        if (!num) {
+            return `<span class="wa none" title="No phone number on this card">No number</span>`;
+        }
+        const href = IS_PHONE
+            ? `whatsapp://send?phone=${num}`
+            : `https://wa.me/${num}`;
+        // ⚠️ ورابطٌ احتياطي ظاهر على الهاتف: لو لم يكن التطبيق مثبَّتًا فالضغط على
+        // `whatsapp://` لا يفعل شيئًا إطلاقًا وتبقى واقفةً بلا أي رسالة.
+        const fallback = IS_PHONE
+            ? `<a class="wa alt" href="https://wa.me/${num}" target="_blank" rel="noopener">web</a>`
+            : '';
+        return `<a class="wa" href="${href}"${IS_PHONE ? '' : ' target="_blank" rel="noopener"'}
+                   aria-label="WhatsApp ${escapeHtml(name)}">WhatsApp</a>${fallback}`;
+    }
+
     /** ترتيب الأحداث بساعة الخادم — لا بساعة جهاز من كتبها. */
     function mgrEventMillis(e) {
         const t = e.serverTime || e.deviceTime;
@@ -1194,14 +1271,21 @@
         const last = evs[evs.length - 1];
         if (last.event === 'off') return { state: 'rest', ev: last };
         if (last.event === 'end') return { state: 'ended', ev: last, auto: false };
-        // 'start' — هل مضت الساعة التي حدّدها؟
-        const now = new Date();
-        const nowHM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        // ⚠️ الساعة بتوقيت **قطر** لا بتوقيت جهازها: نفس العطل الذي أضاع سجلّات
+        // اليوم كله. المدير يكتب ساعته بتوقيت قطر، فمقارنتها بساعة جهازٍ آخر
+        // كانت تُنهي دوامه قبل وقته أو تُبقيه ساعاتٍ زائدة.
+        const p = qatarParts(new Date());
+        const nowHM = `${p.hour}:${p.minute}`;
         const today = todayISOLocal();
         // يومٌ ماضٍ وبدايةٌ بلا انتهاء: دوامه انتهى بالبديهة.
-        if (day < today) return { state: 'ended', ev: last, auto: true };
+        if (day < today) return { state: 'ended', ev: last, auto: true, autoReason: 'pastDay' };
         if (day > today) return { state: 'active', ev: last, auto: false };
-        if (last.toTime && nowHM >= last.toTime) return { state: 'ended', ev: last, auto: true };
+        // ⚠️ ولا يبقى هذا إلا للسجلّات القديمة: خانة ساعة الانتهاء أُزيلت بطلب
+        // المالك، فالسجلّات الجديدة بلا `toTime` ولا تُنهى تلقائيًّا أبدًا — لا
+        // ينتهي دوامه إلا بضغطته على الزرّ الأحمر.
+        if (last.toTime && nowHM >= last.toTime) {
+            return { state: 'ended', ev: last, auto: true, autoReason: 'statedHour' };
+        }
         return { state: 'active', ev: last, auto: false };
     }
 
@@ -1223,9 +1307,13 @@
     function mgrMessage(st, name, title) {
         const who = title ? `${name} &mdash; ${escapeHtml(title)}` : name;
         if (st.state === 'active') {
-            return `Hello Mrs Fatima, I am ${who}. I am on duty from `
-                + `<b>${escapeHtml(st.ev.fromTime || '—')}</b> until <b>${escapeHtml(st.ev.toTime || '—')}</b>, `
-                + `and I am happy to be at your service at any time.`;
+            // ⚠️ خانة «سأنتهي في الساعة كذا» أُزيلت بطلب المالك، فلا تُذكر ساعة
+            // انتهاءٍ لم يقلها أحد. والسجلّات القديمة فيها الساعة فتُذكر كما
+            // سُجّلت — لا يُغيَّر تاريخٌ مضى.
+            return `Hello Mrs Fatima, I am ${who}. I am on duty since `
+                + `<b>${escapeHtml(st.ev.fromTime || '—')}</b>`
+                + (st.ev.toTime ? ` until <b>${escapeHtml(st.ev.toTime)}</b>` : '')
+                + `, and I am happy to be at your service at any time.`;
         }
         if (st.state === 'ended') {
             return `Hello Mrs Fatima, I am ${who}. My shift has ended, but I am still `
@@ -1246,10 +1334,12 @@
         // ⚠️ لولا الثاني لكان مديرٌ ضغط الزرّ ولم تُرفع له صورة **غائبًا تمامًا**
         // عن الشاشة، فتظنّ أنه لم يسجّل شيئًا.
         const rows = mgrCards.filter(cardIsManager)
-            .map(c => ({ id: c.id, name: c.name || c.id, title: c.title || '', photo: safePhoto(c.photoBase64) }));
+            .map(c => ({ id: c.id, name: c.name || c.id, title: c.title || '',
+                         photo: safePhoto(c.photoBase64), phone: c.phone || '' }));
         mgrEvents.forEach(e => {
             if (!e.employeeId || rows.some(r => r.id === e.employeeId)) return;
-            rows.push({ id: e.employeeId, name: e.employeeName || e.employeeId, title: e.title || '', photo: '', noCard: true });
+            rows.push({ id: e.employeeId, name: e.employeeName || e.employeeId, title: e.title || '',
+                        photo: '', phone: '', noCard: true });
         });
 
         if (!rows.length) {
@@ -1267,8 +1357,14 @@
             const initial = String(r.name).trim().charAt(0).toUpperCase() || '?';
             const msg = mgrMessage(st, escapeHtml(r.name), r.title);
             let why = '';
-            if (st.state === 'ended' && st.auto) {
+            // ⚠️ السببان يُفرَّق بينهما: «مضت الساعة التي كتبها» لا يقع إلا في
+            // سجلٍّ قديم (الخانة أُزيلت)، و«يومٌ مضى» هو الحالة الوحيدة الباقية.
+            // وخلطُهما كان سيكتب «الساعة التي أعطاها (—) قد مضت» — وهي جملة عن
+            // ساعةٍ لم يُعطها أحد.
+            if (st.state === 'ended' && st.auto && st.autoReason === 'statedHour') {
                 why = `Automatically shown as finished &mdash; the hour he gave (${escapeHtml((st.ev && st.ev.toTime) || '—')}) has passed. He did not press it himself.`;
+            } else if (st.state === 'ended' && st.auto) {
+                why = `This is a past day and he did not press the red button that day, so his shift is shown as over. He did not confirm it himself.`;
             } else if (st.state === 'ended') {
                 why = 'He confirmed this himself.';
             } else if (st.state === 'none') {
@@ -1284,6 +1380,7 @@
                     <p class="st">${escapeHtml(MGR_WORD[st.state] || '')}</p>
                     ${msg ? `<p class="msg">${msg}</p>` : ''}
                     ${why ? `<p class="why">${why}</p>` : ''}
+                    <p class="wabar">${waButton(r.name, r.phone)}</p>
                 </span>
             </div>`;
         }).join('');
@@ -1293,8 +1390,15 @@
         notes.push(`<b>${active} of ${rows.length} manager(s)</b> on duty on ${escapeHtml(day)}.`);
         notes.push(`Each manager presses this himself from his own screen. `
             + `It is a courtesy status, <b>not</b> an attendance record: no hours are counted and no salary is affected.`);
-        notes.push(`A manager shown as finished because his stated hour passed is marked as such &mdash; `
-            + `it is not the same as him confirming it.`);
+        // ⚠️ لم يبقَ إنهاءٌ تلقائيًّا في اليوم الحالي بعد إزالة خانة الساعة، فلا
+        // يُقال لها إنه يقع. ويبقى ذكرُه للأيام الماضية لأن سجلّاتها فيها ساعة.
+        notes.push(`Nobody is shown as finished automatically any more: a manager stays on duty until he `
+            + `presses the red <b>"I have finished my shift"</b> button himself. On a past day, a shift with `
+            + `no red button pressed is shown as over and marked as not confirmed by him.`);
+        const noNumber = rows.filter(r => !waNumber(r.phone)).length;
+        notes.push(`The <b>WhatsApp</b> button opens the chat with that person directly.`
+            + (noNumber ? ` <b>${noNumber} of them has no phone number yet</b> &mdash; the owner adds it in the `
+                + `employee file and it appears here by itself.` : ''));
         el('mgrNote').innerHTML = notes.join('<br><br>');
     }
 
@@ -1369,10 +1473,12 @@
         // القائمة = أصحاب بطاقات السوبرفايزر + أي من بصم اليوم بلا بطاقة، حتى
         // لا تكون بصمته غير مرئية لأن صورته لم تُرفع بعد.
         const rows = mgrCards.filter(cardIsSupervisor)
-            .map(c => ({ id: c.id, name: c.name || c.id, title: c.title || '', photo: safePhoto(c.photoBase64) }));
+            .map(c => ({ id: c.id, name: c.name || c.id, title: c.title || '',
+                         photo: safePhoto(c.photoBase64), phone: c.phone || '' }));
         supEvents.forEach(e => {
             if (!e.employeeId || rows.some(r => r.id === e.employeeId)) return;
-            rows.push({ id: e.employeeId, name: e.employeeName || e.employeeId, title: e.title || '', photo: '', noCard: true });
+            rows.push({ id: e.employeeId, name: e.employeeName || e.employeeId, title: e.title || '',
+                        photo: '', phone: '', noCard: true });
         });
 
         if (!rows.length) {
@@ -1402,6 +1508,7 @@
                     <p class="st">${escapeHtml(SUP_WORD[st.state] || '')}</p>
                     ${st.ev && st.ev.branch ? `<p class="why">${escapeHtml(String(st.ev.branch))}</p>` : ''}
                     <p class="why">${why}</p>
+                    <p class="wabar">${waButton(r.name, r.phone)}</p>
                 </span>
             </div>`;
         }).join('');
@@ -1414,6 +1521,10 @@
         notes.push(`<b>"No record" is not the same as absent.</b> The full attendance record lives in the `
             + `dashboard; this board only mirrors the moment of clocking in and out, so a missing line means `
             + `nothing was mirrored, not that the person did not come.`);
+        const supNoNumber = rows.filter(r => !waNumber(r.phone)).length;
+        notes.push(`The <b>WhatsApp</b> button opens the chat with that person directly.`
+            + (supNoNumber ? ` <b>${supNoNumber} of them has no phone number yet</b> &mdash; the owner adds it in `
+                + `the employee file and it appears here by itself.` : ''));
         el('supNote').innerHTML = notes.join('<br><br>');
     }
 

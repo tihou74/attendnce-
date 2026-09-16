@@ -11660,31 +11660,50 @@
             // فتُقارن على هذا الأساس حتى لا تُعاد كتابتها بلا داعٍ كل مرة.
             const curMgr = cardIsManager(c);
             const curSup = cardIsSupervisor(c);
-            if (curMgr === mgr && curSup === sup) return;
-            fixes.push({ id: c.id, name: emp.name || c.id, mgr, sup, curMgr, curSup });
+            // ⭐⭐ والهاتف كذلك يُلاحق الملف: زرّ واتساب على لوحتها يقرأ الرقم من
+            // البطاقة. وبلا هذا كان على المالك أن يُعيد حفظ إحدى عشرة بطاقة بيده
+            // لمجرّد أن يظهر الزرّ — والرقم يتغيّر، فلو جُمّد لَفتح محادثةً مع رقمٍ
+            // لم يبقَ لصاحبه.
+            const phone = String(emp.phone || '');
+            const curPhone = String(c.phone || '');
+            if (curMgr === mgr && curSup === sup && curPhone === phone) return;
+            fixes.push({ id: c.id, name: emp.name || c.id, mgr, sup, curMgr, curSup,
+                phone, phoneChanged: curPhone !== phone });
         });
         if (!fixes.length) return;
         try {
             for (const f of fixes) {
                 await updateDoc(doc(db, "manager_cards", f.id), {
-                    isManager: f.mgr, isSupervisor: f.sup, updatedAt: serverTimestamp()
+                    isManager: f.mgr, isSupervisor: f.sup, phone: f.phone,
+                    updatedAt: serverTimestamp()
                 });
             }
             logAudit('Manager card flags repaired',
                 fixes.map(f => `${f.name}: ${f.curMgr ? 'M' : ''}${f.curSup ? 'S' : ''}`
-                    + ` -> ${f.mgr ? 'M' : ''}${f.sup ? 'S' : ''}${!f.mgr && !f.sup ? 'none' : ''}`).join(' · '));
+                    + ` -> ${f.mgr ? 'M' : ''}${f.sup ? 'S' : ''}${!f.mgr && !f.sup ? 'none' : ''}`
+                    + (f.phoneChanged ? ' (phone copied)' : '')).join(' · '));
             managerCards.forEach(c => {
                 const f = fixes.find(x => x.id === c.id);
-                if (f) { c.isManager = f.mgr; c.isSupervisor = f.sup; }
+                if (f) { c.isManager = f.mgr; c.isSupervisor = f.sup; c.phone = f.phone; }
             });
             renderManagerCardsTable();
             const st = document.getElementById('mcStatus');
             if (st) {
                 st.style.color = 'var(--success)';
-                st.innerHTML = `&#10004; <b>${fixes.length} card(s) were pointing at the wrong board and have been `
-                    + `corrected</b> from the employee files: `
-                    + escapeHtml(fixes.map(f => f.name).join(', '))
-                    + `. Mrs Fatima's board follows the employee file now.`;
+                // ⚠️ يُفرَّق بين السببين: قولُ «كانت تُشير إلى اللوحة الخطأ» عن
+                // بطاقةٍ لم يتغيّر فيها إلا رقم الهاتف كلامٌ غير صحيح.
+                const boardFixed = fixes.filter(f => f.curMgr !== f.mgr || f.curSup !== f.sup);
+                const phoneOnly = fixes.filter(f => !(f.curMgr !== f.mgr || f.curSup !== f.sup));
+                const parts = [];
+                if (boardFixed.length) {
+                    parts.push(`<b>${boardFixed.length} card(s) were pointing at the wrong board and have been `
+                        + `corrected</b> from the employee files: ${escapeHtml(boardFixed.map(f => f.name).join(', '))}`);
+                }
+                if (phoneOnly.length) {
+                    parts.push(`<b>${phoneOnly.length} phone number(s) were copied onto the cards</b> so the WhatsApp `
+                        + `button works on the management panel: ${escapeHtml(phoneOnly.map(f => f.name).join(', '))}`);
+                }
+                st.innerHTML = `&#10004; ` + parts.join('. ') + `. Mrs Fatima's board follows the employee files now.`;
             }
         } catch (e) {
             console.error('Could not repair the manager card flags:', e);
@@ -11767,6 +11786,14 @@
                 branch: emp.branch || '',
                 title: title,
                 photoBase64: photo,
+                // ⭐⭐ رقم الهاتف يُنسخ بطلب السيدة فاطمة: زرّ واتساب أمام كل
+                // واحد يفتح المحادثة معه مباشرة. ولوحتها لا تقرأ مستندات
+                // الموظفين إطلاقًا، فبلا هذا النسخ لا رقم عندها إطلاقًا.
+                // ⚠️ وهذا آمن هنا لأن قواعد manager_cards تسمح بالقراءة للحسابات
+                // المسجَّلة وحدها (isAdmin/isStaff/isViewer) — والكشك المجهول
+                // (isKiosk) **لا** يقرؤها. ولا يُنسخ إلا الهاتف: لا راتب ولا
+                // رقم هوية ولا صورة هوية.
+                phone: emp.phone || '',
                 // ⚠️ الدوران يُنسخان على البطاقة لحظة الحفظ: لوحة العرض لا تقرأ
                 // مستندات الموظفين إطلاقًا، فبلا هذين الحقلين لا تعرف في أي
                 // لوحة تُظهر هذه الصورة.
