@@ -2886,7 +2886,11 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import {
         getFirestore, collection, addDoc, getDoc, getDocs, deleteDoc, doc, setDoc, updateDoc,
-        query, orderBy, where, limit, writeBatch, serverTimestamp, onSnapshot
+        query, orderBy, where, limit, writeBatch, serverTimestamp, onSnapshot,
+        // ⭐⭐ getDocsFromServer: قراءةٌ تتجاوز الذاكرة المحليّة إجبارًا. لازمة لأن
+        // getDocs قد تُعيد نتيجةً **فارغة وناجحة** من ذاكرة فارغة، فلا خطأ يظهر
+        // ولا بيانات تصل — وهو العطل الذي أوقف عمل المالك.
+        getDocsFromServer
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import {
         getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut
@@ -4238,7 +4242,10 @@
         console.error('Load failed:', what, error);
 
         // فشلٌ عابر؟ نُعيد المحاولة بأنفسنا بدل أن نُخيف صاحب اللوحة بأصفار.
-        const transient = /permission|insufficient|unavailable|network|offline|failed to get|deadline/i.test(msg);
+        // ⚠️ «returned zero» مضافة عن قصد: قراءةٌ نجحت وعادت فارغة هي أشهر صور
+        // هذا العطل وأخفاها (لا خطأ يُطابق أي كلمة أخرى هنا)، فبلا إدراجها كانت
+        // اللافتة تظهر **بلا إعادة محاولة** فيبقى المالك أمام صفرٍ حتى يُحدّث بيده.
+        const transient = /permission|insufficient|unavailable|network|offline|failed to get|deadline|returned zero/i.test(msg);
         if (transient && loadAttempt < MAX_LOAD_RETRIES) {
             const box0 = document.getElementById('loadErrorBanner');
             if (box0) {
@@ -4331,9 +4338,29 @@
 
     window.loadEmployees = async function() {
         try {
-            const querySnapshot = await getDocs(collection(db, "employees"));
+            // =============================================================
+            // ⭐⭐⭐ قراءةٌ فارغة **ناجحة** — العطل الذي أوقف عمل المالك
+            // -------------------------------------------------------------
+            // ⚠️⚠️ ما رآه: «Active Employees = 0» ومعها 33 سجل بصمة و6 تقديمات
+            // و1 طلب — أي أن كل القراءات الأخرى نجحت، والموظفون وحدهم صفر. ولا
+            // لافتة خطأ، لأن القراءة **لم تفشل**: أعادت صفر مستند.
+            //
+            // والسبب أن getDocs تسقط إلى الذاكرة المحليّة إذا تعثّر الخادم لحظة،
+            // فتُعيد نتيجةً فارغةً **ناجحة** من ذاكرةٍ فارغة. فلا خطأ ولا بيانات.
+            // وقائمة الموظفين أوّل قراءة في الإقلاع، فهي أكثر ما يصيبه هذا.
+            //
+            // والعلاج: إن عادت فارغة **أو** جاءت من الذاكرة، تُعاد القراءة
+            // إجبارًا من الخادم (getDocsFromServer) التي لا تسقط إلى الذاكرة أبدًا.
+            // =============================================================
+            let querySnapshot = await getDocs(collection(db, "employees"));
+            if (querySnapshot.empty || (querySnapshot.metadata && querySnapshot.metadata.fromCache)) {
+                console.warn('Employee read was empty or from cache — forcing a server read.');
+                querySnapshot = await getDocsFromServer(collection(db, "employees"));
+            }
             allEmployees = [];
             querySnapshot.forEach((docSnap) => allEmployees.push({ id: docSnap.id, ...docSnap.data() }));
+            // العدد **قبل** أي مصفاة — يُستعمل في التشخيص أدناه.
+            const rawCount = allEmployees.length;
 
             // =============================================================
             // ⛔ البذر التلقائي أُلغي — وكان خطرًا حقيقيًّا وقع فعلًا
@@ -4366,11 +4393,34 @@
                 if (cnt) cnt.innerText = '0';
                 filterEmployeesList();
                 filterEmployeeDirectory();
+                // ⚠️⚠️ ولا يُترك الصفر صامتًا بعد اليوم: كانت الرسالة تُكتب في
+                // تبويب الموظفين وحده، والمالك كان على الرئيسية فلم يرَ سببًا
+                // واحدًا — رأى صفرًا وظنّ النظام معطوبًا. واللافتة الحمراء تظهر
+                // في كل التبويبات، ومعها إعادة محاولةٍ تلقائية.
+                reportLoadFailure('Employee files',
+                    new Error('The read succeeded but returned zero employees — this is almost always a '
+                        + 'momentary network problem, not lost data. Retrying by itself.'));
                 return;
             }
 
             // العدد المعروض هو العاملون فعلًا — وهذا ما كان ينفخ رقم الرواتب.
-            document.getElementById("homeEmpCount").innerText = activeEmployees().length;
+            const shownCount = activeEmployees().length;
+            document.getElementById("homeEmpCount").innerText = shownCount;
+            // ⭐⭐ وإن قُرئت السجلات ولم يظهر أحد، فالسبب **مصفاة النشاط** لا القراءة.
+            // وهذان سببان مختلفان تمامًا، وخلطُهما يُضيّع وقتًا في البحث في المكان
+            // الخطأ. فيُقال أيّهما بالحرف، ومعه المخرج بضغطة واحدة.
+            if (rawCount > 0 && shownCount === 0) {
+                const box = document.getElementById('loadErrorBanner');
+                if (box) {
+                    box.style.display = 'block';
+                    box.innerHTML = `<b style="font-size: 15px;">&#9888; Your ${rawCount} employee records were read `
+                        + `correctly &mdash; but none of them belong to the business you are viewing`
+                        + `${activeBiz ? ' (' + escapeHtml(BIZ_LABEL[activeBiz] || activeBiz) + ')' : ''}.</b>`
+                        + `<br><br><b>Nothing is lost.</b> This is the business filter, not a reading problem. `
+                        + `Press the button below to see all of them again.`
+                        + `<br><br><button class="btn-danger btn-sm" onclick="showBizChooser()">Show the business chooser</button>`;
+                }
+            }
             // النافذتان تُرسمان معًا: الفصل بصري لا في البيانات، ومصدرهما واحد.
             filterEmployeesList();
             filterEmployeeDirectory();
