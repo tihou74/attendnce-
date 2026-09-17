@@ -1580,6 +1580,19 @@
                 is written into the app. Each one signs in to her own screen with the PIN you give her.
                 She never chooses a shop in advance: she picks it every time she sends a report.
             </p>
+            <!-- ⚠️⚠️ هذه الخطوات الثلاث أُضيفت لأن المالك وقف عندها: سأل «أين
+                 أضيفهم؟ لا أستطيع إضافتهم ولا صورهم». والسبب عيبٌ في التصميم لا
+                 في فهمه — خانة الصورة تظهر **داخل صفّ البياعة**، وجدوله فارغ فلا
+                 صفَّ فيه، والشاشة لم تقل إن الصورة تأتي بعد الإضافة وبعد إنشاء
+                 الملف. فصار الترتيب مكتوبًا حيث يقف بصره. -->
+            <p class="card-sub" style="background: var(--surface-2); border-left: 3px solid var(--accent);
+                border-radius: 8px; padding: 10px 12px; margin-top: -4px;">
+                <b>Three steps, in this order:</b><br>
+                <b>1.</b> Type her name in the <b>Name</b> box below and a PIN, then press <b>Add</b>. Her row appears in the table.<br>
+                <b>2.</b> On her row, press <b>Create employee file</b>. Attendance and salary need that file.<br>
+                <b>3.</b> Her row then shows a <b>Photo</b> box on the right &mdash; choose the picture and press <b>Save</b>.
+                <span style="color: var(--text-dim);">The photo box only exists on a row, so it cannot appear before step 1.</span>
+            </p>
             <div class="controls" style="align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-bottom: 14px;">
                 <div style="flex: 1; min-width: 200px;"><label for="abNewSellerName">Name</label><input type="text" id="abNewSellerName" placeholder="Full name"></div>
                 <div style="width: 150px;"><label for="abNewSellerPin">PIN (4&ndash;8 digits)</label><input type="text" id="abNewSellerPin" inputmode="numeric" maxlength="8" placeholder="1234"></div>
@@ -8781,7 +8794,14 @@
         if (!body) return;
         const editable = canEditAbayaSetup();
         if (!abayaSellers.length) {
-            body.innerHTML = `<tr><td colspan="7" style="text-align:center;">No saleswoman added yet. Add the first one above.</td></tr>`;
+            // ⚠️ «لا بياعة بعد» وحدها لم تكن تكفي: المالك وقف يبحث عن مكان رفع
+            // الصورة في جدولٍ فارغ. فالصفُّ الفارغ يقول الخطوة التالية بالحرف.
+            body.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 18px;">
+                <b>No saleswoman added yet.</b><br>
+                <span style="color: var(--text-dim); font-size: 12.5px;">
+                    Type her name in the <b>Name</b> box above and press <b>Add</b>. Her row appears here,
+                    and the boxes for her employee file and her photo appear on that row.
+                </span></td></tr>`;
             return;
         }
         body.innerHTML = abayaSellers.map(s => {
@@ -8924,8 +8944,20 @@
         if (!canEditAbayaSetup()) { show('Only the owner can add a saleswoman.', 'var(--danger)'); return; }
         const name = (document.getElementById('abNewSellerName').value || '').trim();
         const pin = (document.getElementById('abNewSellerPin').value || '').trim();
-        if (!name) { show('Write her name.', 'var(--danger)'); return; }
-        if (!/^\d{4,8}$/.test(pin)) { show('The PIN must be 4 to 8 digits.', 'var(--danger)'); return; }
+        // ⚠️ الرسالة تقول **أي خانة** ويُنقل المؤشّر إليها: «Write her name» وحدها
+        // تركت المالك يبحث عن الخانة المقصودة في شاشةٍ فيها خانات كثيرة.
+        if (!name) {
+            show('Write her name in the Name box first, then press Add. The Name box is empty.', 'var(--danger)');
+            const el = document.getElementById('abNewSellerName');
+            if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+            return;
+        }
+        if (!/^\d{4,8}$/.test(pin)) {
+            show('The PIN box needs 4 to 8 digits — that is the number she types to sign in to her own screen.', 'var(--danger)');
+            const el = document.getElementById('abNewSellerPin');
+            if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+            return;
+        }
         // اسمان متطابقان يجعلان التقارير غير قابلة للتمييز — نمنع ونشرح.
         if (abayaSellers.some(s => String(s.name || '').trim().toLowerCase() === name.toLowerCase())) {
             show(`"${name}" already exists. If this is a second person with the same name, add a distinguishing part `
@@ -8945,7 +8977,11 @@
             document.getElementById('abNewSellerName').value = '';
             document.getElementById('abNewSellerPin').value = '';
             await loadAbayaData();
-            show(`${name} added. She can now sign in on the saleswomen screen with PIN ${pin}.`, 'var(--success)');
+            // ⚠️ ويُقال **الخطوة التالية** لا مجرّد «تمّ»: الإضافة وحدها لا تُمكّن
+            // بصمتها ولا صورتها، والمالك وقف عند هذا بالضبط.
+            show(`${name} added — she can sign in on her screen with PIN ${pin}. `
+                + `Next, on her row: press "Create employee file", then the Photo box appears on that same row.`,
+                'var(--success)');
         } catch (e) {
             show('Error: ' + e.message, 'var(--danger)');
         }
