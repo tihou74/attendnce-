@@ -27,7 +27,7 @@
 // تبويبًا جديدًا بعد نشره. v3: أُزيل التحويل التلقائي من report.html (كان يُبطل تثبيت تطبيق المديرين على
 // iOS)، ويجب إبطال
 // الكاش القديم حتى لا يبقى من ثبّت التطبيق سابقًا على النسخة القديمة.
-const CACHE_VERSION = 'v89';
+const CACHE_VERSION = 'v90';
 const SHELL_CACHE = `alsheikha-shell-${CACHE_VERSION}`;
 const ASSET_CACHE = `alsheikha-assets-${CACHE_VERSION}`;
 
@@ -83,7 +83,10 @@ const SHELL_FILES = [
     './icons/abayaview-touch.png',
     // ⚠️ وشعار الشيخة ستايل يُخزَّن مع القشرة لا عند أول طلب: كانت الترويسة
     // تعرض الحرفين «AS» حتى يُحمَّل، وشاشة البياعة تُفتح في المحلّ بشبكة ضعيفة.
-    './brand/al-sheikha-style-logo.png'
+    './brand/al-sheikha-style-logo.png',
+    // ⚠️ وشعار قيمر وكاهي: صار يُعرض على بطاقة اختيار النشاط في اللوحة، ويجب أن
+    // يظهر بلا إنترنت كذلك. وكان قبل اليوم يُطلب من مستودعٍ آخر في كل مرة.
+    './brand/gaimer-w-kahi-logo.png'
 ];
 
 // نطاقات يجب أن تمر إلى الشبكة دائمًا بلا اعتراض ولا تخزين.

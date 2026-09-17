@@ -227,13 +227,27 @@
     .biz-pick:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--primary); }
     .biz-pick.abaya:hover { border-color: #A89060; }
     .biz-pick:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    /* ⚠️⚠️ كانت دائرةً صغيرة (68px) وفيها أيقونة شوكة وسكين — وطلب المالك شعاره
+       الحقيقي مكانها. والدائرة لا تصلح للشعارين: شعار قيمر وكاهي **عريض**
+       (711×351) فيصير في دائرةٍ 68px شريطًا رقيقًا لا يُقرأ، وشعار الشيخة ستايل
+       **طويل** (750×1024) فيصير عمودًا نحيلًا. فصارت لوحةً عريضة بارتفاع ثابت
+       والشعار يُحتوى فيها (object-fit: contain) — فتحترم النسبتين معًا.
+       ⚠️ وخلفيتها **بيضاء صريحة دائمًا**: شعار قيمر وكاهي خطٌّ أسود بخلفية شفافة،
+       فعلى الوضع الليلي كان سيختفي تمامًا. */
+    .biz-logo {
+        width: 100%; height: 96px; border-radius: 12px; background: #FFFFFF;
+        border: 1px solid var(--border); display: flex; align-items: center;
+        justify-content: center; padding: 10px 16px; box-sizing: border-box;
+    }
+    .biz-logo img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+    /* الأيقونة الاحتياطية إن لم يُحمَّل الشعار — لا لوحةٌ فارغة. */
     .biz-ic {
-        flex: 0 0 auto; width: 68px; height: 68px; border-radius: 50%;
-        background: var(--surface-2); display: flex; align-items: center; justify-content: center;
+        flex: 0 0 auto; width: 60px; height: 60px; border-radius: 50%;
+        background: var(--surface-2); display: none; align-items: center; justify-content: center;
         color: var(--primary); border: 1px solid var(--border);
     }
     .biz-pick.abaya .biz-ic { color: #A89060; }
-    .biz-ic svg { width: 34px; height: 34px; }
+    .biz-ic svg { width: 30px; height: 30px; }
     .biz-tx { display: flex; flex-direction: column; gap: 6px; min-width: 0; width: 100%; }
     .biz-t1 { font-size: 18px; font-weight: 800; letter-spacing: -.01em; }
     /* ⚠️ السطر العربي في اتجاهه الصحيح وبسطرٍ واحد قصير — كان يلتفّ ويزحم. */
@@ -455,6 +469,12 @@
         </div>
         <div class="biz-chooser">
             <button type="button" class="biz-pick" onclick="chooseBiz('rest')">
+                <!-- ⚠️ الشعار من **داخل هذا المستودع** لا من مستودعٍ آخر: يُخزَّن مع
+                     التطبيق فيعمل بلا إنترنت، ولا يعتمد على رابطٍ قد يتغيّر. -->
+                <span class="biz-logo">
+                    <img src="./brand/gaimer-w-kahi-logo.png" alt="Gaimer W Kahi"
+                         onerror="this.style.display='none'; this.parentNode.nextElementSibling.style.display='flex';">
+                </span>
                 <span class="biz-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v8a3 3 0 0 0 6 0V3"/><path d="M9 11v10"/><path d="M17 3c-1.5 2-2 3.5-2 6s.5 3 2 3 2-.5 2-3-.5-4-2-6z"/><path d="M17 12v9"/></svg></span>
                 <span class="biz-tx">
                     <span class="biz-t1">Restaurants</span>
@@ -464,6 +484,10 @@
                 </span>
             </button>
             <button type="button" class="biz-pick abaya" onclick="chooseBiz('abaya')">
+                <span class="biz-logo">
+                    <img src="./brand/al-sheikha-style-logo.png" alt="Al Sheikha Style"
+                         onerror="this.style.display='none'; this.parentNode.nextElementSibling.style.display='flex';">
+                </span>
                 <span class="biz-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l3 5-3 1v12H9V9L6 8z"/><path d="M9 9h6"/></svg></span>
                 <span class="biz-tx">
                     <span class="biz-t1">Al Sheikha Style</span>
