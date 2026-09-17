@@ -27,7 +27,7 @@
 // تبويبًا جديدًا بعد نشره. v3: أُزيل التحويل التلقائي من report.html (كان يُبطل تثبيت تطبيق المديرين على
 // iOS)، ويجب إبطال
 // الكاش القديم حتى لا يبقى من ثبّت التطبيق سابقًا على النسخة القديمة.
-const CACHE_VERSION = 'v96';
+const CACHE_VERSION = 'v97';
 const SHELL_CACHE = `alsheikha-shell-${CACHE_VERSION}`;
 const ASSET_CACHE = `alsheikha-assets-${CACHE_VERSION}`;
 

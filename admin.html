@@ -8732,6 +8732,12 @@
             : `<span style="width:44px; height:44px; border-radius:50%; background: var(--surface-2);
                  border:1px dashed var(--border); display:flex; align-items:center; justify-content:center;
                  font-weight:800; color: var(--text-dim); flex:0 0 auto;">${escapeHtml(initial)}</span>`;
+        // ⚠️⚠️ ويُقال إن لا رقم لها: زرّ الواتساب على لوحة السيدة فاطمة يقرأ الرقم
+        // من ملفّها، فبلا رقمٍ لا زرّ — وهي تظنّ اللوحة معطوبة. فالنقص يُقال هنا
+        // حيث يُصلَح، ومعه الخانة التي تُفتح.
+        const noPhone = !String(emp.phone || '').replace(/[^0-9]/g, '').match(/^(974)?[0-9]{8,}$/)
+            ? `<br><small style="color: var(--warning); font-weight:700;">&#9888; no phone in her profile &mdash;
+                 Mrs Fatima gets no WhatsApp button</small>` : '';
         if (!editable) {
             return `<div style="display:flex; gap:8px; align-items:center;">${thumb}`
                 + `<small style="color: var(--text-dim);">${photo ? escapeHtml(title || '—') : 'no photo yet'}</small></div>`;
@@ -8749,6 +8755,7 @@
                     ${photo ? `<button class="btn-ghost btn-sm" onclick="deleteAbayaSellerCard('${eid}')">Remove</button>` : ''}
                 </div>
                 <small id="abCardMsg_${eid}" style="display:block; margin-top:4px; font-size:11px;"></small>
+                ${noPhone}
             </div>
         </div>`;
     }
@@ -8793,6 +8800,14 @@
                 sellerId: seller ? String(seller.id) : '',
                 name: (seller && seller.name) ? String(seller.name) : (emp.name || empId),
                 title: title,
+                // ⭐⭐ الفرع والهاتف يُنسخان من ملفّها: لوحة السيدة فاطمة لا تستطيع
+                // قراءة مجموعة الموظفين إطلاقًا (فيها الرواتب والهويات)، فما لا
+                // يُنسخ إلى البطاقة لا يظهر لها بحال.
+                // ⚠️ ويُلاحقان الملفَّ تلقائيًّا في repairAbayaCardFields — فرقمٌ
+                // مجمَّد يفتح محادثةً مع رقمٍ لم يبقَ لصاحبه، وفرعٌ مجمَّد يقول
+                // إنها في محلٍّ غادرته.
+                shop: String(emp.branch || ''),
+                phone: String(emp.phone || ''),
                 photoBase64: photo,
                 updatedAt: serverTimestamp()
             });
@@ -8823,12 +8838,51 @@
         }
     };
 
+    /**
+     * ⭐⭐ الفرع والهاتف على البطاقة يُلاحقان ملفَّ الموظفة.
+     *
+     * ⚠️⚠️ ولماذا نسخٌ لا قراءةٌ مباشرة: السيدة فاطمة **لا تستطيع** قراءة مجموعة
+     * الموظفين بالقواعد — فيها الرواتب وأرقام الهويات وصورها. فالبطاقة نسخةٌ
+     * محدودة مقصودة، وثمنُ ذلك أن النسخة تقدُم. وهذه الدالّة تدفع الثمن.
+     *
+     * ⚠️ وبلا هذا كان على المالك أن يُعيد رفع صورة كل بياعةٍ بيده لمجرّد أن
+     * يتغيّر رقمها أو تنتقل إلى محلٍّ آخر — ولن يفعل، فيبقى الزرّ يفتح محادثةً مع
+     * رقمٍ قديم واللوحة تقول إنها في محلٍّ غادرته. وذلك أسوأ من لا معلومة.
+     */
+    async function repairAbayaCardFields() {
+        if (currentRole !== ROLE_ADMIN) return;
+        if (!Array.isArray(allEmployees) || !allEmployees.length) return;   // لا حكم بلا قائمة
+        const fixes = [];
+        (abayaSellerCards || []).forEach(c => {
+            const emp = allEmployees.find(e => e.id === c.id);
+            if (!emp) return;                       // بقيّة مهجورة — شأن أداة اللوحة
+            const shop = String(emp.branch || '');
+            const phone = String(emp.phone || '');
+            if (String(c.shop || '') === shop && String(c.phone || '') === phone) return;
+            fixes.push({ id: c.id, shop, phone });
+        });
+        if (!fixes.length) return;
+        try {
+            for (const f of fixes) {
+                await updateDoc(doc(db, "abaya_seller_cards", f.id), {
+                    shop: f.shop, phone: f.phone, updatedAt: serverTimestamp()
+                });
+                const c = abayaSellerCards.find(x => x.id === f.id);
+                if (c) { c.shop = f.shop; c.phone = f.phone; }
+            }
+        } catch (e) {
+            // ⚠️ لا تُقاطع المالك: هذا تصحيحٌ صامت، وفشلُه يعني بطاقةً قديمة لا عطلًا.
+            console.error('Could not refresh the saleswomen cards from their files:', e);
+        }
+    }
+
     /** يقرأ بطاقات البياعات. ⚠️ فشلُها لا يُعطّل تبويب العبايات كلّه. */
     async function loadAbayaSellerCards() {
         try {
             const snap = await getDocs(collection(db, "abaya_seller_cards"));
             abayaSellerCards = [];
             snap.forEach(d => abayaSellerCards.push({ id: d.id, ...d.data() }));
+            await repairAbayaCardFields();
         } catch (e) {
             // ⚠️ السبب الأغلب: القواعد الجديدة (v15) لم تُنشر بعد. فيُقال ذلك في
             // الكونسول ولا تُفرَّغ القائمة بصمت — والخانة ستقول «no photo yet».

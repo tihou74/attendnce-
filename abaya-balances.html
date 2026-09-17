@@ -296,6 +296,29 @@
         padding: 10px 12px; color: var(--color-text);
     }
     .mgr .why { margin: 6px 0 0; font-size: 11.5px; color: var(--color-text-muted); }
+    /* ⭐ اسم المحلّ **تحت الاسم مباشرةً** بطلب المالك: هو أول ما يُسأل عنه. */
+    .mgr .shop { margin: 4px 0 0; font-size: var(--text-sm); font-weight: 700; color: var(--color-text); }
+    /* ⭐ زرّ الواتساب — بطلب المالك. مساحة لمسٍ مريحة على الهاتف. */
+    .mgr .wabar { margin: 10px 0 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .mgr .wa {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-height: 40px; padding: 0 18px; border-radius: 999px;
+        background: #25D366; color: #073b23; font-weight: 800; font-size: 13.5px;
+        text-decoration: none; letter-spacing: .2px;
+    }
+    .mgr .wa:hover { filter: brightness(1.06); }
+    .mgr .wa.alt {
+        background: transparent; color: var(--color-text-muted);
+        border: 1px solid var(--color-border); min-height: 34px; padding: 0 12px;
+        font-weight: 700; font-size: 12px;
+    }
+    /* ولا رقم لها: يُقال صريحًا بلا زرٍّ يُوهم أنه يعمل ثم لا يفتح شيئًا. */
+    .mgr .wa.none {
+        background: transparent; color: var(--color-text-muted);
+        border: 1px dashed var(--color-border); min-height: 34px; padding: 0 12px;
+        display: inline-flex; align-items: center; border-radius: 999px;
+        font-size: 12px; font-weight: 700;
+    }
     .hidden { display: none !important; }
 </style>
 </head>
@@ -1278,6 +1301,47 @@
         const s = String(v || '');
         return /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(s) ? s : '';
     }
+
+    // =====================================================================
+    // زرّ الواتساب — نسخةٌ مطابقة لما في balances.html، وعن قصد
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ النظام الأصلي على الهاتف (whatsapp://) لا رابط wa.me: رابط wa.me على
+    // الهاتف يمرّ بصفحة تحويلٍ ثم يعتمد على ربطٍ في النظام كثيرًا ما يفشل —
+    // فينتهي في متصفّح الويب بدل التطبيق. وقد أبلغ المالك عن هذا بعينه.
+    // ⚠️ ولا target="_blank" مع whatsapp:// — يُبقي تبويبًا فارغًا.
+    // ⚠️ ورابطٌ احتياطي ظاهر: لو لم يكن التطبيق مثبَّتًا فالضغط لا يفعل شيئًا
+    // إطلاقًا وتبقى واقفةً بلا أي رسالة.
+    // =====================================================================
+    const IS_PHONE = /android|iphone|ipad|ipod|iemobile|blackberry|opera mini|webos/i.test(navigator.userAgent || '');
+
+    /**
+     * يُحوّل الرقم المخزَّن إلى صيغةٍ دولية يفهمها واتساب، أو '' إن لم يصلح.
+     * ⚠️ فتحُ محادثةٍ برقمٍ ناقص يُخرج رسالة خطأ من واتساب فتظنّ أن اللوحة معطوبة —
+     * فالأصدق ألّا يظهر الزرّ إطلاقًا. و«+974» وحدها علامةٌ فارغة لا رقم.
+     */
+    function waNumber(raw) {
+        let d = String(raw || '').replace(/[^0-9]/g, '');
+        if (!d) return '';
+        if (d.startsWith('00')) d = d.slice(2);
+        if (d.length === 8 && /^[3567]/.test(d)) return '974' + d;   // رقم قطري محلي
+        if (d.length === 11 && d.startsWith('974')) return d;
+        if (d.length >= 10 && d.length <= 15) return d;              // أرقام دولٍ أخرى
+        return '';
+    }
+
+    /** زرّ الواتساب، أو تنبيهٌ صادق أنه لا رقم لها. */
+    function waButton(name, rawPhone) {
+        const num = waNumber(rawPhone);
+        if (!num) {
+            return `<span class="wa none" title="No phone number on her file">No number</span>`;
+        }
+        const href = IS_PHONE ? `whatsapp://send?phone=${num}` : `https://wa.me/${num}`;
+        const fallback = IS_PHONE
+            ? `<a class="wa alt" href="https://wa.me/${num}" target="_blank" rel="noopener">web</a>`
+            : '';
+        return `<a class="wa" href="${href}"${IS_PHONE ? '' : ' target="_blank" rel="noopener"'}
+                   aria-label="WhatsApp ${escapeHtml(name)}">WhatsApp</a>${fallback}`;
+    }
     /** لحظةُ الحدث بساعة الخادم، وساعة الجهاز احتياطًا للتشخيص. */
     function dutyEventMillis(e) {
         const t = e.serverTime || e.deviceTime;
@@ -1344,6 +1408,10 @@
                 name: (card && card.name) || e.employeeName || id,
                 title: (card && card.title) || '',
                 photo: safePhoto(card && card.photoBase64),
+                // ⚠️ الهاتف من بطاقتها لا من مجموعة الموظفين: تلك لا تُقرأ هنا
+                // بالقواعد إطلاقًا. ومن لا بطاقةَ لها لا رقم — ويُقال ذلك بزرٍّ
+                // معطَّل لا بزرٍّ يفتح محادثةً فارغة.
+                phone: (card && card.phone) || '',
                 hasCard: !!card
             });
         });
@@ -1369,10 +1437,17 @@
                     : `<span class="ph none" aria-hidden="true">${escapeHtml(initial)}</span>`}
                 <span class="bd">
                     <p class="nm"><span class="dot" aria-hidden="true"></span>${escapeHtml(r.name)}</p>
+                    <!-- ⭐⭐ اسم المحلّ **تحت الاسم مباشرةً** بطلب المالك: هو السؤال
+                         الأول، فيُقرأ بلمحةٍ بلا أن يُبحث عنه في آخر البطاقة.
+                         ⚠️ ويُقرأ من **حدث بصمتها** لا من بطاقتها: المحلّ تختاره في
+                         كل وردية، فبطاقتها تقول محلَّها المعتاد وبصمتها تقول أين
+                         هي **اليوم** — والفرق يُسأل عنه إنسان. -->
+                    <p class="shop">${escapeHtml(shop || '—')}</p>
                     <p class="ttl">${r.title ? escapeHtml(r.title) : '&mdash;'}${r.hasCard ? '' : ' &middot; <b>no photo added yet</b>'}</p>
                     <p class="st">${isToday ? 'In the shop now' : 'Signed in, no Check-Out recorded'}</p>
                     <p class="msg">${msg}</p>
-                    <p class="why">${escapeHtml(shop || '—')}${since ? ` &middot; signed in at ${escapeHtml(since)}` : ''}</p>
+                    <p class="why">${since ? `Signed in at ${escapeHtml(since)}` : 'No time recorded'}</p>
+                    <p class="wabar">${waButton(r.name, r.phone)}</p>
                 </span>
             </div>`;
         }).join('');
