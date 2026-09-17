@@ -1196,7 +1196,19 @@
     // عنه المالك.
     // =====================================================================
     const EMPLOYEE_ROSTER_DOC = 'employee_roster';
-    const ROSTER_CACHE_KEY = 'alsheikha_roster_v1';
+    // ⚠️⚠️ رُفع المفتاح إلى v2 عن قصد: النسخة المحفوظة على الجهاز كتبتها النسخة
+    // القديمة وقد تحمل بياعات، ولا سبيل لمعرفة ذلك من محتواها (الصيغة المضغوطة
+    // لا تحمل حقل النشاط). فمفتاحٌ جديد يُهمل القديمة إهمالًا تامًّا.
+    // الثمن: أول فتحةٍ بعد التحديث تنتظر الشبكة بدل الظهور الفوري. مرّةً واحدة.
+    const ROSTER_CACHE_KEY = 'alsheikha_roster_v2';
+    // ⭐⭐⭐ لا تُقبل قائمةٌ إلا إن قالت عن نفسها إنها مرشَّحة: 2 = موظفو المطاعم
+    // وحدهم. قال المالك: «لا أريد حتى ريحة البياعات في المطاعم والعكس صحيح».
+    // ⚠️ وقائمةٌ بلا هذا الرقم كتبتها نسخةٌ قديمة، فقد تحمل بياعات — تُرفض
+    // ويُرجَع إلى القراءة الكاملة (وهي مرشَّحة عند المصدر أدناه). أبطأ، لكن
+    // البطء يُلاحظ ويُشتكى منه، أما الاختلاط فيمرّ بصمت.
+    const ROSTER_FORMAT_VERSION = 2;
+    /** هل هذه بياعة؟ يُقرأ من ملف الموظف نفسه في القراءة الكاملة. */
+    const isAbayaEmployee = (d) => (d && d.business) === 'ABAYA';
     const MAX_ROSTER_ATTEMPTS = 4;
     let rosterAttempt = 0;
     let rosterIsReal = false;        // نجحت قراءةٌ من القاعدة (لا من نسخة الجهاز)
@@ -1337,7 +1349,14 @@
         try {
             const snap = await getDoc(doc(db, "settings", EMPLOYEE_ROSTER_DOC));
             const data = snap.exists() ? snap.data() : null;
-            if (data && Array.isArray(data.list) && data.list.length) {
+            // ⚠️⚠️ الرقم شرطٌ لا تحسين: قائمةٌ بلا rosterVersion كتبتها نسخةٌ
+            // قديمة وقد تحمل بياعات، فتُهمل ويُرجَع إلى القراءة الكاملة أدناه —
+            // وهي تستبعد البياعات عند المصدر. والفصل مضمونٌ في الحالتين.
+            const rosterUsable = data && Number(data.rosterVersion || 0) >= ROSTER_FORMAT_VERSION;
+            if (!rosterUsable && data) {
+                console.warn('The light name list predates the businesses being separated — reading the full list instead so no saleswoman appears here.');
+            }
+            if (rosterUsable && Array.isArray(data.list) && data.list.length) {
                 const rows = fromCompact(data.list);
                 rosterIsReal = true;
                 rosterAttempt = 0;
@@ -1364,6 +1383,11 @@
             // بإشعار مسبق يبقى يعمل عادةً حتى آخر يوم عمله.
             querySnapshot.forEach(docSnap => {
                 const d = docSnap.data();
+                // ⚠️⚠️ البياعات تُستبعد من هذه الشاشة كلها: لا تسجّل حضورها هنا،
+                // ولا تطلب إجازة، ولا تظهر في قائمةٍ واحدة. قال المالك: «البياعات
+                // ليس لهم أي علاقة بالمطاعم والبصمات». وشاشتهنّ abaya-seller.html
+                // بمفاتيحها المستقلة، وبصمتها تُكتب بلا تحديد موقع.
+                if (isAbayaEmployee(d)) return;
                 // canSubmitSalesReport يُفعّله المشرف من ملف الموظف في لوحة
                 // الإدارة، وهو ما يحدّد من يظهر في قائمة مديري التقرير اليومي.
                 rows.push({
