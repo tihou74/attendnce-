@@ -110,7 +110,14 @@
     .header .htitle { display: flex; align-items: center; gap: 14px; }
     .header .htitle .logo-badge { width: 42px; height: 42px; border-radius: 12px; background: var(--primary-soft); color: var(--primary); display: flex; align-items: center; justify-content: center; }
     .header .htitle .logo-badge svg { width: 22px; height: 22px; }
-    .header h1 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -0.2px; }
+    .header h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
+    .header .hsub { margin: 2px 0 0; font-size: 12.5px; font-weight: 600; color: var(--text-dim); letter-spacing: .01em; }
+    /* الهاتف: الترويسة تتنفّس — 26px حشوًا رأسيًّا مع أزرارٍ ملتفّة تُضيّق الشاشة. */
+    @media (max-width: 680px) {
+        .header { padding: 18px 18px; }
+        .header h1 { font-size: 17px; }
+        .header-btns { width: 100%; }
+    }
     .header .role-pill { display: inline-block; margin-top: 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); padding: 3px 10px; border-radius: 20px; }
     .header-btns { display: flex; gap: 10px; flex-wrap: wrap; }
 
@@ -184,23 +191,55 @@
     .btn-sm { padding: 7px 12px; font-size: 12px; border-radius: 8px; }
 
     /* Nav */
-    /* ⭐ اختيار النشاط: بطاقتان كبيرتان يُقرآن بلمحة، على نمط لوحة السيدة فاطمة
-       نفسه — فمن استعمل تلك يعرف هذه بلا تعليم. */
-    .biz-chooser { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    /* =====================================================================
+       ⭐⭐ شاشة اختيار النشاط — أُعيد تصميمها بعد ملاحظة المالك
+       ---------------------------------------------------------------------
+       ⚠️ ما كان معيبًا في النسخة الأولى، وكلُّه ظاهرٌ في لقطته:
+         • البطاقتان ضيّقتان ملتصقتان بيسار الشاشة، وباقي العرض فراغ.
+         • السطر العربي طويل فيلتفّ سطرين ويزحم البطاقة.
+         • سطر التلميح يخلط الإنجليزية والعربية في سطرٍ واحد فيبدو مبعثرًا.
+         • شعارات المطاعم الثلاثة تظهر **وهو يسأل: أيّ نشاط؟** — تناقضٌ بصري،
+           وفي صندوقٍ أبيض كبيرٍ شبه فارغ.
+       فالعلاج: كتلةٌ موسَّطة بعرضٍ محدود، بطاقتان متساويتان كبيرتان، عنوانٌ
+       للشاشة، وسطرٌ عربيٌّ قصير في اتجاهه الصحيح.
+       ===================================================================== */
+    .biz-wrap { max-width: 760px; margin: 8px auto 28px; }
+    .biz-head { text-align: center; margin-bottom: 22px; }
+    .biz-head h2 { margin: 0 0 6px; font-size: 21px; font-weight: 800; letter-spacing: -.02em; color: var(--text); }
+    .biz-head p { margin: 0; font-size: 13.5px; color: var(--text-dim); font-weight: 600; }
+    .biz-head p[dir="rtl"] { margin-top: 4px; }
+    .biz-chooser { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    /* الهاتف: بطاقةٌ فوق بطاقة — بطاقتان بعرض 160px لا تُقرآن. */
+    @media (max-width: 680px) { .biz-chooser { grid-template-columns: 1fr; } }
     .biz-pick {
-        display: flex; align-items: center; gap: 16px; text-align: start;
-        padding: 22px 20px; border-radius: var(--radius); cursor: pointer;
-        background: var(--surface); border: 2px solid var(--border);
-        box-shadow: var(--shadow-sm); transition: all .15s ease; color: var(--text);
+        display: flex; flex-direction: column; align-items: center; gap: 14px;
+        text-align: center; padding: 30px 22px 26px; border-radius: 16px; cursor: pointer;
+        background: var(--surface); border: 1px solid var(--border);
+        box-shadow: var(--shadow-sm); transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+        color: var(--text); position: relative; overflow: hidden;
     }
-    .biz-pick:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow); }
-    .biz-ic { flex: 0 0 auto; width: 52px; height: 52px; border-radius: var(--radius-sm);
-        background: var(--surface-2); display: flex; align-items: center; justify-content: center; color: var(--primary); }
-    .biz-ic svg { width: 28px; height: 28px; }
-    .biz-tx { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-    .biz-t1 { font-size: 17px; font-weight: 800; }
-    .biz-t2 { font-size: 12.5px; color: var(--text-dim); font-weight: 600; }
-    .biz-hint { grid-column: 1 / -1; margin: 2px 0 0; font-size: 12.5px; color: var(--text-dim); text-align: center; }
+    /* شريطٌ لونيّ رقيق أعلى البطاقة — يُميّز النشاطين بلا كلام. */
+    .biz-pick::before {
+        content: ''; position: absolute; inset: 0 0 auto 0; height: 4px;
+        background: var(--primary); opacity: .85;
+    }
+    .biz-pick.abaya::before { background: #A89060; }      /* ذهبي الشيخة ستايل */
+    .biz-pick:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--primary); }
+    .biz-pick.abaya:hover { border-color: #A89060; }
+    .biz-pick:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .biz-ic {
+        flex: 0 0 auto; width: 68px; height: 68px; border-radius: 50%;
+        background: var(--surface-2); display: flex; align-items: center; justify-content: center;
+        color: var(--primary); border: 1px solid var(--border);
+    }
+    .biz-pick.abaya .biz-ic { color: #A89060; }
+    .biz-ic svg { width: 34px; height: 34px; }
+    .biz-tx { display: flex; flex-direction: column; gap: 6px; min-width: 0; width: 100%; }
+    .biz-t1 { font-size: 18px; font-weight: 800; letter-spacing: -.01em; }
+    /* ⚠️ السطر العربي في اتجاهه الصحيح وبسطرٍ واحد قصير — كان يلتفّ ويزحم. */
+    .biz-t2 { font-size: 12.5px; color: var(--text-dim); font-weight: 600; line-height: 1.7; }
+    .biz-go { margin-top: 4px; font-size: 12px; font-weight: 800; color: var(--primary); letter-spacing: .02em; }
+    .biz-pick.abaya .biz-go { color: #A89060; }
     .nav-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; background: var(--surface); padding: 10px; border-radius: var(--radius); box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
     .nav-tab-btn { padding: 11px 18px; font-size: 13.5px; font-weight: 600; border-radius: var(--radius-sm); border: none; cursor: pointer; background: transparent; color: var(--text-dim); transition: all 0.15s ease; position: relative; display: flex; align-items: center; gap: 9px; }
     .nav-tab-btn:hover { background: var(--surface-2); color: var(--text); }
@@ -336,7 +375,11 @@
         <div class="htitle">
             <img src="https://raw.githubusercontent.com/tihou74/alsheikha-attendance-admin/main/al-sheikha-group-logo.png.png" alt="Al Sheikha Group" style="height:44px; object-fit:contain;">
             <div>
-                <h1>Al Sheikha Group — HR &amp; Payroll Dashboard</h1>
+                <h1>Al Sheikha Group</h1>
+                <!-- ⚠️ العنوان كان سطرًا واحدًا طويلًا («Al Sheikha Group — HR &
+                     Payroll Dashboard») فيلتفّ على الهاتف ويزحم الأزرار. فصار
+                     اسمًا كبيرًا وسطرًا فرعيًّا هادئًا — هرمٌ بصريٌّ يُقرأ بلمحة. -->
+                <p class="hsub">HR &amp; Payroll Dashboard</p>
             </div>
         </div>
         <div class="header-btns">
@@ -354,7 +397,12 @@
                 <span data-icon="refresh"></span> <span id="btnSwitchBizLabel">Switch business</span>
             </button>
             <button class="btn-ghost" id="btnThemeToggle" onclick="toggleTheme()" title="Toggle dark/light mode"><span id="icTheme"></span></button>
-            <button class="btn-warning" id="btnSyncDb" onclick="syncAllSalariesList()"><span id="icSync"></span> Sync Database</button>
+            <!-- ⚠️⚠️ كان بلونٍ برتقاليّ صارخ فصار **أكثر ما يلفت النظر في الترويسة**،
+                 وهو أخطر زرٍّ في اللوحة: أنشأ نسخةً ثانية لثلاثة مدراء وكلّف أيامًا.
+                 فالتسلسل البصري كان مقلوبًا — واللون يُدعو إلى ما يجب تجنّبه.
+                 والآن هادئٌ ومكتوبٌ عليه أنه للمرّة الأولى وحدها. -->
+            <button class="btn-ghost" id="btnSyncDb" onclick="syncAllSalariesList()"
+                    title="First-time setup only — you do not need this"><span id="icSync"></span> Sync</button>
             <button class="btn-ghost" onclick="initDashboard()"><span id="icRefresh"></span> Refresh</button>
             <button class="btn-danger" onclick="handleLogout()"><span id="icLogout"></span> Logout</button>
         </div>
@@ -397,25 +445,34 @@
          admin.html، وتحويلُه إلى ملفٍ آخر يكسر أيقونته المثبَّتة (درسٌ كلّفنا
          خمس محاولات في هذا المشروع). فالاختيار **داخل** الصفحة نفسها.
          ================================================================== -->
-    <div class="biz-chooser" id="bizChooser">
-        <button type="button" class="biz-pick" onclick="chooseBiz('rest')">
-            <span class="biz-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v8a3 3 0 0 0 6 0V3"/><path d="M9 11v10"/><path d="M17 3c-1.5 2-2 3.5-2 6s.5 3 2 3 2-.5 2-3-.5-4-2-6z"/><path d="M17 12v9"/></svg></span>
-            <span class="biz-tx">
-                <span class="biz-t1">Restaurants</span>
-                <span class="biz-t2" dir="rtl">المطاعم &mdash; الموظفون والرواتب والبصمات والتقارير</span>
-            </span>
-        </button>
-        <button type="button" class="biz-pick" onclick="chooseBiz('abaya')">
-            <span class="biz-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l3 5-3 1v12H9V9L6 8z"/><path d="M9 9h6"/></svg></span>
-            <span class="biz-tx">
-                <span class="biz-t1">Al Sheikha Style</span>
-                <span class="biz-t2" dir="rtl">العبايات &mdash; البياعات والبيع اليومي والشهري</span>
-            </span>
-        </button>
-        <p class="biz-hint">
-            Choose which business you are working on. Nothing from one shows inside the other.
-            <span dir="rtl">&mdash; اختر النشاط. لا يظهر شيءٌ من أحدهما داخل الآخر.</span>
-        </p>
+    <div class="biz-wrap" id="bizChooser">
+        <div class="biz-head">
+            <h2>Which business are you working on?</h2>
+            <p>Nothing from one shows inside the other.</p>
+            <!-- ⚠️ العربية في سطرٍ خاصّ وباتجاهها: خلطُ اللغتين في سطرٍ واحد كان
+                 يجعل النقطة والشرطة تقفزان إلى الطرف الخطأ فيبدو السطر مبعثرًا. -->
+            <p dir="rtl">اختر النشاط &mdash; لا يظهر شيءٌ من أحدهما داخل الآخر</p>
+        </div>
+        <div class="biz-chooser">
+            <button type="button" class="biz-pick" onclick="chooseBiz('rest')">
+                <span class="biz-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v8a3 3 0 0 0 6 0V3"/><path d="M9 11v10"/><path d="M17 3c-1.5 2-2 3.5-2 6s.5 3 2 3 2-.5 2-3-.5-4-2-6z"/><path d="M17 12v9"/></svg></span>
+                <span class="biz-tx">
+                    <span class="biz-t1">Restaurants</span>
+                    <span class="biz-t2" dir="rtl">المطاعم</span>
+                    <span class="biz-t2">Staff &middot; Payroll &middot; Attendance &middot; Reports</span>
+                    <span class="biz-go">Open &rarr;</span>
+                </span>
+            </button>
+            <button type="button" class="biz-pick abaya" onclick="chooseBiz('abaya')">
+                <span class="biz-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l3 5-3 1v12H9V9L6 8z"/><path d="M9 9h6"/></svg></span>
+                <span class="biz-tx">
+                    <span class="biz-t1">Al Sheikha Style</span>
+                    <span class="biz-t2" dir="rtl">العبايات</span>
+                    <span class="biz-t2">Saleswomen &middot; Daily &amp; monthly sales</span>
+                    <span class="biz-go">Open &rarr;</span>
+                </span>
+            </button>
+        </div>
     </div>
 
     <div class="brand-logos" id="brandLogosRest">
@@ -3697,9 +3754,12 @@
             if (lbl) lbl.innerText = activeBiz ? BIZ_LABEL[activeBiz] : 'Switch business';
         }
         // الشعارات: علامةٌ بصرية للنشاط الذي يعمل عليه
+        // ⚠️⚠️ على شاشة الاختيار لا شعارات إطلاقًا: كانت شعارات المطاعم الثلاثة
+        // تظهر **وهو يسأل: أيّ نشاط تعمل عليه؟** — تناقضٌ بصري، وفي صندوقٍ أبيض
+        // كبير شبه فارغ يملأ الشاشة بلا معنى. وهذا ظاهرٌ في لقطة المالك.
         const lr = document.getElementById('brandLogosRest');
         const la = document.getElementById('brandLogosAbaya');
-        if (lr) lr.style.display = (!activeBiz || activeBiz === 'rest') ? '' : 'none';
+        if (lr) lr.style.display = (activeBiz === 'rest') ? '' : 'none';
         if (la) la.style.display = (activeBiz === 'abaya') ? '' : 'none';
         // إخفاء أزرار التبويبات التي لا تنتمي إلى النشاط
         document.querySelectorAll('.nav-tab-btn').forEach(btn => {
