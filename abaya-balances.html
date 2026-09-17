@@ -466,7 +466,8 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, doc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, doc, getDoc, getDocs,
+             initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut }
         from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
@@ -483,7 +484,26 @@
     // ⚠️ "balances" لا "abayaview" — انظر تعليق الرأس: الاسم الموحَّد هو ما
     // يجعل الجلسة واحدة بين الصفحتين. تغييره يُعيد طلبَ دخولٍ ثانٍ.
     const app = initializeApp(firebaseConfig, "balances");
-    const db = getFirestore(app);
+    // ⭐⭐⭐ نفس الإصلاح الجذري الذي في admin.html — انظر تعليقه المفصّل هناك.
+    // ⚠️ الرسالة التي أوقفت العمل: «Failed to get documents from server». وسببها
+    // أن مكتبة فايربيس تفتح قناة تدفّق (WebChannel) تكسرها شبكاتٌ وبرامج حماية
+    // كثيرة، فيبدو الإنترنت سليمًا والقاعدة وحدها لا تُقرأ.
+    //   • experimentalAutoDetectLongPolling: تتحوّل تلقائيًّا إلى طلباتٍ عادية.
+    //   • persistentLocalCache: تُخزَّن البيانات على قرص الجهاز، فتظهر بياناتٌ
+    //     حقيقية عند انقطاع الاتصال بدل أصفار — والعمل لا يتوقّف.
+    //   • persistentMultipleTabManager: لأن الصفحة تُفتح في أكثر من تبويب.
+    // وإن فشل التهيئة (نسخة قديمة أو وضع خاص) نسقط إلى getFirestore العادية.
+    let db;
+    try {
+        db = initializeFirestore(app, {
+            experimentalAutoDetectLongPolling: true,
+            localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        });
+    } catch (e) {
+        console.error('Firestore long-polling/disk-cache init failed:', e);
+        db = getFirestore(app);
+    }
+
     const auth = getAuth(app);
 
     // =====================================================================

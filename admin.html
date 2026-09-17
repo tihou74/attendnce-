@@ -487,6 +487,11 @@
          ================================================================== -->
     <div id="loadErrorBanner" style="display: none; background: #fef2f2; border: 2px solid var(--danger); border-left: 6px solid var(--danger); border-radius: 10px; padding: 16px 18px; margin: 0 0 20px; color: #7f1d1d; font-size: 13.5px; line-height: 1.85;"></div>
 
+    <!-- ⭐⭐ لافتة «نسخة محفوظة»: تظهر حين تُعرض بياناتٌ من قرص الجهاز لأن الخادم
+         لم يُجب. صفراء لا حمراء — البيانات صحيحة وإنما قد تتأخّر دقائق. وموضعها
+         هنا، خارج كل التبويبات، فتُرى في أيّها كان مفتوحًا. -->
+    <div id="savedCopyBanner" style="display: none; background: #fffbeb; border: 2px solid var(--warning); border-left: 6px solid var(--warning); border-radius: 10px; padding: 14px 18px; margin: 0 0 20px; color: #78350f; font-size: 13.5px; line-height: 1.85;"></div>
+
     <!-- 1. الرئيسية -->
     <div id="tab-home" class="tab-content active">
         <div class="stats">
@@ -2887,10 +2892,12 @@
     import {
         getFirestore, collection, addDoc, getDoc, getDocs, deleteDoc, doc, setDoc, updateDoc,
         query, orderBy, where, limit, writeBatch, serverTimestamp, onSnapshot,
-        // ⭐⭐ getDocsFromServer: قراءةٌ تتجاوز الذاكرة المحليّة إجبارًا. لازمة لأن
-        // getDocs قد تُعيد نتيجةً **فارغة وناجحة** من ذاكرة فارغة، فلا خطأ يظهر
-        // ولا بيانات تصل — وهو العطل الذي أوقف عمل المالك.
-        getDocsFromServer
+        // ⭐⭐ getDocsFromServer: قراءةٌ تتجاوز الذاكرة المحليّة إجبارًا. تُستعمل
+        // **فقط** إن عادت القراءة العادية فارغة، ولا يُبنى عليها وحدها أبدًا:
+        // فشلُها لا يجوز أن يُنقص ما كان معروضًا.
+        getDocsFromServer,
+        // ⭐⭐⭐ هذه الثلاث هي الحلّ الجذري لـ«Failed to get documents from server»
+        initializeFirestore, persistentLocalCache, persistentMultipleTabManager
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import {
         getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut
@@ -2923,7 +2930,51 @@
     // kiosk's anonymous session can never clobber the admin session again.
     // Do NOT remove the name.
     const app = initializeApp(firebaseConfig, "admin");
-    const db = getFirestore(app);
+    // =====================================================================
+    // ⭐⭐⭐ الحلّ الجذري لتوقّف اللوحة عن قراءة أي شيء
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ ما رآه المالك بالحرف في اللافتة:
+    //     «Employee files: Failed to get documents from server.»
+    // وكل الأرقام صفر — لا الموظفون وحدهم. أي أن الاتصال بفايربيس **نفسه** هو
+    // الذي يفشل، لا مجموعةٌ بعينها ولا صلاحية. وأول تشخيصي (سقوط القراءة إلى
+    // الذاكرة) كان **عرضًا** لا سببًا: الذاكرة كانت تُستعمل لأن الخادم لم يُجب.
+    //
+    // والسبب المعروف لهذه الرسالة بالضبط: مكتبة فايربيس تفتح قناة تدفّق
+    // (WebChannel) لا طلبات HTTPS عادية. وكثيرٌ من الشبكات وبرامج الحماية
+    // (وشبكات الشركات والوكلاء) تكسر هذه القناة وتترك بقية الإنترنت يعمل — فيبدو
+    // أن الإنترنت سليم والقاعدة وحدها لا تُقرأ.
+    //
+    // ولهذا ثلاث معالجات مجتمعة، وكلٌّ منها يُنقذ حالةً مختلفة:
+    //
+    //   1) experimentalAutoDetectLongPolling — تكتشف المكتبة أن قناة التدفّق
+    //      مكسورة فتتحوّل تلقائيًّا إلى طلباتٍ عادية طويلة الانتظار. هذا هو
+    //      العلاج المباشر لتلك الرسالة على شبكةٍ أو برنامج حمايةٍ يكسر القناة.
+    //
+    //   2) persistentLocalCache — تُخزَّن البيانات على **قرص** الجهاز لا في
+    //      ذاكرة الصفحة. فإن انقطع الاتصال ظهرت بياناتٌ حقيقية (ولو قديمة بدقائق)
+    //      بدل أصفار، ويُكمل المالك عمله. وهذا أهمّ ما في الإصلاح: «لا تتوقّف
+    //      اللوحة» أهمّ من «تُحدَّث اللوحة بالثانية».
+    //      ⚠️ وpersistentMultipleTabManager لأنه يفتح اللوحة في أكثر من تبويب،
+    //      وبلا مدير التبويبات ترفض المكتبة التخزين في التبويب الثاني كليًّا.
+    //
+    //   3) وقراءةُ الخادم المُجبَرة لا تُستعمل إلا احتياطًا، ولا يُبنى عليها
+    //      وحدها — انظر loadEmployees. فشلُها كان يُصفّر ما كانت الذاكرة تُظهره،
+    //      أي أن إصلاحي السابق جعل الحالة **أسوأ** من قبله.
+    //
+    // ⚠️ initializeFirestore تُنادى **مرّة واحدة وقبل أي استعمال** للقاعدة.
+    // وإن فشلت (نسخة قديمة، أو منع التخزين في الوضع الخاص) نسقط إلى getFirestore
+    // العادية بدل أن تتوقّف اللوحة كلها.
+    // =====================================================================
+    let db;
+    try {
+        db = initializeFirestore(app, {
+            experimentalAutoDetectLongPolling: true,
+            localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        });
+    } catch (e) {
+        console.error('Could not initialise Firestore with long-polling + disk cache:', e);
+        db = getFirestore(app);
+    }
     const auth = getAuth(app);
 
     // ---- Lightweight audit log ---------------------------------------------
@@ -4215,6 +4266,30 @@
     // يُفعل. ولا يُترك المالك يُخمّن.
     // =====================================================================
     let loadFailures = [];
+    let servingSavedCopy = false;
+
+    /**
+     * ⭐⭐ لافتةٌ صفراء: «هذه نسخةٌ محفوظة على جهازك».
+     * ⚠️ صفراء لا حمراء عن قصد: البيانات **معروضة وصحيحة**، وإنما قد تكون متأخّرة
+     * دقائق. ولافتةٌ حمراء هنا تُفزع بلا سبب، وغيابُ اللافتة كليًّا أخطر — فقد
+     * يُدخل خصمًا أو يعتمد رقمًا وهو ينظر إلى صورةٍ قديمة ولا يدري.
+     * ⚠️ ولا تُخفي اللافتة الحمراء إن كانت ظاهرة: فشلٌ حقيقيٌّ أهمّ من هذا التنبيه.
+     */
+    function markServingSavedCopy() {
+        if (servingSavedCopy) return;
+        servingSavedCopy = true;
+        const box = document.getElementById('savedCopyBanner');
+        if (!box) return;
+        box.style.display = 'block';
+        box.innerHTML = `<b>&#9432; You are looking at the copy saved on this computer.</b> `
+            + `The dashboard could not reach the database just now, so it is showing the last data it had. `
+            + `<b>Everything you see is real</b>, but it may be a few minutes behind, and anything you save now `
+            + `will be sent as soon as the connection is back.`
+            + `<br><br>If this keeps happening, the cause is almost always the network or an antivirus blocking `
+            + `the database connection &mdash; try a phone hotspot once to confirm it. `
+            + `<button class="btn-ghost btn-sm" onclick="diagnoseAccess()" style="margin-left: 6px;">Run a full check</button>`
+            + `<span id="diagnoseOut" style="display:block; margin-top:10px;"></span>`;
+    }
     // ⭐⭐ إعادة المحاولة تلقائيًّا: الفشل العابر (رمز دخول لم يجهز، أو شبكة
     // تعثّرت لحظة) كان يُترك أصفارًا على الشاشة حتى يُحدّث المالك بنفسه — وهو ما
     // أفزعه ثلاث مرات. الآن تُعاد المحاولة بنفسها، ومع **تجديد قسري للرمز**،
@@ -4353,10 +4428,24 @@
             // إجبارًا من الخادم (getDocsFromServer) التي لا تسقط إلى الذاكرة أبدًا.
             // =============================================================
             let querySnapshot = await getDocs(collection(db, "employees"));
-            if (querySnapshot.empty || (querySnapshot.metadata && querySnapshot.metadata.fromCache)) {
-                console.warn('Employee read was empty or from cache — forcing a server read.');
-                querySnapshot = await getDocsFromServer(collection(db, "employees"));
+            let servedFromCache = !!(querySnapshot.metadata && querySnapshot.metadata.fromCache);
+            // ⚠️⚠️ خطأٌ ارتكبتُه في المحاولة السابقة، وجعل الحالة **أسوأ**: كنتُ
+            // أُجبر قراءة الخادم كلّما جاءت النتيجة من الذاكرة — ولو كانت مليئة.
+            // فإن كان الخادم لا يُجيب (وهو ما يحدث فعلًا) رمت الدالة خطأً، فضاعت
+            // البيانات التي كانت الذاكرة ستُظهرها، وصارت كل الأرقام أصفارًا.
+            //
+            // فالقاعدة الآن: الإجبار **فقط** عند الفراغ، وفشلُه لا يُنقص شيئًا.
+            // بيانات قديمة بدقائق أفضل من صفرٍ يوقف العمل، بشرط أن يُقال إنها قديمة.
+            if (querySnapshot.empty) {
+                try {
+                    const fresh = await getDocsFromServer(collection(db, "employees"));
+                    querySnapshot = fresh;
+                    servedFromCache = false;
+                } catch (e) {
+                    console.error('Forced server read failed; keeping what the cache gave:', e);
+                }
             }
+            if (servedFromCache) markServingSavedCopy();
             allEmployees = [];
             querySnapshot.forEach((docSnap) => allEmployees.push({ id: docSnap.id, ...docSnap.data() }));
             // العدد **قبل** أي مصفاة — يُستعمل في التشخيص أدناه.
