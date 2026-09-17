@@ -252,6 +252,50 @@
     .err { color: var(--color-danger); font-size: var(--text-sm); font-weight: 700; margin: 0 0 var(--space-3); min-height: 18px; }
     .stamp { font-size: var(--text-xs); color: var(--color-text-muted); margin: var(--space-4) 0 0; }
     .sect { font-size: var(--text-sm); font-weight: 700; margin: var(--space-6) 0 var(--space-3); }
+
+    /* =====================================================================
+       بطاقات «من على الدوام الآن» — منقولة عن لوحة المدراء في balances.html
+       ---------------------------------------------------------------------
+       ⚠️ نُقلت ولم تُستورد: الصفحتان لا تتشاركان ملفَّ أنماط، وربطُهما بملفٍّ
+       ثالث يعني طلبَ شبكةٍ إضافيًّا على شاشةٍ تُعاد قراءتها كل دقيقة. والنسخ
+       هنا مقصود ومُوثَّق.
+       ⚠️ ولا نعتمد على اللون وحده: النقطة ملوّنة **والنصّ يقول الحالة** — من
+       لا يفرّق الأخضر من الأحمر يقرأها مكتوبة.
+       ⚠️ ولا صنف .off ولا .rest هنا: بطلب المالك الصريح، من تُسجّل انصرافها
+       **تختفي بطاقتها تمامًا** فلا تكون زحمة. فلا حالة تُعرض إلا الحضور.
+       ===================================================================== */
+    .mgrs { display: grid; gap: var(--space-4); grid-template-columns: 1fr; }
+    @media (min-width: 760px) { .mgrs { grid-template-columns: 1fr 1fr; } }
+    .mgr {
+        display: flex; gap: var(--space-4); align-items: flex-start;
+        background: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-border);
+        border-radius: var(--card-radius); padding: var(--space-5);
+        box-shadow: var(--shadow-xs);
+        border-left: 4px solid var(--color-success);
+    }
+    .mgr .ph {
+        flex: 0 0 auto; width: 62px; height: 62px; border-radius: 50%;
+        object-fit: cover; background: var(--color-surface-2);
+        border: 2px solid var(--color-border);
+    }
+    /* بديل الصورة حين لا بطاقة: أول حرف من الاسم، فلا يبقى مربّع فارغ */
+    .mgr .ph.none {
+        display: flex; align-items: center; justify-content: center;
+        font-size: var(--text-xl); font-weight: 700; color: var(--color-text-muted);
+    }
+    .mgr .bd { min-width: 0; flex: 1; }
+    .mgr .nm { margin: 0; font-size: var(--text-base); font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .mgr .dot { width: 11px; height: 11px; border-radius: 50%; flex: 0 0 auto; display: inline-block; background: var(--color-success); }
+    .mgr .ttl { margin: 3px 0 0; font-size: var(--text-xs); color: var(--color-text-muted); }
+    .mgr .st { margin: 8px 0 0; font-size: var(--text-xs); font-weight: 700; color: var(--color-success); }
+    /* الرسالة إنجليزية بطلب المالك */
+    .mgr .msg {
+        margin: var(--space-3) 0 0; font-size: var(--text-sm); line-height: 1.75;
+        background: var(--color-surface-2); border-radius: var(--radius-md);
+        padding: 10px 12px; color: var(--color-text);
+    }
+    .mgr .why { margin: 6px 0 0; font-size: 11.5px; color: var(--color-text-muted); }
     .hidden { display: none !important; }
 </style>
 </head>
@@ -294,7 +338,16 @@
         </div>
 
         <!-- ثلاثة أزرار، ولا نتائج قبل الضغط -->
-        <div class="chooser" id="chooser">
+        <div class="chooser four" id="chooser">
+            <!-- ⭐⭐ «Who is in the shops now» أوّلًا عن قصد: هذا هو السؤال الذي
+                 يُسأل عشر مرّات في اليوم، والأرقام تُقرأ مرّةً في اليوم. -->
+            <button type="button" class="pick" id="pickDuty" aria-pressed="false" aria-controls="viewDuty">
+                <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg></span>
+                <span>
+                    <span class="t1">Who is in the shops now</span>
+                    <span class="t2">Her photo while she is signed in</span>
+                </span>
+            </button>
             <button type="button" class="pick" id="pickAccount" aria-pressed="false" aria-controls="viewAccount">
                 <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10"/><path d="M14.6 9.4c-.5-.6-1.4-.9-2.6-.9-1.6 0-2.5.7-2.5 1.8 0 1 .7 1.5 2.5 1.8 1.9.3 2.7.8 2.7 1.9 0 1.2-1 1.9-2.7 1.9-1.3 0-2.2-.3-2.8-1"/></svg></span>
                 <span>
@@ -319,6 +372,26 @@
         </div>
 
         <p class="pickhint" id="pickHint">Choose what you want to see.</p>
+
+        <!-- ============ 0) من على الدوام الآن ============
+             ⚠️⚠️ شرطُ المالك الصريح: «لما البياعة تعمل الشيك اوت تختفي الصورة
+             والبياعة حتى لا تكون زحمة». فهذه اللوحة تعرض **من هي داخلةٌ الآن
+             وحدها** — ولا تعرض من انصرفت بحالٍ.
+             ⚠️ ولأن الإخفاء يُخفي معلومة، يبقى **سطرٌ نصّي** أسفلها بعدد من
+             انصرفت: بلا ذلك يُقرأ غيابُ الاسم «لم تحضر اليوم» وهو غلط، وقد
+             يُبنى عليه سؤالٌ ظالم لبياعةٍ عملت يومها كاملًا.
+             ⚠️ ويوم أمس يُقرأ بسهم اليوم — لكن يومًا ماضيًا لا «الآن» فيه، فتُعرض
+             فيه من دخلت ولم تُسجّل انصرافًا، ويُقال ذلك في السطر صريحًا. -->
+        <div id="viewDuty" class="hidden">
+            <div class="bar">
+                <button class="ghost" id="dtPrev">&#9664; Previous day</button>
+                <div><label for="dtDate">Day</label><input type="date" id="dtDate"></div>
+                <button class="ghost" id="dtNext">Next day &#9654;</button>
+            </div>
+            <p class="err" id="dtError"></p>
+            <div class="mgrs" id="dtList"></div>
+            <p class="note" id="dtNote"></p>
+        </div>
 
         <!-- ============ 1) الحساب ============ -->
         <div id="viewAccount" class="hidden">
@@ -466,7 +539,10 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, doc, getDoc, getDocs,
+    // ⚠️ query و where أُضيفتا للوحة الحضور: تُقرأ بيوم واحد (where date ==) لا
+    // بمسح المجموعة كلها — تلك تنمو مستندَين لكل بياعة كل يوم، ومسحُها كاملًا كل
+    // دقيقة على هاتف السيدة فاطمة يستهلك بياناتها بلا داعٍ.
+    import { getFirestore, collection, doc, getDoc, getDocs, query, where,
              initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut }
         from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -556,6 +632,16 @@
     let abayaOpening = { opening: {}, openingDate: '' };
     let abayaTargets = {};
     let timer = null;
+
+    // ---- لوحة «من على الدوام الآن» --------------------------------------
+    // ⚠️ البطاقات تُقرأ **مرّةً واحدة** لكل جلسة لا كل دقيقة: كل بطاقة تحمل صورةً
+    // مضغوطة (حتى 120KB)، وإعادة تنزيلها ستّين مرّة في الساعة على بيانات الهاتف
+    // بلا سببٍ — الصور لا تتغيّر إلا حين يرفعها المالك. وزرّ Refresh يُصفّر هذا
+    // العلَم فتُقرأ من جديد، فله مخرجٌ متى شاء.
+    let dutyCards = [];              // [{ id = معرّف ملف الموظفة, ...data }]
+    let dutyCardsLoaded = false;
+    let dutyEvents = [];             // أحداث اليوم المعروض
+    let dutyEventsDate = '';
 
     const el = (id) => document.getElementById(id);
     const money = (n) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -788,15 +874,23 @@
     let activeView = '';
     function showView(which) {
         activeView = which;
-        const views = { account: 'viewAccount', target: 'viewTarget', stock: 'viewStock' };
+        const views = { duty: 'viewDuty', account: 'viewAccount', target: 'viewTarget', stock: 'viewStock' };
         Object.entries(views).forEach(([k, id]) => el(id).classList.toggle('hidden', k !== which));
+        el('pickDuty').setAttribute('aria-pressed', String(which === 'duty'));
         el('pickAccount').setAttribute('aria-pressed', String(which === 'account'));
         el('pickTarget').setAttribute('aria-pressed', String(which === 'target'));
         el('pickStock').setAttribute('aria-pressed', String(which === 'stock'));
         el('pickHint').classList.toggle('hidden', !!which);
         // كل دخول إلى الستوك يبدأ من أزرار المحلات، وكل خروج منه يُنسي المُختار.
         showStock('');
+        // ⭐⭐ لوحة الحضور تُحمَّل عند فتحها لا مع كل دخول: هي القراءة الوحيدة التي
+        // تُنزّل صورًا، فتحميلُها لمن جاء ليقرأ الأرقام وحدها إهدارٌ لبياناته.
+        if (which === 'duty') {
+            if (!el('dtDate').value) el('dtDate').value = todayISO();
+            loadDuty();
+        }
     }
+    el('pickDuty').addEventListener('click', () => showView('duty'));
     el('pickAccount').addEventListener('click', () => showView('account'));
     el('pickTarget').addEventListener('click', () => showView('target'));
     el('pickStock').addEventListener('click', () => showView('stock'));
@@ -1169,6 +1263,157 @@
         }
     }
 
+    // =====================================================================
+    // لوحة «من على الدوام الآن» — بطلب المالك
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ هذه ليست سجلَّ حضورٍ ولا تُقرأ كذلك: إنها مرآةٌ صغيرة تُكتب لحظةَ
+    // ضغط البياعة على زرّ الحضور في شاشتها. ومرآةٌ لم تُكتب (شبكة انقطعت لحظةً)
+    // لا تعني أنها لم تحضر — تعني أن الكتابة لم تصل. والحقيقة في سجل الحضور
+    // الذي يقرؤه المالك. ولذلك لا تُقال كلمة «غائبة» على هذه الشاشة إطلاقًا.
+    // ⚠️ ولا تُقرأ مجموعة الحضور مباشرةً: تلك تحمل تاريخ كل موظف وإحداثيات كل
+    // بصمة، وفايربيس لا يُخفي بعض الصفوف أو بعض الحقول عند القراءة.
+    // =====================================================================
+    function safePhoto(v) {
+        // لا يُقبل في src إلا صورة مُرمَّزة داخل المستند — لا رابط خارجي ولا javascript:.
+        const s = String(v || '');
+        return /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(s) ? s : '';
+    }
+    /** لحظةُ الحدث بساعة الخادم، وساعة الجهاز احتياطًا للتشخيص. */
+    function dutyEventMillis(e) {
+        const t = e.serverTime || e.deviceTime;
+        if (t && typeof t.toDate === 'function') return t.toDate().getTime();
+        if (t instanceof Date) return t.getTime();
+        return 0;
+    }
+    function currentDutyDay() {
+        return el('dtDate').value || todayISO();
+    }
+
+    async function loadDuty() {
+        el('dtError').innerText = '';
+        const day = currentDutyDay();
+        try {
+            if (!dutyCardsLoaded) {
+                const snap = await getDocs(collection(db, "abaya_seller_cards"));
+                dutyCards = [];
+                snap.forEach(d => dutyCards.push({ id: d.id, ...d.data() }));
+                dutyCardsLoaded = true;
+            }
+            const evSnap = await getDocs(query(collection(db, "abaya_presence"), where("date", "==", day)));
+            dutyEvents = [];
+            evSnap.forEach(d => dutyEvents.push({ id: d.id, ...d.data() }));
+            dutyEventsDate = day;
+            renderDuty();
+        } catch (e) {
+            console.error(e);
+            // ⚠️ ولا تُعرض بطاقاتٌ قديمة كأنها الآن: الفشل يُقال ويُمحى المعروض.
+            el('dtList').innerHTML = '';
+            el('dtNote').innerHTML = '';
+            el('dtError').innerText = 'Could not read who is in the shops: ' + e.message;
+        }
+    }
+
+    /**
+     * ⭐⭐⭐ حالة البياعة = آخر حدثٍ لها في اليوم المعروض. لا مهلة انتهاءٍ
+     * تلقائية: من دخلت تبقى ظاهرة حتى تضغط الانصراف بنفسها — وهذا مقصود، فإطفاءٌ
+     * تلقائي بعد ساعاتٍ كان سيُخفي بياعةً ما زالت في المحلّ.
+     */
+    function dutyStateFor(empId) {
+        const evs = dutyEvents
+            .filter(e => String(e.employeeId || '') === String(empId))
+            .sort((a, b) => dutyEventMillis(a) - dutyEventMillis(b));
+        if (!evs.length) return { state: 'none', ev: null };
+        const last = evs[evs.length - 1];
+        return { state: last.type === 'Check-In' ? 'in' : 'out', ev: last, first: evs[0] };
+    }
+
+    function renderDuty() {
+        const day = dutyEventsDate || currentDutyDay();
+        const isToday = day === todayISO();
+
+        // كل من لها حدثٌ في هذا اليوم، وبطاقتها إن وُجدت. ⚠️ ومن لها حدثٌ ولا
+        // بطاقة تُعرض أيضًا بأول حرف من اسمها: إخفاؤها لأن المالك لم يرفع صورتها
+        // بعد كان سيُقرأ أنها لم تحضر.
+        const seen = new Map();
+        dutyEvents.forEach(e => {
+            const id = String(e.employeeId || '');
+            if (!id || seen.has(id)) return;
+            const card = dutyCards.find(c => c.id === id) || null;
+            seen.set(id, {
+                id,
+                name: (card && card.name) || e.employeeName || id,
+                title: (card && card.title) || '',
+                photo: safePhoto(card && card.photoBase64),
+                hasCard: !!card
+            });
+        });
+
+        const rows = [...seen.values()].map(r => ({ ...r, ...dutyStateFor(r.id) }));
+        const here = rows.filter(r => r.state === 'in').sort((a, b) => a.name.localeCompare(b.name));
+        const left = rows.filter(r => r.state === 'out').sort((a, b) => a.name.localeCompare(b.name));
+
+        el('dtList').innerHTML = here.map(r => {
+            const initial = String(r.name).trim().charAt(0).toUpperCase() || '?';
+            const shop = String((r.ev && r.ev.shop) || '');
+            const since = String((r.first && r.first.time) || (r.ev && r.ev.time) || '');
+            // ⭐ الرسالة إنجليزية بطلب المالك، وبصيغة المتحدّث عن نفسها كما في
+            // لوحة المدراء — فتُقرأ كأنها تُخبر السيدة فاطمة بنفسها.
+            const msg = `Hello Mrs Fatima, I am <b>${escapeHtml(r.name)}</b>`
+                + (r.title ? ` &mdash; ${escapeHtml(r.title)}` : '')
+                + `. I am in <b>${escapeHtml(shop || 'a shop')}</b>`
+                + (since ? `, since <b>${escapeHtml(since)}</b>` : '')
+                + `.`;
+            return `<div class="mgr">
+                ${r.photo
+                    ? `<img class="ph" src="${escapeHtml(r.photo)}" alt="">`
+                    : `<span class="ph none" aria-hidden="true">${escapeHtml(initial)}</span>`}
+                <span class="bd">
+                    <p class="nm"><span class="dot" aria-hidden="true"></span>${escapeHtml(r.name)}</p>
+                    <p class="ttl">${r.title ? escapeHtml(r.title) : '&mdash;'}${r.hasCard ? '' : ' &middot; <b>no photo added yet</b>'}</p>
+                    <p class="st">${isToday ? 'In the shop now' : 'Signed in, no Check-Out recorded'}</p>
+                    <p class="msg">${msg}</p>
+                    <p class="why">${escapeHtml(shop || '—')}${since ? ` &middot; signed in at ${escapeHtml(since)}` : ''}</p>
+                </span>
+            </div>`;
+        }).join('');
+
+        // ---- السطر الصادق أسفل اللوحة -----------------------------------
+        const notes = [];
+        if (!here.length) {
+            el('dtList').innerHTML = `<p class="note" style="margin:0;">`
+                + (isToday
+                    ? `<b>Nobody is signed in right now.</b>`
+                    : `<b>Nobody was left signed in on ${escapeHtml(day)}.</b>`)
+                + `</p>`;
+        }
+        notes.push(isToday
+            ? `<b>${here.length} saleswoman(en) in the shops right now.</b> Each one appears the moment she presses `
+              + `Check-In on her own screen, and disappears from here the moment she presses Check-Out.`
+            : `<b>${here.length} saleswoman(en) were still signed in at the end of ${escapeHtml(day)}.</b> `
+              + `A past day has no "now", so this shows whoever signed in and recorded no Check-Out.`);
+        // ⚠️⚠️ أهمّ سطرٍ في هذه الشاشة: من انصرفت لا تظهر بطاقتها بطلب المالك،
+        // فلو لم يُقل عددها لَقُرئ غيابُ الاسم «لم تحضر» — وذلك ظلم لبياعةٍ عملت
+        // يومها كاملًا. فالاسم يُقال، والصورة وحدها هي التي تُخفى.
+        if (left.length) {
+            notes.push(`<b>${left.length} finished and left today:</b> ${left.map(r => escapeHtml(r.name)).join(' &middot; ')}. `
+                + `They are not shown above on purpose, so the screen stays clear &mdash; not because they did not come.`);
+        }
+        notes.push(`This screen is a courtesy copy of what she pressed, not the attendance record. If a name is `
+            + `missing it means that copy did not reach us &mdash; it never means she was absent. `
+            + `Refreshes by itself every minute.`);
+        el('dtNote').innerHTML = notes.join('<br><br>');
+    }
+
+    el('dtPrev').addEventListener('click', () => {
+        el('dtDate').value = shiftDayISO(currentDutyDay(), -1);
+        loadDuty();
+    });
+    el('dtNext').addEventListener('click', () => {
+        el('dtDate').value = shiftDayISO(currentDutyDay(), 1);
+        loadDuty();
+    });
+    el('dtDate').addEventListener('change', loadDuty);
+
     /** يرسم الأقسام الثلاثة دائمًا. الإظهار مسؤولية showView وحدها. */
     function render() {
         if (!el('acMonth').value) el('acMonth').value = todayISO().slice(0, 7);
@@ -1201,7 +1446,18 @@
         renderTarget();
     });
     el('tgDate').addEventListener('change', renderTarget);
-    el('refreshBtn').addEventListener('click', loadAll);
+    /**
+     * ⭐⭐ التحديث الدوري: الأرقام دائمًا، ولوحة الحضور **إن كانت مفتوحة فقط**.
+     * ⚠️ فتحميلُ الصور كل دقيقة لمن يقرأ الحساب في نافذةٍ أخرى إهدارٌ لبياناته
+     * بلا أن يرى شيئًا منه.
+     */
+    async function refreshShown() {
+        await loadAll();
+        if (activeView === 'duty') await loadDuty();
+    }
+    // ⚠️ زرّ Refresh يُصفّر علَم البطاقات: صورةٌ رفعها المالك قبل دقيقة يجب أن
+    // تظهر عند الضغط، وبلا هذا التصفير كانت لن تظهر حتى تُغلق الصفحة وتُفتح.
+    el('refreshBtn').addEventListener('click', () => { dutyCardsLoaded = false; refreshShown(); });
     el('logoutBtn').addEventListener('click', () => signOut(auth));
 
     // ⚠️ بديلٌ إن لم يُحمَّل الشعار: صورةٌ مكسورة تُقرأ عطلًا، والحرفان مقصودان.
@@ -1247,7 +1503,7 @@
             showView('');
             loadAll();
             if (timer) clearInterval(timer);
-            timer = setInterval(loadAll, AUTO_REFRESH_MS);
+            timer = setInterval(refreshShown, AUTO_REFRESH_MS);
         } else {
             if (timer) { clearInterval(timer); timer = null; }
             el('dataPanel').classList.add('hidden');
@@ -1258,7 +1514,7 @@
 
     // إعادة الحساب عند العودة إلى الصفحة، فالوقت تقدّم وقد تكون تقارير وصلت.
     document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && auth.currentUser) loadAll();
+        if (!document.hidden && auth.currentUser) refreshShown();
     });
 </script>
 

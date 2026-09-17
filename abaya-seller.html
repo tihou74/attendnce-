@@ -1168,6 +1168,32 @@
             setMsg('attendMsg', type === 'Check-In'
                 ? 'Recorded. Have a good shift.'
                 : 'Recorded. Thank you for today.', 'ok');
+
+            // ---- ⭐⭐ مرآةٌ صغيرة للوحة السيدة فاطمة -----------------------
+            // ⚠️⚠️ في try/catch **خاصّ بها وبعد نجاح البصمة**: البصمة هي التي
+            // يُبنى عليها الراتب، والمرآة مجاملةٌ على شاشة. فلو فشلت هذه لأي سبب
+            // (قواعد لم تُنشر، شبكة انقطعت) يجب أن تبقى بصمتها محفوظة وأن ترى
+            // «Recorded» — لا رسالة خطأ تُفهم أنها لم تبصم فتضغط مرّة ثانية.
+            // ⚠️ ولماذا مجموعة مستقلة (abaya_presence) ولا تقرأ فاطمة `attendance`
+            // مباشرةً: تلك تحمل تاريخ كل موظف وإحداثيات كل بصمة، وفايربيس لا
+            // يُخفي بعض الصفوف أو بعض الحقول عند القراءة — إمّا الكل أو لا شيء.
+            // ⚠️ ولا مسمّى وظيفيًّا هنا: المسمّى والصورة على البطاقة التي يكتبها
+            // المالك، وهذه الصفحة لا تقرؤها أصلًا بالقواعد. فلا يُنسخ ما قد يقدُم.
+            try {
+                await addDoc(collection(db, "abaya_presence"), {
+                    employeeId: empId,                 // معرّف ملف الموظفة — به تُربط البطاقة
+                    sellerId: state.sellerId || '',
+                    employeeName: state.sellerName || '',
+                    shop: state.shop,
+                    type: type,                        // 'Check-In' | 'Check-Out'
+                    date: todayISO(),                  // بتوقيت قطر
+                    time: qatarTimeLabel(now),
+                    serverTime: serverTimestamp(),
+                    deviceTime: now
+                });
+            } catch (mirrorErr) {
+                console.error('The board mirror failed (her attendance itself was saved):', mirrorErr);
+            }
         } catch (e) {
             setMsg('attendMsg', 'Could not record it: ' + e.message, 'err');
         } finally {

@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v14   (2026-09-16)  <<<
+//   >>>  RULES REVISION: v15   (2026-09-17)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,7 +12,7 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       supervisor_presence
+//       abaya_presence
 //
 //   (This exact text exists nowhere in any earlier revision, which is the whole
 //    point of a marker. Every earlier marker is now useless for telling the
@@ -20,12 +20,13 @@ rules_version = '2';
 //    the single revision that introduced it:
 //      "abaya_sales_reports"        is in v11 AND v12  -> never worked
 //      "isAccountant() || isViewer();" predates the abaya work -> never worked
-//      "abaya-balances.html"        introduced in v12, still here in v13/v14
-//      "manager_presence"           introduced in v13, still here in v14
+//      "abaya-balances.html"        introduced in v12, still here in v13/v14/v15
+//      "manager_presence"           introduced in v13, still here in v14/v15
+//      "supervisor_presence"        introduced in v14, still here in v15
 //    Always search for the marker named directly above, and when publishing a
 //    new revision, change that name to something introduced by it.)
 //
-//   FOUND     -> v14 is live. Good.
+//   FOUND     -> v15 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -43,6 +44,33 @@ rules_version = '2';
 // exact mistake happened with the "(v4)" label, which never changed across
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
+//
+//  v15  2026-09-17  + THE SALESWOMEN'S BOARD — abaya_seller_cards + abaya_presence.
+//                     Management's request: when a saleswoman signs in at a shop,
+//                     her photograph appears in the Al Sheikha Style window of the
+//                     viewing panel with a short English sentence saying who she
+//                     is and which shop she is in. When she presses Check-Out she
+//                     disappears from the board completely — the owner asked for
+//                     that explicitly, so the screen does not become crowded with
+//                     people who have already gone home.
+//                     Built exactly like v14's mirror: her punch on her own
+//                     screen is unchanged, and a small copy is written at the same
+//                     moment (name, shop, in or out, time). No location — her
+//                     punch deliberately has none.
+//                     TWO NEW COLLECTIONS RATHER THAN REUSING v13/v14's:
+//                     the owner's instruction was absolute — "the saleswomen have
+//                     nothing to do with the restaurants, I do not want even a
+//                     smell of them in the restaurants, and the other way round".
+//                     Putting their documents inside manager_cards and
+//                     supervisor_presence is that mixing, and it would then rely
+//                     on every reader remembering to filter; one forgotten filter
+//                     puts a saleswoman on the managers' board. Separate
+//                     collections cannot mix by accident. That is the whole reason
+//                     this revision exists and has to be published.
+//                     Nothing about the restaurants changed in this revision. The
+//                     four blocks above (attendance, manager_cards,
+//                     manager_presence, supervisor_presence) are byte-identical to
+//                     v14.
 //
 //  v14  2026-09-16  + THE SUPERVISORS' BOARD — supervisor_presence.
 //                     Management's request: a fourth window in the viewing panel
@@ -662,6 +690,64 @@ service cloud.firestore {
     // mirror write did not land. The board says "no record" for that, never
     // "absent", because the truth about attendance lives in `attendance`.
     match /supervisor_presence/{eventId} {
+      allow read: if isAdmin() || isStaff() || isViewer();
+      allow create: if isKiosk() || isAdmin();
+      // History is not rewritable — a correction is a NEW event.
+      allow update: if false;
+      // The owner alone may remove a test entry.
+      allow delete: if isAdmin();
+    }
+
+    // ---- abaya_seller_cards (the saleswomen's photo and title) ---------------
+    // The same idea as manager_cards, but a SEPARATE collection on purpose.
+    //
+    // Why not simply add the saleswomen to manager_cards: the owner's instruction
+    // was absolute — "the saleswomen have nothing to do with the restaurants, I
+    // do not want even a smell of them in the restaurants, and the other way
+    // round". Putting their documents inside the restaurants' own collection is
+    // exactly that mixing, and it would then depend on every reader remembering
+    // to filter. One forgotten filter puts a saleswoman on the managers' board.
+    // Two collections cannot mix by accident; a shared one can only be kept
+    // apart by discipline. This costs one rules deployment and buys certainty.
+    //
+    // Document id = the EMPLOYEE FILE id, not the abaya_sellers id, because the
+    // presence events below are keyed by the employee file (attendance and
+    // payroll both work on employee files).
+    //
+    // ⚠️ NEVER a Qatar ID photograph here, exactly as with manager_cards: that is
+    // an official document, and this collection is readable by the viewers. The
+    // owner uploads an ordinary photograph from the dashboard.
+    match /abaya_seller_cards/{empId} {
+      allow read: if isAdmin() || isStaff() || isViewer();
+      allow write: if isAdmin();
+    }
+
+    // ---- abaya_presence (who is in a shop right now) -------------------------
+    // A small MIRROR of a saleswoman's real punch on her own screen, written at
+    // the same moment as the attendance record: her name, the shop she picked,
+    // Check-In or Check-Out, and the time. No location — her punch deliberately
+    // has none, by the owner's decision.
+    //
+    // Separate from supervisor_presence for the same reason as the cards above:
+    // the restaurants' board reads supervisor_presence by date, so a saleswoman
+    // landing there would appear on it.
+    //
+    // Why not let the viewers read `attendance` directly: that collection holds
+    // every employee's complete history and the GPS coordinates of every punch,
+    // and Firestore cannot hide some rows or some fields on a read — it is all or
+    // nothing. So `attendance` stays closed to viewers and this carries only what
+    // the board needs.
+    //
+    // Append-only for the kiosk, like the two boards above: the saleswoman's page
+    // signs in anonymously, so granting update would let anyone who opens that
+    // link rewrite an existing record. Her current state is simply her LATEST
+    // event of that day — a Check-Out is a NEW document, never an edit.
+    //
+    // ⚠️ This is NOT the attendance record and must never be treated as one. It
+    // does not feed payroll and carries no worked-hours figure. A missing mirror
+    // event does not mean she did not clock in — it means the mirror write did
+    // not land. The truth about attendance lives in `attendance`.
+    match /abaya_presence/{eventId} {
       allow read: if isAdmin() || isStaff() || isViewer();
       allow create: if isKiosk() || isAdmin();
       // History is not rewritable — a correction is a NEW event.
