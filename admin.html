@@ -1500,7 +1500,13 @@
             <div class="status" id="abSellerStatus" style="min-height: 18px; font-size: 13px; font-weight: 700; margin-bottom: 10px;"></div>
             <div class="table-container">
                 <table>
-                    <thead><tr><th>Name</th><th>PIN</th><th class="money-col">Reports sent</th><th>Last report</th><th></th></tr></thead>
+                    <!-- ⭐⭐ عمود «Employee file» أُضيف لتمكين البصمة والراتب:
+                         البياعة تُسجَّل بصمتها تحت **ملف موظفة**، لا تحت معرّف
+                         البياعة — فمحرّك الرواتب والغياب يعمل على ملفات الموظفين.
+                         ⚠️ ولا يُنشأ الملف تلقائيًّا: زرٌّ يضغطه المالك، ويربط
+                         بالموجود إن وُجد اسمٌ مطابق بدل إنشاء نسخة ثانية. -->
+                    <thead><tr><th>Name</th><th>PIN</th><th class="money-col">Reports sent</th><th>Last report</th>
+                        <th>Employee file &mdash; for attendance &amp; payroll</th><th></th></tr></thead>
                     <tbody id="abSellersBody"></tbody>
                 </table>
             </div>
@@ -8342,7 +8348,7 @@
         if (!body) return;
         const editable = canEditAbayaSetup();
         if (!abayaSellers.length) {
-            body.innerHTML = `<tr><td colspan="5" style="text-align:center;">No saleswoman added yet. Add the first one above.</td></tr>`;
+            body.innerHTML = `<tr><td colspan="6" style="text-align:center;">No saleswoman added yet. Add the first one above.</td></tr>`;
             return;
         }
         body.innerHTML = abayaSellers.map(s => {
@@ -8354,12 +8360,129 @@
                 <td style="font-family: ui-monospace, monospace;">${escapeHtml(s.pin ? String(s.pin) : '••••')}</td>
                 <td class="money-col">${mine.length}</td>
                 <td>${last ? escapeHtml(salesDateLabel(last)) : '<span style="color: var(--text-faint);">never</span>'}</td>
+                <td>${(() => {
+                    // ⭐ الحالة تُقرأ من الرابط المحفوظ على مستند البياعة، ويُتحقّق
+                    // أن الملف المرتبط **ما زال موجودًا**: ملفٌّ حُذف يترك رابطًا
+                    // معلّقًا، وبصمتها تُكتب تحت معرّفٍ لا وجود له.
+                    const linkedId = s.employeeId ? String(s.employeeId) : '';
+                    const emp = linkedId ? allEmployees.find(e => e.id === linkedId) : null;
+                    if (emp) {
+                        return `<b style="color: var(--success);">&#10004; linked</b>`
+                            + `<br><small style="color: var(--text-dim);">${escapeHtml(emp.name || emp.id)}`
+                            + `${emp.branch ? ' — ' + escapeHtml(emp.branch) : ''}</small>`;
+                    }
+                    if (linkedId) {
+                        return `<b style="color: var(--danger);">&#9888; linked file is missing</b>`
+                            + (editable ? `<br><button class="btn-warning btn-sm" style="margin-top:5px;"
+                                 onclick="createAbayaEmployeeFile('${sid}')">Create it again</button>` : '');
+                    }
+                    return `<span style="color: var(--text-dim); font-size:12px;">not linked &mdash; no attendance</span>`
+                        + (editable ? `<br><button class="btn-success btn-sm" style="margin-top:5px;"
+                             onclick="createAbayaEmployeeFile('${sid}')">Create employee file</button>` : '');
+                })()}</td>
                 <td style="white-space: nowrap;">${editable
                     ? `<button class="btn-danger btn-sm" title="Remove this saleswoman" onclick="deleteAbayaSeller('${sid}')">${iconSvg('trash','ic-sm')}</button>`
                     : ''}</td>
             </tr>`;
         }).join('');
     }
+
+    /**
+     * ⭐⭐ يُنشئ ملفَّ موظفةٍ للبياعة ويربطه بها — فتصير بصمتها وراتبها ممكنين.
+     *
+     * ⚠️⚠️ الحماية الأولى وأهمّها: **لا يُنشئ نسخةً ثانية**. يبحث أولًا عن ملفٍّ
+     * قائم بنفس الاسم (بنفس قاعدة nameKey التي تكشف اختلاف الترتيب والحرف
+     * الواحد) — فإن وجده **ربط به** ولم يُنشئ شيئًا. والتكرار هو الذي أرهق
+     * المالك أيامًا، ولن يعود من هذا الباب.
+     *
+     * ⚠️ والراتب يُنشأ **صفرًا** لا برقمٍ مُختلق: صفرٌ يُطالب بالتصحيح أصدق من
+     * رقمٍ يُدفع وهو خطأ.
+     * ⚠️ والنشاط ABAYA صريحًا، والسكن 'external' — فلا خصم سكن لهنّ بقرار المالك.
+     * ⚠️ ورقمها السرّي يُنسخ إلى employee_pins بنفس المعرّف، فرقمٌ واحد يخدم
+     * البصمة والتقرير — وهو ما اختاره المالك.
+     */
+    window.createAbayaEmployeeFile = async function(sellerId) {
+        const st = document.getElementById('abSellerStatus');
+        const show = (m, c) => { if (st) { st.innerHTML = m; st.style.color = c; } };
+        if (!canEditAbayaSetup()) { show('Only the owner can do this.', 'var(--danger)'); return; }
+        const seller = abayaSellers.find(s => s.id === sellerId);
+        if (!seller) { show('That saleswoman no longer exists.', 'var(--danger)'); return; }
+        if (!Array.isArray(allEmployees) || !allEmployees.length) {
+            show('The employee list has not loaded yet — press Refresh first, so a duplicate file is not created.',
+                'var(--danger)');
+            return;
+        }
+        const name = String(seller.name || '').trim().toUpperCase();
+        if (!name) { show('This saleswoman has no name recorded.', 'var(--danger)'); return; }
+
+        // ---- 1) هل لها ملفٌّ قائم؟ نربط به ولا نُنشئ ----------------------
+        const key = nameKey(name);
+        const words = key.split(' ').filter(Boolean);
+        const match = allEmployees.find(e => {
+            const ek = nameKey(e.name);
+            if (!ek) return false;
+            return ek === key || nameContains(words, ek.split(' ').filter(Boolean));
+        });
+
+        let empId, created = false;
+        try {
+            if (match) {
+                empId = match.id;
+                // ⚠️ ملفٌّ قائم للمطاعم يُحوَّل إلى العبايات فقط بتأكيد صريح:
+                // تحويلُه بلا سؤال يُخرجه من كشف رواتب المطاعم بلا أن يدري أحد.
+                if (empBiz(match) !== 'abaya' && !confirm(
+                    `A file already exists for "${match.name}" and it belongs to RESTAURANTS.\n\n`
+                    + `Link it to this saleswoman and move it to Al Sheikha Style?\n\n`
+                    + `It will then leave the restaurants' lists and payroll.`)) {
+                    show('Cancelled — nothing was changed.', 'var(--warning)');
+                    return;
+                }
+                if (empBiz(match) !== 'abaya') {
+                    await updateDoc(doc(db, "employees", empId), { business: BIZ_ABAYA, housingType: 'external' });
+                    match.business = BIZ_ABAYA; match.housingType = 'external';
+                }
+            } else {
+                empId = generateEmployeeId(name);
+                await setDoc(doc(db, "employees", empId), {
+                    name,
+                    role: 'Saleswoman',
+                    phone: '',
+                    branch: (typeof ABAYA_SHOPS !== 'undefined' && ABAYA_SHOPS[0]) ? ABAYA_SHOPS[0] : 'GULF MALL',
+                    shift: 'Full Time',
+                    housingType: 'external',          // لا سكن للعبايات
+                    salary: 0,                        // يُصحّحه المالك — صفرٌ أصدق من رقمٍ مُختلق
+                    joinDate: todayISO(),
+                    business: BIZ_ABAYA,
+                    qidNumber: '', qidExpiry: '',
+                    qidFront: '', qidBack: '', healthCard: '', contract: '', healthCert: '',
+                    createdAt: serverTimestamp(),
+                    createdFromAbayaSeller: sellerId  // أثرٌ يوضّح من أين جاء الملف
+                });
+                created = true;
+                // رقمٌ واحد للبصمة والتقرير — بنفس معرّف الملف.
+                if (seller.pin) {
+                    await setDoc(doc(db, "employee_pins", empId), {
+                        pin: String(seller.pin), employeeName: name
+                    });
+                }
+            }
+            // ---- 2) الربط على مستند البياعة ------------------------------
+            await updateDoc(doc(db, "abaya_sellers", sellerId), { employeeId: empId });
+            seller.employeeId = empId;
+            logAudit(created ? 'Abaya employee file created' : 'Abaya seller linked to existing file',
+                `${name} → ${empId}`);
+            await loadEmployees();
+            renderAbayaSellers();
+            show(created
+                ? `&#10004; <b>File created for ${escapeHtml(name)}</b> and linked. She can now record attendance from `
+                  + `her own screen with the same PIN. <b>Her salary is 0</b> — set it in `
+                  + `<b>Employee Profiles</b>, and check her branch.`
+                : `&#10004; <b>Linked ${escapeHtml(name)} to her existing file</b> &mdash; no second file was created.`,
+                'var(--success)');
+        } catch (e) {
+            show('Could not do it: ' + escapeHtml(e.message), 'var(--danger)');
+        }
+    };
 
     window.addAbayaSeller = async function() {
         const st = document.getElementById('abSellerStatus');

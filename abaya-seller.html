@@ -323,6 +323,39 @@
 
     <!-- ================= 3) النموذج ================= -->
     <div class="hidden" id="stepForm">
+        <!-- ==================================================================
+             ⭐⭐ البصمة — بطلب المالك: «يبصمون من نفس شاشة إرسال التقرير»
+             ------------------------------------------------------------------
+             ⚠️ ولا تحقّق من الموقع إطلاقًا — قال المالك: «من غير تحديد الموقع».
+             وهذا **مكتوب صريحًا** على السجل نفسه (noLocationCheck: true) لا مجرّد
+             غيابِ إحداثيات: فغيابُها يُقرأ لاحقًا «فشل تحديد الموقع»، والفرق بين
+             «لم يُطلب» و«طُلب وفشل» فرقٌ يُحاسَب عليه إنسان.
+
+             ⚠️ وموضعها هنا بعد اختيار المحل عن قصد: سجل الحضور يحتاج الفرع، وهي
+             لا تعمل في محل ثابت (قرار الإدارة). فبلا اختيار المحل تُسجَّل بصمتها
+             على محلٍّ خطأ.
+
+             ⚠️ ولا تكتب هذه الشاشة في مجموعةٍ من مجموعات المطاعم غير `attendance`
+             المشتركة، وكتابتها **إضافةُ سجلٍّ جديد** لا تعديل شيء قائم. ولوحة
+             الإدارة ترشّح البصمات بنشاط صاحبها، فبصمة البياعة لا تظهر في
+             شاشة المطاعم أصلًا.
+             ================================================================== -->
+        <div class="panel" id="attendPanel">
+            <h2>My attendance</h2>
+            <p class="ar">Press when you start and when you finish &mdash; no location is checked</p>
+            <p id="attendState" style="font-weight: 800; font-size: 15px; margin: var(--space-3) 0;">&mdash;</p>
+            <div class="bar">
+                <button id="btnCheckIn" style="background: #16a34a;">Check-In &#128994;</button>
+                <button id="btnCheckOut" style="background: #b91c1c;">Check-Out &#128308;</button>
+            </div>
+            <p class="status" id="attendMsg" style="margin-top: var(--space-3);"></p>
+            <p class="ar" id="attendNotLinked" style="display: none; color: #b45309; font-weight: 700;">
+                Your employee file has not been created yet, so attendance cannot be recorded.
+                Ask the owner to open <b>Al Sheikha Style &rarr; Settings &rarr; Saleswomen</b> and press
+                <b>Create employee file</b> next to your name. Sending the daily report still works normally.
+            </p>
+        </div>
+
         <div class="panel">
             <h2>Report details</h2>
             <div style="display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin-bottom: var(--space-4);">
@@ -525,6 +558,8 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import {
         getFirestore, collection, addDoc, doc, getDoc, getDocs, serverTimestamp,
+        // ⭐ query/where لقراءة بصمات اليوم لهذه البياعة وحدها — لا المجموعة كلها.
+        query, where,
         initializeFirestore, persistentLocalCache, persistentMultipleTabManager
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -672,6 +707,18 @@
     function todayISO() {
         const p = qatarParts(new Date());
         return `${p.year}-${p.month}-${p.day}`;
+    }
+    /**
+     * الوقت بتوقيت قطر — h:mm:ss AM/PM، بنفس صيغة سجلّات الحضور القائمة.
+     * ⚠️ الصيغة نفسها عن قصد: لوحة الإدارة تعرض حقل `time` كما هو، فصيغةٌ مختلفة
+     * كانت ستُظهر بصمات البياعات بشكلٍ شاذّ في نفس الجدول.
+     */
+    function qatarTimeLabel(dateObj) {
+        const p = qatarParts(dateObj);
+        let h = Number(p.hour);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12; if (h === 0) h = 12;
+        return `${h}:${p.minute}:${p.second} ${ampm}`;
     }
     /** 15/09/2026 — نفس صيغة رسائل الإدارة */
     function slashDate(iso) {
@@ -966,7 +1013,9 @@
             snap.forEach(d => {
                 const v = d.data();
                 if (v.active === false) return;   // مَن تركت العمل تُخفى
-                sellers.push({ id: d.id, name: v.name || d.id });
+                // ⭐ employeeId: رابط ملف الموظفة الذي تُسجَّل البصمة تحته.
+                // يُنشئه المالك من لوحة الإدارة، وغيابُه يُعطّل البصمة وحدها.
+                sellers.push({ id: d.id, name: v.name || d.id, employeeId: v.employeeId || '' });
             });
             sellers.sort((a, b) => a.name.localeCompare(b.name));
             const sel = el('sellerSelect');
@@ -1020,6 +1069,116 @@
         showStep('stepLogin');
     });
 
+    // =====================================================================
+    // ⭐⭐ البصمة — حضور وانصراف من هذه الشاشة، بلا تحديد موقع
+    // ---------------------------------------------------------------------
+    // ⚠️ تُسجَّل تحت **معرّف ملف الموظفة** لا معرّف البياعة: كشف الرواتب ومحرّك
+    // الغياب يعملان على ملفات الموظفين، فبصمةٌ بمعرّف بياعةٍ لا يعرفها أحد ولا
+    // تدخل في راتبها إطلاقًا. والربط يُنشئه المالك من لوحة الإدارة مرّة واحدة.
+    //
+    // ⚠️ وبلا رابطٍ لا نكتب شيئًا ولا نُخفي السبب: تُعرض رسالةٌ تقول لها ماذا
+    // يفعل المالك بالحرف. وإرسال التقرير اليومي يبقى يعمل كما هو — فلا يتعطّل
+    // عملها لأجل ميزةٍ جديدة.
+    // =====================================================================
+    let isPunching = false;
+    let lastPunchType = null;          // 'Check-In' | 'Check-Out' | null
+
+    function linkedEmployeeId() {
+        const s = sellers.find(x => x.id === state.sellerId);
+        return (s && s.employeeId) ? String(s.employeeId) : '';
+    }
+
+    function paintAttendState() {
+        const linked = linkedEmployeeId();
+        const notLinked = el('attendNotLinked');
+        const inBtn = el('btnCheckIn');
+        const outBtn = el('btnCheckOut');
+        if (notLinked) notLinked.style.display = linked ? 'none' : 'block';
+        if (inBtn) inBtn.disabled = !linked || isPunching;
+        if (outBtn) outBtn.disabled = !linked || isPunching;
+        const st = el('attendState');
+        if (!st) return;
+        if (!linked) { st.innerText = 'Attendance is not set up for you yet'; return; }
+        if (lastPunchType === 'Check-In') st.innerText = 'You are checked IN — press Check-Out when you finish';
+        else if (lastPunchType === 'Check-Out') st.innerText = 'You are checked OUT for now';
+        else st.innerText = 'Nothing recorded for you today yet';
+    }
+
+    /**
+     * آخر بصمةٍ لها **اليوم** — لتُعرض حالتها الصحيحة عند فتح الشاشة.
+     * ⚠️ تُرشَّح بالتاريخ لا بالترتيب الزمني وحده: استعلامٌ مرتَّب على مجموعة
+     * الحضور كلها يحتاج فهرسًا مركّبًا، وغيابُه يرمي خطأً. والترشيح بالتاريخ
+     * وحده كافٍ هنا وخفيف.
+     */
+    async function loadTodayPunch() {
+        const empId = linkedEmployeeId();
+        lastPunchType = null;
+        if (!empId) { paintAttendState(); return; }
+        try {
+            const snap = await getDocs(query(collection(db, "attendance"),
+                where("employeeId", "==", empId), where("date", "==", todayISO())));
+            let bestMs = -1;
+            snap.forEach(d => {
+                const v = d.data();
+                const t = v.serverTime && typeof v.serverTime.toDate === 'function'
+                    ? v.serverTime.toDate().getTime()
+                    : (v.deviceTime && typeof v.deviceTime.toDate === 'function' ? v.deviceTime.toDate().getTime() : 0);
+                if (t >= bestMs) { bestMs = t; lastPunchType = v.type || null; }
+            });
+        } catch (e) {
+            // ⚠️ لا نُعطّل الشاشة لأجل قراءة الحالة: الزرّان يعملان، والحالة
+            // تُعرض «غير معروفة» بصدق بدل رقمٍ مُختلق.
+            console.error('Could not read today\'s attendance:', e);
+            const st = el('attendState');
+            if (st) st.innerText = 'Could not read today\'s status — you can still press the buttons';
+        }
+        paintAttendState();
+    }
+
+    async function punch(type) {
+        if (isPunching) return;                       // حماية من الضغط المزدوج
+        const empId = linkedEmployeeId();
+        if (!empId) { setMsg('attendMsg', 'Your employee file has not been created yet.', 'err'); return; }
+        if (!state.shop) { setMsg('attendMsg', 'Pick your shop first.', 'err'); return; }
+        // ⚠️ تحذيرٌ لا منعٌ: قد تنسى الانصراف بالأمس فتبصم دخولًا مرتين. والمنع
+        // كان سيتركها بلا سجلٍّ إطلاقًا، والتحذير يُبقي القرار لها.
+        if (lastPunchType === type && !confirm(
+            `You already pressed ${type} today.\n\nPress it again anyway?`)) return;
+        isPunching = true;
+        paintAttendState();
+        setMsg('attendMsg', 'Sending...', 'load');
+        try {
+            const now = new Date();
+            await addDoc(collection(db, "attendance"), {
+                employeeId: empId,
+                employeeName: state.sellerName || '',
+                branch: state.shop,
+                type: type,                            // 'Check-In' | 'Check-Out'
+                date: todayISO(),                      // بتوقيت قطر
+                time: qatarTimeLabel(now),
+                // ⭐ ساعة الخادم هي المرجع؛ ساعة الجهاز للتشخيص فقط.
+                serverTime: serverTimestamp(),
+                deviceTime: now,
+                // ⭐⭐ يُكتب صريحًا أن الموقع **لم يُطلب** بقرار الإدارة، فلا
+                // يُقرأ غيابُ الإحداثيات لاحقًا كأنه فشلٌ في تحديد الموقع.
+                noLocationCheck: true,
+                source: 'abaya-seller'
+            });
+            lastPunchType = type;
+            setMsg('attendMsg', type === 'Check-In'
+                ? 'Recorded. Have a good shift.'
+                : 'Recorded. Thank you for today.', 'ok');
+        } catch (e) {
+            setMsg('attendMsg', 'Could not record it: ' + e.message, 'err');
+        } finally {
+            isPunching = false;
+            paintAttendState();
+        }
+    }
+
+    el('btnCheckIn').addEventListener('click', () => punch('Check-In'));
+    el('btnCheckOut').addEventListener('click', () => punch('Check-Out'));
+
     function isShantonShop(shop) {
         return ABAYA_SHANTON_SHOPS.includes(shop);
     }
@@ -1043,6 +1202,11 @@
         buildMoveSelects();
         recalc();
         showStep('stepForm');
+        // ⭐ حالة البصمة تُقرأ بعد ظهور الشاشة لا قبلها: قراءةٌ من الشبكة لا يجوز
+        // أن تُبطئ ظهور النموذج، وهي لا تمنع شيئًا إن تأخّرت.
+        setMsg('attendMsg', '', '');
+        paintAttendState();
+        loadTodayPunch();
     }
     el('btnBackShop').addEventListener('click', () => showStep('stepShop'));
 
