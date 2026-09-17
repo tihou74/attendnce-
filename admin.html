@@ -580,14 +580,21 @@
 
     <!-- 1. الرئيسية -->
     <div id="tab-home" class="tab-content active">
+        <!-- ==================================================================
+             ⚠️⚠️ كل خانةٍ مُعلَّمة بنشاطها. سببُ ذلك عطلٌ رآه المالك: فتح العبايات
+             فوجد **١٢٢ بصمة** و**١١١٤٧٣ ريالًا رواتب** و**تقديمات وإنذارات** —
+             وكلها للمطاعم. وقال: «اتفقنا ألّا نخلط شيئًا… لقد أخافني هذا».
+             ⚠️ وما لا يخصّ النشاط **يُخفى** ولا يُصفَّر: الصفر دعوى («لا يوجد»)،
+             والإخفاء صدق («هذا ليس من هذا العمل»).
+             ================================================================== -->
         <div class="stats">
-            <div class="stat-box"><div class="stat-icon" data-icon="users"></div><div><h3>Active Employees</h3><p id="homeEmpCount">0</p></div></div>
-            <div class="stat-box"><div class="stat-icon" data-icon="calendar"></div><div><h3>Attendance Logs</h3><p id="homeLogCount">0</p></div></div>
-            <div class="stat-box"><div class="stat-icon" data-icon="inbox"></div><div><h3>Pending Requests</h3><p id="homeReqCount">0</p></div></div>
-            <div class="stat-box"><div class="stat-icon" data-icon="userPlus"></div><div><h3>New Applications</h3><p id="homeAppCount">0</p></div></div>
-            <div class="stat-box money-only"><div class="stat-icon" data-icon="dollar"></div><div><h3>Net Payroll (This Month)</h3><p id="homeNetPayroll">0 QAR</p></div></div>
-            <div class="stat-box"><div class="stat-icon" data-icon="alertTriangle"></div><div><h3>Warnings This Month</h3><p id="homeWarningsCount">0</p></div></div>
-            <div class="stat-box"><div class="stat-icon" data-icon="plane"></div><div><h3>Currently On Leave</h3><p id="homeOnLeaveCount">0</p></div></div>
+            <div class="stat-box" data-biz="both"><div class="stat-icon" data-icon="users"></div><div><h3>Active Employees</h3><p id="homeEmpCount">0</p></div></div>
+            <div class="stat-box" data-biz="both"><div class="stat-icon" data-icon="calendar"></div><div><h3>Attendance Logs</h3><p id="homeLogCount">0</p></div></div>
+            <div class="stat-box" data-biz="rest"><div class="stat-icon" data-icon="inbox"></div><div><h3>Pending Requests</h3><p id="homeReqCount">0</p></div></div>
+            <div class="stat-box" data-biz="rest"><div class="stat-icon" data-icon="userPlus"></div><div><h3>New Applications</h3><p id="homeAppCount">0</p></div></div>
+            <div class="stat-box money-only" data-biz="both"><div class="stat-icon" data-icon="dollar"></div><div><h3>Net Payroll (This Month)</h3><p id="homeNetPayroll">0 QAR</p></div></div>
+            <div class="stat-box" data-biz="rest"><div class="stat-icon" data-icon="alertTriangle"></div><div><h3>Warnings This Month</h3><p id="homeWarningsCount">0</p></div></div>
+            <div class="stat-box" data-biz="both"><div class="stat-icon" data-icon="plane"></div><div><h3>Currently On Leave</h3><p id="homeOnLeaveCount">0</p></div></div>
         </div>
         <div class="card">
             <h3><span data-icon="home"></span> Welcome to Al Sheikha Group Management System</h3>
@@ -3804,19 +3811,33 @@
             bsel.value = activeBiz === 'abaya' ? BIZ_ABAYA : BIZ_RESTAURANTS;
             if (typeof window.onNewEmpBusinessChange === 'function') window.onNewEmpBusinessChange();
         }
+        // ⭐⭐ خانات الرئيسية التي لا تخصّ هذا النشاط تُخفى — لا تُصفَّر.
+        // ⚠️ سببُ هذا عطلٌ أفزع المالك: رأى في وضع العبايات ١٢٢ بصمة و١١١٤٧٣
+        // ريالًا وتقديماتٍ وإنذارات، وكلها للمطاعم.
+        document.querySelectorAll('.stat-box[data-biz]').forEach(box => {
+            const b = box.dataset.biz || 'both';
+            const visible = !activeBiz || b === 'both' || b === activeBiz;
+            // ⚠️ ولا نُظهر خانةَ مالٍ لدورٍ لا يرى المال: money-only يُخفيها بشرطٍ
+            // آخر، وإرجاعُها إلى '' هنا كان سيُبطل ذلك الحارس.
+            if (!visible) box.style.display = 'none';
+            else if (!box.classList.contains('money-only') || canSeeMoney()) box.style.display = '';
+        });
+
         // ⭐ وتُعاد رسم القوائم المرشَّحة بالنشاط: بلا هذا تبقى قائمة الموظفين
         // القديمة معروضة بعد التبديل، فيرى بياعات في وضع المطاعم حتى يُحدّث.
+        // ⚠️⚠️ وهذه القائمة كانت **ناقصة**، وذلك هو سببُ ما رآه المالك: أرقام
+        // الرئيسية وبطاقات المدراء لم تكن فيها، فبقيت على قيمها الأولى المحسوبة
+        // قبل اختيار النشاط. فكل ما يُرشَّح بالنشاط يجب أن يكون هنا.
         // ⚠️ كلٌّ في try خاصّ: بعضها يقرأ عناصر تبويبٍ قد لا يكون مبنيًّا بعد،
         // وفشلُ واحدة لا يجوز أن يمنع البقية من التحديث.
         const redraws = [filterEmployeeDirectory, filterEmployeesList, renderShiftsTable,
                          renderLeavesTable, filterData, renderFormerEmployees,
-                         renderManagerCardPicker, renderManagerCardsTable];
+                         renderManagerCardPicker, renderManagerCardsTable,
+                         renderHomeExtraStats, refreshHomeCounters];
         redraws.forEach(fn => {
             try { if (typeof fn === 'function') fn(); }
             catch (e) { console.error('Redraw after business switch failed:', e); }
         });
-        const cnt = document.getElementById('homeEmpCount');
-        if (cnt && allEmployees.length) cnt.innerText = activeEmployees().length;
 
         // التبويب المفتوح لا ينتمي إلى النشاط الجديد؟ نفتح أول تبويب ينتمي إليه.
         const active = document.querySelector('.tab-content.active');
@@ -3858,6 +3879,34 @@
         // السكن يُخفى للعبايات — لا سكن لهنّ، وخانةٌ ظاهرة تُختار سهوًا.
         if (hw) hw.style.display = isAbaya ? 'none' : '';
     };
+
+    /**
+     * ⭐⭐ مصدرٌ واحد لأرقام الرئيسية المرشَّحة بالنشاط.
+     *
+     * ⚠️⚠️ كانت هذه الأرقام تُكتب في أماكن متفرّقة داخل دوال التحميل (عدد
+     * البصمات في loadAttendanceLogs، والطلبات في processRequestsData، والتقديمات
+     * في عارض التقديمات). فكلٌّ منها يُحسب **مرّة واحدة عند الإقلاع** وبلا مصفاة،
+     * ولا يُعاد حسابه عند تبديل النشاط. وذلك بعينه ما رآه المالك: ١٢٢ بصمة
+     * للمطاعم داخل شاشة العبايات.
+     *
+     * فجُمعت في دالةٍ واحدة تُنادى مع كل تبديل — ونسيانُ واحدةٍ صار مستحيلًا لأن
+     * المكان واحد.
+     */
+    function refreshHomeCounters() {
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+        if (Array.isArray(allEmployees) && allEmployees.length) {
+            set('homeEmpCount', activeEmployees().length);
+        }
+        // ⚠️ البصمات تُرشَّح بصاحبها لا باسم الفرع: أسماء الفروع تتشابه بين
+        // النشاطين («GULF MALL» محلّ عبايات و«SHAI BU HAMAD GULF MALL» مطعم).
+        // وبصمةٌ لا نجد لها ملفًّا تُحسب دائمًا — سجلٌّ حقيقي لا يُخفى.
+        if (Array.isArray(allAttendance)) {
+            const ids = new Set(allEmployees.filter(inBizScope).map(e => e.id));
+            const n = !activeBiz ? allAttendance.length : allAttendance.filter(l =>
+                !l.employeeId || ids.has(l.employeeId) || !allEmployees.some(e => e.id === l.employeeId)).length;
+            set('homeLogCount', n);
+        }
+    }
 
     /** يُقرأ الاختيار المحفوظ عند الإقلاع. */
     function restoreBiz() {
@@ -6250,7 +6299,10 @@
             const querySnapshot = await getDocs(q);
             allAttendance = [];
             querySnapshot.forEach((docSnap) => allAttendance.push({ id: docSnap.id, ...docSnap.data() }));
-            document.getElementById("homeLogCount").innerText = allAttendance.length;
+            // ⚠️ لا يُكتب العدد هنا مباشرةً: يمرّ بالمصدر الواحد ليُرشَّح
+            // بالنشاط المعروض. الكتابة المباشرة كانت تُظهر بصمات المطاعم
+            // داخل شاشة العبايات — وهو ما أفزع المالك.
+            refreshHomeCounters();
             filterData();
             renderOpenShifts();
             renderMonthArchive();
@@ -6264,7 +6316,10 @@
                 const querySnapshot = await getDocs(collection(db, "attendance"));
                 allAttendance = [];
                 querySnapshot.forEach((docSnap) => allAttendance.push({ id: docSnap.id, ...docSnap.data() }));
-                document.getElementById("homeLogCount").innerText = allAttendance.length;
+                // ⚠️ لا يُكتب العدد هنا مباشرةً: يمرّ بالمصدر الواحد ليُرشَّح
+            // بالنشاط المعروض. الكتابة المباشرة كانت تُظهر بصمات المطاعم
+            // داخل شاشة العبايات — وهو ما أفزع المالك.
+            refreshHomeCounters();
                 filterData();
                 renderOpenShifts();
                 renderMonthArchive();
@@ -12662,14 +12717,41 @@
         const body = document.getElementById('mcTableBody');
         if (!body) return;
         const cands = managerCandidates();
+        // =============================================================
+        // ⚠️⚠️⚠️ عطلٌ خطيرٌ رآه المالك بعينه، ووصفه: «دخلتُ إلى الشيخة ستايل
+        // فوجدتُ المدراء في الإعدادات… لقد أخافني».
+        //
+        // وكان أسوأ مما رآه: `cands` تمرّ بمصفاة النشاط، فهي في وضع العبايات
+        // **فارغة تمامًا**. فكل بطاقة تُدفع في السطر الثاني أدناه، فتُوسَم
+        // بطاقات مدرائه الحقيقيين «⚠ لم يبقَ مديرًا ولا سوبرفايزر» ومعها زرّ
+        // **Remove** — أي أن الشاشة كانت **تدعوه إلى حذف بطاقات مدرائه**. وهو
+        // قد حُذفت له سجلات مدراء حقيقيين مرّة من قبل بسببٍ مشابه.
+        //
+        // ولذلك فُصل الأمران اللذان كانا مخلوطين في سؤالٍ واحد:
+        //   1) **هل هو مديرٌ فعلًا؟** يُقاس على `allEmployees` كلها، بلا مصفاة
+        //      النشاط. فصفةُ الرجل لا تتغيّر بالتبويب المفتوح على الشاشة.
+        //   2) **هل يُعرض في هذا النشاط؟** يُقاس بمصفاة النشاط.
+        // =============================================================
+        const isStillManager = (id) => allEmployees.some(e =>
+            e.id === id && !isFormerEmployee(e) &&
+            (e.canSubmitSalesReport === true || e.isSupervisor === true));
+        const cardOwnerInScope = (id) => {
+            const emp = allEmployees.find(e => e.id === id);
+            return !emp || inBizScope(emp);   // بطاقةٌ بلا صاحب تُعرض في الحالتين
+        };
+
         // ⚠️ نعرض المدراء المفعَّلين **كلهم**، لا أصحاب البطاقات فقط: من لا
         // بطاقة له يجب أن يُرى نقصُه، وإلا بقي بلا صورة عند السيدة فاطمة بلا
         // أن يعرف المالك السبب.
         const rows = cands.map(e => ({ emp: e, card: managerCards.find(c => c.id === e.id) || null }));
         // وبطاقةٌ لمن لم يبقَ مديرًا (سُحبت صلاحيته أو انتهت خدمته) تُعرض موسومة:
         // بطاقتها تظل تظهر للسيدة فاطمة، فلا تُترك خفيّة.
+        // ⚠️ وتُستبعد بطاقات النشاط الآخر — وهي التي أفزعت المالك.
         managerCards.forEach(c => {
-            if (!cands.some(e => e.id === c.id)) rows.push({ emp: null, card: c });
+            if (cands.some(e => e.id === c.id)) return;      // معروضٌ أصلًا أعلاه
+            if (!cardOwnerInScope(c.id)) return;             // بطاقة النشاط الآخر
+            if (isStillManager(c.id)) return;                // مديرٌ حقيقي، أخفته المصفاة لا سُحبت صفته
+            rows.push({ emp: null, card: c });
         });
         if (!rows.length) {
             body.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--text-dim);">Nobody is marked as a manager or a supervisor yet.</td></tr>';
@@ -13937,6 +14019,10 @@
             const todayStr = todayISO();
             const count = allAnnualLeaves.filter(lv => {
                 if (!lv.startDate) return false;
+                // ⚠️ وإجازةُ موظفٍ من النشاط الآخر لا تُحسب هنا: كان الرقم يخلط
+                // النشاطين. ومن لا ملفَّ له يُحسب — سجلٌّ حقيقي لا يُخفى.
+                const owner = allEmployees.find(e => e.id === lv.employeeId);
+                if (owner && !inBizScope(owner)) return false;
                 const endDate = lv.returnDate || null;
                 // Currently "on leave" = today falls within [startDate, returnDate).
                 // If no returnDate was recorded, fall back to startDate + days.
