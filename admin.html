@@ -2107,7 +2107,11 @@
 
     <!-- 6. الإعدادات -->
     <div id="tab-settings" class="tab-content">
-        <div class="card">
+        <!-- data-biz="rest": نطاق GPS للمطاعم وحدها. بصمة البياعة تُكتب بـ
+             noLocationCheck صريحًا (قرار المالك: بلا تحديد موقع)، فبطاقةٌ تضبط
+             نطاقًا لا يُطبَّق عليهنّ توهم بحراسةٍ غير موجودة. وفروعها كلها فروع
+             مطاعم أصلًا. -->
+        <div class="card" data-biz="rest">
             <h3><span data-icon="gps"></span> GPS Geofencing Settings per Branch</h3>
             <div class="controls">
                 <div style="flex: 1; min-width: 240px;">
@@ -2144,7 +2148,11 @@
              ⚠️ الصورة تُصغَّر وتُضغط قبل الحفظ: صفحة السيدة فاطمة تُحدَّث كل
              دقيقة، وصورةٌ بحجم 700KB لكل مدير كانت ستستهلك بياناتها بلا داعٍ.
              ================================================================== -->
-        <div class="card">
+        <!-- data-biz="rest": البطاقات تظهر في لوحة إدارة المطاعم (السيدة فاطمة)
+             ولا وجود لها في العبايات. ⚠️ والترشيح بالمحتوى وحده لم يكفِ: البطاقة
+             كانت تُعرض فارغةً في شاشة العبايات، وأسوأ من ذلك أنها وسمت مدراء
+             المطاعم بـ«لم يبقَ مديرًا» ومعهم زرّ حذف. -->
+        <div class="card" data-biz="rest">
             <h3><span data-icon="users"></span> Manager &amp; Supervisor Cards <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">بطاقات المدراء والسوبرفايزر</span></h3>
             <p class="card-sub">
                 The photo and job title that appear beside each person in the management panel, next to the
@@ -2208,7 +2216,16 @@
              تُضاف إليه خانة المدير وحدها. الكتابة الكاملة على سجل موجود تمحو
              راتبه وتاريخ التحاقه وصور هويته وعقده — وذلك ما لا يجوز أن يتكرّر.
              ================================================================== -->
-        <div class="card" style="border-left: 4px solid var(--success);">
+        <!-- ⚠️⚠️ data-biz="rest" — وهذه أخطرهنّ، لا مجرّد تنظيمٍ بصري:
+             1) المدير هنا معناه من يدخل report.html ليُرسل تقرير مبيعات المطاعم،
+                والسوبرفايزر من يظهر على لوحة إدارة المطاعم. لا معنى لأيّهما في
+                محلّ عبايات، وللبياعات شاشتهنّ ومفاتيحهنّ المستقلة.
+             2) قائمة «Branch for new files» فروع مطاعم بحتة، وأسماء المدراء في
+                الخانة الرمادية أسماء مطاعم — وهذا ما رآه المالك في شاشة العبايات.
+             3) والأخطر: الملف الجديد الذي يُنشئه هذا الزرّ يُكتب بنشاط المطاعم.
+                فاستعمالُه وهو في شاشة العبايات كان يُنشئ **موظف مطعم** في فرع
+                مطعم بصمت — ثم يظهر في كشف رواتب المطاعم. -->
+        <div class="card" data-biz="rest" style="border-left: 4px solid var(--success);">
             <h3><span data-icon="userPlus"></span> Set Up Managers &amp; Supervisors <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">تعيين المدراء والسوبرفايزر</span></h3>
             <p class="card-sub">
                 Write the names below, one per line, choose which role, and press Check. Anyone who already has a
@@ -3496,6 +3513,45 @@
     }
 
     /**
+     * ⭐⭐⭐ مصفاةٌ واحدة لسجلات الحضور بالنشاط المعروض — كل شاشةٍ تقرأ الحضور
+     * تمرّ من هنا.
+     *
+     * ⚠️⚠️ سببُ وجودها عطلٌ أفزع المالك مرّتين: كانت `activeEmployees()` تفصل
+     * قوائم **الموظفين** وحدها، أما سجلات **الحضور** فكانت كل شاشة ترشّحها
+     * بنفسها — أو لا ترشّحها إطلاقًا. فرأى في شاشة العبايات تنبيهات حضور
+     * لموظفي المطاعم بالاسم والفرع: «GAIMER W KAHI WEST WALK» و«UMA SHANKAR
+     * CHAMAR». وكان الترشيح موجودًا في جدول الحضور وأرقام الرئيسية فقط،
+     * ومنسيًّا في بطاقات التنبيه الست.
+     *
+     * فصار المكان واحدًا: من ينسى استدعاءها ينساها في مكانٍ واحد ظاهر، لا في
+     * ستة أماكن متفرّقة.
+     *
+     * ⚠️ والترشيح بـ**صاحب البصمة** لا باسم الفرع: أسماء الفروع تتشابه بين
+     * النشاطين (محلّ عبايات في «GULF MALL» ومطعمٌ في «SHAI BU HAMAD GULF
+     * MALL»)، فالترشيح بالاسم كان سيخلط الاثنين. والحقيقة في ملف الموظف.
+     *
+     * ⚠️ وبصمةٌ لا نجد لها ملفًّا (موظفٌ حُذف سجله) تُعرض في النشاطين معًا:
+     * إخفاؤها يُضيّع سجلًّا حقيقيًّا من الشاشة بلا أن يعرف أحد، وهذا أسوأ من
+     * ظهوره في الشاشة الخطأ.
+     *
+     * ⚠️⚠️ ولا تُستعمل في **الكتابة**: إلغاء الورديات القديمة، والنسخة
+     * الاحتياطية، وأدوات التكرار — كلها تقرأ allAttendance مباشرةً عن قصد،
+     * فوردية مفتوحة في النشاط الآخر يجب أن تُلغى مهما كانت الشاشة المفتوحة.
+     */
+    function bizLogs(logs) {
+        const arr = Array.isArray(logs) ? logs : [];
+        if (!activeBiz) return arr;
+        // مجموعتان تُبنيان مرّة واحدة: البحث الخطّي داخل filter كان سيجعل
+        // الكلفة عدد السجلات × عدد الموظفين، وسجلات الحضور تبلغ الآلاف.
+        const inScope = new Set(), known = new Set();
+        (allEmployees || []).forEach(e => {
+            known.add(e.id);
+            if (inBizScope(e)) inScope.add(e.id);
+        });
+        return arr.filter(l => !l.employeeId || inScope.has(l.employeeId) || !known.has(l.employeeId));
+    }
+
+    /**
      * الموظفون العاملون حاليًا — القوائم والإحصاءات كلها تمرّ من هنا.
      * ⚠️ وهنا يقع فصل النشاطين: مصفاةٌ واحدة تخدم ملفات الموظفين والرواتب
      * والورديات وأرقام الرئيسية وقوائم المدراء معًا. ولو رُشِّح كلٌّ منها على
@@ -3823,6 +3879,26 @@
             else if (!box.classList.contains('money-only') || canSeeMoney()) box.style.display = '';
         });
 
+        // ⭐⭐⭐ وبطاقاتٌ كاملة تخصّ نشاطًا واحدًا: `.card[data-biz]`.
+        //
+        // ⚠️⚠️ لماذا بطاقةٌ كاملة ولا يكفي ترشيح محتواها؟ لأن ثلاث بطاقات في
+        // الإعدادات ليست «قائمةً تُرشَّح» بل **أداةً تكتب**: نطاق GPS، وبطاقات
+        // المدراء، وتعيين المدراء. وأداةٌ ظاهرة في الشاشة الخطأ تُستعمل فيها —
+        // وزرُّ تعيين المدراء كان يُنشئ ملف موظف **مطعم** بصمت لو ضُغط وهو في
+        // شاشة العبايات. فالإخفاء هنا حراسةٌ لا ترتيب.
+        //
+        // ⚠️ ويُخفى التبويب بأكمله إن لم يبقَ فيه شيء؟ لا — تبويب الإعدادات فيه
+        // النسخة الاحتياطية والاستعادة وأدوات التكرار، وكلها تعمل في النشاطين.
+        document.querySelectorAll('.card[data-biz]').forEach(card => {
+            const b = card.dataset.biz || 'both';
+            const visible = !activeBiz || b === 'both' || b === activeBiz;
+            // ⚠️ لا تُعاد إلى '' بحال: بطاقات التنبيه تُظهرها/تُخفيها دوالُّها
+            // بحسب وجود صفوف. فالبطاقة التي تُخفيها هذه الدالة تُترك مخفيّة،
+            // وما تُظهره يُترك لصاحبه. ولذلك لا تُوسم بطاقةُ تنبيهٍ بـdata-biz
+            // إطلاقًا — تنبيهاتها تُرشَّح بـbizLogs في محتواها.
+            card.style.display = visible ? '' : 'none';
+        });
+
         // ⭐ وتُعاد رسم القوائم المرشَّحة بالنشاط: بلا هذا تبقى قائمة الموظفين
         // القديمة معروضة بعد التبديل، فيرى بياعات في وضع المطاعم حتى يُحدّث.
         // ⚠️⚠️ وهذه القائمة كانت **ناقصة**، وذلك هو سببُ ما رآه المالك: أرقام
@@ -3830,10 +3906,22 @@
         // قبل اختيار النشاط. فكل ما يُرشَّح بالنشاط يجب أن يكون هنا.
         // ⚠️ كلٌّ في try خاصّ: بعضها يقرأ عناصر تبويبٍ قد لا يكون مبنيًّا بعد،
         // وفشلُ واحدة لا يجوز أن يمنع البقية من التحديث.
-        const redraws = [filterEmployeeDirectory, filterEmployeesList, renderShiftsTable,
+        // ⚠️⚠️ وكانت ناقصةً مرّةً ثانية: **بطاقات التنبيه الست** لم تكن فيها.
+        // فحتى بعد ترشيح محتواها بـbizLogs كانت تبقى على ما رُسمت به قبل التبديل
+        // — وهذا بعينه ما رآه المالك: «Time source of today's records» تقول
+        // GAIMER W KAHI وهو في شاشة العبايات. فالترشيح وحده لا يكفي: من يُرشَّح
+        // يجب أن يُعاد رسمه هنا.
+        // ⚠️ syncBranchFilterOptions أوّلًا وقبل filterData: تُبدّل قائمة الفروع،
+        // وترشيحُ الجدول يقرأ الفرع المختار — فلو رُشِّح قبلها بقي فرع مطعمٍ
+        // مختارًا في شاشة العبايات، وظهر الجدول فارغًا بلا سبب معلوم.
+        const redraws = [syncBranchFilterOptions,
+                         filterEmployeeDirectory, filterEmployeesList, renderShiftsTable,
                          renderLeavesTable, filterData, renderFormerEmployees,
                          renderManagerCardPicker, renderManagerCardsTable,
-                         renderHomeExtraStats, refreshHomeCounters];
+                         renderHomeExtraStats, refreshHomeCounters,
+                         renderRecentActivity, renderQidAlert,
+                         renderServerTimeDiagnostic, renderCancelledDays, renderTamperAlert,
+                         renderClockSkewAlert, renderOpenShifts, renderMonthArchive];
         redraws.forEach(fn => {
             try { if (typeof fn === 'function') fn(); }
             catch (e) { console.error('Redraw after business switch failed:', e); }
@@ -3863,6 +3951,28 @@
         ['VENDOME MALL', 'VENDOME MALL'],
         ['DOHA FESTIVAL CITY', 'DOHA FESTIVAL CITY']
     ];
+
+    /**
+     * ⭐⭐ قائمة «Branch» في تبويب سجلات الحضور تتبع النشاط المعروض.
+     *
+     * ⚠️ كانت مكتوبةً في الترميز بأسماء فروع المطاعم الخمسة **ثابتةً**، وتبويب
+     * سجلات الحضور يظهر في النشاطين. فمن يفتح شاشة العبايات يجد قائمة فروع
+     * مطاعم بحتة — لا يستطيع الترشيح بمحلّ عبايات إطلاقًا، ويقرأ أسماء مطاعم
+     * حيث اتُّفق ألّا يقرأها.
+     *
+     * ⚠️ والفرع المختار يُصفَّر إن لم يكن من فروع النشاط الجديد: تركُه مختارًا
+     * يُظهر جدولًا فارغًا، والفراغُ يُقرأ «لا بصمات» — وهو غلط.
+     */
+    function syncBranchFilterOptions() {
+        const sel = document.getElementById('filterBranch');
+        if (!sel) return;
+        const isAbaya = activeBiz === 'abaya';
+        const list = isAbaya ? ABAYA_BRANCHES : REST_BRANCHES;
+        const keep = sel.value;
+        sel.innerHTML = `<option value="">${isAbaya ? 'All Shops' : 'All Branches &amp; Office'}</option>`
+            + list.map(([v, t]) => `<option value="${escapeHtml(v)}">${escapeHtml(t)}</option>`).join('');
+        sel.value = list.some(([v]) => v === keep) ? keep : '';
+    }
 
     /** يُبدّل قائمة الفروع وخانة السكن حسب النشاط المختار في نموذج الإضافة. */
     window.onNewEmpBusinessChange = function() {
@@ -3897,14 +4007,10 @@
         if (Array.isArray(allEmployees) && allEmployees.length) {
             set('homeEmpCount', activeEmployees().length);
         }
-        // ⚠️ البصمات تُرشَّح بصاحبها لا باسم الفرع: أسماء الفروع تتشابه بين
-        // النشاطين («GULF MALL» محلّ عبايات و«SHAI BU HAMAD GULF MALL» مطعم).
-        // وبصمةٌ لا نجد لها ملفًّا تُحسب دائمًا — سجلٌّ حقيقي لا يُخفى.
+        // ⚠️ البصمات تُرشَّح بصاحبها لا باسم الفرع — والمصفاة واحدة مشتركة
+        // (bizLogs) فلا يفترق هذا الرقم عن الجدول والتنبيهات أسفله.
         if (Array.isArray(allAttendance)) {
-            const ids = new Set(allEmployees.filter(inBizScope).map(e => e.id));
-            const n = !activeBiz ? allAttendance.length : allAttendance.filter(l =>
-                !l.employeeId || ids.has(l.employeeId) || !allEmployees.some(e => e.id === l.employeeId)).length;
-            set('homeLogCount', n);
+            set('homeLogCount', bizLogs(allAttendance).length);
         }
     }
 
@@ -5707,7 +5813,9 @@
 
     function clockSkewOffenders() {
         const byDevice = new Map();   // الفرع|المنطقة -> أسوأ فارق
-        (allAttendance || []).forEach(l => {
+        // ⚠️ bizLogs: التجميع بالفرع، والفروع تُسمّى للنشاطين — فبلا المصفاة
+        // يظهر فرع مطعم في شاشة العبايات.
+        bizLogs(allAttendance).forEach(l => {
             const skew = clockSkewMinutes(l);
             if (skew === null || Math.abs(skew) < CLOCK_SKEW_ALERT_MINUTES) return;
             const key = `${l.branch || '—'}|${l.deviceTz || 'unknown'}`;
@@ -5736,7 +5844,9 @@
 
         // آخر 7 أيام: هي المدى الذي يهمّ للحكم على «هل يعمل الآن؟»
         const since = (() => { let d = todayISO(); for (let i = 0; i < 6; i++) d = prevDayISO(d); return d; })();
-        const recent = (allAttendance || []).filter(l => String(l.date || '') >= since);
+        // ⚠️ bizLogs أولًا: هذه البطاقة هي التي رآها المالك تقول «GAIMER W KAHI
+        // WEST WALK» وهو في شاشة العبايات — العدد والفرع كانا للمطاعم.
+        const recent = bizLogs(allAttendance).filter(l => String(l.date || '') >= since);
         if (!recent.length) { card.style.display = 'none'; return; }
 
         const withSrv = recent.filter(l => logTimeIsServer(l)).length;
@@ -5786,7 +5896,9 @@
         const card = document.getElementById('cancelledDaysCard');
         const body = document.getElementById('cancelledDaysBody');
         if (!card || !body) return;
-        const rows = buildSessions(allAttendance || [])
+        // ⚠️ bizLogs: إلغاء يومٍ قرارٌ مالي، واسمُ صاحبه يظهر هنا صريحًا — وهو
+        // ما رآه المالك («UMA SHANKAR CHAMAR») في شاشة العبايات.
+        const rows = buildSessions(bizLogs(allAttendance))
             .filter(s => s.cancelled)
             .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
         if (!rows.length) { card.style.display = 'none'; return; }
@@ -5809,7 +5921,7 @@
         const card = document.getElementById('tamperCard');
         const body = document.getElementById('tamperBody');
         if (!card || !body) return;
-        const rows = buildSessions(allAttendance || [])
+        const rows = buildSessions(bizLogs(allAttendance))
             .filter(s => s.tamperMinutes !== null && s.tamperMinutes !== undefined)
             .sort((a, b) => Math.abs(b.tamperMinutes) - Math.abs(a.tamperMinutes));
         if (!rows.length) { card.style.display = 'none'; return; }
@@ -5913,6 +6025,10 @@
             return 0;
         }
 
+        // ⚠️⚠️ allAttendance مباشرةً — **بلا** bizLogs، عن قصد. هذه كتابة لا
+        // عرض: وردية مفتوحة نُسيت في النشاط الآخر يجب أن تُلغى مهما كانت الشاشة
+        // المفتوحة الآن. ولو رُشِّحت هنا لصار إلغاءُ الورديات يعتمد على أي تبويب
+        // كان مفتوحًا — فتبقى وردية مفتوحة شهرًا وتُفسد كشفَي شهرين.
         const open = buildSessions(allAttendance || [])
             .filter(s => s.checkIn && !s.checkOut && s.checkIn.id);
         // بلا طابع خادم على الدخول لا يُلغى شيء — نُبلّغ ولا نحكم.
@@ -5981,7 +6097,7 @@
         // العرض فقط، والقرار في مكان آخر: `hours` هنا تقريب لساعة هذا الجهاز
         // ليرى المشرف «مفتوحة منذ كم». الإلغاء الفعلي في cancelStaleShifts
         // ويُقاس بساعة الخادم وحدها — فلا يعتمد أي حكم مالي على هذا الرقم.
-        const open = buildSessions(allAttendance || [])
+        const open = buildSessions(bizLogs(allAttendance))
             .filter(s => s.checkIn && !s.checkOut)
             .map(s => ({ s, hours: (nowMs - tsToMillis(s.checkIn)) / 3600000 }))
             .filter(x => x.hours >= OPEN_SHIFT_ALERT_HOURS)
@@ -6020,7 +6136,9 @@
         const list = document.getElementById('monthArchiveList');
         if (!card || !list) return;
         const counts = new Map();
-        (allAttendance || []).forEach(l => {
+        // ⚠️ bizLogs: «120 record(s)» بجانب الشهر يجب أن تكون عدد سجلات النشاط
+        // المعروض، وإلا وعد الزرُّ ببياناتٍ لا يجدها في الكشف.
+        bizLogs(allAttendance).forEach(l => {
             const ym = String(l.date || '').slice(0, 7);
             if (/^\d{4}-\d{2}$/.test(ym)) counts.set(ym, (counts.get(ym) || 0) + 1);
         });
@@ -6344,16 +6462,11 @@
         // الفرع فقط يُرشَّح على السجلات الخام؛ التاريخ يُرشَّح على *الجلسات*
         // بتاريخ بدايتها (sessionsInRange) حتى لا تُقطع وردية عابرة لمنتصف
         // الليل عند حدّ الفترة فتظهر كأنها بلا انصراف.
-        // ⚠️ وفصل النشاطين يُطبَّق على **صاحب البصمة** لا على اسم الفرع: أسماء
-        // الفروع تتشابه (محلّ عبايات في «GULF MALL» ومطعمٌ في «SHAI BU HAMAD
-        // GULF MALL»)، فالترشيح بالاسم كان سيخلط الاثنين. والحقيقة في ملف الموظف.
-        // ⚠️ وبصمةٌ لا نجد لها ملفًّا (موظفٌ حُذف) تُعرض دائمًا: إخفاؤها يُضيّع
-        // سجلًّا حقيقيًّا من الشاشة بلا أن يعرف أحد.
-        const bizIds = new Set(allEmployees.filter(inBizScope).map(e => e.id));
-        let branchLogs = allAttendance.filter(l =>
-            (!filterBranch || (l.branch || "") === filterBranch)
-            && (!activeBiz || !l.employeeId || bizIds.has(l.employeeId)
-                || !allEmployees.some(e => e.id === l.employeeId)));
+        // ⚠️ وفصل النشاطين يُطبَّق في bizLogs — مصفاةٌ واحدة تخدم هذا الجدول
+        // وأرقام الرئيسية وبطاقات التنبيه معًا، فلا يفترق ما يظهر هنا عمّا يظهر
+        // هناك. وسببُ توحيدها أن نصف الشاشات كانت تنساها.
+        let branchLogs = bizLogs(allAttendance).filter(l =>
+            !filterBranch || (l.branch || "") === filterBranch);
 
         let sessions = sessionsInRange(branchLogs, startDate, endDate);
         sessions = sessions.filter(s => {
@@ -12205,7 +12318,9 @@
         const startDate = document.getElementById("startDate").value;
         const endDate = document.getElementById("endDate").value;
         // نفس سياسة «الوردية تتبع يوم بدايتها» المطبَّقة في الجدول والرواتب.
-        const sessions = sessionsInRange(allAttendance, startDate, endDate);
+        // ⚠️ bizLogs: الملفّ المُصدَّر يجب أن يطابق الجدول المعروض حرفًا بحرف —
+        // ملفٌّ فيه أسماء نشاطٍ آخر يُرسَل إلى محاسبٍ فيُبنى عليه قرار.
+        const sessions = sessionsInRange(bizLogs(allAttendance), startDate, endDate);
         const ws = XLSX.utils.json_to_sheet(sessionsToRows(sessions));
         ws['!cols'] = [{ wch: 26 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 26 }];
         const wb = XLSX.utils.book_new();
@@ -14631,6 +14746,11 @@
                         name: normName(p.name),
                         role: R.newRole,
                         branch: p.branch,
+                        // ⚠️ يُكتب النشاط صريحًا ولا يُترك للقيمة الافتراضية:
+                        // الغياب يُقرأ «مطاعم» فتصحّ النتيجة بالحظّ لا بالقصد.
+                        // وهذه البطاقة للمطاعم وحدها (data-biz="rest")، وقائمة
+                        // فروعها فروع مطاعم — فيُقال ذلك في السجل نفسه.
+                        business: BIZ_RESTAURANTS,
                         shift: 'Full Time',
                         // ⚠️ صفر عن قصد: رقمٌ مُختلق أخطر من صفرٍ يُطالب بالتصحيح.
                         salary: 0,
