@@ -487,9 +487,14 @@
          ================================================================== -->
     <div id="loadErrorBanner" style="display: none; background: #fef2f2; border: 2px solid var(--danger); border-left: 6px solid var(--danger); border-radius: 10px; padding: 16px 18px; margin: 0 0 20px; color: #7f1d1d; font-size: 13.5px; line-height: 1.85;"></div>
 
-    <!-- ⭐⭐ لافتة «نسخة محفوظة»: تظهر حين تُعرض بياناتٌ من قرص الجهاز لأن الخادم
-         لم يُجب. صفراء لا حمراء — البيانات صحيحة وإنما قد تتأخّر دقائق. وموضعها
-         هنا، خارج كل التبويبات، فتُرى في أيّها كان مفتوحًا. -->
+    <!-- ⭐⭐ الشريط الصغير: سطرٌ واحد لِما لا يُوقف العمل، ويُفتح بلمسة ويُغلق بضغطة.
+         ⚠️ طلبه المالك بعد أن رأى لافتةً حمراء تملأ شاشة هاتفه وتحتها 105 موظفًا
+         و41 بصمة — أي أن اللوحة تعمل وقائمةٌ واحدة تعثّرت. والحلّ تناسبُ الحجم مع
+         الضرر، لا إخفاء الأخطاء: الأصفار الصامتة أفزعته ثلاث مرات. -->
+    <div id="loadChip" style="display: none; border-radius: 8px; padding: 9px 12px; margin: 0 0 14px; line-height: 1.7;"></div>
+
+    <!-- لافتة «نسخة محفوظة» القديمة — بقيت في الترميز لأن الشريط الصغير حلّ محلّها،
+         ولا تُستعمل اليوم. وتُركت فارغة مخفيّة كي لا يبقى مرجعٌ معلّق في الكود. -->
     <div id="savedCopyBanner" style="display: none; background: #fffbeb; border: 2px solid var(--warning); border-left: 6px solid var(--warning); border-radius: 10px; padding: 14px 18px; margin: 0 0 20px; color: #78350f; font-size: 13.5px; line-height: 1.85;"></div>
 
     <!-- 1. الرئيسية -->
@@ -4267,6 +4272,64 @@
     // =====================================================================
     let loadFailures = [];
     let servingSavedCopy = false;
+    let noticeDismissed = false;
+
+    // =====================================================================
+    // ⭐⭐ حجم التنبيه يتناسب مع حجم الضرر
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ ملاحظة المالك، وهي صحيحة: رأى على هاتفه لافتةً حمراء تملأ الشاشة
+    // تقول «بعض البيانات لم تُقرأ»، وتحتها **١٠٥ موظفًا و٤١ بصمة** — أي أن
+    // اللوحة تعمل، وقائمةٌ واحدة (الإنذارات) تعثّرت لحظة. فاللافتة كانت أكبر
+    // من الضرر بمراحل، وعلى شاشة الهاتف تدفع كل شيء إلى الأسفل.
+    //
+    // ⚠️ والحلّ ليس إخفاء الأخطاء: الأصفار الصامتة أفزعته ثلاث مرات وكلّفتنا
+    // أيامًا. فالقاعدة الآن:
+    //   • اللوحة فيها بيانات وقائمةٌ تعثّرت  →  شريطٌ **صغير** بسطر واحد، يُفتح
+    //     بلمسة لمن أراد التفصيل، ويُغلق بضغطة.
+    //   • اللوحة فارغة تمامًا (لا موظفين)   →  اللافتة الحمراء الكاملة كما هي،
+    //     فهذه حالةٌ تُوقف العمل ويجب أن تصرخ.
+    // فالصمت ممنوع، والصراخ بلا سبب ممنوع.
+    // =====================================================================
+    /** هل اللوحة صالحة للعمل الآن؟ وجودُ الموظفين هو المقياس العملي. */
+    function dashboardHasData() {
+        return Array.isArray(allEmployees) && allEmployees.length > 0;
+    }
+
+    window.dismissLoadNotice = function() {
+        noticeDismissed = true;
+        ['loadChip', 'loadErrorBanner', 'savedCopyBanner'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+    };
+
+    window.toggleLoadNoticeDetails = function() {
+        const d = document.getElementById('loadChipDetails');
+        if (d) d.style.display = d.style.display === 'none' ? 'block' : 'none';
+    };
+
+    /** الشريط الصغير — سطرٌ واحد، وتفصيلٌ مطويّ. */
+    function showLoadChip(kind, oneLine, detailsHtml) {
+        if (noticeDismissed) return;
+        const chip = document.getElementById('loadChip');
+        if (!chip) return;
+        const amber = kind === 'saved';
+        chip.style.display = 'block';
+        chip.style.background = amber ? '#fffbeb' : '#fef2f2';
+        chip.style.border = `1px solid ${amber ? 'var(--warning)' : 'var(--danger)'}`;
+        chip.style.color = amber ? '#78350f' : '#7f1d1d';
+        chip.innerHTML = `<div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">`
+            + `<span style="font-size:12.5px; font-weight:700; flex:1; min-width:150px;">`
+            + `${amber ? '&#9432;' : '&#9888;'} ${oneLine}</span>`
+            + `<button class="btn-ghost btn-sm" onclick="toggleLoadNoticeDetails()" style="font-size:11.5px;">Details</button>`
+            + `<button class="btn-ghost btn-sm" onclick="dismissLoadNotice()" style="font-size:11.5px;">&#10005;</button>`
+            + `</div>`
+            + `<div id="loadChipDetails" style="display:none; margin-top:10px; font-size:12.5px; line-height:1.8;">`
+            + detailsHtml
+            + `<br><br><button class="btn-ghost btn-sm" onclick="diagnoseAccess()">Run a full check</button>`
+            + `<span id="diagnoseOut" style="display:block; margin-top:10px;"></span>`
+            + `</div>`;
+    }
 
     /**
      * ⭐⭐ لافتةٌ صفراء: «هذه نسخةٌ محفوظة على جهازك».
@@ -4278,17 +4341,14 @@
     function markServingSavedCopy() {
         if (servingSavedCopy) return;
         servingSavedCopy = true;
-        const box = document.getElementById('savedCopyBanner');
-        if (!box) return;
-        box.style.display = 'block';
-        box.innerHTML = `<b>&#9432; You are looking at the copy saved on this computer.</b> `
-            + `The dashboard could not reach the database just now, so it is showing the last data it had. `
-            + `<b>Everything you see is real</b>, but it may be a few minutes behind, and anything you save now `
-            + `will be sent as soon as the connection is back.`
-            + `<br><br>If this keeps happening, the cause is almost always the network or an antivirus blocking `
-            + `the database connection &mdash; try a phone hotspot once to confirm it. `
-            + `<button class="btn-ghost btn-sm" onclick="diagnoseAccess()" style="margin-left: 6px;">Run a full check</button>`
-            + `<span id="diagnoseOut" style="display:block; margin-top:10px;"></span>`;
+        // ⚠️ شريطٌ صغير لا لافتةٌ تملأ الشاشة: البيانات **معروضة وصحيحة**، وإنما
+        // قد تتأخّر دقائق. فالتنبيه يبقى مرئيًّا ولا يُصادر الشاشة.
+        showLoadChip('saved',
+            'Showing the copy saved on this device — the database was not reachable a moment ago.',
+            `<b>Everything you see is real</b>, but it may be a few minutes behind, and anything you save now `
+            + `will be sent as soon as the connection is back.<br><br>`
+            + `If this keeps happening, the cause is almost always the network or an antivirus blocking the `
+            + `database connection &mdash; try a phone hotspot once to confirm it.`);
     }
     // ⭐⭐ إعادة المحاولة تلقائيًّا: الفشل العابر (رمز دخول لم يجهز، أو شبكة
     // تعثّرت لحظة) كان يُترك أصفارًا على الشاشة حتى يُحدّث المالك بنفسه — وهو ما
@@ -4305,6 +4365,16 @@
         loadFailures = [];
         const box = document.getElementById('loadErrorBanner');
         if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+        // ⚠️⚠️ عيبٌ حقيقي وجده المالك: لافتة «نسخة محفوظة» كانت تُرفع مرّة ولا
+        // تنزل أبدًا. فبعد نجاح القراءة يبقى مكتوبًا أمامه «أنت تنظر إلى نسخة
+        // محفوظة» وهو ينظر إلى بياناتٍ حيّة — وذلك كذبٌ يُفقد الثقة بكل تنبيه
+        // آخر. فتُصفَّر مع كل دورة تحميل، وتظهر فقط إن تكرّر السبب في هذه الدورة.
+        servingSavedCopy = false;
+        const chip = document.getElementById('loadChip');
+        if (chip) chip.style.display = 'none';
+        const saved = document.getElementById('savedCopyBanner');
+        if (saved) { saved.style.display = 'none'; saved.innerHTML = ''; }
+        noticeDismissed = false;
     }
     /** يُنادى بعد نجاح دورة كاملة: يُنسي المحاولات فيبدأ العدّ من جديد لاحقًا. */
     function loadCycleSucceeded() {
@@ -4358,12 +4428,29 @@
             advice = 'Nothing has been deleted by this. Press Ctrl+Shift+R to reload, and send this message text '
                 + 'if it happens again.';
         }
+        // ⚠️ لا تُسمَّ `what`: هو اسم **وسيط هذه الدالة** نفسها، فتصادما وأسقطا
+        // الملف كلّه بـSyntaxError. وفحصُ الصياغة هو الذي أوقفني قبل الرفع.
+        const whatFailed = loadFailures.map(f =>
+            `&bull; ${escapeHtml(f.what)}: <code style="font-size:12px;">${escapeHtml(f.msg)}</code>`).join('<br>');
+
+        // ⭐⭐ اللوحة فيها بيانات؟ فالضرر جزئيّ، والتنبيه شريطٌ صغير لا صرخة.
+        // وهذا ما طلبه المالك بعد أن رأى لافتةً تملأ شاشة هاتفه وتحتها 105 موظفًا.
+        if (dashboardHasData()) {
+            const names = loadFailures.map(f => f.what).join(', ');
+            showLoadChip('partial',
+                `${loadFailures.length} list(s) did not load (${escapeHtml(names)}). Everything else is correct.`,
+                `<b>Nothing has been lost.</b> ${advice}<br><br><b>What failed:</b><br>${whatFailed}`);
+            box.style.display = 'none';
+            return;
+        }
+
+        // ⚠️ لا بيانات إطلاقًا: هذه حالةٌ تُوقف العمل، فتصرخ اللافتة كاملةً.
         box.style.display = 'block';
         box.innerHTML = `<b style="font-size: 15px;">&#9888; Some data could not be read &mdash; the zeros you see are NOT real</b>`
             + `<br><br>${advice}`
-            + `<br><br><b>What failed:</b><br>`
-            + loadFailures.map(f => `&bull; ${escapeHtml(f.what)}: <code style="font-size:12px;">${escapeHtml(f.msg)}</code>`).join('<br>')
+            + `<br><br><b>What failed:</b><br>${whatFailed}`
             + `<br><br><button class="btn-danger btn-sm" onclick="diagnoseAccess()">Run a full check &mdash; which collection is blocked?</button>`
+            + `<button class="btn-ghost btn-sm" onclick="dismissLoadNotice()" style="margin-left:8px;">Hide</button>`
             + `<span id="diagnoseOut" style="display:block; margin-top:10px;"></span>`;
     }
 
