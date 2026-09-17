@@ -1587,17 +1587,35 @@
                  الملف. فصار الترتيب مكتوبًا حيث يقف بصره. -->
             <p class="card-sub" style="background: var(--surface-2); border-left: 3px solid var(--accent);
                 border-radius: 8px; padding: 10px 12px; margin-top: -4px;">
-                <b>Three steps, in this order:</b><br>
-                <b>1.</b> Type her name in the <b>Name</b> box below and a PIN, then press <b>Add</b>. Her row appears in the table.<br>
-                <b>2.</b> On her row, press <b>Create employee file</b>. Attendance and salary need that file.<br>
-                <b>3.</b> Her row then shows a <b>Photo</b> box on the right &mdash; choose the picture and press <b>Save</b>.
-                <span style="color: var(--text-dim);">The photo box only exists on a row, so it cannot appear before step 1.</span>
+                <b>This table fills itself from the employee profiles.</b> Every employee whose <b>Business</b> is
+                <b>Al Sheikha Style</b> appears below by herself &mdash; you never type her name here again.<br>
+                <b>1.</b> In her profile, set <b>Business</b> to <b>Al Sheikha Style</b> and give her a PIN. She appears below.<br>
+                <b>2.</b> On her row, press <b>Confirm</b>. That lets her sign in to her own screen with the PIN from her profile.<br>
+                <b>3.</b> Her row then shows a <b>Photo</b> box &mdash; choose the picture and press <b>Save</b>.
             </p>
-            <div class="controls" style="align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-bottom: 14px;">
-                <div style="flex: 1; min-width: 200px;"><label for="abNewSellerName">Name</label><input type="text" id="abNewSellerName" placeholder="Full name"></div>
-                <div style="width: 150px;"><label for="abNewSellerPin">PIN (4&ndash;8 digits)</label><input type="text" id="abNewSellerPin" inputmode="numeric" maxlength="8" placeholder="1234"></div>
-                <button class="btn-success" onclick="addAbayaSeller()"><span data-icon="plus"></span> Add</button>
-            </div>
+            <!-- ⚠️ سطرُ من تبدو بياعةً وملفُّها يقول «مطاعم» — يُبنى في الترميز -->
+            <p class="card-sub" id="abMisfiledNote" style="display:none; background: rgba(217,119,6,0.08);
+                border-left: 3px solid var(--warning); border-radius: 8px; padding: 10px 12px;"></p>
+
+            <!-- ⚠️⚠️ الإضافة اليدوية بقيت لحالةٍ واحدة: بياعةٌ لا ملفَّ موظفةٍ لها
+                 إطلاقًا. وصُغِّرت وأُخفيت خلف تفصيلٍ مطويّ عن قصد — لأن استعمالها
+                 لمن لها ملفٌّ يُنتج **شخصًا ثانيًا**، وهو ما قاله المالك بالحرف:
+                 «إذا سجّلتهنّ الآن يدويًّا فسيظهر أنهنّ موظفات أخريات». والحارس في
+                 addAbayaSeller يرفض الاسم الذي له ملفٌّ ويدلّه على الطريق الصحيح. -->
+            <details style="margin-bottom: 14px;">
+                <summary style="cursor: pointer; font-size: 12.5px; color: var(--text-dim); padding: 6px 0;">
+                    Add a saleswoman who has no employee file at all (rarely needed)
+                </summary>
+                <p class="card-sub" style="margin: 8px 0;">
+                    Only for someone with no profile in the system. If she already has a profile, do <b>not</b> use this
+                    &mdash; it would create a second, separate person. Set her <b>Business</b> to Al Sheikha Style instead.
+                </p>
+                <div class="controls" style="align-items: flex-end; gap: 10px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;"><label for="abNewSellerName">Name</label><input type="text" id="abNewSellerName" placeholder="Full name"></div>
+                    <div style="width: 150px;"><label for="abNewSellerPin">PIN (4&ndash;8 digits)</label><input type="text" id="abNewSellerPin" inputmode="numeric" maxlength="8" placeholder="1234"></div>
+                    <button class="btn-ghost" onclick="addAbayaSeller()"><span data-icon="plus"></span> Add</button>
+                </div>
+            </details>
             <div class="status" id="abSellerStatus" style="min-height: 18px; font-size: 13px; font-weight: 700; margin-bottom: 10px;"></div>
             <div class="table-container">
                 <table>
@@ -2526,14 +2544,21 @@
         <div class="edit-profile-grid">
             <div><label>Employee Full Name</label><input type="text" id="editEmpName"></div>
             <div><label>Job Title</label><input type="text" id="editEmpRole"></div>
-            <div><label>Assigned Branch</label>
-                <select id="editEmpBranch">
-                    <option value="GAIMER W KAHI WEST WALK">GAIMER W KAHI - WEST WALK</option>
-                    <option value="GAIMER W KAHI OLD MINA PORT">GAIMER W KAHI - OLD MINA PORT</option>
-                    <option value="SHAI BU HAMAD GULF MALL">SHAI BU HAMAD - GULF MALL</option>
-                    <option value="SHAI BU HAMAD WEST WALK">SHAI BU HAMAD - WEST WALK</option>
-                    <option value="HEAD OFFICE">HEAD OFFICE</option>
+            <!-- ⚠️⚠️ خانة النشاط كانت **غائبة تمامًا** عن ملف الموظف، وموجودة في
+                 نموذج الإضافة وحده. فمن أُضيف مرّةً بقي في نشاطه إلى الأبد ولا
+                 سبيل لنقله. والمالك وقف على هذا بعينه: أنشأ ملفات البياعات ثم
+                 قال «يجب أن يظهروا أوتوماتيكيًّا بما أني اخترتهم» — ولم يكن في
+                 الملفّ ما يقول إنهنّ من الشيخة ستايل إطلاقًا.
+                 ⚠️ وقائمة الفروع كانت فروع مطاعم مكتوبةً ثابتةً، فلم يكن يمكن
+                 وضع بياعةٍ في «GULF MALL» أصلًا. صارت تتبع النشاط. -->
+            <div><label for="editEmpBusiness">Business</label>
+                <select id="editEmpBusiness" onchange="onEditEmpBusinessChange()">
+                    <option value="RESTAURANTS">Restaurants</option>
+                    <option value="ABAYA">Al Sheikha Style</option>
                 </select>
+            </div>
+            <div><label for="editEmpBranch">Assigned Branch</label>
+                <select id="editEmpBranch"></select>
             </div>
             <div><label>WhatsApp Phone</label><input type="text" id="editEmpPhone" placeholder="+974..."></div>
             <div><label>PIN Code</label><input type="text" id="editEmpPin" placeholder="Leave blank to keep current PIN"></div>
@@ -3997,6 +4022,28 @@
             + list.map(([v, t]) => `<option value="${escapeHtml(v)}">${escapeHtml(t)}</option>`).join('');
         sel.value = list.some(([v]) => v === keep) ? keep : '';
     }
+
+    /**
+     * ⭐⭐ نفس المنطق لملف الموظف المفتوح: الفروع تتبع النشاط، والسكن يُخفى
+     * للعبايات (لا سكن لهنّ بقرار المالك).
+     * ⚠️ ولا يُمسّ الفرع المختار هنا: من يُبدّل النشاط سهوًا ثم يُعيده يجب أن يجد
+     * فرعه كما كان. الاختيار يُعاد في openProfileModal وحدها.
+     */
+    window.onEditEmpBusinessChange = function() {
+        const sel = document.getElementById('editEmpBusiness');
+        const br = document.getElementById('editEmpBranch');
+        if (!sel || !br) return;
+        const isAbaya = sel.value === BIZ_ABAYA;
+        const list = isAbaya ? ABAYA_BRANCHES : REST_BRANCHES;
+        const keep = br.value;
+        br.innerHTML = list.map(([v, t]) =>
+            `<option value="${escapeHtml(v)}">${escapeHtml(t)}</option>`).join('');
+        if (list.some(([v]) => v === keep)) br.value = keep;
+        // خانة السكن: تُخفى للعبايات — خصمُ سكنٍ لبياعةٍ خطأٌ مالي.
+        const hw = br.closest('.edit-profile-grid');
+        const hEl = document.getElementById('editEmpHousingType');
+        if (hEl && hEl.parentElement) hEl.parentElement.style.display = isAbaya ? 'none' : '';
+    };
 
     /** يُبدّل قائمة الفروع وخانة السكن حسب النشاط المختار في نموذج الإضافة. */
     window.onNewEmpBusinessChange = function() {
@@ -8789,57 +8836,204 @@
         }
     }
 
+    /**
+     * ⭐⭐⭐ صفوف جدول البياعات — تُبنى من **ملفّات الموظفين** لا من قائمةٍ تُكتب باليد.
+     *
+     * ⚠️⚠️ سببُ هذا التغيير اعتراضٌ محقٌّ من المالك: «البياعات موجودات الآن في
+     * البروفايل بأسمائهنّ وأنا اخترتهنّ أن يُرسلن الريبورت، لذلك يجب أن يظهرن
+     * أوتوماتيكيًّا... إذا سجّلتهنّ الآن يدويًّا فسيظهر أنهنّ موظفات أخريات».
+     * وهو محقٌّ تمامًا: كانت هذه قائمةً ثانيةً مستقلّة، وكتابةُ الاسم فيها مرّةً
+     * ثانية تُنتج **شخصًا ثانيًا** — وهو التكرار الذي أرهقه أيامًا.
+     *
+     * فصار المصدر واحدًا: كل موظفةٍ نشاطُها «الشيخة ستايل» تظهر هنا من نفسها،
+     * ولا يبقى عليه إلا التأكيد ورفع الصورة — وهو ما طلبه بالحرف.
+     *
+     * ⚠️ ومعرّف مستند البياعة صار **معرّف ملف الموظفة**، فيستحيل بنيويًّا أن
+     * يوجد مستندان لشخصٍ واحد.
+     * ⚠️ وأي مستند بياعةٍ قديم لا ملفَّ له لا يُخفى: يُعرض موسومًا حتى يُربط أو
+     * يُحذف بقرارٍ منه — إخفاؤه يُضيّع تقاريرها المرتبطة به.
+     */
+    function abayaSellerRows() {
+        const rows = [];
+        const usedSellerIds = new Set();
+        (allEmployees || []).forEach(e => {
+            if (empBiz(e) !== 'abaya') return;
+            if (isFormerEmployee(e)) return;          // من انتهت خدمتها لا تُعرض
+            // مستند البياعة المرتبط: بالمعرّف الجديد (= معرّف الملف) أو بالرابط القديم
+            const seller = (abayaSellers || []).find(s =>
+                String(s.id) === String(e.id) || String(s.employeeId || '') === String(e.id)) || null;
+            if (seller) usedSellerIds.add(String(seller.id));
+            rows.push({ emp: e, seller, orphan: false });
+        });
+        // مستندات بياعاتٍ لا ملفَّ لها — تُعرض ولا تُخفى
+        (abayaSellers || []).forEach(s => {
+            if (usedSellerIds.has(String(s.id))) return;
+            rows.push({ emp: null, seller: s, orphan: true });
+        });
+        rows.sort((a, b) => {
+            const an = String((a.emp && a.emp.name) || (a.seller && a.seller.name) || '');
+            const bn = String((b.emp && b.emp.name) || (b.seller && b.seller.name) || '');
+            return an.localeCompare(bn);
+        });
+        return rows;
+    }
+
+    /**
+     * ⭐⭐ من تبدو بياعةً وما زال ملفُّها يقول «مطاعم».
+     * ⚠️ لا تُنقل تلقائيًّا بحال: النقل يُخرجها من كشف رواتب المطاعم، وذلك قرارُ
+     * إدارةٍ لا تخمينُ برنامج. فتُعرض أسماؤهنّ ويُقال الخطوة الواحدة المطلوبة.
+     * والدليل: عليها علامة «يُرسل التقرير اليومي» **أو** فرعُها أحد محلّات العبايات.
+     */
+    function abayaLooksMisfiled() {
+        const shops = (typeof ABAYA_SHOPS !== 'undefined') ? ABAYA_SHOPS : [];
+        return (allEmployees || []).filter(e =>
+            empBiz(e) !== 'abaya' && !isFormerEmployee(e)
+            && (shops.includes(String(e.branch || '')) || e.canSubmitSalesReport === true)
+            && shops.includes(String(e.branch || '')));
+    }
+
     function renderAbayaSellers() {
         const body = document.getElementById('abSellersBody');
         if (!body) return;
         const editable = canEditAbayaSetup();
-        if (!abayaSellers.length) {
-            // ⚠️ «لا بياعة بعد» وحدها لم تكن تكفي: المالك وقف يبحث عن مكان رفع
-            // الصورة في جدولٍ فارغ. فالصفُّ الفارغ يقول الخطوة التالية بالحرف.
-            body.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 18px;">
-                <b>No saleswoman added yet.</b><br>
-                <span style="color: var(--text-dim); font-size: 12.5px;">
-                    Type her name in the <b>Name</b> box above and press <b>Add</b>. Her row appears here,
-                    and the boxes for her employee file and her photo appear on that row.
-                </span></td></tr>`;
-            return;
-        }
-        body.innerHTML = abayaSellers.map(s => {
-            const mine = allAbayaReports.filter(r => r.sellerId === s.id);
+        renderAbayaMisfiledNote();
+        const rows = abayaSellerRows();
+        if (rows.length) { renderAbayaSellerRows(rows, editable); return; }
+        // ⚠️ لا موظفةَ عبايات في القاعدة أصلًا: تُقال الخطوة الصحيحة — وهي **ليست**
+        // الكتابة في هذا الجدول. الطريق هو ملفّ الموظفة، وإلا صار لها ملفّان.
+        body.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 18px;">
+            <b>No Al Sheikha Style employee yet.</b><br>
+            <span style="color: var(--text-dim); font-size: 12.5px;">
+                This table fills itself from the employee profiles. Open <b>Employee Profiles</b>,
+                open her file, set <b>Business</b> to <b>Al Sheikha Style</b> and save &mdash;
+                she then appears here by herself, and you only confirm her and add her photo.
+            </span></td></tr>`;
+    }
+
+    /**
+     * ⭐⭐⭐ صفّ البياعة: مصدره ملفُّ الموظفة، والتأكيد ضغطةٌ واحدة.
+     * ⚠️ ولا يُنشأ شيءٌ تلقائيًّا: التأكيد يُنشئ مستند البياعة بمعرّف الملف نفسه،
+     * فالضغطة تُثبّت ما هو موجود ولا تُنشئ شخصًا جديدًا.
+     */
+    function renderAbayaSellerRows(rows, editable) {
+        const body = document.getElementById('abSellersBody');
+        body.innerHTML = rows.map(({ emp, seller, orphan }) => {
+            const key = seller ? String(seller.id) : String(emp.id);
+            const name = (emp && emp.name) || (seller && seller.name) || key;
+            const mine = (allAbayaReports || []).filter(r => String(r.sellerId || '') === key);
             const last = mine.reduce((a, r) => (String(r.date || '') > a ? String(r.date) : a), '');
-            const sid = escapeJsAttr(s.id);
-            return `<tr>
-                <td><b>${escapeHtml(s.name || s.id)}</b></td>
-                <td style="font-family: ui-monospace, monospace;">${escapeHtml(s.pin ? String(s.pin) : '••••')}</td>
+            const sid = escapeJsAttr(key);
+            const eid = emp ? escapeJsAttr(emp.id) : '';
+            const pin = seller && seller.pin ? String(seller.pin) : '';
+            return `<tr${orphan ? ' style="background: rgba(217,119,6,0.06);"' : ''}>
+                <td><b>${escapeHtml(name)}</b>${emp
+                    ? `<br><small style="color: var(--text-dim);">${escapeHtml(emp.branch || '—')}</small>`
+                    : `<br><small style="color: var(--warning); font-weight:700;">&#9888; no employee file</small>`}</td>
+                <td style="font-family: ui-monospace, monospace;">${escapeHtml(pin || '••••')}</td>
                 <td class="money-col">${mine.length}</td>
                 <td>${last ? escapeHtml(salesDateLabel(last)) : '<span style="color: var(--text-faint);">never</span>'}</td>
                 <td>${(() => {
-                    // ⭐ الحالة تُقرأ من الرابط المحفوظ على مستند البياعة، ويُتحقّق
-                    // أن الملف المرتبط **ما زال موجودًا**: ملفٌّ حُذف يترك رابطًا
-                    // معلّقًا، وبصمتها تُكتب تحت معرّفٍ لا وجود له.
-                    const linkedId = s.employeeId ? String(s.employeeId) : '';
-                    const emp = linkedId ? allEmployees.find(e => e.id === linkedId) : null;
-                    if (emp) {
-                        return `<b style="color: var(--success);">&#10004; linked</b>`
-                            + `<br><small style="color: var(--text-dim);">${escapeHtml(emp.name || emp.id)}`
-                            + `${emp.branch ? ' — ' + escapeHtml(emp.branch) : ''}</small>`;
+                    if (orphan) {
+                        // ⚠️ مستندٌ لا ملفَّ موظفةٍ له: لا يُحذف تلقائيًّا — تقاريرها
+                        // مرتبطة بمعرّفه، وحذفُه يقطع تاريخها عن اسمها.
+                        // ⚠️ ويبقى زرّ إنشاء الملف: بلا ملفٍّ لا بصمة ولا راتب، وهو
+                        // الطريق الوحيد لمن أُضيفت يدويًّا. والزرّ **يربط** بملفٍّ
+                        // قائم إن وجد اسمًا مطابقًا بدل أن يُنشئ نسخةً ثانية.
+                        return `<b style="color: var(--warning);">&#9888; no employee file</b>`
+                            + `<br><small style="color: var(--text-dim);">No attendance and no salary without one.`
+                            + `${mine.length ? ` Her ${mine.length} report(s) still count.` : ''}</small>`
+                            + (editable ? `<br><button class="btn-success btn-sm" style="margin-top:5px;"
+                                 onclick="createAbayaEmployeeFile('${sid}')">Create employee file</button>` : '');
                     }
-                    if (linkedId) {
-                        return `<b style="color: var(--danger);">&#9888; linked file is missing</b>`
-                            + (editable ? `<br><button class="btn-warning btn-sm" style="margin-top:5px;"
-                                 onclick="createAbayaEmployeeFile('${sid}')">Create it again</button>` : '');
+                    if (!seller) {
+                        return `<b style="color: var(--warning);">Not confirmed yet</b>`
+                            + `<br><small style="color: var(--text-dim);">She cannot sign in to her own screen until you confirm.</small>`
+                            + (editable ? `<br><button class="btn-success btn-sm" style="margin-top:5px;"
+                                 onclick="confirmAbayaSeller('${eid}')">Confirm &mdash; she sends the report</button>` : '');
                     }
-                    return `<span style="color: var(--text-dim); font-size:12px;">not linked &mdash; no attendance</span>`
-                        + (editable ? `<br><button class="btn-success btn-sm" style="margin-top:5px;"
-                             onclick="createAbayaEmployeeFile('${sid}')">Create employee file</button>` : '');
+                    return `<b style="color: var(--success);">&#10004; confirmed</b>`
+                        + `<br><small style="color: var(--text-dim);">Signs in with the PIN in her profile.</small>`;
                 })()}</td>
-                <td>${renderAbayaCardCell(s, editable)}</td>
-                <td style="white-space: nowrap;">${editable
-                    ? `<button class="btn-danger btn-sm" title="Remove this saleswoman" onclick="deleteAbayaSeller('${sid}')">${iconSvg('trash','ic-sm')}</button>`
+                <td>${emp && seller ? renderAbayaCardCell({ id: key, name, employeeId: emp.id }, editable)
+                    : `<span style="color: var(--text-dim); font-size:12px;">${orphan
+                        ? 'No photo — this entry has no file.'
+                        : 'Confirm her first, then the photo box appears here.'}</span>`}</td>
+                <td style="white-space: nowrap;">${editable && seller
+                    ? `<button class="btn-danger btn-sm" title="Remove her from the saleswomen list" onclick="deleteAbayaSeller('${sid}')">${iconSvg('trash','ic-sm')}</button>`
                     : ''}</td>
             </tr>`;
         }).join('');
     }
+
+    /**
+     * ⭐⭐ سطرُ تنبيهٍ لمن تبدو بياعةً وملفُّها يقول «مطاعم».
+     * ⚠️ ولا نقلَ تلقائيًّا: ذلك يُخرجها من كشف رواتب المطاعم بلا أن يدري أحد.
+     */
+    function renderAbayaMisfiledNote() {
+        const box = document.getElementById('abMisfiledNote');
+        if (!box) return;
+        const list = abayaLooksMisfiled();
+        if (!list.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+        box.style.display = 'block';
+        box.innerHTML = `<b>&#9888; ${list.length} employee(s) work in an Al Sheikha Style shop but their file still says `
+            + `Restaurants,</b> so they do not appear in the table below:<br>`
+            + list.map(e => `<b>${escapeHtml(e.name || e.id)}</b> <span style="color: var(--text-dim);">— ${escapeHtml(e.branch || '')}</span>`).join(' &middot; ')
+            + `<br><span style="font-size: 12px;">Open <b>Employee Profiles</b>, open the file, set <b>Business</b> to `
+            + `<b>Al Sheikha Style</b> and save. It is not changed for you, because that also moves her out of the `
+            + `restaurants' payroll &mdash; that is your decision, not the app's.</span>`;
+    }
+
+    /**
+     * ⭐⭐⭐ التأكيد: يجعل موظفةَ العبايات قادرةً على الدخول إلى شاشتها وإرسال التقرير.
+     *
+     * ⚠️⚠️ ومعرّف المستند = **معرّف ملف الموظفة**، لا معرّفٌ جديد من فايربيس. وهذا
+     * هو الحارس الذي طلبه المالك ضمنًا بقوله «سيظهر أنهنّ موظفات أخريات»: بمعرّفٍ
+     * مشتقٍّ من الملف يستحيل أن يوجد مستندان لشخصٍ واحد، ولو ضُغط الزرّ مئة مرّة.
+     * ⚠️ ورقمها السرّي يُنسخ من ملفّها (employee_pins) — فلا رقمان لشخصٍ واحد،
+     * ولا يُطلب منه إدخال رقمٍ ثانٍ يُنسى أيّهما الصحيح.
+     */
+    window.confirmAbayaSeller = async function(empId) {
+        const st = document.getElementById('abSellerStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        if (!canEditAbayaSetup()) { show('Only the owner can do this.', 'var(--danger)'); return; }
+        const emp = (allEmployees || []).find(e => e.id === empId);
+        if (!emp) { show('That employee file no longer exists — press Refresh.', 'var(--danger)'); return; }
+        if (empBiz(emp) !== 'abaya') {
+            show(`${emp.name || empId} is not marked Al Sheikha Style. Set her Business in her profile first.`, 'var(--danger)');
+            return;
+        }
+        show(`Confirming ${emp.name || empId}...`, 'var(--warning)');
+        try {
+            // رقمها السرّي من ملفّها. ⚠️ وإن لم يكن لها رقم، يُقال ذلك ولا يُختلق
+            // رقمٌ عشوائي: رقمٌ لا يعرفه أحد يعني أنها لا تستطيع الدخول ولا تدري لِمَ.
+            let pin = '';
+            try {
+                const ps = await getDoc(doc(db, "employee_pins", empId));
+                if (ps.exists()) pin = String(ps.data().pin || '');
+            } catch (e) { /* نُكمل ونُبلّغ أدناه */ }
+            if (!/^\d{4,8}$/.test(pin)) {
+                show(`${emp.name || empId} has no PIN in her profile. Open her file, type a PIN of 4 to 8 digits, `
+                    + `save, then press Confirm again — that same PIN is what she types on her own screen.`, 'var(--danger)');
+                return;
+            }
+            await setDoc(doc(db, "abaya_sellers", empId), {
+                name: emp.name || empId,
+                active: true,
+                employeeId: empId,
+                // ⚠️ أثرٌ يقول من أين جاء هذا المستند — فيُفرَّق عن المكتوب يدويًّا.
+                createdFromEmployeeFile: true,
+                createdAt: serverTimestamp(),
+                createdBy: (currentUser && currentUser.email) || 'unknown'
+            }, { merge: true });
+            await setDoc(doc(db, "abaya_seller_pins", empId), { pin }, { merge: true });
+            logAudit('Abaya saleswoman confirmed', `${emp.name || empId} (from her employee file, PIN copied)`);
+            await loadAbayaData();
+            show(`${emp.name || empId} confirmed. She signs in on her own screen with the PIN from her profile. `
+                + `Her photo box is now on her row.`, 'var(--success)');
+        } catch (e) {
+            show('Could not confirm: ' + e.message, 'var(--danger)');
+        }
+    };
 
     /**
      * ⭐⭐ يُنشئ ملفَّ موظفةٍ للبياعة ويربطه بها — فتصير بصمتها وراتبها ممكنين.
@@ -8958,6 +9152,26 @@
             if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
             return;
         }
+        // ⚠️⚠️ الحارس الذي طلبه المالك: «إذا سجّلتهنّ الآن يدويًّا فسيظهر أنهنّ
+        // موظفات أخريات». فمن لها ملفُّ موظفةٍ بنفس الاسم **لا تُضاف هنا بحال** —
+        // ويُقال لها الطريق الصحيح بالحرف، لا مجرّد «مرفوض».
+        // ⚠️ والمقارنة بـnameKey لا بالنصّ: تكشف اختلاف ترتيب الكلمات وتكرارها،
+        // وهي القاعدة التي كشفت «BILLEL ABDESSAMAD FODIL» و«BILLEL FODIL ABDESSAMAD».
+        {
+            const k = nameKey(name);
+            const words = k.split(' ').filter(Boolean);
+            const twin = (allEmployees || []).find(e => {
+                const ek = nameKey(e.name);
+                return ek && (ek === k || nameContains(words, ek.split(' ').filter(Boolean)));
+            });
+            if (twin) {
+                show(`"${twin.name}" already has an employee profile. Adding her here would create a SECOND, separate `
+                    + `person — her attendance and her salary would split between the two. `
+                    + `Instead: open her profile, set Business to "Al Sheikha Style", save, and she appears in the table `
+                    + `below by herself. Then press Confirm on her row.`, 'var(--danger)');
+                return;
+            }
+        }
         // اسمان متطابقان يجعلان التقارير غير قابلة للتمييز — نمنع ونشرح.
         if (abayaSellers.some(s => String(s.name || '').trim().toLowerCase() === name.toLowerCase())) {
             show(`"${name}" already exists. If this is a second person with the same name, add a distinguishing part `
@@ -8980,7 +9194,8 @@
             // ⚠️ ويُقال **الخطوة التالية** لا مجرّد «تمّ»: الإضافة وحدها لا تُمكّن
             // بصمتها ولا صورتها، والمالك وقف عند هذا بالضبط.
             show(`${name} added — she can sign in on her screen with PIN ${pin}. `
-                + `Next, on her row: press "Create employee file", then the Photo box appears on that same row.`,
+                + `She has no employee file yet, so she has no attendance and no salary: press `
+                + `"Create employee file" on her row, and the Photo box appears there afterwards.`,
                 'var(--success)');
         } catch (e) {
             show('Error: ' + e.message, 'var(--danger)');
@@ -13473,7 +13688,24 @@
         if (emp) {
             document.getElementById("editEmpName").value = emp.name;
             document.getElementById("editEmpRole").value = emp.role || "";
-            document.getElementById("editEmpBranch").value = emp.branch || "HEAD OFFICE";
+            // ⚠️ الترتيب مقصود: النشاط أوّلًا، ثم تُبنى قائمة الفروع منه، ثم يُختار
+            // الفرع. ولو عُكس لَضاع فرعُها لأن الخيار لم يكن موجودًا في القائمة بعد.
+            document.getElementById("editEmpBusiness").value =
+                (emp.business === BIZ_ABAYA) ? BIZ_ABAYA : BIZ_RESTAURANTS;
+            onEditEmpBusinessChange();
+            // ⚠️⚠️ ولا يُفرض فرعٌ افتراضي على من فرعُها ليس في القائمة: بياعةٌ في
+            // «GULF MALL» وملفُّها يقول مطاعم كانت ستُصبح «HEAD OFFICE» بمجرّد فتح
+            // ملفها وحفظه — نقلٌ صامت لموظفة بين الفروع. فيُضاف خيارٌ يحفظ فرعها
+            // كما هو، ويُقال إنه لا يطابق النشاط.
+            const brSel = document.getElementById("editEmpBranch");
+            const curBranch = emp.branch || "";
+            if (curBranch && ![...brSel.options].some(o => o.value === curBranch)) {
+                const o = document.createElement('option');
+                o.value = curBranch;
+                o.textContent = `${curBranch} — does not match this business`;
+                brSel.appendChild(o);
+            }
+            brSel.value = curBranch || "HEAD OFFICE";
             document.getElementById("editEmpPhone").value = emp.phone || "";
             document.getElementById("editEmpPin").value = "";
             document.getElementById("editEmpSalary").value = emp.salary || 0;
@@ -13720,6 +13952,8 @@
         const qidExpiry = document.getElementById("editEmpQidExpiry").value;
         const canSubmitSalesReport = document.getElementById("editEmpCanSubmitSalesReport").checked;
         const isSupervisor = document.getElementById("editEmpIsSupervisor").checked;
+        const business = document.getElementById("editEmpBusiness").value === BIZ_ABAYA
+            ? BIZ_ABAYA : BIZ_RESTAURANTS;
         const statusEl = document.getElementById("editProfileStatus");
 
         if (!canEditProfiles()) { statusEl.innerText = "You do not have permission to edit profiles."; statusEl.style.color = "var(--danger)"; return; }
@@ -13735,6 +13969,25 @@
             statusEl.innerText = `The joining date (${joinDate}) cannot be after the recorded last working day (${empBefore.endDate}).`;
             statusEl.style.color = "var(--danger)"; return;
         }
+        // ⚠️⚠️ نقلُ موظفٍ بين النشاطين يُخرجه من كشف رواتب أحدهما ويُدخله في
+        // الآخر، ويُغيّر قائمةَ الشاشة التي يبصم عليها. فلا يُمرَّر بصمت بحال —
+        // والأثر يُقال بالحرف لا بعبارةٍ عامّة.
+        const bizBefore = (empBefore.business === BIZ_ABAYA) ? BIZ_ABAYA : BIZ_RESTAURANTS;
+        if (business !== bizBefore) {
+            const toAbaya = business === BIZ_ABAYA;
+            if (!confirm(
+                `Move ${empBefore.name || originalId} from ${toAbaya ? 'Restaurants' : 'Al Sheikha Style'} `
+                + `to ${toAbaya ? 'Al Sheikha Style' : 'Restaurants'}?\n\n`
+                + (toAbaya
+                    ? `She will leave the restaurants' lists and payroll and appear in Al Sheikha Style instead. `
+                      + `Her overtime hour becomes total salary / 30 / 10 with no multiplier, and no housing is deducted. `
+                      + `She will stop appearing on the restaurants' staff attendance screen.`
+                    : `He will leave Al Sheikha Style and appear in the restaurants' lists and payroll instead, `
+                      + `with the restaurants' overtime rates and the housing rule.`)
+                + `\n\nAttendance records already recorded are not touched.`
+            )) { statusEl.innerText = "Cancelled — nothing was saved."; statusEl.style.color = "var(--warning)"; return; }
+        }
+
         // تغيير تاريخ الالتحاق يُعيد حساب كل شهر — لا يُمرَّر بصمت.
         const joinBefore = empBefore.joinDate ? String(empBefore.joinDate) : '';
         const joinChanged = joinDate !== joinBefore;
@@ -13772,7 +14025,7 @@
             let healthCert = await readFileIfPresent(document.getElementById("editHealthCertInput"), emp.healthCert || "");
 
             // Base fields any signed-in admin (Accountant OR Secretary) may edit.
-            const payload = { name, role, branch, phone, shift, housingType, joinDate, qidNumber, qidExpiry, canSubmitSalesReport, isSupervisor, qidFront, qidBack, healthCard, contract, healthCert };
+            const payload = { name, role, branch, phone, shift, housingType, joinDate, qidNumber, qidExpiry, canSubmitSalesReport, isSupervisor, business, qidFront, qidBack, healthCard, contract, healthCert };
             // Salary / OT rate are only ever sent for Accountants — Secretaries
             // never include these fields in the update at all, and
             // firestore.rules independently rejects them server-side too if a
