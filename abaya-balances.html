@@ -608,7 +608,24 @@
     // =====================================================================
     // ثوابت العبايات — نسخة مطابقة لما في admin.html
     // =====================================================================
-    const ABAYA_SHOPS = ['GULF MALL', 'VENDOME MALL', 'DOHA FESTIVAL CITY'];
+    const ABAYA_SHOPS = ['GULF MALL', 'VENDOME MALL', 'DOHA FESTIVAL CITY', 'WEST WALK'];
+    // ⭐⭐⭐ محلٌّ جُهِّز ولم يُفتح بعد. قائمةٌ لا علَمٌ على كل محلّ عن قصد:
+    // ABAYA_SHOPS مصفوفةُ نصوصٍ تُقرأ في عشرات المواضع بـincludes وmap وfilter،
+    // وتحويلها إلى كائنات كان سيكسرها كلها. فالقائمة الثانية أرخص وأأمن.
+    //
+    // ⚠️ أثرُ الإدراج هنا: يظهر المحلّ في الستوك والجرد الافتتاحي والتارقت
+    // فيُجهَّز مقدَّمًا، ويُوسَم «Opening soon» في كل شاشة — **ولا تستطيع بياعة
+    // إرسال تقريرٍ باسمه**. فلا تُسجَّل مبيعات لفرعٍ لم يُفتح.
+    //
+    // ⚠️⚠️ ولا يختلط بفرعَي المطاعم في ويست ولك: أسماؤهما «GAIMER W KAHI WEST
+    // WALK» و«SHAI BU HAMAD WEST WALK»، وكل مقارنات الفروع في المشروع **تامّة**
+    // لا جزئية (=== أو includes على مصفوفة، لا بحثٌ عن نصٍّ داخل نص). وفُحص ذلك
+    // قبل الإضافة، وفحصٌ آليٌّ يحرسه.
+    //
+    // يوم الافتتاح: يُحذف اسمه من هذه القائمة وحدها — لا شيء غيرها.
+    const ABAYA_SHOPS_OPENING_SOON = ['WEST WALK'];
+    /** هل هذا المحل مُجهَّزٌ ولم يُفتح؟ */
+    const isShopOpeningSoon = (shop) => ABAYA_SHOPS_OPENING_SOON.includes(String(shop || ''));
     const ABAYA_ITEMS = [
         { key: 'abayaReady',    en: 'Abaya — ready',             ar: 'عباية — بيع جاهز' },
         { key: 'abayaOrder',    en: 'Abaya — order',             ar: 'عباية — طلب / تفصيل' },
@@ -1154,7 +1171,10 @@
                 ${box(SHOP_IC)}
                 <span>
                     <span class="t1">${escapeHtml(shop)}</span>
-                    <span class="t2 ${st.sum.now < 0 ? 'down' : ''}">${st.sum.now} piece(s) now</span>
+                    <!-- ⭐ محلٌّ لم يُفتح: يُقال ذلك بدل «0 piece(s) now» التي تُقرأ
+                         كأن مخزنه فرغ. الصفرُ هنا صحيحٌ ومعناه «لم يبدأ بعد». -->
+                    <span class="t2 ${!isShopOpeningSoon(shop) && st.sum.now < 0 ? 'down' : ''}">${
+                        isShopOpeningSoon(shop) ? 'Opening soon' : `${st.sum.now} piece(s) now`}</span>
                 </span>
             </button>`).join('')
             + `<button type="button" class="pick all" data-shop="${STOCK_ALL}">
@@ -1173,14 +1193,18 @@
         if (!isAll && !ABAYA_SHOPS.includes(stShop)) { showStock(''); return; }
         const one = isAll ? null : per.find(x => x.shop === stShop);
 
-        el('stTitle').innerText = isAll ? 'All three shops together' : stShop;
+        // ⚠️ «الثلاثة» صار عددًا يُشتقّ: محلٌّ يُضاف لاحقًا كان سيجعل العنوان يكذب.
+        el('stTitle').innerText = isAll
+            ? `All ${ABAYA_SHOPS.length} shops together`
+            : stShop + (isShopOpeningSoon(stShop) ? ' — opening soon' : '');
 
         if (isAll) {
             // ⚠️ سطرٌ لكل صنف وعمودٌ لكل محل — لا العكس. الأصناف سبعة والمحلات
             // ثلاثة، فهذا الاتجاه يعطي جدولًا من 5 أعمدة يُقرأ على الجوال، والعكس
             // كان سيعطي 9 أعمدة تحتاج سحبًا أفقيًّا.
             el('stHead').innerHTML = '<th>Product</th>'
-                + per.map(({ shop }) => `<th class="n">${escapeHtml(shop)}</th>`).join('')
+                + per.map(({ shop }) => `<th class="n">${escapeHtml(shop)}${
+                    isShopOpeningSoon(shop) ? '<br><small>opening soon</small>' : ''}</th>`).join('')
                 + '<th class="n">All shops</th>';
             el('stBody').innerHTML = ABAYA_STOCK_ITEMS.map(it => {
                 const vals = per.map(({ st }) => st.items[it.key].now);

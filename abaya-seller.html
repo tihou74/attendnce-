@@ -329,6 +329,9 @@
         <h2>Which shop are you in today?</h2>
         <p class="ar">Pick it every time &mdash; you are not tied to one shop</p>
         <div class="shopbtns" id="shopButtons"></div>
+        <!-- ⚠️ رسالةٌ لحارس المحل غير المفتوح: بلا موضعٍ للرسالة كان المنع صامتًا،
+             فتضغط البياعة ولا يحدث شيء ولا تعرف لماذا. -->
+        <p class="status" id="shopMsg" style="margin: var(--space-3) 0 0;"></p>
         <div class="bar">
             <button class="ghost" id="btnBackLogin">&#11013; Back</button>
         </div>
@@ -643,11 +646,29 @@
     // وحدات مشتركة، فلا سبيل لاستيرادها. أي تعديل هنا يجب أن يُنقل إلى هناك
     // حرفيًّا، ويحرس التطابقَ اختبارٌ يقارن القائمتين نصًّا وترتيبًا.
     // =====================================================================
-    const ABAYA_SHOPS = ['GULF MALL', 'VENDOME MALL', 'DOHA FESTIVAL CITY'];
+    const ABAYA_SHOPS = ['GULF MALL', 'VENDOME MALL', 'DOHA FESTIVAL CITY', 'WEST WALK'];
+    // ⭐⭐⭐ محلٌّ جُهِّز ولم يُفتح بعد. قائمةٌ لا علَمٌ على كل محلّ عن قصد:
+    // ABAYA_SHOPS مصفوفةُ نصوصٍ تُقرأ في عشرات المواضع بـincludes وmap وfilter،
+    // وتحويلها إلى كائنات كان سيكسرها كلها. فالقائمة الثانية أرخص وأأمن.
+    //
+    // ⚠️ أثرُ الإدراج هنا: يظهر المحلّ في الستوك والجرد الافتتاحي والتارقت
+    // فيُجهَّز مقدَّمًا، ويُوسَم «Opening soon» في كل شاشة — **ولا تستطيع بياعة
+    // إرسال تقريرٍ باسمه**. فلا تُسجَّل مبيعات لفرعٍ لم يُفتح.
+    //
+    // ⚠️⚠️ ولا يختلط بفرعَي المطاعم في ويست ولك: أسماؤهما «GAIMER W KAHI WEST
+    // WALK» و«SHAI BU HAMAD WEST WALK»، وكل مقارنات الفروع في المشروع **تامّة**
+    // لا جزئية (=== أو includes على مصفوفة، لا بحثٌ عن نصٍّ داخل نص). وفُحص ذلك
+    // قبل الإضافة، وفحصٌ آليٌّ يحرسه.
+    //
+    // يوم الافتتاح: يُحذف اسمه من هذه القائمة وحدها — لا شيء غيرها.
+    const ABAYA_SHOPS_OPENING_SOON = ['WEST WALK'];
+    /** هل هذا المحل مُجهَّزٌ ولم يُفتح؟ */
+    const isShopOpeningSoon = (shop) => ABAYA_SHOPS_OPENING_SOON.includes(String(shop || ''));
     const ABAYA_SHOPS_AR = {
         'GULF MALL': 'جلف مول',
         'VENDOME MALL': 'فندوم مول',
-        'DOHA FESTIVAL CITY': 'دوحة فيستفال سيتي'
+        'DOHA FESTIVAL CITY': 'دوحة فيستفال سيتي',
+        'WEST WALK': 'ويست ولك'
     };
     // «طلب/تفصيل» للعباية فقط — بقية الأنواع بيع جاهز وحده (قرار الإدارة).
     const ABAYA_ITEMS = [
@@ -859,9 +880,15 @@
 
     function buildShopButtons() {
         // الاسم الإنجليزي وحده — انظر الملاحظة في buildItemsTable.
-        el('shopButtons').innerHTML = ABAYA_SHOPS.map((s) =>
-            `<button type="button" data-shop="${escapeHtml(s)}">${escapeHtml(s)}</button>`
-        ).join('');
+        // ⭐⭐ محلٌّ لم يُفتح بعد: يُعرض **معطَّلًا** وموسومًا «Opening soon». وإظهارُه
+        // مقصود: البياعة تراه فتعرف أنه قادم، ولا تسأل أين فرعُها الجديد.
+        // ⚠️ ولا يُرسَل تقريرٌ باسمه — مبيعاتٌ لفرعٍ لم يُفتح تُفسد كل رقمٍ بعدها.
+        el('shopButtons').innerHTML = ABAYA_SHOPS.map((s) => {
+            const soon = isShopOpeningSoon(s);
+            return `<button type="button" data-shop="${escapeHtml(s)}"${soon ? ' disabled' : ''}`
+                + `${soon ? ' style="opacity:.55; cursor:not-allowed;"' : ''}>`
+                + `${escapeHtml(s)}${soon ? '<br><small>Opening soon</small>' : ''}</button>`;
+        }).join('');
         el('shopButtons').querySelectorAll('button[data-shop]').forEach(b => {
             b.addEventListener('click', () => pickShop(b.dataset.shop));
         });
@@ -1331,6 +1358,12 @@
     }
 
     function pickShop(shop) {
+        // ⚠️⚠️ حارسٌ ثانٍ: الزرّ معطَّلٌ في الشاشة، لكن `disabled` وسمٌ يُمكن إزالته
+        // من أدوات المتصفّح، وpickShop تُنادى من مواضع أخرى. فالمنع هنا هو الحقيقي.
+        if (isShopOpeningSoon(shop)) {
+            setMsg('shopMsg', `${shop} has not opened yet — no report can be sent for it.`, 'err');
+            return;
+        }
         state.shop = shop;
         el('chipShop').innerText = shop;
         el('chipSeller').innerText = state.sellerName || '';

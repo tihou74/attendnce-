@@ -4010,7 +4010,10 @@
     const ABAYA_BRANCHES = [
         ['GULF MALL', 'GULF MALL'],
         ['VENDOME MALL', 'VENDOME MALL'],
-        ['DOHA FESTIVAL CITY', 'DOHA FESTIVAL CITY']
+        ['DOHA FESTIVAL CITY', 'DOHA FESTIVAL CITY'],
+        // ⭐ يُفتح قريبًا — يُدرَج ليُعيَّن فيه موظفاتُه مقدَّمًا. والوسم في القائمة
+        // لا في الاسم: الاسم يُحفظ في ملف الموظفة ويبقى بعد الافتتاح.
+        ['WEST WALK', 'WEST WALK — opening soon']
     ];
 
     /**
@@ -7902,11 +7905,29 @@
        التطابق اختبارٌ يقارن القائمتين نصًّا وترتيبًا.
        ========================================================================= */
 
-    const ABAYA_SHOPS = ['GULF MALL', 'VENDOME MALL', 'DOHA FESTIVAL CITY'];
+    const ABAYA_SHOPS = ['GULF MALL', 'VENDOME MALL', 'DOHA FESTIVAL CITY', 'WEST WALK'];
+    // ⭐⭐⭐ محلٌّ جُهِّز ولم يُفتح بعد. قائمةٌ لا علَمٌ على كل محلّ عن قصد:
+    // ABAYA_SHOPS مصفوفةُ نصوصٍ تُقرأ في عشرات المواضع بـincludes وmap وfilter،
+    // وتحويلها إلى كائنات كان سيكسرها كلها. فالقائمة الثانية أرخص وأأمن.
+    //
+    // ⚠️ أثرُ الإدراج هنا: يظهر المحلّ في الستوك والجرد الافتتاحي والتارقت
+    // فيُجهَّز مقدَّمًا، ويُوسَم «Opening soon» في كل شاشة — **ولا تستطيع بياعة
+    // إرسال تقريرٍ باسمه**. فلا تُسجَّل مبيعات لفرعٍ لم يُفتح.
+    //
+    // ⚠️⚠️ ولا يختلط بفرعَي المطاعم في ويست ولك: أسماؤهما «GAIMER W KAHI WEST
+    // WALK» و«SHAI BU HAMAD WEST WALK»، وكل مقارنات الفروع في المشروع **تامّة**
+    // لا جزئية (=== أو includes على مصفوفة، لا بحثٌ عن نصٍّ داخل نص). وفُحص ذلك
+    // قبل الإضافة، وفحصٌ آليٌّ يحرسه.
+    //
+    // يوم الافتتاح: يُحذف اسمه من هذه القائمة وحدها — لا شيء غيرها.
+    const ABAYA_SHOPS_OPENING_SOON = ['WEST WALK'];
+    /** هل هذا المحل مُجهَّزٌ ولم يُفتح؟ */
+    const isShopOpeningSoon = (shop) => ABAYA_SHOPS_OPENING_SOON.includes(String(shop || ''));
     const ABAYA_SHOPS_AR = {
         'GULF MALL': 'جلف مول',
         'VENDOME MALL': 'فندوم مول',
-        'DOHA FESTIVAL CITY': 'دوحة فيستفال سيتي'
+        'DOHA FESTIVAL CITY': 'دوحة فيستفال سيتي',
+        'WEST WALK': 'ويست ولك'
     };
     // «طلب/تفصيل» للعباية فقط — بقية الأنواع بيع جاهز وحده (قرار الإدارة).
     const ABAYA_ITEMS = [
@@ -8759,7 +8780,10 @@
                 </div>`
                     : '');
             return `<tr>
-                <td style="vertical-align: top;"><b>${escapeHtml(shop)}</b><br><small dir="rtl" style="color: var(--text-dim);">${escapeHtml(ABAYA_SHOPS_AR[shop] || '')}</small></td>
+                <td style="vertical-align: top;"><b>${escapeHtml(shop)}</b><br><small dir="rtl" style="color: var(--text-dim);">${escapeHtml(ABAYA_SHOPS_AR[shop] || '')}</small>${
+                    isShopOpeningSoon(shop)
+                        ? `<br><small style="color: var(--warning); font-weight:700;">Opening soon &mdash; you can enter its opening count now</small>`
+                        : ''}</td>
                 <td><div style="display: flex; gap: 10px; flex-wrap: wrap;">${inputs}</div></td>
             </tr>`;
         }).join('');
