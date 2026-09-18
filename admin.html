@@ -513,6 +513,12 @@
     <div class="nav-tabs">
         <button class="nav-tab-btn active" data-tab="tab-home" data-biz="both"><span class="ic-slot" data-icon="home"></span> Home</button>
         <button class="nav-tab-btn" data-tab="tab-employees" data-biz="both"><span class="ic-slot" data-icon="users"></span> Employee Profiles</button>
+        <!-- ⭐⭐ الحالة الإدارية — بطلب المالك. موضعُها بعد ملفّات الموظفين مباشرةً
+             لأنها تقرأ منها: الهوية وتاريخها والأيام المتبقّية.
+             ⚠️ data-biz="rest": الخيارات الستّة كلها كفالاتُ مطاعم (شاي بو حمد،
+             قيمر وكاهي، إعارة بينهما، أوت سورس). ولا خيارَ للعبايات — فإن أرادها
+             المالك لهنّ فسؤالٌ مطروح عليه، ولا تُخمَّن. -->
+        <button class="nav-tab-btn" data-tab="tab-admin-status" data-biz="rest"><span class="ic-slot" data-icon="fileText"></span> Administrative Status</button>
         <button class="nav-tab-btn" data-tab="tab-payroll" data-biz="both"><span class="ic-slot" data-icon="dollar"></span> Payroll</button>
         <button class="nav-tab-btn" data-tab="tab-attendance" data-biz="both"><span class="ic-slot" data-icon="calendar"></span> Attendance Logs</button>
         <button class="nav-tab-btn" data-tab="tab-shifts" data-biz="both"><span class="ic-slot" data-icon="clock"></span> Shifts</button>
@@ -750,6 +756,55 @@
     </div>
 
     <!-- 2ب. الرواتب — نافذة مستقلّة عن ملفات الموظفين -->
+    <!-- ==================================================================
+         الحالة الإدارية — بطلب المالك
+         ------------------------------------------------------------------
+         ⚠️ الهوية وتاريخها والأيام المتبقّية تُقرأ من **نفس** محرّك تنبيه الهوية
+         (qidStatus / qidLabel / qidColor). ولو حُسبت هنا من جديد لَافترق الرقمان
+         مع الوقت، فيرى المالك «12 يومًا» في شاشة و«11» في أخرى ولا يعرف أيّهما.
+         ⚠️ والكفالة تُحفظ حقلًا على ملف الموظف (`sponsorship`) لا مجموعةً جديدة:
+         فلا قواعدَ تُنشر، ولا مستندَ إضافي، والقيمة تُقرأ مع الملف أصلًا.
+         ================================================================== -->
+    <div id="tab-admin-status" class="tab-content">
+        <div class="card">
+            <h3><span data-icon="fileText"></span> Administrative Status
+                <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">الحالة الإدارية</span></h3>
+            <p class="card-sub">
+                Every working employee with their Qatar ID, its expiry and how long is left, next to who sponsors
+                them. Changing the status saves immediately and is written to the audit log.
+            </p>
+            <div class="controls" style="align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;">
+                <div style="flex: 1; min-width: 230px;">
+                    <label for="admStatusSearch">Search</label>
+                    <input type="text" id="admStatusSearch" placeholder="Name, job title or QID..." onkeyup="renderAdminStatus()">
+                </div>
+                <div style="width: 230px;">
+                    <label for="admStatusFilter">Show</label>
+                    <select id="admStatusFilter" onchange="renderAdminStatus()">
+                        <option value="">Everyone</option>
+                        <option value="expired">Qatar ID expired</option>
+                        <option value="soon">Expiring soon</option>
+                        <option value="noqid">No Qatar ID recorded</option>
+                        <option value="unset">Status not set yet</option>
+                        <option value="procedure">A procedure is in progress</option>
+                    </select>
+                </div>
+            </div>
+            <div class="status" id="admStatusMsg" style="min-height: 18px; font-size: 13px; font-weight: 700; margin-bottom: 10px;"></div>
+            <div class="table-container">
+                <table>
+                    <thead><tr>
+                        <th>Employee</th><th>Branch</th><th class="money-col">Qatar ID</th>
+                        <th>Expiry</th><th>Time left</th>
+                        <th>Administrative status</th><th>Procedure in progress</th>
+                    </tr></thead>
+                    <tbody id="admStatusBody"></tbody>
+                </table>
+            </div>
+            <p class="card-sub" id="admStatusNote" style="margin-top: 14px;"></p>
+        </div>
+    </div>
+
     <div id="tab-payroll" class="tab-content">
         <div class="filter-section">
             <h3><span data-icon="dollar"></span> Automated Payroll Calculation (Daily 10h/2h-grace overtime, earned rest days)</h3>
@@ -2543,6 +2598,72 @@
     </div>
 </div>
 
+<!-- ==================================================================
+     نافذة الإجراء الإداري — تُفتح عند اختيار «إجراء جديد»
+     ------------------------------------------------------------------
+     ⚠️ قائمة الأنواع فيها ما سمّاه المالك (نقل كفالة من المندوب · إعارة)
+     و«غير ذلك» بنصٍّ حرّ: هو توقّف عند «أو فهمتني» فلم تكتمل القائمة، ولا
+     تُخمَّن إجراءاتُ إدارةٍ حكومية من عند البرنامج. والنصّ الحرّ يُسجّل الواقع
+     اليوم، ويُستبدل بخيارٍ مسمّى حين يُكمل القائمة.
+     ⚠️ ويُحفظ الإجراء **الحالي** على ملف الموظف، وتاريخُه كلُّه في سجل التدقيق:
+     فلا مجموعةٌ جديدة تحتاج نشر قواعد، ولا مصفوفةٌ تنمو على مستندٍ يحمل صور
+     الهوية أصلًا وحدُّه ميغابايت واحد.
+     ================================================================== -->
+<div id="procedureModal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 560px;">
+        <div class="modal-header">
+            <h2><span data-icon="fileText"></span> Procedure in progress &mdash; <span id="procEmpName">—</span></h2>
+            <button class="close-modal" onclick="closeProcedureForm()"><span data-icon="x"></span> Close</button>
+        </div>
+        <input type="hidden" id="procEmpId">
+        <div style="padding: 4px 0;">
+            <label for="procType">What is being done</label>
+            <select id="procType" onchange="onProcTypeChange()"></select>
+
+            <div id="procOtherWrap" style="display:none; margin-top: 12px;">
+                <label for="procOther">Write what it is</label>
+                <input type="text" id="procOther" maxlength="80" placeholder="e.g. QID renewal">
+            </div>
+
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top: 12px;">
+                <div style="flex:1; min-width: 150px;">
+                    <label for="procSubmitted">Date submitted</label>
+                    <input type="date" id="procSubmitted">
+                </div>
+                <div style="flex:1; min-width: 150px;">
+                    <label for="procState">Where it stands</label>
+                    <select id="procState"></select>
+                </div>
+            </div>
+
+            <div style="margin-top: 12px;">
+                <label for="procWith">Who is handling it <span style="text-transform:none; font-weight:400;">&mdash; the mandoob or the office</span></label>
+                <input type="text" id="procWith" maxlength="60" placeholder="Name (optional)">
+            </div>
+
+            <div style="margin-top: 12px;">
+                <label for="procNote">Note <span style="text-transform:none; font-weight:400;">&mdash; optional</span></label>
+                <textarea id="procNote" rows="3" dir="auto" maxlength="400"
+                    style="width:100%; padding:10px; font-family: inherit; font-size: 14px; border:1px solid var(--border); border-radius:8px; background: var(--surface); color: var(--text);"></textarea>
+            </div>
+
+            <span id="procMsg" style="display:block; margin-top: 12px; font-size: 13px; font-weight: 700;"></span>
+
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top: 14px;">
+                <button class="btn-success" onclick="saveProcedure()"><span data-icon="save"></span> Save</button>
+                <button class="btn-ghost" onclick="closeProcedureForm()">Cancel</button>
+                <button class="btn-danger" id="procClearBtn" onclick="clearProcedure()" style="margin-left:auto;">
+                    Procedure finished &mdash; clear it
+                </button>
+            </div>
+            <p class="card-sub" style="margin-top: 12px;">
+                Clearing it only removes the procedure line. It does <b>not</b> change who sponsors the employee
+                &mdash; set that in the Administrative status column once the transfer actually goes through.
+            </p>
+        </div>
+    </div>
+</div>
+
 <!-- Modal: Employee Profile -->
 <div id="profileModal" class="modal-overlay">
     <div class="modal-card">
@@ -3980,7 +4101,7 @@
                          renderLeavesTable, filterData, renderFormerEmployees,
                          renderManagerCardPicker, renderManagerCardsTable,
                          renderHomeExtraStats, refreshHomeCounters,
-                         renderRecentActivity, renderQidAlert,
+                         renderRecentActivity, renderQidAlert, renderAdminStatus,
                          renderServerTimeDiagnostic, renderCancelledDays, renderTamperAlert,
                          renderClockSkewAlert, renderOpenShifts, renderMonthArchive];
         redraws.forEach(fn => {
@@ -4128,6 +4249,9 @@
         document.getElementById(tabId).classList.add('active');
         document.querySelector(`.nav-tab-btn[data-tab="${tabId}"]`)?.classList.add('active');
         if (tabId === 'tab-employees') filterEmployeeDirectory();
+        // ⭐ الحالة الإدارية تُرسم عند فتحها: تقرأ allEmployees الموجودة أصلًا في
+        // الذاكرة، فلا قراءةَ جديدة من القاعدة ولا انتظار.
+        if (tabId === 'tab-admin-status') renderAdminStatus();
         if (tabId === 'tab-payroll') { renderPayrollMonthLabel(); filterEmployeesList(); }
         if (tabId === 'tab-shifts') renderShiftsTable();
         if (tabId === 'tab-warnings') { renderWarningsTable(); loadManagerRequests(); }
@@ -5444,6 +5568,45 @@
         return 'var(--text-dim)';
     }
 
+    // =====================================================================
+    // الحالة الإدارية — الكفالة والإجراءات
+    // ---------------------------------------------------------------------
+    // ⚠️ الخيارات الستّة بنصّ المالك حرفيًّا. والقيمة المحفوظة مفتاحٌ ثابت لا نصٌّ
+    // معروض: تغييرُ صياغة العنوان غدًا لا يجوز أن يُفقد معنى ما حُفظ اليوم.
+    // =====================================================================
+    const SPONSORSHIP_OPTIONS = [
+        { key: 'sbh_sponsor',   en: 'On Shai Bu Hamad sponsorship',  ar: 'على كفالة شاي بو حمد' },
+        { key: 'gwk_sponsor',   en: 'On Gaimer W Kahi sponsorship',  ar: 'على كفالة قيمر وكاهي' },
+        { key: 'loan_to_gwk',   en: 'Loaned to Gaimer W Kahi',       ar: 'إعارة لقيمر وكاهي' },
+        { key: 'loan_to_sbh',   en: 'Loaned to Shai Bu Hamad',       ar: 'إعارة لشاي بو حمد' },
+        { key: 'outsource',     en: 'Outsource company',             ar: 'أوت سورس كومباني' },
+        { key: 'new_procedure', en: 'A new procedure is in progress', ar: 'إجراء جديد' }
+    ];
+    const sponsorshipLabel = (k) => {
+        const o = SPONSORSHIP_OPTIONS.find(x => x.key === k);
+        return o ? o.en : '';
+    };
+
+    // ⚠️ نوعا الإجراء اللذان سمّاهما المالك. وقد توقّف عند «أو فهمتني» فلم تكتمل
+    // القائمة — فبقي «Other» بنصٍّ حرّ حتى يُكملها، ولا تُخمَّن إجراءاتُ إدارةٍ
+    // حكومية من عندي. وإضافةُ نوعٍ هنا لا تحتاج شيئًا آخر.
+    const PROCEDURE_TYPES = [
+        { key: 'transfer_via_mandoob', en: 'Sponsorship transfer request through the mandoob',
+          ar: 'تقديم طلب نقل كفالة من المندوب' },
+        { key: 'loan_request',         en: 'Secondment (loan) request', ar: 'طلب إعارة' },
+        { key: 'other',                en: 'Other — write it below',    ar: 'غير ذلك — يُكتب أدناه' }
+    ];
+    const procedureLabel = (k) => {
+        const o = PROCEDURE_TYPES.find(x => x.key === k);
+        return o ? o.en : '';
+    };
+    /** حالات الإجراء: قُدّم ← قيد التنفيذ ← تمّ. */
+    const PROCEDURE_STATES = [
+        { key: 'submitted',  en: 'Submitted' },
+        { key: 'inprogress', en: 'In progress' },
+        { key: 'done',       en: 'Completed' }
+    ];
+
     /** الموظفون العاملون الذين تستحقّ هويّتهم تنبيهًا — منتهية أو تنتهي قريبًا. */
     function qidAlertList() {
         return activeEmployees()
@@ -5501,6 +5664,234 @@
     // =====================================================================
     // دليل الموظفين — جدول الملفات، بلا أي عمود مال
     // =====================================================================
+    // =====================================================================
+    // جدول الحالة الإدارية
+    // ---------------------------------------------------------------------
+    // ⚠️ يقرأ activeEmployees() — فيُرشَّح بالنشاط المعروض ولا يخلط النشاطين.
+    // ⚠️ والهوية تُقرأ من qidStatus نفسها لا بحسابٍ ثانٍ: رقمان لنفس الشيء
+    // يفترقان، فلا يعرف المالك أيّهما الصحيح.
+    // =====================================================================
+    window.renderAdminStatus = function() {
+        const body = document.getElementById('admStatusBody');
+        if (!body) return;
+        const q = (document.getElementById('admStatusSearch').value || '').trim().toLowerCase();
+        const mode = document.getElementById('admStatusFilter').value;
+        const editable = canEditProfiles();
+
+        let rows = activeEmployees().map(e => ({ e, st: qidStatus(e) }));
+        if (q) {
+            rows = rows.filter(({ e }) =>
+                String(e.name || '').toLowerCase().includes(q)
+                || String(e.role || '').toLowerCase().includes(q)
+                || String(e.qidNumber || '').includes(q));
+        }
+        if (mode === 'expired') rows = rows.filter(x => x.st.state === 'expired');
+        else if (mode === 'soon') rows = rows.filter(x => x.st.state === 'soon');
+        else if (mode === 'noqid') rows = rows.filter(x => !x.e.qidNumber || !x.e.qidExpiry);
+        else if (mode === 'unset') rows = rows.filter(x => !x.e.sponsorship);
+        else if (mode === 'procedure') rows = rows.filter(x => x.e.sponsorship === 'new_procedure');
+
+        // ⚠️ الأقرب انتهاءً أولًا: من انتهت هويّته أو تكاد هو الذي يحتاج عملًا،
+        // والترتيب الأبجدي كان يُخفيه في وسط القائمة.
+        const rank = (st) => st.state === 'expired' ? 0 : st.state === 'soon' ? 1 : st.state === 'ok' ? 2 : 3;
+        rows.sort((a, b) => (rank(a.st) - rank(b.st))
+            || ((a.st.days === null ? 1e9 : a.st.days) - (b.st.days === null ? 1e9 : b.st.days))
+            || String(a.e.name || '').localeCompare(String(b.e.name || '')));
+
+        if (!rows.length) {
+            body.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:16px;">No employee matches this filter.</td></tr>`;
+        } else {
+            body.innerHTML = rows.map(({ e, st }) => {
+                const id = escapeJsAttr(e.id);
+                const p = e.adminProcedure || null;
+                const isProc = e.sponsorship === 'new_procedure';
+                return `<tr>
+                    <td><span class="emp-link" onclick="openProfileModal('${id}')"><b>${escapeHtml(e.name || e.id)}</b></span>
+                        <br><small style="color: var(--text-dim);">${escapeHtml(e.role || '—')}</small></td>
+                    <td>${escapeHtml(e.branch || '—')}</td>
+                    <td class="money-col">${escapeHtml(e.qidNumber || '—')}</td>
+                    <td>${escapeHtml(st.expiry || '—')}</td>
+                    <td style="color: ${qidColor(st)}; font-weight: 700; white-space: nowrap;">${escapeHtml(qidLabel(st))}</td>
+                    <td>${editable
+                        ? `<select onchange="saveSponsorship('${id}', this.value)" style="min-width: 210px;">
+                               <option value="">&mdash; not set &mdash;</option>
+                               ${SPONSORSHIP_OPTIONS.map(o =>
+                                   `<option value="${o.key}"${e.sponsorship === o.key ? ' selected' : ''}>${escapeHtml(o.en)}</option>`).join('')}
+                           </select>`
+                        : escapeHtml(sponsorshipLabel(e.sponsorship) || '— not set —')}</td>
+                    <td>${(() => {
+                        if (!isProc) return `<span style="color: var(--text-faint); font-size:12px;">&mdash;</span>`;
+                        // ⚠️ «إجراء جديد» بلا تفصيلٍ لا يُفيد شيئًا: يُقال ناقصًا
+                        // ويُعرض الزرّ الذي يُكمله، لا يُترك فراغًا يُقرأ «تمّ».
+                        if (!p || !p.type) {
+                            return `<b style="color: var(--warning);">&#9888; not filled in</b>`
+                                + (editable ? `<br><button class="btn-warning btn-sm" style="margin-top:5px;"
+                                     onclick="openProcedureForm('${id}')">Fill in the procedure</button>` : '');
+                        }
+                        const stt = (PROCEDURE_STATES.find(x => x.key === p.state) || {}).en || p.state || '—';
+                        return `<b>${escapeHtml(p.type === 'other' ? (p.otherText || 'Other') : procedureLabel(p.type))}</b>`
+                            + `<br><small style="color: var(--text-dim);">${escapeHtml(stt)}`
+                            + `${p.submittedAt ? ` &middot; submitted ${escapeHtml(p.submittedAt)}` : ''}</small>`
+                            + (editable ? `<br><button class="btn-ghost btn-sm" style="margin-top:5px;"
+                                 onclick="openProcedureForm('${id}')">Edit</button>` : '');
+                    })()}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        // ---- ملاحظةٌ تقول ما ينقص، لا مجرّد عدد ----
+        const all = activeEmployees();
+        const noQid = all.filter(e => !e.qidNumber || !e.qidExpiry).length;
+        const unset = all.filter(e => !e.sponsorship).length;
+        const procs = all.filter(e => e.sponsorship === 'new_procedure').length;
+        const procsBlank = all.filter(e => e.sponsorship === 'new_procedure'
+            && !(e.adminProcedure && e.adminProcedure.type)).length;
+        const expired = all.filter(e => qidStatus(e).state === 'expired').length;
+        const notes = [];
+        notes.push(`<b>${rows.length} of ${all.length}</b> employee(s) shown.`);
+        if (expired) notes.push(`<b style="color: var(--danger);">${expired} Qatar ID(s) have already expired.</b> `
+            + `Someone whose Qatar ID has expired cannot legally work.`);
+        if (noQid) notes.push(`<b>${noQid} employee(s) have no Qatar ID number or no expiry date recorded</b>, `
+            + `so nothing can be said about their papers. Both are entered in the employee's own file.`);
+        if (unset) notes.push(`<b>${unset} employee(s) have no administrative status set yet.</b> `
+            + `That means nobody has said who sponsors them &mdash; not that they have no sponsor.`);
+        if (procs) notes.push(`<b>${procs} procedure(s) in progress.</b>`
+            + (procsBlank ? ` <b style="color: var(--warning);">${procsBlank} of them has no detail filled in yet.</b>` : ''));
+        notes.push(`Changing a status here saves at once and is recorded in the audit log, so you can see later `
+            + `who changed what and when. The Qatar ID number and expiry are edited in the employee's own file, `
+            + `not here &mdash; they are official document data and belong with the documents.`);
+        document.getElementById('admStatusNote').innerHTML = notes.join('<br><br>');
+    };
+
+    /**
+     * ⭐⭐ حفظ الكفالة. ⚠️ ولا يُمسّ حقلٌ آخر: updateDoc بخانةٍ واحدة، فلا يُمحى
+     * راتبٌ ولا هويةٌ ولا صورة. والكتابة الكاملة على ملف موظف كلّفت هذا المشروع
+     * ما كلّفت.
+     */
+    window.saveSponsorship = async function(empId, value) {
+        const msg = document.getElementById('admStatusMsg');
+        const say = (t, c) => { if (msg) { msg.innerText = t; msg.style.color = c; } };
+        if (!canEditProfiles()) { say('You do not have permission to change this.', 'var(--danger)'); return; }
+        const emp = allEmployees.find(e => e.id === empId);
+        if (!emp) { say('That employee file no longer exists — press Refresh.', 'var(--danger)'); return; }
+        const before = emp.sponsorship || '';
+        try {
+            say(`Saving ${emp.name || empId}...`, 'var(--warning)');
+            await updateDoc(doc(db, "employees", empId), { sponsorship: value || '' });
+            emp.sponsorship = value || '';
+            logAudit('Administrative status changed',
+                `${emp.name || empId}: ${sponsorshipLabel(before) || '(not set)'} -> ${sponsorshipLabel(value) || '(not set)'}`);
+            say(`${emp.name || empId}: ${sponsorshipLabel(value) || 'not set'}.`, 'var(--success)');
+            renderAdminStatus();
+            // ⭐ «إجراء جديد» يفتح نافذة التفصيل فورًا — بطلب المالك. واختيارٌ بلا
+            // تفصيل لا يُفيد، فلا يُترك للمالك أن يتذكّر أن عليه فتحها.
+            if (value === 'new_procedure') window.openProcedureForm(empId);
+        } catch (e) {
+            say('Could not save: ' + e.message, 'var(--danger)');
+            renderAdminStatus();
+        }
+    };
+
+    // ---- نافذة الإجراء الإداري -------------------------------------------
+    window.onProcTypeChange = function() {
+        const t = document.getElementById('procType').value;
+        document.getElementById('procOtherWrap').style.display = (t === 'other') ? '' : 'none';
+    };
+
+    window.openProcedureForm = function(empId) {
+        const emp = allEmployees.find(e => e.id === empId);
+        if (!emp) return;
+        const p = emp.adminProcedure || {};
+        document.getElementById('procEmpId').value = empId;
+        document.getElementById('procEmpName').innerText = emp.name || empId;
+        document.getElementById('procType').innerHTML =
+            `<option value="">&mdash; choose &mdash;</option>`
+            + PROCEDURE_TYPES.map(o =>
+                `<option value="${o.key}"${p.type === o.key ? ' selected' : ''}>${escapeHtml(o.en)}</option>`).join('');
+        document.getElementById('procState').innerHTML = PROCEDURE_STATES.map(o =>
+            `<option value="${o.key}"${(p.state || 'submitted') === o.key ? ' selected' : ''}>${escapeHtml(o.en)}</option>`).join('');
+        document.getElementById('procOther').value = p.otherText || '';
+        // ⚠️ تاريخُ اليوم افتراضًا لإجراءٍ جديد فقط: إجراءٌ قائم يُحتفظ بتاريخه
+        // كما سُجّل — واستبدالُه باليوم يُفقد متى قُدّم فعلًا.
+        document.getElementById('procSubmitted').value = p.submittedAt || todayISO();
+        document.getElementById('procWith').value = p.handledBy || '';
+        document.getElementById('procNote').value = p.note || '';
+        document.getElementById('procClearBtn').style.display = p.type ? '' : 'none';
+        const msg = document.getElementById('procMsg'); if (msg) msg.innerText = '';
+        window.onProcTypeChange();
+        document.getElementById('procedureModal').style.display = 'flex';
+        paintIcons(document.getElementById('procedureModal'));
+    };
+    window.closeProcedureForm = function() {
+        document.getElementById('procedureModal').style.display = 'none';
+    };
+
+    window.saveProcedure = async function() {
+        const empId = document.getElementById('procEmpId').value;
+        const msg = document.getElementById('procMsg');
+        const say = (t, c) => { if (msg) { msg.innerText = t; msg.style.color = c; } };
+        if (!canEditProfiles()) { say('You do not have permission to change this.', 'var(--danger)'); return; }
+        const emp = allEmployees.find(e => e.id === empId);
+        if (!emp) { say('That employee file no longer exists.', 'var(--danger)'); return; }
+        const type = document.getElementById('procType').value;
+        if (!type) { say('Choose what is being done.', 'var(--danger)'); return; }
+        const otherText = (document.getElementById('procOther').value || '').trim();
+        // ⚠️ «غير ذلك» بلا نصٍّ سطرٌ لا يقول شيئًا — يُرفض ويُقال السبب.
+        if (type === 'other' && !otherText) {
+            say('Write what the procedure is — "Other" on its own says nothing.', 'var(--danger)');
+            return;
+        }
+        const payload = {
+            type,
+            otherText: type === 'other' ? otherText : '',
+            submittedAt: document.getElementById('procSubmitted').value || '',
+            state: document.getElementById('procState').value || 'submitted',
+            handledBy: (document.getElementById('procWith').value || '').trim(),
+            note: (document.getElementById('procNote').value || '').trim(),
+            updatedAt: new Date().toISOString(),
+            updatedBy: (currentUser && currentUser.email) || 'unknown'
+        };
+        try {
+            say('Saving...', 'var(--warning)');
+            // ⚠️ حقلٌ واحد بـupdateDoc: لا يُلمس راتبٌ ولا هويةٌ ولا صورة.
+            await updateDoc(doc(db, "employees", empId), { adminProcedure: payload });
+            emp.adminProcedure = payload;
+            // ⚠️⚠️ التاريخ كلُّه في سجل التدقيق لا في مصفوفةٍ على المستند: مستند
+            // الموظف يحمل صور الهوية أصلًا وحدُّه ميغابايت، والسجل دائمٌ لا يُعدَّل.
+            logAudit('Administrative procedure saved',
+                `${emp.name || empId}: ${type === 'other' ? otherText : procedureLabel(type)}`
+                + ` — ${payload.state}${payload.submittedAt ? `, submitted ${payload.submittedAt}` : ''}`
+                + `${payload.handledBy ? `, handled by ${payload.handledBy}` : ''}`);
+            say('Saved.', 'var(--success)');
+            renderAdminStatus();
+            setTimeout(window.closeProcedureForm, 700);
+        } catch (e) {
+            say('Could not save: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    /** إنهاء الإجراء — يُزيل سطره ولا يُغيّر الكفالة. */
+    window.clearProcedure = async function() {
+        const empId = document.getElementById('procEmpId').value;
+        const emp = allEmployees.find(e => e.id === empId);
+        if (!emp || !canEditProfiles()) return;
+        const p = emp.adminProcedure || {};
+        if (!confirm(`Clear the procedure line for ${emp.name || empId}?\n\n`
+            + `This only removes the line. It does NOT change who sponsors them — `
+            + `if the transfer went through, set the new sponsor in the Administrative status column.`)) return;
+        try {
+            await updateDoc(doc(db, "employees", empId), { adminProcedure: null });
+            emp.adminProcedure = null;
+            logAudit('Administrative procedure cleared',
+                `${emp.name || empId}: was ${p.type === 'other' ? (p.otherText || 'other') : procedureLabel(p.type)}`);
+            renderAdminStatus();
+            window.closeProcedureForm();
+        } catch (e) {
+            const msg = document.getElementById('procMsg');
+            if (msg) { msg.innerText = 'Could not clear it: ' + e.message; msg.style.color = 'var(--danger)'; }
+        }
+    };
+
     window.filterEmployeeDirectory = function() {
         const q = (document.getElementById('empDirSearchInput')?.value || '').toLowerCase().trim();
         const list = activeEmployees().filter(e =>
@@ -5553,6 +5944,9 @@
             note.innerText = bits.join(' ');
         }
         renderQidAlert();
+        // ⭐ والحالة الإدارية تتبع أي تعديلٍ في الملفّات: تاريخُ هويةٍ يُصحَّح في
+        // ملف الموظف يجب أن يُغيّر «الأيام المتبقّية» هنا فورًا، لا بعد إعادة فتح.
+        renderAdminStatus();
     };
 
     window.filterEmployeesList = function() {
