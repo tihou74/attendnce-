@@ -631,7 +631,14 @@
         { key: 'inner',    en: 'Inner',             ar: 'إنر' },
         { key: 'travel',   en: 'Travel Collection', ar: 'ترافل كولكشن' },
         { key: 'jalabiya', en: 'Jalabiya',          ar: 'جلابية' },
-        { key: 'perfume',  en: 'Perfume',           ar: 'عطور' }
+        { key: 'perfume',  en: 'Perfume',           ar: 'عطور' },
+        // ⭐⭐ الأكياس مخزونٌ في كل فرع بأمر المالك: تنقص بما استُعمل في اليوم،
+        // وتزيد بما استُقبل (تُسجَّل حركةً «وصلت من مورّد» أو «من محل آخر» —
+        // فتعمل بنفس الآلية بلا شيء جديد).
+        // ⚠️ supply: true تُخرجها من مجموع «ALL PRODUCTS»: مجموع القطع سؤالٌ عن
+        // الملابس، وجمعُ 200 كيسٍ مع 45 عباية يُنتج رقمًا لا معنى له. فتُعرض
+        // بسطرها ولا تُخلط بالمجموع.
+        { key: 'bags',     en: 'Bags',              ar: 'أكياس', supply: true }
     ];
     const ABAYA_MOVE_KINDS = [
         { key: 'out_to_shop',        en: 'Sent to another shop',                ar: 'خرجت إلى محل آخر',           owner: 'own',     needsShop: true,     sign: -1 },
@@ -823,6 +830,11 @@
                 }
             });
             sh.sold += Number(r.shTotalQty) || 0;
+            // ⭐⭐ الأكياس: ما استُعمل في اليوم يُخصم كما يُخصم المبيع. وما استُقبل
+            // يزيد عبر الحركات أدناه («وصلت من مورّد» / «من محل آخر») — فالآلية
+            // نفسها بلا استثناء. وهذا نصُّ طلب المالك: تنقص بالاستعمال وتزيد
+            // بالاستقبال.
+            if (out.bags) out.bags.sold += Number(r.bagsUsed) || 0;
 
             (Array.isArray(r.movements) ? r.movements : []).forEach(m => {
                 const kind = ABAYA_MOVE_KINDS.find(k => k.key === m.kind);
@@ -844,6 +856,9 @@
             // ⚠️ fromWorkshop تُضاف لأن sold يحمل قطع الطلب أيضًا: فيُلغي أحدهما
             // الآخر ويبقى المتوفّر صحيحًا، ويبقى الرقمان ظاهرين لمن يقرأ التفصيل.
             c.now = c.opening + c.received + c.fromWorkshop - c.sold - c.sentOut;
+            // ⚠️ مستلزمات التغليف لا تدخل مجموع القطع: «كم عندي؟» سؤالٌ عن
+            // الملابس، وجمعُ الأكياس معها يُنتج رقمًا لا يُقرأ. وسطرُها ظاهرٌ وحده.
+            if (it.supply) return;
             sum.opening += c.opening; sum.received += c.received;
             sum.fromWorkshop += c.fromWorkshop;
             sum.sold += c.sold; sum.sentOut += c.sentOut; sum.now += c.now;
