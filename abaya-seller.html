@@ -400,9 +400,27 @@
                     <input type="number" id="cardSales" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
                 </div>
             </div>
+            <!-- ⭐⭐ الرسوم: مالٌ حصّلتِه فعلًا، وهو داخلٌ في الكاش/الكارد أعلاه.
+                 ⚠️ ولذلك يُحسب في مقارنة المجموعين ولا يُضاف فوق المبيعات: إضافتُه
+                 مرّةً ثانية تُضاعف المال. وقرار المالك أنه يُحسب في مبيعات اليوم
+                 وفي التارقت — وهو كذلك تلقائيًّا لأنه في الكاش أصلًا. -->
+            <div class="two">
+                <div>
+                    <label for="altFee">Alteration fee</label>
+                    <input type="number" id="altFee" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+                </div>
+                <div>
+                    <label for="deliveryFee">Delivery fee</label>
+                    <input type="number" id="deliveryFee" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+                </div>
+            </div>
             <div class="sum">
                 <span class="k">Total sales<small>cash + card</small></span>
                 <span class="v" id="sumTotalSales">0.00</span>
+            </div>
+            <div class="sum">
+                <span class="k">Items + fees<small>this is what must match the total above</small></span>
+                <span class="v" id="sumWithFees">0.00</span>
             </div>
             <!-- ⚠️ تحقّق حقيقي: «المجموع بحسب النوع» و«مجموع المبيعات» هما نفس
                  المال مقسومًا مرتين، فيجب أن يتساويا. الفرق يعني أن أحد
@@ -411,6 +429,13 @@
             <div style="height: var(--space-4);"></div>
             <label for="cashOnHand">Cash on hand <span style="text-transform: none; font-weight: 400;">&mdash; what is in the till now</span></label>
             <input type="number" id="cashOnHand" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+            <div style="height: var(--space-4);"></div>
+            <!-- ⭐⭐ الأكياس: عددٌ فقط، بلا مبلغ. ولا يدخل في أي مجموع ولا في
+                 مقارنة المجموعين ولا في الستوك — هو معلومةُ استهلاكٍ لا بيع.
+                 ⚠️ ولذلك خانتُه هنا بعيدًا عن خانات المال، فلا تُخطئ البياعة
+                 فتكتب فيه ريالات. -->
+            <label for="bagsUsed">Bags used today <span style="text-transform: none; font-weight: 400;">&mdash; how many, not money</span></label>
+            <input type="number" id="bagsUsed" inputmode="numeric" step="1" min="0" placeholder="0">
         </div>
 
         <!-- ---- شانتون ----
@@ -613,14 +638,19 @@
     };
     // «طلب/تفصيل» للعباية فقط — بقية الأنواع بيع جاهز وحده (قرار الإدارة).
     const ABAYA_ITEMS = [
-        { key: 'abayaReady', en: 'Abaya — ready',      ar: 'عباية — بيع جاهز' },
-        { key: 'abayaOrder', en: 'Abaya — order',      ar: 'عباية — طلب / تفصيل' },
-        { key: 'kaftan',     en: 'Kaftan',             ar: 'قفطان' },
-        { key: 'shela',      en: 'Shela',              ar: 'شيلا' },
-        { key: 'inner',      en: 'Inner',              ar: 'إنر' },
-        { key: 'travel',     en: 'Travel Collection',  ar: 'ترافل كولكشن' },
-        { key: 'jalabiya',   en: 'Jalabiya',           ar: 'جلابية' },
-        { key: 'perfume',    en: 'Perfume',            ar: 'عطور' }
+        { key: 'abayaReady',    en: 'Abaya — ready',             ar: 'عباية — بيع جاهز' },
+        { key: 'abayaOrder',    en: 'Abaya — order',             ar: 'عباية — طلب / تفصيل' },
+        { key: 'kaftan',        en: 'Kaftan — ready',            ar: 'قفطان — بيع جاهز' },
+        { key: 'kaftanOrder',   en: 'Kaftan — order',            ar: 'قفطان — طلب / تفصيل' },
+        { key: 'shela',         en: 'Shela — ready',             ar: 'شيلا — بيع جاهز' },
+        { key: 'shelaOrder',    en: 'Shela — order',             ar: 'شيلا — طلب / تفصيل' },
+        { key: 'inner',         en: 'Inner — ready',             ar: 'إنر — بيع جاهز' },
+        { key: 'innerOrder',    en: 'Inner — order',             ar: 'إنر — طلب / تفصيل' },
+        { key: 'travel',        en: 'Travel Collection — ready', ar: 'ترافل كولكشن — بيع جاهز' },
+        { key: 'travelOrder',   en: 'Travel Collection — order', ar: 'ترافل كولكشن — طلب / تفصيل' },
+        { key: 'jalabiya',      en: 'Jalabiya — ready',          ar: 'جلابية — بيع جاهز' },
+        { key: 'jalabiyaOrder', en: 'Jalabiya — order',          ar: 'جلابية — طلب / تفصيل' },
+        { key: 'perfume',       en: 'Perfume',                   ar: 'عطور' }
     ];
     // أنواع البضاعة في حركة المخزون — بلا تفريق بين جاهز وطلب: الحركة قطعة.
     const ABAYA_STOCK_ITEMS = [
@@ -899,6 +929,17 @@
         return out;
     }
 
+    /** الرسوم والأكياس. ⚠️ الرسوم مالٌ، والأكياس عددٌ — ولا يُخلطان بحال. */
+    function readExtras() {
+        const alt = num('altFee', false);
+        const del = num('deliveryFee', false);
+        const bags = num('bagsUsed', true);
+        if (alt === null) return { bad: 'Alteration fee' };
+        if (del === null) return { bad: 'Delivery fee' };
+        if (bags === null) return { bad: 'Bags used today' };
+        return { altFee: alt, deliveryFee: del, bagsUsed: bags, feeTotal: alt + del };
+    }
+
     /**
      * ⭐⭐⭐ الحارس: لا يُرسَل تقريرٌ نقص منه نوع.
      * ⚠️ ولماذا حارسٌ إن كانت الأسماء تُشتقّ آليًّا؟ لأن الاشتقاق يُصلح اليوم،
@@ -964,21 +1005,27 @@
         const cash = num('cashSales', false), card = num('cardSales', false);
         const totalSales = (cash === null || card === null) ? null : cash + card;
         el('sumTotalSales').innerText = totalSales === null ? '—' : money(totalSales);
+        // ⭐⭐ الرسوم مالٌ داخلٌ في الكاش/الكارد، فتُضاف إلى جانب الأنواع في
+        // المقارنة لا إلى جانب المدفوع. وبلا هذا كان أي تقريرٍ فيه رسمٌ **يُرفض**.
+        const ex = readExtras();
+        const withFees = (items.bad || ex.bad) ? null : items.totalAmount + ex.feeTotal;
+        el('sumWithFees').innerText = withFees === null ? '—' : money(withFees);
 
         // ⚠️ التحقّق الصحيح: مالٌ مقابل مال. (المجموع بحسب النوع) يجب أن يساوي
         // (نقدًا + شبكة). ولا يُقارَن أبدًا بمجموع القطع — فذاك عدد لا ريالات،
         // ومقارنتهما كانت ستمنع كل تقرير صحيح من الإرسال.
-        if (items.bad || totalSales === null) {
+        if (items.bad || ex.bad || totalSales === null) {
             setMsg('matchMsg', '', '');
-        } else if (items.totalAmount <= CENT && totalSales <= CENT) {
+        } else if (withFees <= CENT && totalSales <= CENT) {
             setMsg('matchMsg', '', '');
-        } else if (items.totalAmount <= CENT) {
+        } else if (withFees <= CENT) {
             setMsg('matchMsg', 'Amounts per item are empty. Fill them so management knows which item brought the money.', 'warn');
-        } else if (Math.abs(items.totalAmount - totalSales) > CENT) {
-            const d = items.totalAmount - totalSales;
+        } else if (Math.abs(withFees - totalSales) > CENT) {
+            const d = withFees - totalSales;
             setMsg('matchMsg',
-                `These two totals must match. By item: ${money(items.totalAmount)} · by payment: ${money(totalSales)} `
-                + `— a difference of ${money(Math.abs(d))} QAR. Check one of them.`, 'err');
+                `These two totals must match. Items + fees: ${money(withFees)} · by payment: ${money(totalSales)} `
+                + `— a difference of ${money(Math.abs(d))} QAR. Check one of them.`
+                + (ex.feeTotal > CENT ? ` (fees included: ${money(ex.feeTotal)})` : ''), 'err');
         } else {
             setMsg('matchMsg', 'The two totals match.', 'ok');
         }
@@ -1315,6 +1362,10 @@
         const cashOnHand = num('cashOnHand', false);
         if (cashOnHand === null) { showStatus('Cash on hand must be a number of zero or more.', 'err'); return; }
 
+        const ex = readExtras();
+        if (ex.bad) { showStatus(`"${ex.bad}" must be a number of zero or more.`, 'err'); return; }
+        const withFees = items.totalAmount + ex.feeTotal;
+
         const sh = readShanton();
         if (sh.bad) { showStatus("Shanton's figures must be numbers of zero or more.", 'err'); return; }
 
@@ -1324,9 +1375,9 @@
         // ⚠️ حارس التساوي: مالٌ مقابل مال. نمنع الإرسال فقط إذا كُتبت مبالغ
         // الأنواع فعلًا واختلفت — فمن كتبت المجموع وحده لا تُحبَس هنا، ولا
         // يُفقد تقريرها.
-        if (items.totalAmount > CENT && Math.abs(items.totalAmount - totalSales) > CENT) {
+        if (withFees > CENT && Math.abs(withFees - totalSales) > CENT) {
             showStatus(
-                `The two totals do not match: by item ${money(items.totalAmount)} but by payment ${money(totalSales)} QAR. `
+                `The two totals do not match: items + fees ${money(withFees)} but by payment ${money(totalSales)} QAR. `
                 + `Fix one of them before sending.`, 'err');
             el('matchMsg').scrollIntoView({ behavior: 'smooth', block: 'center' });
             return;
@@ -1341,7 +1392,10 @@
         // تقرير فارغ تمامًا لا معنى لإرساله، وقد يكون ضغطًا بالخطأ.
         const nothing = items.totalQty === 0 && items.totalAmount <= CENT && totalSales <= CENT
             && sh.pieces === 0 && sh.total <= CENT && !movements.length
-            && walkLocal === 0 && walkExpat === 0 && !(el('repNote').value || '').trim();
+            && walkLocal === 0 && walkExpat === 0 && !(el('repNote').value || '').trim()
+            // ⚠️ والرسوم والأكياس تُحسب هنا: يومٌ لم يُبَع فيه شيء واستُعملت فيه
+            // أكياس، أو حُصّل فيه رسمُ تعديلٍ وحده، تقريرٌ حقيقي لا فراغ.
+            && ex.feeTotal <= CENT && ex.bagsUsed === 0;
         if (nothing) {
             showStatus('The report is completely empty. Enter the day\'s figures, or at least a note.', 'err');
             return;
@@ -1378,6 +1432,13 @@
             ...itemFields(items),
 
             cashSales: cash, cardSales: card, totalSales, cashOnHand,
+
+            // ⭐⭐ الرسوم: مالٌ حصّلتْه البياعة وهو **داخلٌ أصلًا** في الكاش/الكارد.
+            // ⚠️ فلا يُجمع فوق totalSales بحال — ذلك يُضاعف المال. ويُحفظ منفصلًا
+            // ليُعرف كم جاء من التعديل وكم من التوصيل.
+            altFee: ex.altFee, deliveryFee: ex.deliveryFee, feeTotal: ex.feeTotal,
+            // ⭐⭐ الأكياس: عددٌ لا مال. لا يدخل في أي مجموع ولا في الستوك.
+            bagsUsed: ex.bagsUsed,
 
             // شانتون — حسابٌ منفصل تمامًا. لا يُجمع أي رقم منها مع مبيعات
             // المحل، واللوحة وحدها تحسب نصيب المحل منها.
@@ -1421,7 +1482,8 @@
     /** جهاز مشترك بين البياعات: نُفرّغ النموذج فورًا فلا تُرسل أرقام محل لمحل آخر. */
     function resetForm() {
         ABAYA_ITEMS.forEach(it => { el(`qty_${it.key}`).value = ''; el(`amt_${it.key}`).value = ''; });
-        ['cashSales', 'cardSales', 'cashOnHand', 'shQtyReady', 'shQtyOrder', 'shAmtReady',
+        ['cashSales', 'cardSales', 'cashOnHand', 'altFee', 'deliveryFee', 'bagsUsed',
+         'shQtyReady', 'shQtyOrder', 'shAmtReady',
          'shAmtOrder', 'shCash', 'shCard', 'walkLocal', 'walkExpat', 'mvQty', 'mvSupplier'
         ].forEach(id => { if (el(id)) el(id).value = ''; });
         el('repNote').value = '';
@@ -1570,7 +1632,11 @@
     buildItemsTable();
     buildShopButtons();
     buildMoveSelects();
-    ['cashSales', 'cardSales', 'shQtyReady', 'shQtyOrder', 'shAmtReady', 'shAmtOrder',
+    // ⚠️ الرسوم في القائمة لأنها تدخل في المقارنة: بلا مستمعٍ لها يبقى سطر
+    // «الأنواع + الرسوم» قديمًا فتظنّ البياعة أن المجموعين لا يتساويان.
+    // ⚠️ والأكياس كذلك — لا لأنها مال، بل ليُختبر رقمُها فورًا لا عند الإرسال.
+    ['cashSales', 'cardSales', 'altFee', 'deliveryFee', 'bagsUsed',
+     'shQtyReady', 'shQtyOrder', 'shAmtReady', 'shAmtOrder',
      'shCash', 'shCard'].forEach(id => el(id).addEventListener('input', recalc));
     el('repDate').value = todayISO();
     el('repDate').max = todayISO();

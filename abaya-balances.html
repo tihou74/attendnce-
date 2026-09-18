@@ -610,14 +610,19 @@
     // =====================================================================
     const ABAYA_SHOPS = ['GULF MALL', 'VENDOME MALL', 'DOHA FESTIVAL CITY'];
     const ABAYA_ITEMS = [
-        { key: 'abayaReady', en: 'Abaya — ready',      ar: 'عباية — بيع جاهز' },
-        { key: 'abayaOrder', en: 'Abaya — order',      ar: 'عباية — طلب / تفصيل' },
-        { key: 'kaftan',     en: 'Kaftan',             ar: 'قفطان' },
-        { key: 'shela',      en: 'Shela',              ar: 'شيلا' },
-        { key: 'inner',      en: 'Inner',              ar: 'إنر' },
-        { key: 'travel',     en: 'Travel Collection',  ar: 'ترافل كولكشن' },
-        { key: 'jalabiya',   en: 'Jalabiya',           ar: 'جلابية' },
-        { key: 'perfume',    en: 'Perfume',            ar: 'عطور' }
+        { key: 'abayaReady',    en: 'Abaya — ready',             ar: 'عباية — بيع جاهز' },
+        { key: 'abayaOrder',    en: 'Abaya — order',             ar: 'عباية — طلب / تفصيل' },
+        { key: 'kaftan',        en: 'Kaftan — ready',            ar: 'قفطان — بيع جاهز' },
+        { key: 'kaftanOrder',   en: 'Kaftan — order',            ar: 'قفطان — طلب / تفصيل' },
+        { key: 'shela',         en: 'Shela — ready',             ar: 'شيلا — بيع جاهز' },
+        { key: 'shelaOrder',    en: 'Shela — order',             ar: 'شيلا — طلب / تفصيل' },
+        { key: 'inner',         en: 'Inner — ready',             ar: 'إنر — بيع جاهز' },
+        { key: 'innerOrder',    en: 'Inner — order',             ar: 'إنر — طلب / تفصيل' },
+        { key: 'travel',        en: 'Travel Collection — ready', ar: 'ترافل كولكشن — بيع جاهز' },
+        { key: 'travelOrder',   en: 'Travel Collection — order', ar: 'ترافل كولكشن — طلب / تفصيل' },
+        { key: 'jalabiya',      en: 'Jalabiya — ready',          ar: 'جلابية — بيع جاهز' },
+        { key: 'jalabiyaOrder', en: 'Jalabiya — order',          ar: 'جلابية — طلب / تفصيل' },
+        { key: 'perfume',       en: 'Perfume',                   ar: 'عطور' }
     ];
     const ABAYA_STOCK_ITEMS = [
         { key: 'abaya',    en: 'Abaya',             ar: 'عباية' },
@@ -640,9 +645,19 @@
     ];
     const ABAYA_SHANTON_SHOPS = ['DOHA FESTIVAL CITY'];
     const ABAYA_ITEM_TO_STOCK = {
-        abayaReady: 'abaya', abayaOrder: 'abaya', kaftan: 'kaftan',
-        shela: 'shela', inner: 'inner', travel: 'travel',
-        jalabiya: 'jalabiya', perfume: 'perfume'
+        abayaReady: 'abaya', kaftan: 'kaftan', shela: 'shela',
+        inner: 'inner', travel: 'travel', jalabiya: 'jalabiya', perfume: 'perfume'
+    };
+    // ⭐⭐⭐ الطلب/التفصيل **لا يُخصم من رفّ المحل**: قرار المالك بالحرف — «أي أوردر
+    // لا يخصم من الستوك، فهو يخرج من الورشة مباشرة إلى الزبون».
+    // ⚠️ وكان `abayaOrder` يُخصم فعلًا قبل اليوم، فكان ستوك العبايات أقلّ من
+    // الحقيقة بكل عباية طلب بيعت. وهذا يُصلحه.
+    // ⚠️ ولا يُهمَل الطلب إهمالًا: المالك طلب «يُسجّل على أنه ستوك دخل أوتوماتيكيًّا
+    // وأوردر خرج». فيُقيَّد له دخولٌ من الورشة وخروجٌ بالبيع — الأثر على المتوفّر
+    // صفرٌ، والحركة مذكورةٌ ومحفوظة. فيُعرف كم قطعةً جاءت من الورشة.
+    const ABAYA_ORDER_TO_STOCK = {
+        abayaOrder: 'abaya', kaftanOrder: 'kaftan', shelaOrder: 'shela',
+        innerOrder: 'inner', travelOrder: 'travel', jalabiyaOrder: 'jalabiya'
     };
     const ABAYA_SHANTON_STOCK_KEY = 'shantonAbaya';
     const SHANTON_DEFAULT_PER_PIECE = 200;
@@ -782,7 +797,9 @@
         const openMap = abayaOpening.opening[shop] || {};
         const out = {};
         ABAYA_STOCK_ITEMS.forEach(it => {
-            out[it.key] = { opening: Number(openMap[it.key]) || 0, received: 0, sold: 0, sentOut: 0 };
+            out[it.key] = { opening: Number(openMap[it.key]) || 0, received: 0, sold: 0, sentOut: 0,
+                            // قطعُ الطلب التي جاءت من الورشة وخرجت للزبونة في اليوم نفسه
+                            fromWorkshop: 0 };
         });
         const sh = { opening: Number(openMap[ABAYA_SHANTON_STOCK_KEY]) || 0, received: 0, sold: 0, sentOut: 0 };
 
@@ -791,9 +808,19 @@
             const d = String(r.date || '');
             if (since && d < since) return;
             ABAYA_ITEMS.forEach(it => {
-                const stockKey = ABAYA_ITEM_TO_STOCK[it.key];
-                if (!stockKey || !out[stockKey]) return;
-                out[stockKey].sold += Number(r[abQtyField(it.key)]) || 0;
+                const q = Number(r[abQtyField(it.key)]) || 0;
+                if (q <= 0) return;
+                // بيعٌ جاهز: يُخصم من الرفّ.
+                const readyKey = ABAYA_ITEM_TO_STOCK[it.key];
+                if (readyKey && out[readyKey]) { out[readyKey].sold += q; return; }
+                // ⭐⭐⭐ طلب/تفصيل: لا يُخصم من الرفّ — يخرج من الورشة إلى الزبونة.
+                // ⚠️ ولا يُهمَل: يُقيَّد **دخولًا من الورشة وخروجًا بالبيع**، فالأثر على
+                // المتوفّر صفرٌ بالضبط، والحركة محفوظةٌ ومعروضة. وهذا نصُّ طلب المالك.
+                const orderKey = ABAYA_ORDER_TO_STOCK[it.key];
+                if (orderKey && out[orderKey]) {
+                    out[orderKey].fromWorkshop += q;
+                    out[orderKey].sold += q;
+                }
             });
             sh.sold += Number(r.shTotalQty) || 0;
 
@@ -811,11 +838,14 @@
             });
         });
 
-        let sum = { opening: 0, received: 0, sold: 0, sentOut: 0, now: 0 };
+        let sum = { opening: 0, received: 0, sold: 0, sentOut: 0, fromWorkshop: 0, now: 0 };
         ABAYA_STOCK_ITEMS.forEach(it => {
             const c = out[it.key];
-            c.now = c.opening + c.received - c.sold - c.sentOut;
+            // ⚠️ fromWorkshop تُضاف لأن sold يحمل قطع الطلب أيضًا: فيُلغي أحدهما
+            // الآخر ويبقى المتوفّر صحيحًا، ويبقى الرقمان ظاهرين لمن يقرأ التفصيل.
+            c.now = c.opening + c.received + c.fromWorkshop - c.sold - c.sentOut;
             sum.opening += c.opening; sum.received += c.received;
+            sum.fromWorkshop += c.fromWorkshop;
             sum.sold += c.sold; sum.sentOut += c.sentOut; sum.now += c.now;
         });
         sh.now = sh.opening + sh.received - sh.sold - sh.sentOut;
