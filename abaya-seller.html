@@ -257,6 +257,19 @@
         border-bottom: var(--border-hairline) solid var(--color-border);
     }
     .sumrow:last-of-type { border-bottom: 0; }
+    /* ⭐⭐ سطر مجموع المبيعات — بأمر المالك: «بخط غليظ وواضح». ويُميَّز بثلاثة
+       أمور لا بواحد: خطٌّ فاصل فوقه، وحجمٌ أكبر، وثقلٌ أعلى. فمن يقرأ الشاشة
+       بسرعة يجده بلا أن يبحث.
+       ⚠️ و`!important` على الحدّ السفلي لأن `:last-of-type` أعلاه يُلغيه، وسطرُ
+       المجموع هو آخر سطرٍ فعلًا — فلولاها بقي بلا إطارٍ سفلي. */
+    .sumrow.total {
+        border-top: 2px solid var(--color-text) !important;
+        margin-top: var(--space-3);
+        padding-top: var(--space-4);
+        font-size: var(--text-lg);
+        font-weight: 800;
+    }
+    .sumrow.total span { font-weight: 800; }
     .sumrow span:last-child {
         font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 600;
     }
@@ -1532,9 +1545,17 @@
         }
         L.push('');
         L.push(`Total pieces: ${r.totalQty}`);
+        // ⭐⭐ الرسوم والأكياس تُذكر **دائمًا** ولو كانت أصفارًا، بأمر المالك:
+        // «يجب في التقرير أن يكون مذكورًا فيه عدد الأكياس المستعملة والديليفري
+        // والالتريشن». وغيابُ السطر يُقرأ «نسيت» لا «لم يكن شيء» — وهي نفس
+        // القاعدة المطبَّقة على أسطر العباية.
+        L.push('');
+        L.push(`Alteration fee: ${money(r.altFee)} QAR`);
+        L.push(`Delivery fee: ${money(r.deliveryFee)} QAR`);
+        L.push(`Bags used today: ${Number(r.bagsUsed) || 0}`);
+        L.push('');
         L.push(`Cash: ${money(r.cashSales)} QAR`);
         L.push(`Card: ${money(r.cardSales)} QAR`);
-        L.push(`*Total sales: ${money(r.totalSales)} QAR*`);
         L.push(`Cash on hand: ${money(r.cashOnHand)} QAR`);
         // ⚠️ عدد ومبلغ فقط. لا عمولة ولا مستحق: الرسالة تُرسل من هاتف البياعة
         // وقد تصل مجموعةً فيها غيرها، وأرقام نصيب المحل ليست للنشر.
@@ -1561,6 +1582,14 @@
         }
         // ملاحظة البياعة بعنوان بارز: هي أحيانًا أهمّ من الأرقام (سبب يوم ضعيف،
         // سعرٌ نفر منه العميل...)، وسطرٌ بلا عنوان يضيع بين الأرقام.
+        // ⭐⭐⭐ مجموع المبيعات **آخر الأرقام وقبل الملاحظة**، غليظًا وبفاصلٍ يُبرزه —
+        // بأمر المالك: «يجب أن يكون توتال المبيعات تحت قبل الملاحظة بخط غليظ
+        // وواضح». وكان في وسط الرسالة بين الكاش والكاش المتوفّر فيضيع بينهما.
+        // ⚠️ والنجمتان هما ما يُظهره الواتساب غليظًا — لا وسمَ HTML هنا.
+        L.push('');
+        L.push('━━━━━━━━━━━━━━━━━━');
+        L.push(`*TOTAL SALES : ${money(r.totalSales)} QAR*`);
+        L.push('━━━━━━━━━━━━━━━━━━');
         if (r.note) { L.push(''); L.push('*NOTE*'); L.push(r.note); }
         L.push('');
         L.push(`Sent by: ${r.sellerName}`);
@@ -1570,6 +1599,8 @@
     function showSummary(r) {
         const rows = [];
         const add = (k, v) => rows.push(`<div class="sumrow"><span>${escapeHtml(k)}</span><span>${escapeHtml(v)}</span></div>`);
+        // ⭐ سطرُ المجموع: أغلظ وأكبر وبإطارٍ فوقه — يُقرأ بلمحةٍ بين الأسطر.
+        const addTotal = (k, v) => rows.push(`<div class="sumrow total"><span>${escapeHtml(k)}</span><span>${escapeHtml(v)}</span></div>`);
         add('Shop', r.shop);
         add('Date', slashDate(r.date));
         // تفصيل العباية: جاهز وأوردر منفصلان دائمًا (قرار المالك)
@@ -1583,9 +1614,12 @@
             if (q || a > 0) add(it.en, `${q} pc · ${money(a)} QAR`);
         });
         add('Total pieces', String(r.totalQty));
+        // ⭐⭐ تُذكر دائمًا ولو أصفارًا — انظر التعليق في buildWhatsAppText.
+        add('Alteration fee', money(r.altFee) + ' QAR');
+        add('Delivery fee', money(r.deliveryFee) + ' QAR');
+        add('Bags used today', String(Number(r.bagsUsed) || 0));
         add('Cash', money(r.cashSales) + ' QAR');
         add('Card', money(r.cardSales) + ' QAR');
-        add('Total sales', money(r.totalSales) + ' QAR');
         add('Cash on hand', money(r.cashOnHand) + ' QAR');
         if (r.shTotalQty > 0 || r.shTotalSales > 0) {
             add('Shanton pieces', String(r.shTotalQty));
@@ -1593,6 +1627,9 @@
         }
         add('Walk-ins', `${r.walkInsLocal} local · ${r.walkInsExpat} expat`);
         if (r.movements.length) add('Stock lines', String(r.movements.length));
+        // ⭐⭐⭐ ثم مجموع المبيعات آخر الأرقام وقبل الملاحظة، بخطٍّ غليظ وواضح —
+        // بأمر المالك. وترتيبُه هنا مقصود: هو الرقم الذي تُراجعه العين أخيرًا.
+        addTotal('TOTAL SALES', money(r.totalSales) + ' QAR');
         // ⚠️ الملاحظة كانت غائبة من الملخّص كليًّا: البياعة تكتبها ثم لا تراها
         // في «ما أُرسل»، فتظن أنها لم تُرسل. تُعرض كاملة بأسطرها لا في خانة ضيقة.
         el('doneSummary').innerHTML = rows.join('')
