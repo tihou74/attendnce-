@@ -1408,6 +1408,18 @@
 
         <div class="card">
             <h3><span data-icon="fileText"></span> Daily reports from the saleswomen</h3>
+            <!-- ⚠️⚠️ بطاقةُ قياسِ العطل — تُظهر نفسها فقط إن كان هناك نقص فعلًا،
+                 وتختفي وحدها حين تنتهي التقارير المصابة.
+                 السبب: حقول التقرير كانت تُكتب باليد، فنُسي «Inner» و«Perfume»
+                 ولم يُحفظ رقماهما إطلاقًا. والمجموع (totalItemAmount/totalQty)
+                 كان يُحفظ صحيحًا — فالفرق بينه وبين مجموع الأنواع المحفوظة هو
+                 **بالضبط** ما فُقد. فالماضي ليس مجهولًا كلّه: المجموع يُستعاد،
+                 وإن كان توزيعُه بين النوعين لا يُستعاد. -->
+            <div id="abLostCard" style="display:none; background: rgba(217,119,6,0.08);
+                border-left: 3px solid var(--warning); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px;">
+                <b style="display:block; margin-bottom:6px;">&#9888; Figures that were typed but never saved</b>
+                <div id="abLostBody" style="font-size: 12.5px; line-height: 1.85;"></div>
+            </div>
             <p class="card-sub">Newest first. A saleswoman cannot read or change a report once sent, so a wrong figure is corrected from here.</p>
             <div class="table-container">
                 <table>
@@ -8036,8 +8048,75 @@
         }
     };
 
+    /**
+     * ⭐⭐⭐ قياسُ ما فُقد — لا تخمينَه.
+     *
+     * ⚠️⚠️ العطل: حقول التقرير كانت تُكتب باليد نوعًا نوعًا، فنُسي «Inner»
+     * و«Perfume». والبياعة تكتبهما، ورسالة الواتساب تُظهرهما صحيحين (فلا أحد
+     * يشكّ)، لكن رقمَيهما **لا يُكتبان في القاعدة**. فظهرا صفرًا في كل تفصيل،
+     * ولم يُخصم من ستوكهما شيء — فالمتوفّر منهما أكبر من الحقيقة.
+     *
+     * ⚠️ لكن `totalQty` و`totalItemAmount` كانا يُحفظان **صحيحين** لأنهما
+     * يُحسبان من كل الأنواع. فالفرق:
+     *      المفقود = المجموع المحفوظ − مجموع الأنواع المحفوظة
+     * وهو رقمٌ **دقيق لا تقديري**. فيُعرض ليُصحّح به الجرد الافتتاحي.
+     *
+     * ⚠️ وما لا يُستعاد: توزيعُ المفقود بين «Inner» و«Perfume». يُقال ذلك صريحًا
+     * ولا يُخمَّن — تخمينُ توزيعٍ يُنتج رقمَي ستوكٍ خطأً بدل رقمٍ واحدٍ مجهول.
+     */
+    function renderAbayaLostFigures() {
+        const card = document.getElementById('abLostCard');
+        const body = document.getElementById('abLostBody');
+        if (!card || !body) return;
+        let lostQty = 0, lostAmt = 0, hit = 0, first = '', last = '';
+        const byShop = new Map();
+        (allAbayaReports || []).forEach(r => {
+            let q = 0, a = 0;
+            ABAYA_ITEMS.forEach(it => {
+                q += Number(r[abQtyField(it.key)]) || 0;
+                a += Number(r[abAmtField(it.key)]) || 0;
+            });
+            const dq = (Number(r.totalQty) || 0) - q;
+            const da = (Number(r.totalItemAmount) || 0) - a;
+            // ⚠️ التقارير المرسَلة بعد الإصلاح فرقُها صفر، فتختفي البطاقة وحدها.
+            if (dq <= 0 && da <= ABAYA_CENT) return;
+            hit++;
+            lostQty += Math.max(0, dq);
+            lostAmt += Math.max(0, da);
+            const shop = String(r.shop || '—');
+            const cur = byShop.get(shop) || { qty: 0, amt: 0, n: 0 };
+            cur.qty += Math.max(0, dq); cur.amt += Math.max(0, da); cur.n++;
+            byShop.set(shop, cur);
+            const d = String(r.date || '');
+            if (d && (!first || d < first)) first = d;
+            if (d && (!last || d > last)) last = d;
+        });
+        if (!hit) { card.style.display = 'none'; body.innerHTML = ''; return; }
+        card.style.display = 'block';
+        const rows = [...byShop.entries()].sort((a, b) => b[1].qty - a[1].qty)
+            .map(([s, v]) => `<b>${escapeHtml(s)}</b>: ${v.qty} piece(s) &middot; ${money(v.amt)} QAR `
+                + `<span style="color: var(--text-dim);">(${v.n} report(s))</span>`).join('<br>');
+        body.innerHTML =
+            `<b>${hit} report(s)</b> between <b>${escapeHtml(first || '—')}</b> and <b>${escapeHtml(last || '—')}</b> `
+            + `carry <b>${lostQty} piece(s)</b> and <b>${money(lostAmt)} QAR</b> that the saleswoman typed but the app `
+            + `never stored per item.<br><br>${rows}<br><br>`
+            + `<b>What this was:</b> the report fields used to be written out by hand, and two of them &mdash; `
+            + `<b>Inner</b> and <b>Perfume</b> &mdash; were missing. The day's money total was always right, and the `
+            + `WhatsApp message showed them correctly, which is why nobody noticed. Only the per-item figure was lost, `
+            + `so those two show zero in every breakdown and <b>nothing was ever deducted from their stock</b>.<br><br>`
+            + `<b>What it means for your stock:</b> your <b>Inner</b> and <b>Perfume</b> "available now" is too high by `
+            + `<b>${lostQty} piece(s) in total</b>. You can correct it in <b>Opening stock</b> above.<br>`
+            + `<b>What cannot be recovered:</b> how those ${lostQty} pieces split between Inner and Perfume &mdash; `
+            + `that number was never written anywhere. It is not guessed here on purpose: a guessed split would give `
+            + `you two wrong figures instead of one honest unknown.<br><br>`
+            + `<b>It cannot happen again:</b> the fields are now built from the item list itself, and the saleswoman's `
+            + `screen refuses to send a report if any item is missing. This box counts only old reports and will `
+            + `empty itself as they age out.`;
+    }
+
     function renderAbayaAll() {
         renderAbayaShopPickers();
+        renderAbayaLostFigures();
         renderAbayaReports();
         renderAbayaMonth();
         renderAbayaSellers();

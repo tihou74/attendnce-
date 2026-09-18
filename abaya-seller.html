@@ -867,6 +867,60 @@
     // =====================================================================
     // الحساب اللحظي
     // =====================================================================
+    // =====================================================================
+    // ⭐⭐⭐ أسماء حقول التقرير تُشتقّ من القائمة — لا تُكتب باليد أبدًا
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ سببُ هذا عطلٌ حقيقي وقع فعلًا وبقي مدّةً بلا أن يُلاحظه أحد: كانت
+    // حقول التقرير مكتوبةً باليد نوعًا نوعًا، فنُسي نوعان — «Inner» و«Perfume».
+    // البياعة تكتب عددهما ومبلغهما، والمبلغ يدخل في مجموع اليوم فيبدو كل شيء
+    // سليمًا، لكن رقمَي النوعين **لا يُكتبان في القاعدة إطلاقًا**. فظهرا صفرًا
+    // في كل تفصيل، ولم يُخصم من ستوكهما شيء أبدًا — فصار المتوفّر منهما أكبر
+    // من الحقيقة بكل ما بيع.
+    //
+    // والعطل لم يكن في الحقلين، بل في **أن الحقول تُكتب باليد**. فمن يُضيف نوعًا
+    // غدًا سينسى مرّةً أخرى، ولن يُخبره شيء. فالحلّ من الجذر: مصدرٌ واحد
+    // (ABAYA_ITEMS) تُشتقّ منه الأسماء، وحارسٌ يرفض الإرسال إن نقص نوعٌ واحد.
+    //
+    // ⚠️ والتسمية يجب أن تبقى مطابقةً حرفيًّا لما تقرؤه اللوحة: abayaReady ->
+    // qtyAbayaReady. فتغييرُ هذه الدالّة يُفقد كل التقارير السابقة معناها.
+    // =====================================================================
+    function abQtyField(key) { return 'qty' + key.charAt(0).toUpperCase() + key.slice(1); }
+    function abAmtField(key) { return 'amt' + key.charAt(0).toUpperCase() + key.slice(1); }
+
+    /** يبني حقول الأنواع كلها من القائمة، ومعها المجموعان. */
+    function itemFields(items) {
+        const out = {};
+        for (const it of ABAYA_ITEMS) {
+            out[abQtyField(it.key)] = items.qty[it.key];
+            out[abAmtField(it.key)] = items.amt[it.key];
+        }
+        out.totalQty = items.totalQty;
+        out.totalItemAmount = items.totalAmount;
+        return out;
+    }
+
+    /**
+     * ⭐⭐⭐ الحارس: لا يُرسَل تقريرٌ نقص منه نوع.
+     * ⚠️ ولماذا حارسٌ إن كانت الأسماء تُشتقّ آليًّا؟ لأن الاشتقاق يُصلح اليوم،
+     * والحارس يمنع الغد. من يعود فيكتب حقلًا باليد، أو يُخطئ في اسم مفتاح،
+     * يجد رفضًا صريحًا باسم النوع — لا فقدانًا صامتًا يُكتشف بعد أشهر في الستوك.
+     * ⚠️ ويُقارن المجموع أيضًا: حقلٌ موجودٌ بقيمةٍ خطأ أخطر من حقلٍ غائب.
+     */
+    function itemFieldsProblem(fields, items) {
+        for (const it of ABAYA_ITEMS) {
+            if (!(abQtyField(it.key) in fields)) return `"${it.en}" — the piece count is not being saved`;
+            if (!(abAmtField(it.key) in fields)) return `"${it.en}" — the amount is not being saved`;
+        }
+        let q = 0, a = 0;
+        for (const it of ABAYA_ITEMS) {
+            q += Number(fields[abQtyField(it.key)]) || 0;
+            a += Number(fields[abAmtField(it.key)]) || 0;
+        }
+        if (q !== items.totalQty) return `the pieces add up to ${q} but the total says ${items.totalQty}`;
+        if (Math.abs(a - items.totalAmount) > CENT) return `the amounts add up to ${money(a)} but the total says ${money(items.totalAmount)}`;
+        return null;
+    }
+
     function readItems() {
         const out = { qty: {}, amt: {}, totalQty: 0, totalAmount: 0, bad: null };
         for (const it of ABAYA_ITEMS) {
@@ -1293,6 +1347,19 @@
             return;
         }
 
+        // ⭐⭐⭐ حارس «لا نوع يُفقد» — يُفحص **قبل** الإرسال لا بعده.
+        // ⚠️ هذا هو الحارس الذي كان غائبًا فمرّ فقدانُ «Inner» و«Perfume» شهورًا.
+        // الرفضُ الصريح أرحم من قبولٍ ناقص: تقريرٌ مرفوض يُصلَح في دقيقة، ورقمٌ
+        // مفقود لا يُكتشف إلا في ستوكٍ غلط بعد أشهر، ولا يُستعاد.
+        {
+            const problem = itemFieldsProblem(itemFields(items), items);
+            if (problem) {
+                showStatus(`The report was NOT sent — ${problem}. Nothing was saved. `
+                    + `Tell the owner this exact message; it means the app needs a fix, not you.`, 'err');
+                return;
+            }
+        }
+
         isSubmitting = true;
         el('btnSubmit').disabled = true;
         showStatus('Sending the report...', 'load');
@@ -1304,17 +1371,11 @@
             sellerId: state.sellerId,
             sellerName: state.sellerName,
 
-            // أعداد القطع لكل نوع — عليها يُبنى الستوك
-            qtyAbayaReady: items.qty.abayaReady, qtyAbayaOrder: items.qty.abayaOrder,
-            qtyKaftan: items.qty.kaftan, qtyShela: items.qty.shela,
-            qtyTravel: items.qty.travel, qtyJalabiya: items.qty.jalabiya,
-            totalQty: items.totalQty,
-
-            // مبالغ كل نوع — عليها يُبنى «أي نوع يجلب أكثر مال»
-            amtAbayaReady: items.amt.abayaReady, amtAbayaOrder: items.amt.abayaOrder,
-            amtKaftan: items.amt.kaftan, amtShela: items.amt.shela,
-            amtTravel: items.amt.travel, amtJalabiya: items.amt.jalabiya,
-            totalItemAmount: items.totalAmount,
+            // ⭐⭐⭐ أعداد القطع ومبالغها لكل نوع — **تُشتقّ من القائمة** ولا تُكتب
+            // باليد. انظر التعليق المفصّل عند itemFields: الكتابة باليد أسقطت
+            // «Inner» و«Perfume» من كل تقرير، وأفسدت ستوكهما بلا أن يُنبّه شيء.
+            // ومعها totalQty وtotalItemAmount.
+            ...itemFields(items),
 
             cashSales: cash, cardSales: card, totalSales, cashOnHand,
 
