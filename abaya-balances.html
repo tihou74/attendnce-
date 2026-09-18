@@ -639,6 +639,8 @@
         { key: 'travelOrder',   en: 'Travel Collection — order', ar: 'ترافل كولكشن — طلب / تفصيل' },
         { key: 'jalabiya',      en: 'Jalabiya — ready',          ar: 'جلابية — بيع جاهز' },
         { key: 'jalabiyaOrder', en: 'Jalabiya — order',          ar: 'جلابية — طلب / تفصيل' },
+        // ⭐ دريس: يُباع جاهزًا وحده — لا سطر طلب له، كالعطور. قرار المالك.
+        { key: 'dress',         en: 'Dress',                     ar: 'دريس' },
         { key: 'perfume',       en: 'Perfume',                   ar: 'عطور' }
     ];
     const ABAYA_STOCK_ITEMS = [
@@ -648,6 +650,7 @@
         { key: 'inner',    en: 'Inner',             ar: 'إنر' },
         { key: 'travel',   en: 'Travel Collection', ar: 'ترافل كولكشن' },
         { key: 'jalabiya', en: 'Jalabiya',          ar: 'جلابية' },
+        { key: 'dress',    en: 'Dress',             ar: 'دريس' },
         { key: 'perfume',  en: 'Perfume',           ar: 'عطور' },
         // ⭐⭐ الأكياس مخزونٌ في كل فرع بأمر المالك: تنقص بما استُعمل في اليوم،
         // وتزيد بما استُقبل (تُسجَّل حركةً «وصلت من مورّد» أو «من محل آخر» —
@@ -670,7 +673,8 @@
     const ABAYA_SHANTON_SHOPS = ['DOHA FESTIVAL CITY'];
     const ABAYA_ITEM_TO_STOCK = {
         abayaReady: 'abaya', kaftan: 'kaftan', shela: 'shela',
-        inner: 'inner', travel: 'travel', jalabiya: 'jalabiya', perfume: 'perfume'
+        inner: 'inner', travel: 'travel', jalabiya: 'jalabiya',
+        dress: 'dress', perfume: 'perfume'
     };
     // ⭐⭐⭐ الطلب/التفصيل **لا يُخصم من رفّ المحل**: قرار المالك بالحرف — «أي أوردر
     // لا يخصم من الستوك، فهو يخرج من الورشة مباشرة إلى الزبون».
