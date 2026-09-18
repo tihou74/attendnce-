@@ -1436,9 +1436,18 @@
                 snap.forEach(d => dutyCards.push({ id: d.id, ...d.data() }));
                 dutyCardsLoaded = true;
             }
-            const evSnap = await getDocs(query(collection(db, "abaya_presence"), where("date", "==", day)));
+            // ⭐⭐⭐ واليوم السابق معه: ملاحظةُ المالك عن ورديات المطاعم العابرة
+            // لمنتصف الليل تنطبق هنا بنفسها — بياعةٌ سجّلت دخولها ولم تُسجّل
+            // انصرافًا يجب أن تبقى ظاهرة حتى تُسجّله، لا أن تختفي عند منتصف الليل.
+            // ⚠️ واستعلامان بـ== لا واحدٌ بـin: == على حقلٍ واحد يعمل بلا أي فهرس.
+            const prevDay = shiftDayISO(day, -1);
+            const [evSnap, evPrev] = await Promise.all([
+                getDocs(query(collection(db, "abaya_presence"), where("date", "==", day))),
+                getDocs(query(collection(db, "abaya_presence"), where("date", "==", prevDay)))
+            ]);
             dutyEvents = [];
             evSnap.forEach(d => dutyEvents.push({ id: d.id, ...d.data() }));
+            evPrev.forEach(d => dutyEvents.push({ id: d.id, ...d.data() }));
             dutyEventsDate = day;
             renderDuty();
         } catch (e) {
@@ -1461,6 +1470,26 @@
             .sort((a, b) => dutyEventMillis(a) - dutyEventMillis(b));
         if (!evs.length) return { state: 'none', ev: null };
         const last = evs[evs.length - 1];
+        const day = dutyEventsDate || todayISO();
+        // ⭐⭐⭐ حدثٌ من يومٍ سابق: لا يُورَّث منه إلا دخولٌ مفتوح، وفي عرض اليوم
+        // وحده. وانصرافُ أمس لا يقول شيئًا عن اليوم.
+        // ⚠️ ويومٌ واحد إلى الوراء لا أكثر: وردية تعبر منتصف ليلٍ واحد لا ليلتين،
+        // ولولا الحدّ بقيت من نسيت الانصراف ظاهرةً إلى الأبد.
+        // ⚠️⚠️ الشرط `d &&` واجب: حدثٌ بلا حقل تاريخ يجعل `'' < day` صحيحًا،
+        // فيُعَدّ قديمًا ويُخفى صاحبه — وهو **سجلٌّ حقيقي**. وإخفاء سجلٍّ حقيقي
+        // أسوأ من عرضه في اليوم الخطأ، وهي قاعدةٌ مطبَّقة في المشروع كله.
+        // وأمسك هذا فحصٌ ببياناتٍ بلا تاريخ، لا بالتفكير.
+        const lastDay = String(last.date || '');
+        if (lastDay && lastDay < String(day)) {
+            // ⚠️⚠️ يومٌ واحد بالضبط لا «أي يومٍ سابق»، والحدّ هنا لا في الاستعلام
+            // وحده: لو وسّعه أحدٌ غدًا لصار دخولٌ من الأسبوع الماضي يُعرض «في
+            // المحلّ الآن». والحارس في المنطق يبقى صحيحًا مهما جلب الاستعلام.
+            const isYesterday = lastDay === shiftDayISO(String(day), -1);
+            if (isYesterday && last.type === 'Check-In' && day >= todayISO()) {
+                return { state: 'in', ev: last, first: evs[0], carried: true };
+            }
+            return { state: 'none', ev: null };
+        }
         return { state: last.type === 'Check-In' ? 'in' : 'out', ev: last, first: evs[0] };
     }
 
@@ -1517,9 +1546,12 @@
                          هي **اليوم** — والفرق يُسأل عنه إنسان. -->
                     <p class="shop">${escapeHtml(shop || '—')}</p>
                     <p class="ttl">${r.title ? escapeHtml(r.title) : '&mdash;'}${r.hasCard ? '' : ' &middot; <b>no photo added yet</b>'}</p>
-                    <p class="st">${isToday ? 'In the shop now' : 'Signed in, no Check-Out recorded'}</p>
+                    <p class="st">${r.carried
+                        ? 'In the shop now &mdash; since yesterday'
+                        : (isToday ? 'In the shop now' : 'Signed in, no Check-Out recorded')}</p>
                     <p class="msg">${msg}</p>
-                    <p class="why">${since ? `Signed in at ${escapeHtml(since)}` : 'No time recorded'}</p>
+                    <p class="why">${since ? `Signed in at ${escapeHtml(since)}` : 'No time recorded'}${
+                        r.carried ? ' <b>yesterday</b> &mdash; no Check-Out recorded yet' : ''}</p>
                     <p class="wabar">${waButton(r.name, r.phone)}</p>
                 </span>
             </div>`;
@@ -1546,6 +1578,10 @@
             notes.push(`<b>${left.length} finished and left today:</b> ${left.map(r => escapeHtml(r.name)).join(' &middot; ')}. `
                 + `They are not shown above on purpose, so the screen stays clear &mdash; not because they did not come.`);
         }
+        // ⭐⭐ والقاعدة تُقال صريحةً هنا أيضًا.
+        notes.push(`<b>A shift that crosses midnight stays here.</b> Whoever signed in yesterday and has not `
+            + `pressed Check-Out is still shown, because a shift does not follow the calendar day. Only the `
+            + `previous day is carried over, so a forgotten Check-Out clears itself the day after.`);
         notes.push(`This screen is a courtesy copy of what she pressed, not the attendance record. If a name is `
             + `missing it means that copy did not reach us &mdash; it never means she was absent. `
             + `Refreshes by itself every minute.`);

@@ -1268,9 +1268,18 @@
                 mgrCards.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
                 mgrCardsLoaded = true;
             }
-            const snap2 = await getDocs(query(collection(db, "manager_presence"), where("date", "==", day)));
+            // ⚠️ استعلامان بـ== لا استعلامٌ واحد بـin: `in` يحتاج فهرسًا في بعض
+            // الحالات، و== على حقلٍ واحد يعمل دائمًا بلا أي فهرس. انظر الشرح
+            // المفصّل عند isFromEarlierDay: اليوم السابق يُقرأ ليُورَّث دوامٌ
+            // عبر منتصف الليل.
+            const prev = shiftISO(day, -1);
+            const [snap2, snapPrev] = await Promise.all([
+                getDocs(query(collection(db, "manager_presence"), where("date", "==", day))),
+                getDocs(query(collection(db, "manager_presence"), where("date", "==", prev)))
+            ]);
             mgrEvents = [];
             snap2.forEach(d => mgrEvents.push({ id: d.id, ...d.data() }));
+            snapPrev.forEach(d => mgrEvents.push({ id: d.id, ...d.data() }));
             mgrEventsDate = day;
             renderManagers();
         } catch (e) {
@@ -1280,6 +1289,52 @@
             el('mgrNote').innerHTML = '';
             el('mgrError').innerText = 'Could not load the managers: ' + e.message;
         }
+    }
+
+    // =====================================================================
+    // ⭐⭐⭐ الوردية التي تعبر منتصف الليل
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ ملاحظة المالك، وهي صحيحة تمامًا: «شغلنا في المطاعم لا يتعلق باليوم.
+    // لما ندخل في يوم جديد يظهر المدراء والسوبرفايزر أنهم لم يسجّلوا أي شيء،
+    // رغم أن موظفًا دوامه بدأ الساعة 4 وينتهي 1 بعد منتصف الليل. يجب أن يبقى
+    // ظاهرًا حتى يسجّل خروجًا واضحًا».
+    //
+    // والسبب: الشاشة كانت تقرأ أحداث **اليوم المختار وحده**. فعند منتصف الليل
+    // يتغيّر التاريخ، فيصير من بدأ دوامه الرابعة عصرًا وهو ما زال في المطعم
+    // «لم يسجّل شيئًا» — والدوام لم ينتهِ بعد.
+    //
+    // الحلّ: يُقرأ **اليوم السابق معه**، وتُحسب الحالة من آخر حدثٍ في اليومين.
+    // فمن بدأ أمس ولم يُسجّل انتهاءً يبقى ظاهرًا على الدوام، ويُقال صريحًا أن
+    // بدايته كانت أمس وكم مضى عليها.
+    //
+    // ⚠️ ويومٌ واحد إلى الوراء لا أكثر، عن قصد: وردية تعبر منتصف ليلٍ واحد لا
+    // ليلتين. ولولا هذا الحدّ لبقي من نسي الزرّ ظاهرًا على الدوام إلى الأبد،
+    // فتصير النقطة الخضراء عديمة المعنى. فمن نسي يُصحّح نفسه بعد يوم.
+    //
+    // ⚠️ ولا يُورَّث إلا **بدايةٌ مفتوحة**: «انتهى» أو «يوم راحة» من أمس لا
+    // يقولان شيئًا عن اليوم، فيُعرض صاحبهما «لا سجل لهذا اليوم» كما كان.
+    //
+    // ⚠️ والتوريث في عرض **اليوم** وحده: في يومٍ ماضٍ نحن نقرأ تاريخًا، فبدايةٌ
+    // مفتوحة من اليوم الذي قبله تُعرض منتهيةً كما كانت — لا تُقلب الحقيقة رجوعًا.
+    // =====================================================================
+    /**
+     * هل هذا الحدث من **اليوم السابق مباشرةً** لليوم المعروض؟
+     *
+     * ⚠️⚠️ ليس «أي يومٍ سابق». الحدّ يومٌ واحد، ويُفرض **هنا** لا في الاستعلام
+     * وحده: الاستعلام يجلب يومين، لكن لو وسّعه أحدٌ غدًا إلى أسبوع لصار دوامٌ
+     * مفتوح من الأسبوع الماضي يُعرض «على الدوام الآن». فالحارس في المنطق نفسه
+     * يبقى صحيحًا مهما جلب الاستعلام. وفحصٌ أمسك هذا بعينه.
+     */
+    const isFromEarlierDay = (ev, day) => {
+        const d = String((ev && ev.date) || '');
+        return !!d && d === shiftISO(String(day), -1);
+    };
+    /** كم ساعةً مضت على حدثٍ — لإظهار أن الزرّ ربما نُسي. */
+    function hoursSince(ev) {
+        const ms = mgrEventMillis(ev);
+        if (!ms) return null;
+        const h = (Date.now() - ms) / 3600000;
+        return h >= 0 ? Math.floor(h) : null;
     }
 
     /**
@@ -1294,6 +1349,23 @@
             .sort((a, b) => mgrEventMillis(a) - mgrEventMillis(b));
         if (!evs.length) return { state: 'none', ev: null };
         const last = evs[evs.length - 1];
+        // ⭐⭐⭐ آخرُ حدثٍ من يومٍ سابق: لا يُورَّث منه إلا بدايةٌ مفتوحة، وفي عرض
+        // اليوم وحده. انظر الشرح المفصّل أعلى الملف عند isFromEarlierDay.
+        // ⚠️ ولا يُعرَّف `today` هنا: مُعرَّفٌ أدناه في نفس الدالّة، وتعريفُه مرّتين
+        // خطأٌ صريح في JavaScript — أوقعني فيه إدراجُ هذا الفحص قبله.
+        // ⚠️ وما كان من يومٍ **أقدم** من أمس لا يُورَّث ولا يُعرض: ليس حالةَ اليوم.
+        // ⚠️⚠️ الشرط `d &&` واجب: حدثٌ بلا حقل تاريخ يجعل `'' < day` صحيحًا،
+        // فيُعَدّ قديمًا ويُخفى صاحبه — وهو **سجلٌّ حقيقي**. وإخفاء سجلٍّ حقيقي
+        // أسوأ من عرضه في اليوم الخطأ، وهي قاعدةٌ مطبَّقة في المشروع كله.
+        // وأمسك هذا فحصٌ ببياناتٍ بلا تاريخ، لا بالتفكير.
+        const lastDay = String(last.date || '');
+        if (lastDay && lastDay < String(day)) {
+            if (isFromEarlierDay(last, day) && last.event === 'start' && day >= todayISOLocal()) {
+                return { state: 'active', ev: last, auto: false, carried: true };
+            }
+            // «انتهى» أو «يوم راحة» من أمس، أو أي حدثٍ أقدم، لا يقول شيئًا عن اليوم.
+            return { state: 'none', ev: null };
+        }
         if (last.event === 'off') return { state: 'rest', ev: last };
         if (last.event === 'end') return { state: 'ended', ev: last, auto: false };
         // ⚠️ الساعة بتوقيت **قطر** لا بتوقيت جهازها: نفس العطل الذي أضاع سجلّات
@@ -1335,8 +1407,10 @@
             // ⚠️ خانة «سأنتهي في الساعة كذا» أُزيلت بطلب المالك، فلا تُذكر ساعة
             // انتهاءٍ لم يقلها أحد. والسجلّات القديمة فيها الساعة فتُذكر كما
             // سُجّلت — لا يُغيَّر تاريخٌ مضى.
+            // ⭐⭐ ورديةٌ بدأت أمس ولم تنتهِ: يُقال «أمس» صريحًا. وبلا ذلك تُقرأ
+            // الساعة كأنها ساعةُ اليوم — فتظنّ السيدة فاطمة أنه بدأ اليوم 16:20.
             return `Hello Mrs Fatima, I am ${who}. I am on duty since `
-                + `<b>${escapeHtml(st.ev.fromTime || '—')}</b>`
+                + `<b>${escapeHtml(st.ev.fromTime || '—')}</b>${st.carried ? ' <b>yesterday</b>' : ''}`
                 + (st.ev.toTime ? ` until <b>${escapeHtml(st.ev.toTime)}</b>` : '')
                 + `, and I am happy to be at your service at any time.`;
         }
@@ -1394,6 +1468,16 @@
                 why = 'He confirmed this himself.';
             } else if (st.state === 'none') {
                 why = 'He has not pressed anything for this day.';
+            } else if (st.state === 'active' && st.carried) {
+                // ⚠️⚠️ الشفافية هنا واجبة: الحالة مُورَّثة من أمس، وقد تكون
+                // وردية عابرة لمنتصف الليل (وهي الحالة المقصودة)، وقد يكون
+                // نسيانًا للزرّ الأحمر. فيُقال الأمران ومعهما عددُ الساعات،
+                // فتحكم هي — ولا يُخفى أن الرقم ليس من اليوم.
+                const h = hoursSince(st.ev);
+                why = `His shift started <b>yesterday at ${escapeHtml(st.ev.fromTime || '—')}</b> and he has not `
+                    + `recorded finishing, so he is still shown as on duty &mdash; restaurant shifts cross midnight. `
+                    + (h !== null ? `That is <b>${h} hour(s)</b> ago. ` : '')
+                    + `If that looks too long, he may simply have forgotten the red button.`;
             }
             return `<div class="mgr ${cls}">
                 ${r.photo
@@ -1457,9 +1541,16 @@
                 mgrCards.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
                 mgrCardsLoaded = true;
             }
-            const snap2 = await getDocs(query(collection(db, "supervisor_presence"), where("date", "==", day)));
+            // ⚠️ واليوم السابق كذلك — بصمةٌ في الرابعة عصرًا وخروجٌ بعد منتصف
+            // الليل. انظر الشرح عند isFromEarlierDay.
+            const prevS = shiftISO(day, -1);
+            const [snap2, snapPrevS] = await Promise.all([
+                getDocs(query(collection(db, "supervisor_presence"), where("date", "==", day))),
+                getDocs(query(collection(db, "supervisor_presence"), where("date", "==", prevS)))
+            ]);
             supEvents = [];
             snap2.forEach(d => supEvents.push({ id: d.id, ...d.data() }));
+            snapPrevS.forEach(d => supEvents.push({ id: d.id, ...d.data() }));
             supEventsDate = day;
             renderSupervisors();
         } catch (e) {
@@ -1477,6 +1568,20 @@
             .sort((a, b) => mgrEventMillis(a) - mgrEventMillis(b));
         if (!evs.length) return { state: 'none', ev: null };
         const last = evs[evs.length - 1];
+        const day = supEventsDate || todayISOLocal();
+        // ⭐⭐⭐ بصمةُ دخولٍ من أمس بلا خروج: ما زال في العمل. أما خروجُ أمس فلا
+        // يقول شيئًا عن اليوم. انظر الشرح عند isFromEarlierDay.
+        // ⚠️⚠️ الشرط `d &&` واجب: حدثٌ بلا حقل تاريخ يجعل `'' < day` صحيحًا،
+        // فيُعَدّ قديمًا ويُخفى صاحبه — وهو **سجلٌّ حقيقي**. وإخفاء سجلٍّ حقيقي
+        // أسوأ من عرضه في اليوم الخطأ، وهي قاعدةٌ مطبَّقة في المشروع كله.
+        // وأمسك هذا فحصٌ ببياناتٍ بلا تاريخ، لا بالتفكير.
+        const lastDay = String(last.date || '');
+        if (lastDay && lastDay < String(day)) {
+            if (isFromEarlierDay(last, day) && last.type === 'Check-In' && day >= todayISOLocal()) {
+                return { state: 'in', ev: last, carried: true };
+            }
+            return { state: 'none', ev: null };
+        }
         if (last.type === 'Check-In') return { state: 'in', ev: last };
         // خروج — وفترة الدوام المقسوم خروجٌ فعلًا، لكن «في استراحة» أصدق من
         // «انصرف»: هو عائد، والعلامة تُميّز الحالتين.
@@ -1519,7 +1624,14 @@
             const cls = SUP_CLASS[st.state] || '';
             const initial = String(r.name).trim().charAt(0).toUpperCase() || '?';
             let why = '';
-            if (st.state === 'in') why = `Clocked in at ${escapeHtml(String(st.ev.time || '—'))}.`;
+            if (st.state === 'in' && st.carried) {
+                const h = hoursSince(st.ev);
+                why = `Clocked in <b>yesterday at ${escapeHtml(String(st.ev.time || '—'))}</b> and has not clocked out, `
+                    + `so he is still shown at work &mdash; restaurant shifts cross midnight. `
+                    + (h !== null ? `That is <b>${h} hour(s)</b> ago. ` : '')
+                    + `If that looks too long, he may have forgotten to clock out.`;
+            }
+            else if (st.state === 'in') why = `Clocked in at ${escapeHtml(String(st.ev.time || '—'))}.`;
             else if (st.state === 'break') why = `On a split break since ${escapeHtml(String(st.ev.time || '—'))} — he is coming back.`;
             else if (st.state === 'out') why = `Clocked out at ${escapeHtml(String(st.ev.time || '—'))}.`;
             else why = 'Nothing was recorded for him on this day.';
@@ -1543,6 +1655,10 @@
         notes.push(`<b>${atWork} of ${rows.length} supervisor(s)</b> at work on ${escapeHtml(day)}.`);
         notes.push(`This comes from each supervisor's own clock-in on the staff attendance page, `
             + `with his PIN and the location check &mdash; not from anything he types here.`);
+        // ⭐⭐ القاعدة تُقال للقارئة صريحةً: بلا ذلك تبدو أسماءُ أمس خطأً في الشاشة.
+        notes.push(`<b>A shift that crosses midnight stays here.</b> Whoever clocked in yesterday and has not `
+            + `clocked out is still shown at work, because restaurant shifts do not follow the calendar day. `
+            + `Only the previous day is carried over, so a forgotten clock-out clears itself the day after.`);
         notes.push(`<b>"No record" is not the same as absent.</b> The full attendance record lives in the `
             + `dashboard; this board only mirrors the moment of clocking in and out, so a missing line means `
             + `nothing was mirrored, not that the person did not come.`);
