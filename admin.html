@@ -5763,6 +5763,94 @@
     // ⚠️ و«بداية الإجراء» وحدها بلا زرّ، وهو المعنى نفسه الذي قاله: لم يُقدَّم
     // الطلب بعد، فلا شيء يُتابَع مع المندوب. وذكرُه لم يَرِد، فلا يُزاد من عندي.
     // =====================================================================
+    // =====================================================================
+    // ⭐⭐⭐ تنبيهُ الموظف نفسه بانتهاء بطاقته — بطلب المالك
+    // ---------------------------------------------------------------------
+    // «إذا كان الموظف ليس على كفالة الشركة وليس أوت سورس كومباني وكانت البطاقة
+    // الشخصية منتهية، يجب أن تُرسل له رسالة نصية مفادها أنّ بطاقتك الشخصية قد
+    // انتهت صلاحيتها لذلك وجب عليك تجديدها في مدة أقصاها 5 أيام وإرسالها إلى
+    // السكرتيرة وذلك لنتمكن من بداية الإجراء لتفعيل الإعارة».
+    //
+    // ⚠️ «ليس على كفالة الشركة وليس أوت سورس» = المُعار: هو على كفالة جهةٍ أخرى
+    // ويعمل عندنا بإعارة. وهذا مطابقٌ لنصّ الرسالة نفسها («لتفعيل الإعارة»).
+    // ⚠️ ومن حالتُه **غير محدَّدة** أو «إجراء جديد» لا تُرسل له: لا نعرف كفيله،
+    // ورسالةٌ تقول «لتفعيل الإعارة» لموظفٍ على كفالتنا خطأٌ في ورقةٍ رسمية.
+    // =====================================================================
+    const SECONDED_SPONSORSHIPS = ['loan_to_gwk', 'loan_to_sbh'];
+    const QID_RENEWAL_DAYS_ALLOWED = 5;   // بنصّ المالك: مدة أقصاها 5 أيام
+
+    /** هل يُرسَل لهذا الموظف تنبيهُ تجديد البطاقة؟ */
+    function needsRenewalNotice(emp, st) {
+        if (!emp || !st || st.state !== 'expired') return false;
+        return SECONDED_SPONSORSHIPS.includes(emp.sponsorship || '');
+    }
+
+    /**
+     * نصُّ التنبيه المُرسل إلى الموظف. عربيٌّ بنصّ المالك حرفيًّا، وتحته إنجليزيّ
+     * — كثيرٌ من العاملين لا يقرأ العربية، ورسالةٌ لا تُفهَم لا تُنفَّذ.
+     */
+    function qidRenewalNoticeText(emp, st) {
+        const L = [];
+        L.push('*تنبيه إداري — مجموعة الشيخة*');
+        L.push('');
+        L.push(`${emp.name || emp.id}`);
+        L.push(`رقم البطاقة الشخصية: ${emp.qidNumber || 'غير مسجَّل'}`);
+        L.push(`تاريخ الانتهاء: ${st.expiry || 'غير مسجَّل'}`);
+        L.push('');
+        L.push(`بطاقتك الشخصية قد انتهت صلاحيتها، لذلك وجب عليك تجديدها في مدة أقصاها `
+            + `${QID_RENEWAL_DAYS_ALLOWED} أيام وإرسالها إلى السكرتيرة، وذلك لنتمكن من بداية `
+            + `الإجراء لتفعيل الإعارة.`);
+        L.push('');
+        L.push('———————————————');
+        L.push('');
+        L.push(`Your Qatar ID has expired. You must renew it within ${QID_RENEWAL_DAYS_ALLOWED} days at the `
+            + `latest and send it to the secretary, so that we can start the procedure to activate your secondment.`);
+        L.push('');
+        L.push(`Qatar ID: ${emp.qidNumber || 'not recorded'} · expired on ${st.expiry || 'not recorded'}`
+            + `${st.days !== null ? ` (${Math.abs(st.days)} day(s) ago)` : ''}`);
+        return L.join('\n');
+    }
+
+    /**
+     * ⭐⭐ يفتح واتساب برسالة التجديد **إلى الموظف نفسه** لا إلى المندوب.
+     * ⚠️ ولا رقمَ له → تُفتح قائمة المشاركة ويُقال ذلك: قد يكون رقمه في هاتف
+     * المالك ولو لم يكن في الملف. ولا يُرسَل إلى رقمٍ آخر بحال.
+     */
+    window.sendQidRenewalNotice = function(empId) {
+        const msg = document.getElementById('admStatusMsg');
+        const say = (t, c) => { if (msg) { msg.innerText = t; msg.style.color = c; } };
+        const emp = allEmployees.find(e => e.id === empId);
+        if (!emp) { say('That employee file no longer exists — press Refresh.', 'var(--danger)'); return; }
+        const st = qidStatus(emp);
+        // ⚠️ حارسٌ على الشرط نفسه لا على الزرّ وحده: زرٌّ ظهر سهوًا لا يجوز أن
+        // يُرسل رسالةً رسمية لموظفٍ لا تخصّه.
+        if (!needsRenewalNotice(emp, st)) {
+            say('This notice is only for a seconded employee whose Qatar ID has already expired.', 'var(--danger)');
+            return;
+        }
+        const encoded = encodeURIComponent(qidRenewalNoticeText(emp, st));
+        const isPhone = /android|iphone|ipad|ipod|iemobile|blackberry|opera mini|webos/i.test(navigator.userAgent || '');
+        const num = waNumber(emp.phone);
+        const href = num
+            ? (isPhone ? `whatsapp://send?phone=${num}&text=${encoded}` : `https://wa.me/${num}?text=${encoded}`)
+            : (isPhone ? `whatsapp://send?text=${encoded}` : `https://wa.me/?text=${encoded}`);
+        const a = document.createElement('a');
+        a.href = href;
+        if (!isPhone) { a.target = '_blank'; a.rel = 'noopener'; }
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => a.remove(), 0);
+        say(num
+            ? `Renewal notice opened for ${emp.name || empId} on +${num}.`
+            : `${emp.name || empId} has no phone number in his file — WhatsApp opened so you can pick him yourself. `
+              + `Add his number in the employee file so it opens directly next time.`,
+            num ? 'var(--success)' : 'var(--warning)');
+        logAudit('QID renewal notice sent',
+            `${emp.name || empId}: expired ${st.expiry}, ${QID_RENEWAL_DAYS_ALLOWED} days given`
+            + `${num ? `, to +${num}` : ', no number on file'}`);
+    };
+
     /** هل يستحقّ هذا السطر زرَّ متابعة؟ ويُرجع السبب لا مجرّد نعم/لا. */
     function followUpReason(emp, st) {
         const p = emp && emp.adminProcedure;
@@ -5813,6 +5901,23 @@
             L.push(`*Required: ${what}*`);
             const stt = (PROCEDURE_STATES.find(x => x.key === p.state) || {}).en || p.state || '';
             if (stt) L.push(`Stage: ${stt}`);
+            // ⭐⭐ الراتب في رسالة المندوب — بطلب المالك: «الميساج الذي يُرسل إلى
+            // المندوب يجب أن يكون فيه الراتب أيضًا».
+            // ⚠️ وبحارس المال: من لا يرى المال في اللوحة لا تُرسل رسالتُه راتبًا.
+            const need = procedureNeeds(p.type);
+            if (need === 'salary' && canSeeMoney()) {
+                L.push(`Monthly salary: ${(p.monthlySalary === 0 || p.monthlySalary)
+                    ? `${p.monthlySalary} QAR` : 'NOT recorded yet'}`);
+            }
+            // ⭐⭐ وعرضُ العمل لنقل الكفالة — «ولنقل الكفالة ملف عرض العمل».
+            // ⚠️⚠️ ورابطُ واتساب يحمل **نصًّا فقط** ولا يستطيع إرفاق ملف. فلا
+            // يُقال «مُرفق» كذبًا: يُسمّى الملفُّ ويُقال إنه يُرسَل بعد الرسالة،
+            // والمالك يُنزّله بزرّ PDF في نفس السطر.
+            if (need === 'offer') {
+                L.push(p.offerFileName
+                    ? `Job offer: ${p.offerFileName} — I am sending the PDF right after this message.`
+                    : `Job offer: NOT attached in our system yet.`);
+            }
             if (p.startedAt) L.push(`Procedure started: ${p.startedAt}`);
             if (p.submittedAt) L.push(`Submitted: ${p.submittedAt}`);
             if (p.handledBy) L.push(`Handled by: ${p.handledBy}`);
@@ -5875,6 +5980,14 @@
                 'var(--warning)');
         } else {
             say(`WhatsApp opened for ${emp.name || empId} — pick who you are sending it to.`, 'var(--text-dim)');
+        }
+        // ⚠️⚠️ ويُذكَّر بإرفاق الـPDF بيده: الرسالة تقول للمندوب إنّ العرض قادم،
+        // ورابطُ واتساب لا يحمل ملفًّا. فلو لم يُذكَّر لَوعدَ المندوبَ بملفٍّ لا يأتي.
+        const pr = emp.adminProcedure || {};
+        if (procedureNeeds(pr.type) === 'offer' && pr.offerFileName) {
+            say(`${msg ? msg.innerText + ' ' : ''}Now press PDF on this row to download `
+                + `"${pr.offerFileName}" and attach it in WhatsApp — a link cannot carry a file.`,
+                'var(--warning)');
         }
         logAudit('Administrative follow-up sent',
             `${emp.name || empId}: ${isOut ? (num ? 'outsource company +' + num : 'outsource, no number saved') : 'share sheet'}`);
@@ -6138,6 +6251,18 @@
                             // «Phone: not recorded» وهو أهمّ ما يُطلب منها.
                             + (!waNumber(e.phone)
                                 ? `<br><small style="color: var(--warning);">&#9888; no phone in his file</small>`
+                                : '')
+                            // ⭐⭐⭐ وزرٌّ ثانٍ **إلى الموظف نفسه**: المُعار الذي
+                            // انتهت بطاقته. رسالتان مختلفتان إلى شخصين مختلفين،
+                            // فيُفصَل بينهما بخطٍّ كي لا تُضغط الخطأ.
+                            + (needsRenewalNotice(e, st)
+                                ? `<div style="margin-top:7px; padding-top:7px; border-top:1px dashed var(--border);">`
+                                  + `<button class="btn-warning btn-sm" style="white-space: nowrap;"
+                                        onclick="sendQidRenewalNotice('${id}')"
+                                        title="Message the employee himself: renew the Qatar ID within ${QID_RENEWAL_DAYS_ALLOWED} days and send it to the secretary"
+                                        >${iconSvg('plane','ic-sm')} Tell the employee</button>`
+                                  + `<br><small style="color: var(--text-dim);">seconded &mdash; renew within `
+                                  + `${QID_RENEWAL_DAYS_ALLOWED} days</small></div>`
                                 : '');
                     })()}</td>
                 </tr>`;
@@ -6174,6 +6299,13 @@
         // فلا يفترق الرقمُ عن عدد الأزرار المعروضة.
         const due = all.filter(e => !!followUpReason(e, qidStatus(e)));
         const dueNoPhone = due.filter(e => !waNumber(e.phone)).length;
+        // ⭐⭐ ومن يُنبَّه هو نفسه — يُعدّ بنفس الدالة التي ترسم زرَّه
+        const renewals = all.filter(e => needsRenewalNotice(e, qidStatus(e)));
+        if (renewals.length) notes.push(`<b style="color: var(--warning);">${renewals.length} seconded `
+            + `employee(s) have an expired Qatar ID.</b> They are not on our sponsorship and not on an outsource `
+            + `company, so each has a <b>Tell the employee</b> button that messages <b>him</b> &mdash; `
+            + `<b>not the mandoob</b> &mdash; to renew it within ${QID_RENEWAL_DAYS_ALLOWED} days and send it to the secretary, `
+            + `so the secondment can be activated. The message is written in Arabic and English.`);
         if (due.length) notes.push(`<b>${due.length} employee(s) need following up today</b> &mdash; a Qatar ID `
             + `that has expired or expires within ${QID_EXPIRY_ALERT_DAYS} days, or a procedure that is `
             + `<b>Submitted</b> or <b>In progress</b>. Each one has a <b>WhatsApp</b> button that opens the `
