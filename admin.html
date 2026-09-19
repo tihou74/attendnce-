@@ -2648,6 +2648,31 @@
                 <input type="text" id="procOther" maxlength="80" placeholder="e.g. QID renewal">
             </div>
 
+            <!-- ⭐⭐ إعارة → الراتب الشهري المتّفق عليه. بطلب المالك.
+                 money-only: السكرتيرة لا ترى المال في هذا النظام، ورقمُ راتبٍ
+                 هنا مالٌ كأيّ راتبٍ آخر. -->
+            <div id="procSalaryWrap" class="money-only" style="display:none; margin-top: 12px;">
+                <label for="procSalary">Monthly salary for this secondment (QAR)</label>
+                <input type="number" id="procSalary" min="0" step="1" placeholder="e.g. 2500">
+                <small style="display:block; margin-top:5px; color: var(--text-dim); font-size: 11.5px;">
+                    The salary agreed for the secondment. It is recorded here only &mdash; it does
+                    <b>not</b> change the salary in the employee's own file or any payroll figure.
+                </small>
+            </div>
+
+            <!-- ⭐⭐ نقل كفالة → عرض العمل PDF. بطلب المالك. -->
+            <div id="procOfferWrap" style="display:none; margin-top: 12px;">
+                <label for="procOfferInput">Job offer (PDF)</label>
+                <input type="file" id="procOfferInput" accept="application/pdf">
+                <p id="procOfferState" style="margin: 8px 0 0; font-size: 12.5px; font-weight: 700;"></p>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top: 8px;">
+                    <button type="button" class="btn-ghost btn-sm" id="procOfferDl"
+                        onclick="downloadProcedureOffer()" style="display:none;">Download the offer</button>
+                    <button type="button" class="btn-danger btn-sm" id="procOfferRm"
+                        onclick="removeProcedureOffer()" style="display:none;">Remove the offer</button>
+                </div>
+            </div>
+
             <!-- ⚠️ المرحلة **قبل** التاريخ: التاريخ لا معنى له حتى تُعرف المرحلة،
                  و«تاريخ التقديم» في مرحلةٍ لم يُقدَّم فيها الطلب كذبٌ مكتوب. -->
             <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top: 12px;">
@@ -5635,16 +5660,21 @@
     // ⚠️ و`group` يُجمّع الخيارات في القائمة المنسدلة: صارت سبعةً مسمّاة، وقائمةٌ
     // مسطّحة بسبعة سطور متشابهة البدايات تُختار منها الجهة الخطأ.
     const PROCEDURE_TYPES = [
-        { key: 'transfer_to_gwk',   group: 'Sponsorship transfer',
+        // ⚠️⚠️ `needs` يقول ما يلزم هذا الإجراء من بيانٍ إضافي — بطلب المالك:
+        // «إذا كانت البروسس إعارة يجب إضافة خانة فيها الراتب الشهري، وإذا كان
+        // نقل كفالة إضافة خانة يكون فيها عرض العمل يُحمَّل كـPDF».
+        // وإعلانُه على النوع نفسه لا في شرطٍ متفرّق: نوعٌ يُضاف غدًا يُعلن حاجته
+        // فتظهر خانتُه تلقائيًّا، ولا يُنسى شرطٌ في ثلاثة مواضع.
+        { key: 'transfer_to_gwk',   group: 'Sponsorship transfer', needs: 'offer',
           en: 'Sponsorship transfer to Gaimer W Kahi',
           ar: 'تقديم طلب نقل كفالة إلى قيمر وكاهي' },
-        { key: 'transfer_to_sbh',   group: 'Sponsorship transfer',
+        { key: 'transfer_to_sbh',   group: 'Sponsorship transfer', needs: 'offer',
           en: 'Sponsorship transfer to Shai Bu Hamad',
           ar: 'تقديم طلب نقل كفالة إلى شاي بو حمد' },
-        { key: 'secondment_to_gwk', group: 'Secondment',
+        { key: 'secondment_to_gwk', group: 'Secondment', needs: 'salary',
           en: 'Secondment to Gaimer W Kahi',
           ar: 'إعارة إلى قيمر وكاهي' },
-        { key: 'secondment_to_sbh', group: 'Secondment',
+        { key: 'secondment_to_sbh', group: 'Secondment', needs: 'salary',
           en: 'Secondment to Shai Bu Hamad',
           ar: 'إعارة إلى شاي بو حمد' },
         // ⭐⭐ استقدام جديد — بطلبه. وهو **على كفالة** جهةٍ بعينها، فالجهة في
@@ -5677,6 +5707,18 @@
           ar: 'إعارة — الجهة غير مسجَّلة' }
     ];
     const isLegacyProcedure = (k) => PROCEDURE_TYPES_LEGACY.some(x => x.key === k);
+    /** ما يلزم هذا النوع: 'salary' أو 'offer' أو '' — ويُقرأ من القائمة وحدها. */
+    const procedureNeeds = (k) => {
+        const o = PROCEDURE_TYPES.find(x => x.key === k);
+        return (o && o.needs) || '';
+    };
+    // ⚠️⚠️⚠️ عرضُ العمل PDF **لا يُحفظ على ملف الموظف**. الملف يحمل خمس صورٍ
+    // base64 أصلًا (وجه الهوية وظهرها والبطاقة الصحية والعقد والشهادة)، وحدُّ
+    // فايرستور للمستند الواحد ميغابايت واحد. فإضافةُ PDF فوقها قد تُفشل الحفظ
+    // ثم تُفشل **كل تعديلٍ لاحق** على ذلك الملف — أي تُعطّل ملف موظفٍ كاملًا.
+    // فيُحفظ في مستندٍ خاصّ به، ويبقى على ملف الموظف وسمٌ صغير فقط.
+    const OFFER_COLL = 'employee_offers';
+    const OFFER_PDF_MAX_BYTES = 900 * 1024;   // بعد التحويل إلى base64
     const procedureLabel = (k) => {
         const o = PROCEDURE_TYPES.find(x => x.key === k)
                || PROCEDURE_TYPES_LEGACY.find(x => x.key === k);
@@ -6044,8 +6086,23 @@
                         // ⚠️ مرحلةٌ «لم يُقدَّم بعد» تُوسَم لونًا: هي مرحلةٌ لم يصل
                         // فيها الطلب إلى أحدٍ بعد، فلا تُقرأ كأنّ العمل جارٍ.
                         const sttColor = p.state === 'notsubmitted' ? 'var(--warning)' : 'var(--text-dim)';
+                        // ⭐⭐ ما يطلبه النوع: راتبُ الإعارة، أو عرضُ العمل. وما
+                        // ينقص يُوسَم — خانةٌ فارغة تُقرأ «لا يلزم» وهي تلزم.
+                        const need = procedureNeeds(p.type);
+                        let extra = '';
+                        if (need === 'salary' && canSeeMoney()) {
+                            extra = (p.monthlySalary === 0 || p.monthlySalary)
+                                ? `<br><small style="color: var(--text-dim);">Salary <b>${escapeHtml(String(p.monthlySalary))}</b> QAR/month</small>`
+                                : `<br><small style="color: var(--warning); font-weight: 800;">&#9888; monthly salary not recorded</small>`;
+                        } else if (need === 'offer') {
+                            extra = p.offerFileName
+                                ? `<br><small style="color: var(--success); font-weight: 700;">&#10004; job offer attached</small>`
+                                  + (editable ? ` <button class="btn-ghost btn-sm" style="padding:2px 8px; font-size:11px;"
+                                       onclick="downloadOfferFor('${id}')">PDF</button>` : '')
+                                : `<br><small style="color: var(--warning); font-weight: 800;">&#9888; no job offer attached</small>`;
+                        }
                         return `<b>${escapeHtml(p.type === 'other' ? (p.otherText || 'Other') : procedureLabel(p.type))}</b>`
-                            + old
+                            + old + extra
                             + `<br><small style="color: ${sttColor}; font-weight: ${p.state === 'notsubmitted' ? '800' : '400'};">${escapeHtml(stt)}</small>`
                             + `<small style="color: var(--text-dim);">`
                             + `${dates.length ? ' &middot; ' + dates.join(' &middot; ') : ''}</small>`
@@ -6169,6 +6226,13 @@
     window.onProcTypeChange = function() {
         const t = document.getElementById('procType').value;
         document.getElementById('procOtherWrap').style.display = (t === 'other') ? '' : 'none';
+        // ⭐⭐ الخانتان تتبعان ما يُعلنه النوع، لا شرطًا مكتوبًا على مفاتيح بعينها
+        const needs = procedureNeeds(t);
+        const sw = document.getElementById('procSalaryWrap');
+        const ow = document.getElementById('procOfferWrap');
+        // ⚠️ وحارس المال يبقى فوقها: من لا يرى المال لا تُعرض له خانة راتب.
+        if (sw) sw.style.display = (needs === 'salary' && canSeeMoney()) ? '' : 'none';
+        if (ow) ow.style.display = (needs === 'offer') ? '' : 'none';
     };
 
     /**
@@ -6252,6 +6316,12 @@
             + PROCEDURE_STATES.map(o =>
                 `<option value="${o.key}"${p.state === o.key ? ' selected' : ''}>${escapeHtml(o.en)}</option>`).join('');
         document.getElementById('procOther').value = p.otherText || '';
+        // ⭐⭐ الراتب المتّفق عليه للإعارة، وحالةُ عرض العمل
+        const sal = document.getElementById('procSalary');
+        if (sal) sal.value = (p.monthlySalary === 0 || p.monthlySalary) ? p.monthlySalary : '';
+        const ofIn = document.getElementById('procOfferInput');
+        if (ofIn) ofIn.value = '';        // لا يبقى ملفٌّ مختارٌ من فتحةٍ سابقة
+        renderProcedureOfferState(p);
         // ⚠️ التاريخان المحفوظان يُحمَّلان معًا، ثم تُظهر onProcStateChange حقلَ
         // المرحلة الحالية باسمه الصحيح. وإجراءٌ قائم يُحتفظ بتاريخه كما سُجّل —
         // استبدالُه باليوم يُفقد متى قُدّم فعلًا.
@@ -6270,6 +6340,98 @@
     window.closeProcedureForm = function() {
         document.getElementById('procedureModal').style.display = 'none';
     };
+
+    /**
+     * سطرُ حالة عرض العمل: مرفوعٌ أم لا، ومتى، وباسم أيّ ملف.
+     * ⚠️ يُقرأ من الوسم على ملف الموظف لا من المستند الكبير: فتحُ النافذة لا
+     * يجوز أن يُنزّل PDF لم يطلبه أحد.
+     */
+    function renderProcedureOfferState(p) {
+        const st = document.getElementById('procOfferState');
+        const dl = document.getElementById('procOfferDl');
+        const rm = document.getElementById('procOfferRm');
+        if (!st) return;
+        const has = !!(p && p.offerFileName);
+        if (has) {
+            st.innerHTML = `&#10004; Attached: <b>${escapeHtml(p.offerFileName)}</b>`
+                + (p.offerUploadedAt ? ` <span style="font-weight:400; color: var(--text-dim);">`
+                    + `&mdash; uploaded ${escapeHtml(String(p.offerUploadedAt).slice(0, 10))}</span>` : '')
+                + `<br><span style="font-weight:400; color: var(--text-dim); font-size: 11.5px;">`
+                + `Choosing a new file below replaces it.</span>`;
+            st.style.color = 'var(--success)';
+        } else {
+            st.innerHTML = `&#9888; No job offer attached yet.`;
+            st.style.color = 'var(--warning)';
+        }
+        if (dl) dl.style.display = has ? '' : 'none';
+        if (rm) rm.style.display = has ? '' : 'none';
+    }
+
+    /**
+     * ⭐⭐ ينزّل عرض العمل. ⚠️ يُقرأ المستند **عند الطلب** لا عند فتح النافذة:
+     * ملفٌّ بحجم مئات الكيلوبايت لا يُحمَّل لمن يفتح النافذة ليُعدّل تاريخًا.
+     */
+    window.downloadProcedureOffer = async function() {
+        const empId = document.getElementById('procEmpId').value;
+        const emp = allEmployees.find(e => e.id === empId);
+        const msg = document.getElementById('procMsg');
+        const say = (t, c) => { if (msg) { msg.innerText = t; msg.style.color = c; } };
+        if (!emp) return;
+        try {
+            say('Fetching the offer...', 'var(--warning)');
+            const snap = await getDoc(doc(db, OFFER_COLL, empId));
+            const file = snap.exists() ? snap.data().pdfFile : '';
+            if (!file) {
+                // ⚠️ وسمٌ بلا مستند: يُقال صريحًا بدل تنزيلٍ فارغ يُظنّ نجاحًا
+                say('The file itself is missing — only the record of it is on the employee file. '
+                    + 'Upload the offer again.', 'var(--danger)');
+                return;
+            }
+            downloadDataUrl(file, `${emp.name || empId}_Job_Offer`);
+            say('', 'var(--text)');
+        } catch (e) {
+            say(offerErrorText('read', e), 'var(--danger)');
+        }
+    };
+
+    /** يُزيل عرض العمل — المستند والوسم معًا، فلا يبقى وسمٌ يكذب. */
+    window.removeProcedureOffer = async function() {
+        const empId = document.getElementById('procEmpId').value;
+        const emp = allEmployees.find(e => e.id === empId);
+        const msg = document.getElementById('procMsg');
+        const say = (t, c) => { if (msg) { msg.innerText = t; msg.style.color = c; } };
+        if (!emp || !canEditProfiles()) return;
+        if (!confirm(`Remove the job offer PDF for ${emp.name || empId}?\n\nThe file is deleted permanently.`)) return;
+        try {
+            await deleteDoc(doc(db, OFFER_COLL, empId));
+            const p = Object.assign({}, emp.adminProcedure || {});
+            delete p.offerFileName; delete p.offerUploadedAt;
+            await updateDoc(doc(db, "employees", empId), { adminProcedure: p });
+            emp.adminProcedure = p;
+            logAudit('Job offer removed', `${emp.name || empId}`);
+            renderProcedureOfferState(p);
+            renderAdminStatus();
+            say('The job offer was removed.', 'var(--success)');
+        } catch (e) {
+            say(offerErrorText('delete', e), 'var(--danger)');
+        }
+    };
+
+    /**
+     * ⚠️⚠️ رسالةٌ تقول ما يُفعل حين تكون القواعد غير منشورة.
+     * مجموعة employee_offers جديدة، والحارس الشامل في firestore.rules يرفض كل
+     * ما ليس مذكورًا صراحةً. فرسالة "Missing or insufficient permissions" الخام
+     * لا تُفهَم ولا تُعالَج — والمالك سيظنّ أنّ البرنامج معطوب.
+     */
+    function offerErrorText(op, e) {
+        const raw = String((e && e.message) || e || '');
+        if (/permission|insufficient/i.test(raw)) {
+            return `Could not ${op} the offer: the security rules for the new "${OFFER_COLL}" collection `
+                + `have not been published yet. Everything else here saved normally. `
+                + `Publish the updated firestore.rules once in the Firebase Console and this will work.`;
+        }
+        return `Could not ${op} the offer: ${raw}`;
+    }
 
     window.saveProcedure = async function() {
         const empId = document.getElementById('procEmpId').value;
@@ -6300,12 +6462,82 @@
         // وكلا التاريخين يُحفظان، فالانتقال من مرحلةٍ إلى أخرى لا يُفقد الأول.
         procDraftDates[stateDateField(state)] =
             document.getElementById('procSubmitted').value || '';
+
+        // ---- الراتب الشهري (للإعارة) ------------------------------------
+        const needs = procedureNeeds(type);
+        const prev = emp.adminProcedure || {};
+        let monthlySalary = '';
+        if (needs === 'salary') {
+            // ⚠️ من لا يرى المال لا تُعرض له الخانة، فلا تُقرأ منه ولا تُمحى
+            // القيمة المحفوظة: قراءةُ خانةٍ مخفيّة كانت ستُصفّر راتبًا اتّفق عليه.
+            if (canSeeMoney()) {
+                const raw = (document.getElementById('procSalary').value || '').trim();
+                if (raw !== '') {
+                    const n = Number(raw);
+                    if (!isFinite(n) || n < 0) {
+                        say('The monthly salary must be a number of zero or more.', 'var(--danger)');
+                        return;
+                    }
+                    monthlySalary = n;
+                }
+            } else if (prev.monthlySalary === 0 || prev.monthlySalary) {
+                monthlySalary = prev.monthlySalary;
+            }
+        }
+
+        // ---- عرض العمل PDF (لنقل الكفالة) --------------------------------
+        // ⚠️⚠️⚠️ يُكتب **قبل** ملف الموظف. فلو فشل، لا يُكتب الوسم — فلا يظهر في
+        // الجدول «عرضٌ مرفوع» وليس هناك ملف. وسمٌ يكذب أسوأ من خانةٍ فارغة.
+        // ⚠️ وفشلُه لا يمنع حفظ بقيّة الإجراء: يُحفظ الباقي ويُقال ما لم يُرفع،
+        // فلا يُحتجز عملُه كلُّه لأنّ القواعد لم تُنشر بعد.
+        let offerMark = null;
+        let offerProblem = '';
+        const ofIn = document.getElementById('procOfferInput');
+        const chosen = (needs === 'offer' && ofIn && ofIn.files && ofIn.files[0]) ? ofIn.files[0] : null;
+        if (chosen) {
+            if (chosen.type && chosen.type !== 'application/pdf') {
+                say('The job offer must be a PDF file.', 'var(--danger)');
+                return;
+            }
+            try {
+                say('Uploading the offer...', 'var(--warning)');
+                const data = await convertFileToBase64(chosen);
+                // ⚠️ يُقاس المحوَّل فعلًا لا حجمُ الملف الخام: base64 يُكبّر نحو
+                // الثلث، فملفٌّ 700KB يصير ~933KB ويتجاوز حدّ المستند.
+                const bytes = new Blob([data]).size;
+                if (bytes > OFFER_PDF_MAX_BYTES) {
+                    say(`That PDF is too large: ${(bytes / 1024).toFixed(0)}KB after encoding, and the limit is `
+                        + `${(OFFER_PDF_MAX_BYTES / 1024).toFixed(0)}KB. Scan it in black and white or at a lower `
+                        + `quality and try again. Nothing was saved.`, 'var(--danger)');
+                    return;
+                }
+                await setDoc(doc(db, OFFER_COLL, empId), {
+                    employeeId: empId,
+                    employeeName: emp.name || '',
+                    pdfFile: data,
+                    fileName: chosen.name || 'offer.pdf',
+                    uploadedAt: new Date().toISOString(),
+                    uploadedBy: (currentUser && currentUser.email) || 'unknown'
+                }, { merge: true });
+                offerMark = { offerFileName: chosen.name || 'offer.pdf', offerUploadedAt: new Date().toISOString() };
+            } catch (e) {
+                offerProblem = offerErrorText('upload', e);
+            }
+        }
+
         const payload = {
             type,
             otherText: type === 'other' ? otherText : '',
             startedAt:   procDraftDates.startedAt || '',
             submittedAt: procDraftDates.submittedAt || '',
             state,
+            // ⚠️ الراتب يُكتب فراغًا إن لم يكن هذا النوع يطلبه: إعارةٌ حُوّلت إلى
+            // نقل كفالة لا يجوز أن تبقى تحمل راتبًا لا معنى له في سياقها الجديد.
+            monthlySalary: needs === 'salary' ? monthlySalary : '',
+            // ⚠️ ووسمُ العرض: الجديد إن رُفع، وإلّا المحفوظ كما هو — ولا يُنقل
+            // وسمٌ إلى نوعٍ لا يطلب عرضًا.
+            offerFileName:   needs === 'offer' ? ((offerMark && offerMark.offerFileName) || prev.offerFileName || '') : '',
+            offerUploadedAt: needs === 'offer' ? ((offerMark && offerMark.offerUploadedAt) || prev.offerUploadedAt || '') : '',
             handledBy: (document.getElementById('procWith').value || '').trim(),
             note: (document.getElementById('procNote').value || '').trim(),
             updatedAt: new Date().toISOString(),
@@ -6323,10 +6555,19 @@
                 + ` — ${payload.state}`
                 + `${payload.startedAt ? `, started ${payload.startedAt}` : ''}`
                 + `${payload.submittedAt ? `, submitted ${payload.submittedAt}` : ''}`
-                + `${payload.handledBy ? `, handled by ${payload.handledBy}` : ''}`);
-            say('Saved.', 'var(--success)');
+                + `${payload.handledBy ? `, handled by ${payload.handledBy}` : ''}`
+                + `${payload.monthlySalary !== '' ? `, monthly salary ${payload.monthlySalary}` : ''}`
+                + `${offerMark ? `, job offer attached (${offerMark.offerFileName})` : ''}`);
+            renderProcedureOfferState(payload);
             renderAdminStatus();
-            setTimeout(window.closeProcedureForm, 700);
+            // ⚠️ ولا يُقال «حُفظ» وحدها إن تعثّر رفعُ العرض: الباقي حُفظ فعلًا،
+            // والناقص يُسمّى — ولا تُغلق النافذة كي يقرأ السبب ويُعيد المحاولة.
+            if (offerProblem) {
+                say(`The procedure was saved, but the job offer was NOT attached. ${offerProblem}`, 'var(--danger)');
+            } else {
+                say('Saved.', 'var(--success)');
+                setTimeout(window.closeProcedureForm, 700);
+            }
         } catch (e) {
             say('Could not save: ' + e.message, 'var(--danger)');
         }
@@ -9148,6 +9389,28 @@
         }
         return bits;
     }
+
+    /** تنزيل عرض العمل من صفّ الجدول مباشرةً — بمعرّف الموظف وحده. */
+    window.downloadOfferFor = async function(empId) {
+        const emp = allEmployees.find(e => e.id === empId);
+        const msg = document.getElementById('admStatusMsg');
+        const say = (t, c) => { if (msg) { msg.innerText = t; msg.style.color = c; } };
+        if (!emp) { say('That employee file no longer exists.', 'var(--danger)'); return; }
+        try {
+            say(`Fetching the offer for ${emp.name || empId}...`, 'var(--warning)');
+            const snap = await getDoc(doc(db, OFFER_COLL, empId));
+            const file = snap.exists() ? snap.data().pdfFile : '';
+            if (!file) {
+                say('The file itself is missing — only the record of it is on the employee file. '
+                    + 'Open the procedure and upload the offer again.', 'var(--danger)');
+                return;
+            }
+            downloadDataUrl(file, `${emp.name || empId}_Job_Offer`);
+            say(`Downloaded the job offer for ${emp.name || empId}.`, 'var(--success)');
+        } catch (e) {
+            say(offerErrorText('read', e), 'var(--danger)');
+        }
+    };
 
     /** يُفرّغ المصافي كلَّها فيظهر كل ما في القاعدة. */
     window.showAllAbayaReports = function() {
@@ -16042,6 +16305,9 @@
         // وكل أدلة التدريب، وإثباتات قراءة الموظفين لها — وهي بيانات لا تُستعاد
         // إن فُقدت، فأُضيفت هنا.
         "sales_reports", "training_content", "training_acknowledgments",
+        // ⚠️⚠️ وعروضُ العمل: مستندٌ لكل موظف يحمل PDF عرضِ العمل. وهي ورقةٌ
+        // رسمية لا تُستعاد إن فُقدت، فغيابُها عن النسخة الاحتياطية فقدٌ دائم.
+        "employee_offers",
         // والمالية أيضًا: بنود المدفوعات الثابتة والمتغيرة لكل شهر، ولقطات
         // الشهور المُغلقة. لقطة شهر مُغلق سجل مالي معتمد لا يمكن إعادة بنائه
         // بعد تعديل الرواتب، ففقدانها فقدان دائم.

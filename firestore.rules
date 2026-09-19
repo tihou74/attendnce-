@@ -756,6 +756,25 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ---- employee_offers (the job-offer PDF for a sponsorship transfer) ------
+    // One document per employee, id = the employee id, holding the offer PDF as
+    // a base64 data URL plus the file name and who uploaded it.
+    //
+    // ⚠️ WHY A SEPARATE COLLECTION and not a field on the employee record: the
+    // employee document already carries FIVE base64 images (QID front and back,
+    // health card, contract, health certificate) and Firestore's hard ceiling is
+    // 1 MB per document. Adding a PDF on top could push a record over that
+    // limit, which would make not only this save fail but EVERY later edit to
+    // that employee fail — i.e. it would disable a whole employee file. Keeping
+    // the PDF in its own document makes that impossible.
+    //
+    // Same access as the employee profile it belongs to: whoever may edit
+    // profiles may attach or remove the offer, and the kiosk never sees it.
+    match /employee_offers/{empId} {
+      allow read: if isAdmin() || isStaff();
+      allow write: if isAdmin() || isProfileEditor();
+    }
+
     // ---- Default deny for anything not explicitly listed above ---------------
     match /{document=**} {
       allow read, write: if false;
