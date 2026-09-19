@@ -2617,6 +2617,7 @@
         </div>
         <input type="hidden" id="procEmpId">
         <div style="padding: 4px 0;">
+            <p class="card-sub" id="procNow" style="margin: 0 0 12px;"></p>
             <label for="procType">What is being done</label>
             <select id="procType" onchange="onProcTypeChange()"></select>
 
@@ -5577,8 +5578,11 @@
     const SPONSORSHIP_OPTIONS = [
         { key: 'sbh_sponsor',   en: 'On Shai Bu Hamad sponsorship',  ar: 'على كفالة شاي بو حمد' },
         { key: 'gwk_sponsor',   en: 'On Gaimer W Kahi sponsorship',  ar: 'على كفالة قيمر وكاهي' },
-        { key: 'loan_to_gwk',   en: 'Loaned to Gaimer W Kahi',       ar: 'إعارة لقيمر وكاهي' },
-        { key: 'loan_to_sbh',   en: 'Loaned to Shai Bu Hamad',       ar: 'إعارة لشاي بو حمد' },
+        // ⚠️ المفتاح loan_* ولم يُغيَّر، والنصّ المعروض صار Seconded: «الإعارة في
+        // اللغة الرسمية SECONDMENT» بنصّ المالك. وهذا هو سببُ أنّ المحفوظ مفتاحٌ
+        // لا نصّ — تصحيحُ المصطلح اليوم لا يُفقد معنى ما حُفظ أمس.
+        { key: 'loan_to_gwk',   en: 'Seconded to Gaimer W Kahi',     ar: 'إعارة لقيمر وكاهي' },
+        { key: 'loan_to_sbh',   en: 'Seconded to Shai Bu Hamad',     ar: 'إعارة لشاي بو حمد' },
         { key: 'outsource',     en: 'Outsource company',             ar: 'أوت سورس كومباني' },
         { key: 'new_procedure', en: 'A new procedure is in progress', ar: 'إجراء جديد' }
     ];
@@ -5587,17 +5591,40 @@
         return o ? o.en : '';
     };
 
-    // ⚠️ نوعا الإجراء اللذان سمّاهما المالك. وقد توقّف عند «أو فهمتني» فلم تكتمل
-    // القائمة — فبقي «Other» بنصٍّ حرّ حتى يُكملها، ولا تُخمَّن إجراءاتُ إدارةٍ
-    // حكومية من عندي. وإضافةُ نوعٍ هنا لا تحتاج شيئًا آخر.
+    // ⭐⭐⭐ أنواع الإجراء — وكلٌّ منها يحمل **الجهة** في الاختيار نفسه.
+    // ---------------------------------------------------------------------
+    // ⚠️ بطلب المالك بعد أن رأى النافذة: كان النوع «نقل كفالة من المندوب» بلا
+    // جهة، فكتب الجهة في خانة **الملاحظة** («to gaimer wkahi»). وملاحظةٌ نصٌّ
+    // حرّ: لا تُصفّى ولا تُعدّ ولا يُبنى عليها تقرير، ومن يقرأ السطر بعد سنة لا
+    // يدري إن كانت الجهة مسجَّلةً أصلًا. فصارت الجهة جزءًا من النوع.
+    // ⚠️ و«الإعارة» = SECONDMENT بنصّه: «في اللغة الرسمية الاعاره هي SECONDMENT».
     const PROCEDURE_TYPES = [
-        { key: 'transfer_via_mandoob', en: 'Sponsorship transfer request through the mandoob',
-          ar: 'تقديم طلب نقل كفالة من المندوب' },
-        { key: 'loan_request',         en: 'Secondment (loan) request', ar: 'طلب إعارة' },
-        { key: 'other',                en: 'Other — write it below',    ar: 'غير ذلك — يُكتب أدناه' }
+        { key: 'transfer_to_gwk',   en: 'Sponsorship transfer to Gaimer W Kahi',
+          ar: 'تقديم طلب نقل كفالة إلى قيمر وكاهي' },
+        { key: 'transfer_to_sbh',   en: 'Sponsorship transfer to Shai Bu Hamad',
+          ar: 'تقديم طلب نقل كفالة إلى شاي بو حمد' },
+        { key: 'secondment_to_gwk', en: 'Secondment to Gaimer W Kahi',
+          ar: 'إعارة إلى قيمر وكاهي' },
+        { key: 'secondment_to_sbh', en: 'Secondment to Shai Bu Hamad',
+          ar: 'إعارة إلى شاي بو حمد' },
+        // ⚠️ يبقى «غير ذلك» بنصٍّ حرّ: القائمة لم تُستوفَ بعد (توقّف عند «أو
+        // فهمتني»)، ولا تُخمَّن إجراءاتُ إدارةٍ حكومية من عندي.
+        { key: 'other',             en: 'Other — write it below', ar: 'غير ذلك — يُكتب أدناه' }
     ];
+    // ⚠️⚠️⚠️ مفاتيحُ قديمة حُفظت فعلًا على ملفّات قبل تغيير القائمة. لا تُحذف
+    // أبدًا: حذفُ مفتاحٍ محفوظ يجعل procedureLabel تُرجع فراغًا، فيظهر سطرُ
+    // موظفٍ حقيقي بلا نوعٍ — وذلك فقدُ بيانٍ صامت. تُقرأ ولا تُعرض في القائمة،
+    // وتُوسَم «الجهة غير مسجَّلة» كي يُعاد اختيارها.
+    const PROCEDURE_TYPES_LEGACY = [
+        { key: 'transfer_via_mandoob', en: 'Sponsorship transfer (destination not recorded)',
+          ar: 'نقل كفالة — الجهة غير مسجَّلة' },
+        { key: 'loan_request',         en: 'Secondment (destination not recorded)',
+          ar: 'إعارة — الجهة غير مسجَّلة' }
+    ];
+    const isLegacyProcedure = (k) => PROCEDURE_TYPES_LEGACY.some(x => x.key === k);
     const procedureLabel = (k) => {
-        const o = PROCEDURE_TYPES.find(x => x.key === k);
+        const o = PROCEDURE_TYPES.find(x => x.key === k)
+               || PROCEDURE_TYPES_LEGACY.find(x => x.key === k);
         return o ? o.en : '';
     };
     /** حالات الإجراء: قُدّم ← قيد التنفيذ ← تمّ. */
@@ -5729,9 +5756,16 @@
                                      onclick="openProcedureForm('${id}')">Fill in the procedure</button>` : '');
                         }
                         const stt = (PROCEDURE_STATES.find(x => x.key === p.state) || {}).en || p.state || '—';
+                        // ⚠️ نوعٌ قديم بلا جهة يُعرض باسمه ويُوسَم — لا يُخفى ولا
+                        // يُترك كأنه مكتمل: الجهة غير معروفة فعلًا.
+                        const old = isLegacyProcedure(p.type)
+                            ? `<br><small style="color: var(--warning); font-weight: 800;">`
+                              + `&#9888; destination not recorded &mdash; open and pick it</small>` : '';
                         return `<b>${escapeHtml(p.type === 'other' ? (p.otherText || 'Other') : procedureLabel(p.type))}</b>`
+                            + old
                             + `<br><small style="color: var(--text-dim);">${escapeHtml(stt)}`
                             + `${p.submittedAt ? ` &middot; submitted ${escapeHtml(p.submittedAt)}` : ''}</small>`
+                            + `${p.note ? `<br><small style="color: var(--text-dim);" dir="auto">${escapeHtml(p.note)}</small>` : ''}`
                             + (editable ? `<br><button class="btn-ghost btn-sm" style="margin-top:5px;"
                                  onclick="openProcedureForm('${id}')">Edit</button>` : '');
                     })()}</td>
@@ -5746,6 +5780,10 @@
         const procs = all.filter(e => e.sponsorship === 'new_procedure').length;
         const procsBlank = all.filter(e => e.sponsorship === 'new_procedure'
             && !(e.adminProcedure && e.adminProcedure.type)).length;
+        // ⚠️ سجلاتٌ حُفظت بنوعٍ قديم لا يحمل جهة — تُعدّ ويُقال عددها، وإلّا بقيت
+        // موسومةً في سطرها وحده فلا يُلاحظها من لا يمرّ عليها.
+        const procsOld = all.filter(e => e.adminProcedure
+            && isLegacyProcedure(e.adminProcedure.type)).length;
         const expired = all.filter(e => qidStatus(e).state === 'expired').length;
         const notes = [];
         notes.push(`<b>${rows.length} of ${all.length}</b> employee(s) shown.`);
@@ -5757,6 +5795,10 @@
             + `That means nobody has said who sponsors them &mdash; not that they have no sponsor.`);
         if (procs) notes.push(`<b>${procs} procedure(s) in progress.</b>`
             + (procsBlank ? ` <b style="color: var(--warning);">${procsBlank} of them has no detail filled in yet.</b>` : ''));
+        if (procsOld) notes.push(`<b style="color: var(--warning);">${procsOld} procedure(s) were saved before the `
+            + `destination became part of the choice</b>, so it only says "transfer" or "secondment" without saying `
+            + `to which restaurant. Open each one and pick the destination &mdash; nothing was lost, it was just `
+            + `never asked for.`);
         notes.push(`Changing a status here saves at once and is recorded in the audit log, so you can see later `
             + `who changed what and when. The Qatar ID number and expiry are edited in the employee's own file, `
             + `not here &mdash; they are official document data and belong with the documents.`);
@@ -5804,10 +5846,25 @@
         const p = emp.adminProcedure || {};
         document.getElementById('procEmpId').value = empId;
         document.getElementById('procEmpName').innerText = emp.name || empId;
+        // ⚠️⚠️ ولو كان المحفوظ مفتاحًا قديمًا (نوعٌ بلا جهة) يُضاف إلى القائمة
+        // **مختارًا** ولو لم يكن معروضًا لغيره: بغير ذلك تُفتح النافذة على
+        // «اختر» فيظنّ أنه لم يُسجّل شيئًا، ثم يحفظ فيُستبدل المحفوظ بصمت.
+        const legacySel = isLegacyProcedure(p.type)
+            ? `<option value="${p.type}" selected>${escapeHtml(procedureLabel(p.type))}`
+              + ` &mdash; old, please pick the destination</option>`
+            : '';
         document.getElementById('procType').innerHTML =
-            `<option value="">&mdash; choose &mdash;</option>`
+            `<option value="">&mdash; choose &mdash;</option>` + legacySel
             + PROCEDURE_TYPES.map(o =>
                 `<option value="${o.key}"${p.type === o.key ? ' selected' : ''}>${escapeHtml(o.en)}</option>`).join('');
+        // ⭐⭐ والحالة الحالية تُكتب أمامه وهو يختار الجهة: «إلى قيمر وكاهي» وهو
+        // على كفالة قيمر وكاهي أصلًا يكاد يكون خطأً — وهذا خبرٌ لا قاعدة، فلا
+        // يُمنع الحفظ، إنما يُرى ما لم يكن يُرى.
+        const now = document.getElementById('procNow');
+        if (now) {
+            const lbl = sponsorshipLabel(emp.sponsorship);
+            now.innerHTML = `Administrative status now: <b>${escapeHtml(lbl || 'not set')}</b>`;
+        }
         document.getElementById('procState').innerHTML = PROCEDURE_STATES.map(o =>
             `<option value="${o.key}"${(p.state || 'submitted') === o.key ? ' selected' : ''}>${escapeHtml(o.en)}</option>`).join('');
         document.getElementById('procOther').value = p.otherText || '';
@@ -5835,6 +5892,12 @@
         if (!emp) { say('That employee file no longer exists.', 'var(--danger)'); return; }
         const type = document.getElementById('procType').value;
         if (!type) { say('Choose what is being done.', 'var(--danger)'); return; }
+        // ⚠️⚠️ ولا يُعاد حفظُ نوعٍ قديم بلا جهة: يُقرأ ويُعرض، لكن كلُّ حفظٍ جديد
+        // يلزمه اختيار الجهة — وإلا بقيت السجلات القديمة تتجدّد بلا أن تكتمل.
+        if (isLegacyProcedure(type)) {
+            say('Pick which restaurant it is to — Gaimer W Kahi or Shai Bu Hamad.', 'var(--danger)');
+            return;
+        }
         const otherText = (document.getElementById('procOther').value || '').trim();
         // ⚠️ «غير ذلك» بلا نصٍّ سطرٌ لا يقول شيئًا — يُرفض ويُقال السبب.
         if (type === 'other' && !otherText) {
