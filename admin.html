@@ -5703,10 +5703,12 @@
     // رقم تلفون الموظف و الاجراء المطلوب. اما اذا كان الموظف اوت سورس كومباني
     // فيكون رقم اخر الخاص بشركة الاوت سورس».
     //
-    // ⚠️ الشروط الثلاثة بنصّه حرفيًّا: قيد التنفيذ · منتهية · تنتهي خلال ١٠ أيام.
+    // ⚠️ الشروط بنصّه: منتهية · تنتهي خلال ١٠ أيام · قيد التنفيذ — ثم أضاف
+    // «حتى قُدّم يجب أن يكون له زرّ واتساب وذلك لمتابعة الأمر مع المندوب».
     // و«١٠ أيام» هي QID_EXPIRY_ALERT_DAYS نفسها، فحالة 'soon' تُطابق شرطَه تمامًا
     // ولا يُحسب العدد ثانيةً — رقمان لنفس الشيء يفترقان.
-    // ⚠️ ولم يذكر «قُدّم» ولا «بداية الإجراء»، فلا يُزادان من عندي.
+    // ⚠️ و«بداية الإجراء» وحدها بلا زرّ، وهو المعنى نفسه الذي قاله: لم يُقدَّم
+    // الطلب بعد، فلا شيء يُتابَع مع المندوب. وذكرُه لم يَرِد، فلا يُزاد من عندي.
     // =====================================================================
     /** هل يستحقّ هذا السطر زرَّ متابعة؟ ويُرجع السبب لا مجرّد نعم/لا. */
     function followUpReason(emp, st) {
@@ -5714,6 +5716,10 @@
         if (st.state === 'expired') return 'qid_expired';
         if (st.state === 'soon') return 'qid_soon';
         if (p && p.state === 'inprogress') return 'procedure';
+        // ⭐⭐ «قُدّم» كذلك — بطلبه، لمتابعة الأمر مع المندوب. وهو سببٌ مستقلّ عن
+        // «قيد التنفيذ»: طلبٌ قُدّم ولم يتحرّك بعد غيرُ طلبٍ يُعمل عليه، والرسالة
+        // تقول أيَّهما هو.
+        if (p && p.state === 'submitted') return 'procedure_submitted';
         return '';
     }
 
@@ -5766,6 +5772,10 @@
         L.push(`Reason for this message: ${
             reason === 'qid_expired' ? 'the Qatar ID has already expired'
             : reason === 'qid_soon' ? `the Qatar ID expires in ${st.days} day(s)`
+            // ⚠️ ويُفرَّق بين «قُدّم» و«قيد التنفيذ»: الأولى سؤالٌ عن مصير طلبٍ
+            // سُلّم، والثانية متابعةُ عملٍ جارٍ. وجملةٌ واحدة لهما تُلبّس المندوب.
+            : reason === 'procedure_submitted'
+                ? 'the request has been submitted and we are following up on it'
             : 'the procedure is in progress'}.`);
         return L.join('\n');
     }
@@ -6041,6 +6051,7 @@
                         const num = isOut ? waNumber(outsourceContact.phone) : '';
                         const why = reason === 'qid_expired' ? 'Qatar ID expired'
                                   : reason === 'qid_soon' ? `Qatar ID in ${st.days} day(s)`
+                                  : reason === 'procedure_submitted' ? 'submitted — chase the mandoob'
                                   : 'procedure in progress';
                         // ⚠️ واللون يتبع الخطر: هويةٌ منتهية أحمر، وما دونها برتقالي.
                         const cls = reason === 'qid_expired' ? 'btn-danger' : 'btn-warning';
@@ -6097,8 +6108,10 @@
         const dueNoPhone = due.filter(e => !waNumber(e.phone)).length;
         if (due.length) notes.push(`<b>${due.length} employee(s) need following up today</b> &mdash; a Qatar ID `
             + `that has expired or expires within ${QID_EXPIRY_ALERT_DAYS} days, or a procedure that is `
-            + `<b>In progress</b>. Each one has a <b>WhatsApp</b> button that opens the message already written: `
-            + `full name, Qatar ID number, his phone and what is needed.`
+            + `<b>Submitted</b> or <b>In progress</b>. Each one has a <b>WhatsApp</b> button that opens the `
+            + `message already written: full name, Qatar ID number, his phone and what is needed. `
+            + `A procedure still at <b>"not submitted yet"</b> gets no button, because nothing has reached the `
+            + `mandoob for him to be asked about.`
             + (dueNoPhone ? ` <b style="color: var(--warning);">${dueNoPhone} of them has no phone number in `
                 + `his file</b>, so the message will say "Phone: not recorded" &mdash; add it in the employee's file.` : ''));
         notes.push(`Changing a status here saves at once and is recorded in the audit log, so you can see later `
