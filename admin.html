@@ -1414,6 +1414,8 @@
                     <select id="abFilterShop" onchange="renderAbayaReports()"></select>
                 </div>
                 <button class="btn-ghost" onclick="loadAbayaData()"><span data-icon="refresh"></span> Refresh</button>
+                <!-- ⭐⭐ مخرجٌ بضغطةٍ واحدة من أي مصفاةٍ تُخفي تقريرًا موجودًا -->
+                <button class="btn-ghost" onclick="showAllAbayaReports()" title="Clear the dates and the shop so nothing can stay hidden">Show every report</button>
                 <button class="btn-success" onclick="exportAbayaExcel()"><span data-icon="download"></span> Export Excel</button>
                 <a id="abWhatsAppLink" class="btn-accent" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;"><span data-icon="plane"></span> Send summary on WhatsApp</a>
             </div>
@@ -1519,6 +1521,7 @@
                 </table>
             </div>
             <p class="card-sub" style="margin: 12px 0 0;" id="abWarnings"></p>
+            <p class="card-sub" style="margin: 6px 0 0; font-size: 11.5px;" id="abLoadedAt"></p>
         </div>
 
         <div class="card" id="abNotesCard" style="display: none;">
@@ -4286,8 +4289,16 @@
         if (tabId === 'tab-sales') loadSalesReports();
         if (tabId === 'tab-target') loadDailyTargetData();
         // العبايات: التبويبان يتغذّيان من نفس البيانات، فتحميلها واحد.
+        // ⚠️⚠️⚠️ ويُعاد التحميل في **كل** فتحة، لا يُكتفى بالمحفوظ في الذاكرة.
+        // هذا هو العطل الذي أبلغ عنه المالك: «البياعات أرسلوا التقرير ولم يصل
+        // إلى الأدمين». كانت القائمة تُقرأ مرّةً واحدة عند أول فتحة ثم تُعرض من
+        // الذاكرة إلى الأبد، فكلُّ تقريرٍ يُرسَل بعد فتح اللوحة **لا يظهر** حتى
+        // يُغلق المتصفّح أو يُضغط Refresh. ولوحةٌ تعرض قائمةً قديمة وتُسمّيها
+        // الحالية تكذب، والمالك ظنّ أن التقرير لم يُرسل أصلًا.
+        // ⚠️ ويُعرض المحفوظ أولًا كي لا تبقى الشاشة فارغة أثناء القراءة.
         if (tabId === 'tab-abaya' || tabId === 'tab-abaya-month') {
-            if (abayaLoaded) renderAbayaAll(); else loadAbayaData();
+            if (abayaLoaded) renderAbayaAll();
+            loadAbayaData();
         }
         // النوافذ الثلاث تتغذّى من نفس البيانات، فتحميلها واحد.
         if (tabId === 'tab-finance' || tabId === 'tab-fixed' || tabId === 'tab-variable') {
@@ -8869,6 +8880,7 @@
     // هدف يومي لكل محل — يُسجَّل مرة ويبقى ساريًا كل يوم، كتارقت المطاعم.
     let abayaTargets = {};
     let abayaLoaded = false;
+    let abayaLoadedAt = null;   // ساعةُ آخر قراءةٍ فعلية — تُعرض على الشاشة
 
     /** المالك والمحاسب فقط — العبايات ليست من عمل بقية الأدوار. */
     function canSeeAbaya() {
@@ -8889,10 +8901,15 @@
         if (body) body.innerHTML = `<tr><td colspan="13" style="text-align:center;">Loading...</td></tr>`;
         try {
             const [repSnap, selSnap, rateSnap, openSnap, tgSnap] = await Promise.all([
-                getDocs(query(collection(db, "abaya_sales_reports"), orderBy("timestamp", "desc"), limit(2000)))
-                    // ترتيب timestamp يحتاج فهرسًا في أول تشغيل؛ نفس نمط البدائل
-                    // المستخدم في بقية المجموعات: مسح بلا ترتيب ثم ترتيب محليًا.
-                    .catch(() => getDocs(collection(db, "abaya_sales_reports"))),
+                // ⚠️⚠️⚠️ قراءةٌ صريحة بلا orderBy: فايرستور **يُسقط بصمتٍ** كل
+                // مستندٍ لا يحمل الحقل المرتَّب به. فتقريرٌ بلا `timestamp`
+                // (انقطاعُ شبكةٍ وقت الكتابة، أو مستندٌ صُنع بأي طريقة أخرى) كان
+                // يختفي تمامًا ولا يُرمى خطأ — فلا تعمل حتى حيلةُ catch أدناه،
+                // لأن القراءة **نجحت** وأعادت عددًا أقلّ. والترتيب محليٌّ أصلًا
+                // بالسطر التالي، فالـorderBy لم يكن يفيد شيئًا وكان يُخفي.
+                // ولا limit: تقريرٌ قديم يُقصّ أفضلَ من تقريرٍ يختفي، لكن العدد
+                // يُقال على الشاشة كي لا يكون القصّ صامتًا لو كبر يومًا.
+                getDocs(collection(db, "abaya_sales_reports")),
                 getDocs(collection(db, "abaya_sellers")),
                 getDoc(doc(db, "settings", "abaya_rates")),
                 getDoc(doc(db, "settings", "abaya_stock_opening")),
@@ -8933,6 +8950,9 @@
             // وفشلُها لا يجوز أن يُسقط تبويب العبايات كلّه في Promise.all.
             await loadAbayaSellerCards();
             abayaLoaded = true;
+            // ⚠️ ساعةُ القراءة تُحفظ وتُعرض: «هل ما أراه الآن حديث؟» سؤالٌ كان
+            // جوابه التخمين، وهو نفسُ ما أوقع المالك في ظنّ أن تقريرًا لم يُرسل.
+            abayaLoadedAt = new Date();
             renderAbayaAll();
         } catch (e) {
             console.error("Error loading the abaya reports:", e);
@@ -9092,6 +9112,52 @@
             .map(abayaRow);
     }
 
+    /**
+     * ⭐⭐⭐ لا تقريرَ يختفي بصمت.
+     *
+     * ⚠️⚠️ أبلغ المالك: «البياعات أرسلوا التقرير اليومي ولم يصل إلى الأدمين».
+     * وكان التقرير **موجودًا في القاعدة** ومحجوبًا بمصفاةٍ على الشاشة: مدى
+     * التاريخ الافتراضي هو الشهر الحالي **بساعة متصفّح المالك**، والبياعة تكتب
+     * تاريخها **بساعة قطر** — فتقريرٌ في أول الشهر أو آخره يقع خارج النافذة.
+     * ويُضاف إليه فلترُ محلٍّ منسيٌّ مختارًا من زيارةٍ سابقة.
+     * والشاشة كانت تقول «No reports for this period / shop» وهي جملةٌ صحيحة
+     * تُقرأ «لم يُرسل شيء» — وهذا هو الضرر.
+     *
+     * فالقاعدة الآن: كلّما كان المقروء أكبر من المعروض، يُقال العدد صريحًا ومعه
+     * زرٌّ يُظهره. وعددُ ما لا يُعرض يُشتقّ من نفس القائمة، فلا يفترق أبدًا.
+     */
+    function abayaHiddenNotice() {
+        const shown = filteredAbayaReports().length;
+        const total = allAbayaReports.length;
+        const hidden = total - shown;
+        const bits = [];
+        if (hidden > 0) {
+            const shop = document.getElementById('abFilterShop')?.value || '';
+            const start = document.getElementById('abStartDate')?.value || '';
+            const end = document.getElementById('abEndDate')?.value || '';
+            // ⚠️ ويُقال **أحدثُ** تاريخٍ محجوب: هو الجواب المباشر عن «أين تقريرُ اليوم؟»
+            const newest = allAbayaReports
+                .map(r => String(r.date || '')).filter(Boolean).sort().at(-1) || '';
+            bits.push(`<b style="color: var(--warning);">&#9888; ${hidden} report(s) are saved but not shown here.</b> `
+                + `${total} report(s) were read from the database and ${shown} match what is selected`
+                + `${start || end ? ` (dates ${escapeHtml(start || 'any')} to ${escapeHtml(end || 'any')})` : ''}`
+                + `${shop ? ` and shop ${escapeHtml(shop)}` : ''}. `
+                + (newest ? `The most recent report of all is dated <b>${escapeHtml(newest)}</b>. ` : '')
+                + `<button class="btn-warning btn-sm" style="margin-top:6px;" onclick="showAllAbayaReports()">`
+                + `Show every report</button>`);
+        }
+        return bits;
+    }
+
+    /** يُفرّغ المصافي كلَّها فيظهر كل ما في القاعدة. */
+    window.showAllAbayaReports = function() {
+        ['abStartDate', 'abEndDate'].forEach(id => {
+            const e = document.getElementById(id); if (e) e.value = '';
+        });
+        const s = document.getElementById('abFilterShop'); if (s) s.value = '';
+        renderAbayaReports();
+    };
+
     window.renderAbayaReports = function() {
         const body = document.getElementById('abReportsBody');
         if (!body) return;
@@ -9104,15 +9170,35 @@
         set('abCommission', `${money(t.commission)} QAR`);
         set('abTotalIncome', `${money(t.realIncome)} QAR`);
         set('abDue', `${money(t.shDue)} QAR`);
-        set('abCount', String(t.n));
+        // ⚠️ العدد المعروض **ومعه** عدد المقروء من القاعدة: خانةٌ تقول «3» وفي
+        // القاعدة عشرون هي التي جعلت المالك يظنّ أن تقارير لم تُرسل.
+        set('abCount', t.n === allAbayaReports.length
+            ? String(t.n) : `${t.n} of ${allAbayaReports.length}`);
+        const la = document.getElementById('abLoadedAt');
+        if (la) {
+            la.innerHTML = abayaLoadedAt
+                ? `Read from the database at <b>${escapeHtml(abayaLoadedAt.toLocaleTimeString())}</b> `
+                  + `&mdash; ${allAbayaReports.length} report(s) in total. Reopening this tab reads it again.`
+                : '';
+        }
 
         if (!rows.length) {
-            body.innerHTML = `<tr><td colspan="13" style="text-align:center;">No reports for this period / shop.</td></tr>`;
+            // ⚠️⚠️⚠️ أخطر سطرٍ في هذه الشاشة. كان يقول «No reports for this
+            // period / shop» ثم **يمحو** التحذيرات — فلو كانت في القاعدة عشرون
+            // تقريرًا محجوبةً بمصفاة، لَقرأ المالك «لم يُرسل شيء» وهو خطأ.
+            // فيُقال الآن: هل القاعدة فارغة فعلًا، أم هي المصفاة؟
+            body.innerHTML = `<tr><td colspan="13" style="text-align:center;">`
+                + (allAbayaReports.length
+                    ? `<b style="color: var(--warning);">Nothing matches what is selected &mdash; `
+                      + `but ${allAbayaReports.length} report(s) are saved.</b><br>`
+                      + `<small>They are outside the dates or the shop chosen above.</small>`
+                    : `No abaya report has been received yet at all.`)
+                + `</td></tr>`;
             const f = document.getElementById('abReportsFoot');
             if (f) f.innerHTML = '';
             renderAbayaNotes([]);
             renderAbayaWhatsApp(rows, t);
-            document.getElementById('abWarnings').innerHTML = '';
+            document.getElementById('abWarnings').innerHTML = abayaHiddenNotice().join('<br><br>');
             return;
         }
 
@@ -9159,8 +9245,8 @@
             </tr>`;
         }
 
-        // تحذيرات: تقريران لنفس المحل في نفس اليوم يُضخّمان كل شيء.
-        const warn = [];
+        // تحذيرات: أوّلها المحجوب بالمصفاة، فهو الذي يُقرأ «لم يُرسل».
+        const warn = abayaHiddenNotice();
         const seen = new Map();
         rows.forEach(r => {
             const k = `${r.shop}|${r.date}`;
