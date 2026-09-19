@@ -778,6 +778,8 @@
                     <label for="admStatusSearch">Search</label>
                     <input type="text" id="admStatusSearch" placeholder="Name, job title or QID..." onkeyup="renderAdminStatus()">
                 </div>
+                <button class="btn-ghost" onclick="refreshAdminStatusData()"
+                    title="Re-read the employee files now — a Qatar ID the secretary just renewed will appear"><span data-icon="refresh"></span> Refresh</button>
                 <div style="width: 230px;">
                     <label for="admStatusFilter">Show</label>
                     <select id="admStatusFilter" onchange="renderAdminStatus()">
@@ -821,6 +823,7 @@
                 </table>
             </div>
             <p class="card-sub" id="admStatusNote" style="margin-top: 14px;"></p>
+            <p class="card-sub" id="admLoadedAt" style="margin-top: 6px; font-size: 11.5px;"></p>
         </div>
     </div>
 
@@ -4303,7 +4306,17 @@
         // الذاكرة، فلا قراءةَ جديدة من القاعدة ولا انتظار.
         // ⭐ ويُقرأ رقم شركة الأوت سورس عند فتح التبويب: الزرّ يعتمد عليه،
         // ولو رُسم قبل وصوله لظهر «لا رقم محفوظ» وهو محفوظ.
-        if (tabId === 'tab-admin-status') { renderAdminStatus(); loadOutsourceContact(); }
+        // ⭐⭐⭐ وتُعاد قراءة **ملفّات الموظفين** في كل فتحة. قال المالك: «إذا جدّد
+        // الموظف إقامته البرنامج يعرف مباشرة، لأن السكرتيرة ستُحمّل المعلومات
+        // الجديدة». وهذا صحيحٌ في القاعدة، لكنه **لم يكن** صحيحًا على شاشته:
+        // السكرتيرة تُدخل التاريخ الجديد على جهازها، ولوحةُ المالك تعرض القائمة
+        // التي قرأتها عند الإقلاع — فيبقى الموظف موسومًا «منتهية» ولا يظهر زرُّ
+        // المندوب، وهو قد جدّد فعلًا. وهو نفسُ عطل تقارير العبايات بالحرف.
+        if (tabId === 'tab-admin-status') {
+            renderAdminStatus();          // المحفوظ أولًا فلا تبقى الشاشة فارغة
+            loadOutsourceContact();
+            refreshAdminStatusData();
+        }
         if (tabId === 'tab-payroll') { renderPayrollMonthLabel(); filterEmployeesList(); }
         if (tabId === 'tab-shifts') renderShiftsTable();
         if (tabId === 'tab-warnings') { renderWarningsTable(); loadManagerRequests(); }
@@ -5776,6 +5789,28 @@
     // ⚠️ ومن حالتُه **غير محدَّدة** أو «إجراء جديد» لا تُرسل له: لا نعرف كفيله،
     // ورسالةٌ تقول «لتفعيل الإعارة» لموظفٍ على كفالتنا خطأٌ في ورقةٍ رسمية.
     // =====================================================================
+    // ⚠️ حدُّ طولِ رابط واتساب. الحرف العربي يُرمَّز ستّة أحرف، فالطول يُقاس
+    // **بعد** الترميز لا بعدد حروف النصّ.
+    const WA_URL_SAFE_LIMIT = 1800;
+
+    /**
+     * ⭐⭐⭐ يقصّ نصًّا حتى لا يتجاوز كلفتَه **بعد الترميز**.
+     * ⚠️⚠️ القصُّ بعدد الأحرف لا يكفي ولا يصحّ: مئتا حرفٍ عربي تُكلّف 1200 حرفًا
+     * في الرابط، ومئتا حرفٍ إنجليزي تُكلّف مئتين. فقصٌّ بعدد الأحرف يمرّ على
+     * الإنجليزية ويُفجّر الحدَّ على العربية — وهو ما وقع فعلًا وكشفه فحص الطول.
+     */
+    function clipEncoded(s, maxEncoded) {
+        let t = String(s || '');
+        if (encodeURIComponent(t).length <= maxEncoded) return t;
+        // قصٌّ تنصيفيّ: أسرعُ من حرفٍ حرفًا، ولا يقطع حرفًا عربيًّا في منتصفه
+        let lo = 0, hi = t.length;
+        while (lo < hi) {
+            const mid = Math.ceil((lo + hi) / 2);
+            if (encodeURIComponent(t.slice(0, mid)).length <= maxEncoded - 6) lo = mid;
+            else hi = mid - 1;
+        }
+        return t.slice(0, lo).trimEnd() + ' …';
+    }
     const SECONDED_SPONSORSHIPS = ['loan_to_gwk', 'loan_to_sbh'];
     const QID_RENEWAL_DAYS_ALLOWED = 5;   // بنصّ المالك: مدة أقصاها 5 أيام
 
@@ -5953,26 +5988,54 @@
     function adminFollowUpText(emp, st) {
         const p = emp.adminProcedure || null;
         const reason = followUpReason(emp, st);
+        // ⭐⭐⭐ «المعاملة لما تكون جديدة يجب الميساج يكون فيه كل التفاصيل وواضح
+        // ويخبره بكل أدب أن يبدأ الإجراءات اللازمة لهذه المعاملة» — بطلب المالك.
+        // فمعاملةٌ جديدة = لم تُقدَّم بعد: إمّا لا إجراء مسجَّل، أو جدّد وننتظر
+        // البداية، أو سُجّل في مرحلة «بداية الإجراء».
+        // ⚠️ والفرق جوهريّ: الجديدة تُطلب فيها **البداية** بأدبٍ وتفصيل، والقائمة
+        // يُسأل فيها عن **المستجدّ**. وجملةٌ واحدة للحالتين تُلبّس على المندوب.
+        const isNew = reason === 'secondment_ready' || !p || !p.type || p.state === 'notsubmitted';
         const L = [];
-        L.push('*Administrative follow-up — Al Sheikha Group*');
+        let noteAt = -1, noteRaw = '';   // موضعُ الملاحظة وميزانيّتُها تُحسب في الآخر
+        L.push(isNew
+            ? '*New case — Al Sheikha Group*'
+            : '*Administrative follow-up — Al Sheikha Group*');
         L.push('');
+        // ⚠️ تحيّةٌ بالعربية والإنجليزية: «بكل أدب» بنصّه، ولا أعرف لغة المندوب —
+        // فتُقال بالاثنتين، والبياناتُ أرقامٌ وأسماءُ لاتينية لا تحتاج ترجمة.
+        // ⚠️⚠️⚠️ الأدب مُوجز عن قصد. الحرف العربي يُرمَّز ستّة أحرفٍ في الرابط
+        // (%D8%A7)، فتحيّةٌ وخاتمةٌ مُطوَّلتان بلغتين رفعتا الرابط إلى 2555 حرفًا —
+        // وواتساب يقصّ ما زاد على ألفين، فتُقصّ **نهاية** الرسالة حيث يقع الطلب
+        // نفسه. كشفه الفحص بقياس الطول، لا بالنظر.
+        L.push(isNew
+            ? 'السلام عليكم. معاملة جديدة، نرجو التكرّم بالبدء فيها. التفاصيل:'
+            : 'السلام عليكم. نستفسر بلطف عن مستجدات المعاملة:');
+        L.push('');
+        L.push('*— EMPLOYEE DETAILS —*');
         L.push(`Name: ${emp.name || emp.id}`);
         L.push(`Qatar ID: ${emp.qidNumber || 'not recorded'}`);
         // ⚠️ الرقم كما كُتب في الملف، ومعه الصيغة الدولية إن صلحت — فمن يقرأ
         // الرسالة يستطيع الاتصال بلا تصحيحٍ يدوي.
         const dial = waNumber(emp.phone);
         L.push(`Phone: ${emp.phone ? (dial ? `+${dial}` : String(emp.phone) + ' (not a usable number)') : 'not recorded'}`);
-        if (emp.role) L.push(`Job: ${emp.role}`);
-        if (emp.branch) L.push(`Branch: ${emp.branch}`);
-        L.push('');
-        L.push(`Qatar ID: ${st.state === 'none' ? 'no expiry date recorded' : `${qidLabel(st)} (${st.expiry})`}`);
-        L.push(`Administrative status: ${sponsorshipLabel(emp.sponsorship) || 'not set'}`);
+        if (emp.role) L.push(`Job title: ${emp.role}`);
+        if (emp.branch) L.push(`Works at: ${emp.branch}`);
+        // ⚠️ تاريخُ الالتحاق يُذكر في المعاملة الجديدة: تطلبه المعاملاتُ الرسمية،
+        // وسؤالُ المندوب عنه لاحقًا يُعطّل يومًا.
+        const hire = getEmploymentStartISO(emp);
+        if (isNew && hire) L.push(`Joined us on: ${hire}`);
+        L.push(`Qatar ID status: ${st.state === 'none' ? 'no expiry date recorded' : `${qidLabel(st)} (expiry ${st.expiry})`}`);
+        L.push(`Current sponsorship: ${sponsorshipLabel(emp.sponsorship) || 'not set'}`);
         if (emp.sponsorship === 'outsource' && outsourceContact.name) {
             L.push(`Outsource company: ${outsourceContact.name}`);
         }
         L.push('');
+        L.push('*— WHAT IS NEEDED —*');
         if (p && p.type) {
-            const what = p.type === 'other' ? (p.otherText || 'Other') : procedureLabel(p.type);
+            // ⚠️ والنصّ الحرّ يُقصّ كذلك: خانتُه تقبل 80 حرفًا، وثمانون حرفًا
+            // عربيًّا تُكلّف 480 — وهو سطرُ «المطلوب» نفسه فلا يجوز أن يُقصّ من واتساب.
+            const what = p.type === 'other'
+                ? clipEncoded(p.otherText || 'Other', 300) : procedureLabel(p.type);
             L.push(`*Required: ${what}*`);
             const stt = (PROCEDURE_STATES.find(x => x.key === p.state) || {}).en || p.state || '';
             if (stt) L.push(`Stage: ${stt}`);
@@ -5995,19 +6058,39 @@
             }
             if (p.startedAt) L.push(`Procedure started: ${p.startedAt}`);
             if (p.submittedAt) L.push(`Submitted: ${p.submittedAt}`);
-            if (p.handledBy) L.push(`Handled by: ${p.handledBy}`);
-            if (p.note) L.push(`Note: ${p.note}`);
+            if (p.handledBy) L.push(`Handled by: ${clipEncoded(p.handledBy, 120)}`);
+            // ⚠️⚠️ موضعُ الملاحظة يُحفظ ولا تُكتب الآن: ميزانيّتُها = ما يبقى من
+            // حدّ الرابط بعد كل السطور الأخرى. فالبياناتُ الأساسية والطلبُ المؤدَّب
+            // يُضمنان دائمًا، والملاحظةُ تأخذ الفاضل — لا العكس.
+            if (p.note) { noteAt = L.length; noteRaw = String(p.note); L.push(''); }
         } else if (reason === 'secondment_ready') {
             // ⭐⭐⭐ حالةُ «جدّد فعلًا»: المطلوب أن **يبدأ** الإجراء لا أن يُتابعه.
             L.push(`*Required: please start the procedure to activate the secondment.*`);
-            L.push(`His Qatar ID has been RENEWED — the new expiry is ${st.expiry}.`);
-            if (emp.qidNotice && emp.qidNotice.forExpiry) {
-                L.push(`It had expired on ${emp.qidNotice.forExpiry}, which is why this was waiting.`);
-            }
+            // ⚠️ سطرٌ واحد لا سطران: كلُّ سطرٍ يُكلّف من حدّ الرابط، والقصُّ يأكل
+            // الطلبَ في آخر الرسالة.
+            L.push(`His Qatar ID has been RENEWED — new expiry ${st.expiry}`
+                + `${(emp.qidNotice && emp.qidNotice.forExpiry)
+                    ? ` (it had expired on ${emp.qidNotice.forExpiry}, which is why this was waiting)` : ''}.`);
         } else {
             // ⚠️ لا إجراء مسجَّل — يُقال، ولا يُسمّى إجراءٌ لم يقله أحد.
             L.push('*No procedure has been recorded in the system for this yet.*');
         }
+        L.push('');
+        // ⭐⭐⭐ الخاتمة: طلبٌ صريحٌ مؤدَّب. والمعاملة الجديدة يُطلب فيها البدء،
+        // ويُعرض إرسال أيّ مستندٍ آخر — فسؤالُه عنه لاحقًا يُعطّل يومًا كاملًا.
+        if (isNew) {
+            L.push('نرجو البدء في الإجراءات اللازمة، وإبلاغنا بأيّ مستند تحتاجه. شكرًا لتعاونكم.');
+            L.push('Kindly begin the procedures for this case, and tell us if you need any other document. Thank you.');
+        } else {
+            L.push('نرجو إفادتنا بما وصلت إليه المعاملة. شكرًا لتعاونكم.');
+            L.push('Kindly let us know where this has reached. Thank you.');
+        }
+        // ⚠️⚠️ سببُ الرسالة يُحذف **فقط** حين يقوله سطرُ «Required» أصلًا، فتكرارُه
+        // يأكل من حدّ الرابط. أما معاملةٌ لا إجراءَ مسجَّلًا لها فسطرُ السبب هو
+        // الشيءُ الوحيد الذي يقول لماذا تُرسل — وحذفُه يجعل الرسالة تطلب «البدء»
+        // بلا أن تقول في أيّ شيء. (كشفه فحصان سقطا حين حُذف للجميع.)
+        const saysRequired = !!(p && p.type) || reason === 'secondment_ready';
+        if (!isNew || !saysRequired) {
         L.push('');
         L.push(`Reason for this message: ${
             reason === 'qid_expired' ? 'the Qatar ID has already expired'
@@ -6019,6 +6102,21 @@
             : reason === 'secondment_ready'
                 ? 'his Qatar ID has been renewed, so the secondment procedure can now begin'
             : 'the procedure is in progress'}.`);
+        }
+        // ⭐⭐⭐ الملاحظة تأخذ ما بقي من حدّ الرابط، بعد أن ضُمن كلُّ ما قبلها:
+        // البياناتُ الأساسية والطلبُ المؤدَّب لا يُقصّان بحال، والملاحظةُ تأخذ
+        // الفاضل. وهذا عكسُ ما كان: كانت الملاحظة تُكتب كاملةً فيُقصّ الطلب.
+        if (noteAt >= 0) {
+            const without = L.slice();
+            without[noteAt] = '';
+            const used = encodeURIComponent(without.join('\n')).length;
+            const budget = WA_URL_SAFE_LIMIT - used - 40;   // 40 لعنوان السطر وهامش
+            // ⚠️ وإن لم يبقَ متّسع تُحذف ويُقال إنها حُذفت: ملاحظةٌ مقصوصةٌ إلى
+            // كلمةٍ واحدة تُضلّل أكثر من غيابٍ معلَن.
+            L[noteAt] = budget >= 60
+                ? `Note: ${clipEncoded(noteRaw, budget)}`
+                : `(A note is recorded on this case — too long to include here.)`;
+        }
         return L.join('\n');
     }
 
@@ -6037,6 +6135,10 @@
         if (!emp) { say('That employee file no longer exists — press Refresh.', 'var(--danger)'); return; }
         const text = adminFollowUpText(emp, qidStatus(emp));
         const encoded = encodeURIComponent(text);
+        // ⚠️⚠️ حارسٌ على الطول الحقيقي بعد الترميز. الطلبُ المؤدَّب في **آخر**
+        // الرسالة، فالقصُّ يأكل الطلب نفسه ويبقى سردُ البيانات — أي يصل المندوبَ
+        // كلامٌ بلا مطلوب. فإن قارب الحدَّ يُقال للمالك قبل أن يُرسل.
+        const tooLong = encoded.length > WA_URL_SAFE_LIMIT;
         const isPhone = /android|iphone|ipad|ipod|iemobile|blackberry|opera mini|webos/i.test(navigator.userAgent || '');
         const isOut = emp.sponsorship === 'outsource';
         const num = isOut ? waNumber(outsourceContact.phone) : '';
@@ -6072,6 +6174,11 @@
             say(`${msg ? msg.innerText + ' ' : ''}Now press PDF on this row to download `
                 + `"${pr.offerFileName}" and attach it in WhatsApp — a link cannot carry a file.`,
                 'var(--warning)');
+        }
+        if (tooLong) {
+            say(`${msg ? msg.innerText + ' ' : ''}\u26A0 This message is very long `
+                + `(${encoded.length} characters) and WhatsApp may cut the end of it, where the request is. `
+                + `Shorten the Note on this procedure and send it again.`, 'var(--danger)');
         }
         logAudit('Administrative follow-up sent',
             `${emp.name || empId}: ${isOut ? (num ? 'outsource company +' + num : 'outsource, no number saved') : 'share sheet'}`);
@@ -9643,6 +9750,37 @@
                 + `Show every report</button>`);
         }
         return bits;
+    }
+
+    /**
+     * ⭐⭐⭐ يُعيد قراءة ملفّات الموظفين ليظهر ما أدخلته السكرتيرة للحظته.
+     * ⚠️ loadEmployees تُعيد الرسم بنفسها (renderEmployeeDirectory → renderAdminStatus)،
+     * فلا يُنادى الرسم هنا ثانيًا. ولا يُنتظر: الشاشة معروضةٌ من المحفوظ أصلًا.
+     */
+    let admStatusLoadedAt = null;
+    let admStatusLoading = false;
+    window.refreshAdminStatusData = function() {
+        if (admStatusLoading) return;       // ضغطتان متتاليتان لا تُنشئان قراءتين
+        admStatusLoading = true;
+        renderAdmLoadedAt('Reading the employee files...');
+        loadEmployees()
+            .then(() => {
+                admStatusLoadedAt = new Date();
+                renderAdmLoadedAt();
+            })
+            .catch(e => renderAdmLoadedAt('Could not re-read the employee files: ' + e.message))
+            .finally(() => { admStatusLoading = false; });
+    };
+
+    /** سطرٌ يقول ساعةَ آخر قراءةٍ فعلية — «هل هذا حديث؟» لا يُترك للتخمين. */
+    function renderAdmLoadedAt(note) {
+        const el = document.getElementById('admLoadedAt');
+        if (!el) return;
+        if (note) { el.innerHTML = escapeHtml(note); return; }
+        el.innerHTML = admStatusLoadedAt
+            ? `Employee files re-read at <b>${escapeHtml(admStatusLoadedAt.toLocaleTimeString())}</b>. `
+              + `Opening this tab reads them again, so a Qatar ID the secretary renewed appears here by itself.`
+            : `Opening this tab re-reads the employee files, so a Qatar ID the secretary renewed appears by itself.`;
     }
 
     /** تنزيل عرض العمل من صفّ الجدول مباشرةً — بمعرّف الموظف وحده. */
