@@ -5598,18 +5598,39 @@
     // حرّ: لا تُصفّى ولا تُعدّ ولا يُبنى عليها تقرير، ومن يقرأ السطر بعد سنة لا
     // يدري إن كانت الجهة مسجَّلةً أصلًا. فصارت الجهة جزءًا من النوع.
     // ⚠️ و«الإعارة» = SECONDMENT بنصّه: «في اللغة الرسمية الاعاره هي SECONDMENT».
+    // ⚠️ و`group` يُجمّع الخيارات في القائمة المنسدلة: صارت سبعةً مسمّاة، وقائمةٌ
+    // مسطّحة بسبعة سطور متشابهة البدايات تُختار منها الجهة الخطأ.
     const PROCEDURE_TYPES = [
-        { key: 'transfer_to_gwk',   en: 'Sponsorship transfer to Gaimer W Kahi',
+        { key: 'transfer_to_gwk',   group: 'Sponsorship transfer',
+          en: 'Sponsorship transfer to Gaimer W Kahi',
           ar: 'تقديم طلب نقل كفالة إلى قيمر وكاهي' },
-        { key: 'transfer_to_sbh',   en: 'Sponsorship transfer to Shai Bu Hamad',
+        { key: 'transfer_to_sbh',   group: 'Sponsorship transfer',
+          en: 'Sponsorship transfer to Shai Bu Hamad',
           ar: 'تقديم طلب نقل كفالة إلى شاي بو حمد' },
-        { key: 'secondment_to_gwk', en: 'Secondment to Gaimer W Kahi',
+        { key: 'secondment_to_gwk', group: 'Secondment',
+          en: 'Secondment to Gaimer W Kahi',
           ar: 'إعارة إلى قيمر وكاهي' },
-        { key: 'secondment_to_sbh', en: 'Secondment to Shai Bu Hamad',
+        { key: 'secondment_to_sbh', group: 'Secondment',
+          en: 'Secondment to Shai Bu Hamad',
           ar: 'إعارة إلى شاي بو حمد' },
-        // ⚠️ يبقى «غير ذلك» بنصٍّ حرّ: القائمة لم تُستوفَ بعد (توقّف عند «أو
-        // فهمتني»)، ولا تُخمَّن إجراءاتُ إدارةٍ حكومية من عندي.
-        { key: 'other',             en: 'Other — write it below', ar: 'غير ذلك — يُكتب أدناه' }
+        // ⭐⭐ استقدام جديد — بطلبه. وهو **على كفالة** جهةٍ بعينها، فالجهة في
+        // الاختيار كنقل الكفالة تمامًا.
+        { key: 'recruitment_to_gwk', group: 'New recruitment from abroad',
+          en: 'New recruitment on Gaimer W Kahi sponsorship',
+          ar: 'استقدام جديد على كفالة قيمر وكاهي' },
+        { key: 'recruitment_to_sbh', group: 'New recruitment from abroad',
+          en: 'New recruitment on Shai Bu Hamad sponsorship',
+          ar: 'استقدام جديد على كفالة شاي بو حمد' },
+        // ⭐⭐ إلغاء كفالة — بطلبه. وبلا جهة **عن قصد**: الإلغاء يكون **من** الكفيل
+        // الحالي، وهو مكتوبٌ أصلًا في خانة «الحالة الإدارية» وفي أعلى هذه النافذة.
+        // فذكرُه ثانيًا يُنشئ رقمين لنفس الشيء يفترقان. وإن أراد تقسيمه فسؤالٌ
+        // مطروح، ولا يُقسَّم تخمينًا.
+        { key: 'cancel_sponsorship', group: 'Ending',
+          en: 'Sponsorship cancellation', ar: 'إلغاء كفالة' },
+        // ⚠️ يبقى «غير ذلك» بنصٍّ حرّ: القائمة لم تُستوفَ بعد (انتهت رسالته بفاصلة)،
+        // ولا تُخمَّن إجراءاتُ إدارةٍ حكومية من عندي.
+        { key: 'other',             group: 'Ending',
+          en: 'Other — write it below', ar: 'غير ذلك — يُكتب أدناه' }
     ];
     // ⚠️⚠️⚠️ مفاتيحُ قديمة حُفظت فعلًا على ملفّات قبل تغيير القائمة. لا تُحذف
     // أبدًا: حذفُ مفتاحٍ محفوظ يجعل procedureLabel تُرجع فراغًا، فيظهر سطرُ
@@ -5853,10 +5874,21 @@
             ? `<option value="${p.type}" selected>${escapeHtml(procedureLabel(p.type))}`
               + ` &mdash; old, please pick the destination</option>`
             : '';
+        // ⚠️ الخيارات مجموعةٌ بـoptgroup ومرتَّبةٌ بترتيب القائمة نفسها — لا
+        // بترتيب ظهور المجموعات مبعثرًا: «نقل» ثم «إعارة» ثم «استقدام» ثم «إنهاء».
+        let opts = '', lastGroup = '';
+        PROCEDURE_TYPES.forEach(o => {
+            const g = o.group || '';
+            if (g !== lastGroup) {
+                if (lastGroup) opts += '</optgroup>';
+                opts += `<optgroup label="${escapeHtml(g)}">`;
+                lastGroup = g;
+            }
+            opts += `<option value="${o.key}"${p.type === o.key ? ' selected' : ''}>${escapeHtml(o.en)}</option>`;
+        });
+        if (lastGroup) opts += '</optgroup>';
         document.getElementById('procType').innerHTML =
-            `<option value="">&mdash; choose &mdash;</option>` + legacySel
-            + PROCEDURE_TYPES.map(o =>
-                `<option value="${o.key}"${p.type === o.key ? ' selected' : ''}>${escapeHtml(o.en)}</option>`).join('');
+            `<option value="">&mdash; choose &mdash;</option>` + legacySel + opts;
         // ⭐⭐ والحالة الحالية تُكتب أمامه وهو يختار الجهة: «إلى قيمر وكاهي» وهو
         // على كفالة قيمر وكاهي أصلًا يكاد يكون خطأً — وهذا خبرٌ لا قاعدة، فلا
         // يُمنع الحفظ، إنما يُرى ما لم يكن يُرى.
