@@ -5814,10 +5814,13 @@
     const SECONDED_SPONSORSHIPS = ['loan_to_gwk', 'loan_to_sbh'];
     const QID_RENEWAL_DAYS_ALLOWED = 5;   // بنصّ المالك: مدة أقصاها 5 أيام
 
-    /** هل يُرسَل لهذا الموظف تنبيهُ تجديد البطاقة؟ */
+    /**
+     * هل يُرسَل لهذا الموظف تنبيهُ تجديد البطاقة؟
+     * ⚠️ يُقرأ من rowActions وحدها: زرٌّ يظهر بحكمٍ وتُرسل رسالتُه بحكمٍ آخر عطلٌ
+     * ينتظر وقوعه. والحدُّ ثلاثة أشهر لا «منتهية» فقط — بقاعدته الثانية.
+     */
     function needsRenewalNotice(emp, st) {
-        if (!emp || !st || st.state !== 'expired') return false;
-        return SECONDED_SPONSORSHIPS.includes(emp.sponsorship || '');
+        return !!rowActions(emp, st).employee;
     }
 
     /**
@@ -5841,8 +5844,17 @@
      */
     function renewalState(emp, st) {
         if (!emp || !st) return '';
-        if (!SECONDED_SPONSORSHIPS.includes(emp.sponsorship || '')) return '';
+        // ⚠️ يُقاس بنفس القرار الواحد: كلُّ من يستحقّ زرَّ الموظف تُقاس مهلتُه،
+        // والحدُّ ثلاثة أشهر لا «منتهية» فقط.
+        const act = rowActions(emp, st);
+        const inEmployeeStep = !!act.employee;
         const n = emp.qidNotice || null;
+        if (inEmployeeStep) {
+            if (!n || !n.sentAt) return 'notice_due';
+            const daysSince = Math.max(0, daysBetweenInclusive(String(n.sentAt).slice(0, 10), todayISO()) - 1);
+            return daysSince > QID_RENEWAL_DAYS_ALLOWED ? 'notice_overdue' : 'notice_sent';
+        }
+        if (!SECONDED_SPONSORSHIPS.includes(emp.sponsorship || '')) return '';
         if (st.state === 'expired') {
             if (!n || !n.sentAt) return 'notice_due';
             const daysSince = Math.max(0, daysBetweenInclusive(String(n.sentAt).slice(0, 10), todayISO()) - 1);
@@ -5874,17 +5886,29 @@
      * ⚠️ ولا يُكتب حرفٌ عربيٌّ في أيّ رسالةٍ تُرسَل — وفحصٌ يحرس ذلك.
      */
     function qidRenewalNoticeText(emp, st) {
+        const lapsed = rowActions(emp, st).employee === 'secondment_lapsed';
         const L = [];
         L.push('*Administrative notice — Al Sheikha Group*');
         L.push('');
         L.push(`${emp.name || emp.id}`);
         L.push(`Qatar ID: ${emp.qidNumber || 'not recorded'}`);
         L.push(`Expiry date: ${st.expiry || 'not recorded'}`
-            + `${st.days !== null ? ` — expired ${Math.abs(st.days)} day(s) ago` : ''}`);
+            + `${st.days !== null ? (lapsed ? ` — expired ${Math.abs(st.days)} day(s) ago`
+                                            : ` — only ${st.days} day(s) left`) : ''}`);
         L.push('');
-        L.push(`Your Qatar ID has expired. You are therefore required to renew it within `
-            + `${QID_RENEWAL_DAYS_ALLOWED} days at the latest and to send it to the secretary, `
-            + `so that we can start the procedure to activate your secondment.`);
+        // ⚠️⚠️ حالتان مختلفتان لا واحدة. قاعدتُه الخامسة: البطاقةُ المنتهية
+        // **تُنهي الإعارة تلقائيًّا** وتعود العملية من الصفر — فتُقال له الحقيقة.
+        // وقاعدتُه الثانية: أقلُّ من ثلاثة أشهر تمنع **بدء** الإجراء. وقولُ
+        // «انتهت» لمن لم تنتهِ بطاقتُه كذبٌ في ورقةٍ رسمية.
+        L.push(lapsed
+            ? `Your Qatar ID has expired. Your secondment to us has therefore lapsed automatically, and the `
+              + `procedure has to be started again from the beginning. You are required to renew your Qatar ID `
+              + `within ${QID_RENEWAL_DAYS_ALLOWED} days at the latest and to send it to the secretary, so that `
+              + `we can start the procedure to activate your secondment again.`
+            : `Your Qatar ID is valid for less than 3 months, and a secondment cannot be processed with less `
+              + `than that remaining. You are required to renew it within ${QID_RENEWAL_DAYS_ALLOWED} days at `
+              + `the latest and to send it to the secretary, so that we can start the procedure to activate `
+              + `your secondment.`);
         L.push('');
         L.push('Thank you.');
         return L.join('\n');
@@ -5955,21 +5979,104 @@
             });
     };
 
-    /** هل يستحقّ هذا السطر زرَّ متابعة؟ ويُرجع السبب لا مجرّد نعم/لا. */
+    // =====================================================================
+    // ⭐⭐⭐ قواعدُ المالك الخمس — أيُّ زرٍّ يظهر، ولمن
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️⚠️ عطلٌ أبلغ عنه المالك بلقطةٍ: مُعارٌ بطاقتُه منتهية منذ 118 يومًا، ومعه
+    // **زرُّ المندوب** ظاهرًا. وكنتُ قد اخترتُ أن أُوسِمه «المندوب يأتي بعد التجديد»
+    // لا أن أُخفيه، بحجّة «لا يُخفى فعلٌ حقيقي». وكان خطأً: إرسالٌ إلى المندوب قبل
+    // التجديد يُرسله إلى بابٍ لا يُفتح، ويُحرج الشركة. فيُخفى.
+    //
+    // وقواعده نقطةً بنقطة:
+    //   1) الإجراء **نقل كفالة علينا** → المندوب دائمًا، سواءٌ كانت البطاقة منتهية
+    //      أو سارية. (فهو الذي ينقل الكفالة، والهوية شأنُ الكفيل الجديد.)
+    //   2) الإجراء **إعارة** → تُدخل بياناتها (الراتب وغيره)، ثم:
+    //        • صلاحية البطاقة **3 أشهر أو أكثر** → المندوب مباشرةً.
+    //        • **أقلّ من 3 أشهر** → الموظف أولًا، **ولا يظهر زرُّ المندوب** حتى يُجدّد.
+    //   3) على **كفالة شركتنا** وقربت تنتهي إقامته → المندوب، ليُجدّدها.
+    //      (هنا المندوب لا الموظف: الكفالة كفالتُنا، والتجديد شغلُنا.)
+    //   4) **أوت سورس كومباني** → كما هي.
+    //   5) **مُعارٌ إلينا وانتهت بطاقتُه** → الإعارة تنتهي تلقائيًّا وتعود العملية من
+    //      الصفر: زرٌّ إلى الموظف، وبعد التجديد زرٌّ إلى المندوب لبداية الإجراء.
+    //
+    // ⚠️ و«3 أشهر» تُوحّد 2 و5: «منتهية» حالةٌ خاصّة من «أقلّ من ثلاثة أشهر»، فقاعدةٌ
+    // واحدة تكفيهما ولا تتناقض.
+    // =====================================================================
+    const OWN_SPONSORSHIPS = ['gwk_sponsor', 'sbh_sponsor'];
+    const SECONDMENT_MIN_QID_DAYS = 90;   // ثلاثة أشهر بنصّ المالك
+
+    /**
+     * ⭐⭐⭐ القرار الوحيد: ماذا يظهر في هذا السطر.
+     * @returns {{mandoob: string, employee: string}} سببُ كلِّ زرٍّ، أو '' إن لم يظهر.
+     * ⚠️ مكانٌ واحد يقرّر، والجدولُ والرسائلُ والعدّاداتُ تقرأ منه — فلا يفترق زرٌّ
+     * معروضٌ عن رسالةٍ تُرسَل عن رقمٍ يُعدّ.
+     */
+    function rowActions(emp, st) {
+        if (!emp || !st) return { mandoob: '', employee: '' };
+        const p = emp.adminProcedure || null;
+        const type = (p && p.type) ? p.type : '';
+        const isTransferProc = /^transfer_to_/.test(type);
+        const isSecondmentProc = /^secondment_to_/.test(type);
+        const isSeconded = SECONDED_SPONSORSHIPS.includes(emp.sponsorship || '');
+        const isOurs = OWN_SPONSORSHIPS.includes(emp.sponsorship || '');
+        const isOutsource = emp.sponsorship === 'outsource';
+        const expired = st.state === 'expired';
+        // ⚠️ «قصيرة» = منتهية أو أقلّ من ثلاثة أشهر. ومن لا تاريخَ له لا يُحكم عليه
+        // بالقِصَر: لا نعرف، والادّعاء بلا علمٍ يُرسل رسالةً في غير موضعها.
+        const shortQid = expired || (st.state !== 'none' && st.days !== null && st.days < SECONDMENT_MIN_QID_DAYS);
+        const soonOrExpired = expired || st.state === 'soon';
+        const live = !!type && (p.state === 'submitted' || p.state === 'inprogress');
+        // ⚠️⚠️ و«تمّ» ليس عملًا جاريًا ولا عملًا لم يبدأ: هو منتهٍ. فلا يُقال للمندوب
+        // «ابدأ» في إجراءٍ أنهاه — وكان يُقال، وكشفه الفحص.
+        const finished = !!type && p.state === 'done';
+
+        // ---- 2 و5: سياقُ الإعارة ----------------------------------------
+        // ⚠️ يُقدَّم على كل ما بعده: هو الحالة التي يُخفى فيها زرُّ المندوب، ولو
+        // كان الإجراء «قيد التنفيذ». فإعارةٌ ببطاقةٍ منتهية **لاغية**، ومتابعتُها
+        // مع المندوب عملٌ في فراغ.
+        if (isSecondmentProc || isSeconded) {
+            // ⚠️⚠️ ولا حكمَ بلا تاريخ: من لا تاريخَ هويةٍ في ملفه لا يُعرف أهي
+            // ثلاثة أشهر أم يومان. فلا يُرسَل إلى الموظف ولا إلى المندوب، ويُنبَّه
+            // على نقص الملف في سطر الملاحظة أسفل الجدول.
+            if (st.state === 'none') return { mandoob: '', employee: '' };
+            if (shortQid) {
+                return { mandoob: '', employee: expired ? 'secondment_lapsed' : 'qid_short' };
+            }
+            // ثلاثة أشهر أو أكثر → المندوب. ويُفرَّق بين بدايةٍ ومتابعة.
+            if (live) return { mandoob: p.state === 'submitted' ? 'procedure_submitted' : 'procedure', employee: '' };
+            if (!finished) return { mandoob: 'secondment_ready', employee: '' };
+            // تمّت الإعارة وبطاقتُه سليمة: لا شيء مطلوب.
+            return { mandoob: '', employee: '' };
+        }
+
+        // ---- 1: نقل كفالة → المندوب دائمًا -------------------------------
+        if (isTransferProc && !finished) {
+            return { mandoob: live ? (p.state === 'submitted' ? 'procedure_submitted' : 'procedure')
+                                   : 'transfer_start', employee: '' };
+        }
+
+        // ---- 3 و4: على كفالتنا أو أوت سورس، والإقامة قاربت أو انتهت ------
+        // ⚠️ إلى **المندوب** لا إلى الموظف: الكفالة كفالتُنا (أو كفالة شركته)،
+        // والتجديد ليس شغلَ الموظف.
+        if ((isOurs || isOutsource) && soonOrExpired) {
+            return { mandoob: 'renew_via_mandoob', employee: '' };
+        }
+
+        // ---- بقيّة الإجراءات: متابعةٌ عادية ------------------------------
+        // ⚠️ و«تمّ» لا يُتابع: يسقط إلى قواعد الهوية أدناه، فقد تكون إقامتُه
+        // قاربت بعد أن أُنجز إجراؤه — وذلك شأنٌ آخر.
+        if (live) {
+            return { mandoob: p.state === 'submitted' ? 'procedure_submitted' : 'procedure', employee: '' };
+        }
+        // ⚠️ ومن لا كفالةَ محدَّدةً له وبطاقتُه منتهية: يُتابع مع المندوب، فلا نعرف
+        // غير ذلك. ولا يُرسل إليه تنبيهُ إعارةٍ لا تخصّه.
+        if (soonOrExpired) return { mandoob: expired ? 'qid_expired' : 'qid_soon', employee: '' };
+        return { mandoob: '', employee: '' };
+    }
+
+    /** سببُ زرّ المندوب — قراءةٌ من القرار الواحد، لا حكمٌ ثانٍ. */
     function followUpReason(emp, st) {
-        const p = emp && emp.adminProcedure;
-        if (st.state === 'expired') return 'qid_expired';
-        if (st.state === 'soon') return 'qid_soon';
-        if (p && p.state === 'inprogress') return 'procedure';
-        // ⭐⭐ «قُدّم» كذلك — بطلبه، لمتابعة الأمر مع المندوب. وهو سببٌ مستقلّ عن
-        // «قيد التنفيذ»: طلبٌ قُدّم ولم يتحرّك بعد غيرُ طلبٍ يُعمل عليه، والرسالة
-        // تقول أيَّهما هو.
-        if (p && p.state === 'submitted') return 'procedure_submitted';
-        // ⭐⭐⭐ الخطوة الثانية بطلبه: «بعد أن يجدّد إقامته نرسل الميساج إلى
-        // المندوب لكي يبدأ الإجراء». فبطاقتُه سليمةٌ الآن وإجراؤه لم يُسجَّل بعد،
-        // فالمطلوب من المندوب أن **يبدأ** لا أن يُتابع.
-        if (renewalState(emp, st) === 'renewed') return 'secondment_ready';
-        return '';
+        return rowActions(emp, st).mandoob;
     }
 
     /** بيانات شركة الأوت سورس — تُقرأ من settings مرّةً وتُحفظ هنا. */
@@ -6062,13 +6169,23 @@
             // يُضمنان دائمًا، والملاحظةُ تأخذ الفاضل — لا العكس.
             if (p.note) { noteAt = L.length; noteRaw = String(p.note); L.push(''); }
         } else if (reason === 'secondment_ready') {
-            // ⭐⭐⭐ حالةُ «جدّد فعلًا»: المطلوب أن **يبدأ** الإجراء لا أن يُتابعه.
+            // ⭐⭐⭐ المطلوب أن **يبدأ** الإجراء لا أن يُتابعه.
             L.push(`*Required: please start the procedure to activate the secondment.*`);
             // ⚠️ سطرٌ واحد لا سطران: كلُّ سطرٍ يُكلّف من حدّ الرابط، والقصُّ يأكل
             // الطلبَ في آخر الرسالة.
-            L.push(`His Qatar ID has been RENEWED — new expiry ${st.expiry}`
-                + `${(emp.qidNotice && emp.qidNotice.forExpiry)
-                    ? ` (it had expired on ${emp.qidNotice.forExpiry}, which is why this was waiting)` : ''}.`);
+            L.push(`His Qatar ID is valid for ${st.days} more day(s) — expiry ${st.expiry}.`
+                + `${(emp.qidNotice && emp.qidNotice.forExpiry
+                      && String(st.expiry) > String(emp.qidNotice.forExpiry))
+                    ? ` It has just been renewed (it ran to ${emp.qidNotice.forExpiry} before), which is what this was waiting for.` : ''}`);
+        } else if (reason === 'transfer_start') {
+            // ⭐⭐ قاعدتُه الأولى: نقلُ الكفالة يُرسَل دائمًا، منتهيةً كانت البطاقة أو سارية
+            L.push(`*Required: please start the sponsorship transfer procedure.*`);
+        } else if (reason === 'renew_via_mandoob') {
+            // ⭐⭐⭐ قاعدتاه الثالثة والرابعة: التجديد شغلُ المندوب لا الموظف
+            L.push(`*Required: please renew this employee's Qatar ID.*`);
+            L.push(st.state === 'expired'
+                ? `It expired on ${st.expiry} — ${Math.abs(st.days)} day(s) ago.`
+                : `It expires on ${st.expiry} — only ${st.days} day(s) left.`);
         } else {
             // ⚠️ لا إجراء مسجَّل — يُقال، ولا يُسمّى إجراءٌ لم يقله أحد.
             L.push('*No procedure has been recorded in the system for this yet.*');
@@ -6099,7 +6216,11 @@
             : reason === 'procedure_submitted'
                 ? 'the request has been submitted and we are following up on it'
             : reason === 'secondment_ready'
-                ? 'his Qatar ID has been renewed, so the secondment procedure can now begin'
+                ? 'his Qatar ID is valid for long enough, so the secondment procedure can now begin'
+            : reason === 'transfer_start'
+                ? 'we are transferring his sponsorship to us'
+            : reason === 'renew_via_mandoob'
+                ? 'he is on our sponsorship and his Qatar ID needs renewing'
             : 'the procedure is in progress'}.`);
         }
         // ⭐⭐⭐ الملاحظة تأخذ ما بقي من حدّ الرابط، بعد أن ضُمن كلُّ ما قبلها:
@@ -6414,26 +6535,79 @@
                                  onclick="openProcedureForm('${id}')">Edit</button>` : '');
                     })()}</td>
                     <td>${(() => {
-                        const reason = followUpReason(e, st);
-                        // ⚠️ ولا يُترك الفراغ صامتًا: سطرٌ بلا زرٍّ يُقرأ «الزرّ
-                        // معطوب». يُقال إنه لا يحتاج متابعة، وهذا خبرٌ مطمئن.
-                        if (!reason) return `<span style="color: var(--text-faint); font-size: 12px;">nothing due</span>`;
+                        // ⭐⭐⭐ قرارٌ واحد للزرّين: لا يُحسب حكمٌ مرّتين فيفترقان.
+                        // ⚠️⚠️ وهما **متعارضان** بقواعد المالك: إمّا المندوب وإمّا
+                        // الموظف، لا الاثنان. فمُعارٌ بطاقتُه قصيرة لا يُرسَل فيه إلى
+                        // المندوب إطلاقًا — وظهورُهما معًا هو العطل الذي أبلغ عنه.
+                        const act = rowActions(e, st);
+                        if (!act.mandoob && !act.employee) {
+                            // ⚠️ ولا يُترك الفراغ صامتًا: سطرٌ بلا زرٍّ يُقرأ «الزرّ
+                            // معطوب». يُقال إنه لا شيء عليه، وهذا خبرٌ مطمئن.
+                            return `<span style="color: var(--text-faint); font-size: 12px;">nothing due</span>`;
+                        }
+
+                        // ---- زرُّ الموظف نفسه (قاعدتا 2 و5) ----------------
+                        if (act.employee) {
+                            const rs = renewalState(e, st);
+                            const left = renewalDaysLeft(e);
+                            const n = e.qidNotice || {};
+                            const lapsed = act.employee === 'secondment_lapsed';
+                            let line;
+                            if (rs === 'notice_due') {
+                                // ⚠️ ويُقال أيُّ الحالتين: إعارةٌ لغت، أم بطاقةٌ تقصر
+                                // عن ثلاثة أشهر فتمنع بدء الإجراء.
+                                line = `<small style="color: ${lapsed ? 'var(--danger)' : 'var(--warning)'}; font-weight: 700;">`
+                                     + (lapsed ? `secondment LAPSED &mdash; ID expired`
+                                               : `${st.days} day(s) left &mdash; under 3 months`)
+                                     + `</small>`;
+                            } else if (rs === 'notice_overdue') {
+                                line = `<small style="color: var(--danger); font-weight: 800;">`
+                                     + `&#9888; told ${escapeHtml(String(n.sentAt || '').slice(0, 10))} &mdash; `
+                                     + `${Math.abs(left)} day(s) OVERDUE</small>`;
+                            } else {
+                                line = `<small style="color: var(--text-dim);">told `
+                                     + `${escapeHtml(String(n.sentAt || '').slice(0, 10))} &mdash; `
+                                     + `${left} day(s) left of ${QID_RENEWAL_DAYS_ALLOWED}</small>`;
+                            }
+                            return `<button class="${rs === 'notice_overdue' ? 'btn-danger' : 'btn-warning'} btn-sm"
+                                        style="white-space: nowrap;"
+                                        onclick="sendQidRenewalNotice('${id}')"
+                                        title="Message the employee himself: renew the Qatar ID within ${QID_RENEWAL_DAYS_ALLOWED} days and send it to the secretary"
+                                        >${iconSvg('plane','ic-sm')} ${rs === 'notice_due' ? 'Tell the employee' : 'Tell him again'}</button>`
+                                + `<br>${line}`
+                                // ⚠️⚠️ ويُقال **لماذا** لا يوجد زرُّ مندوب هنا: غيابُه
+                                // بلا تفسيرٍ يُقرأ نقصًا في البرنامج.
+                                + `<br><small style="color: var(--text-faint); font-size: 11px;">`
+                                + `No mandoob message until his Qatar ID is renewed.</small>`
+                                + (!waNumber(e.phone)
+                                    ? `<br><small style="color: var(--warning);">&#9888; no phone in his file</small>`
+                                    : '');
+                        }
+
+                        // ---- زرُّ المندوب (قواعد 1 و3 و4 والمتابعة) --------
+                        const reason = act.mandoob;
                         const isOut = e.sponsorship === 'outsource';
                         const num = isOut ? waNumber(outsourceContact.phone) : '';
                         const why = reason === 'qid_expired' ? 'Qatar ID expired'
                                   : reason === 'qid_soon' ? `Qatar ID in ${st.days} day(s)`
-                                  : reason === 'procedure_submitted' ? 'submitted — chase the mandoob'
-                                  : reason === 'secondment_ready' ? 'renewed — mandoob starts it'
+                                  : reason === 'renew_via_mandoob'
+                                      ? (st.state === 'expired' ? 'mandoob renews the ID'
+                                                                : `mandoob renews it &mdash; ${st.days} day(s) left`)
+                                  : reason === 'procedure_submitted' ? 'submitted &mdash; chase the mandoob'
+                                  : reason === 'secondment_ready' ? 'ready &mdash; mandoob starts it'
+                                  : reason === 'transfer_start' ? 'mandoob starts the transfer'
                                   : 'procedure in progress';
                         // ⚠️ واللون يتبع الخطر: هويةٌ منتهية أحمر، وما دونها برتقالي.
-                        // و«جدّد» أخضر: خبرٌ سارٌّ وعملٌ جاهز، لا تحذير.
-                        const cls = reason === 'qid_expired' ? 'btn-danger'
-                                  : reason === 'secondment_ready' ? 'btn-success' : 'btn-warning';
+                        // و«جاهز للبدء» أخضر: عملٌ جاهز لا تحذير.
+                        const cls = (reason === 'qid_expired'
+                                     || (reason === 'renew_via_mandoob' && st.state === 'expired')) ? 'btn-danger'
+                                  : (reason === 'secondment_ready' || reason === 'transfer_start') ? 'btn-success'
+                                  : 'btn-warning';
                         return `<button class="${cls} btn-sm" style="white-space: nowrap;"
                                     onclick="sendAdminFollowUp('${id}')"
                                     title="Open WhatsApp with this employee's details and what is needed"
                                     >${iconSvg('plane','ic-sm')} WhatsApp</button>`
-                            + `<br><small style="color: var(--text-dim);">${escapeHtml(why)}</small>`
+                            + `<br><small style="color: var(--text-dim);">${why}</small>`
                             // ⚠️ ويُقال إلى أين يفتح **قبل** الضغط، لا بعده.
                             + (isOut
                                 ? `<br><small style="color: ${num ? 'var(--success)' : 'var(--warning)'}; font-weight: 700;">${
@@ -6444,43 +6618,6 @@
                             // «Phone: not recorded» وهو أهمّ ما يُطلب منها.
                             + (!waNumber(e.phone)
                                 ? `<br><small style="color: var(--warning);">&#9888; no phone in his file</small>`
-                                : '')
-                            // ⭐⭐⭐ وزرٌّ ثانٍ **إلى الموظف نفسه**: المُعار الذي
-                            // انتهت بطاقته. رسالتان مختلفتان إلى شخصين مختلفين،
-                            // فيُفصَل بينهما بخطٍّ كي لا تُضغط الخطأ.
-                            // ⭐⭐⭐ الخطوة الأولى: إبلاغُ الموظف نفسه. وحالتُها
-                            // تُقال بالحرف — أُبلغ متى، وكم بقي من الخمسة، ومن
-                            // تجاوزها. وزرُّ المندوب أعلاه يُوسَم بالانتظار كي لا
-                            // يُرسَل إليه قبل التجديد فلا يجد ما يبدأ به.
-                            + (needsRenewalNotice(e, st)
-                                ? (() => {
-                                    const rs = renewalState(e, st);
-                                    const left = renewalDaysLeft(e);
-                                    const n = e.qidNotice || {};
-                                    let line;
-                                    if (rs === 'notice_due') {
-                                        line = `<small style="color: var(--text-dim);">seconded &mdash; not told yet</small>`;
-                                    } else if (rs === 'notice_overdue') {
-                                        line = `<small style="color: var(--danger); font-weight: 800;">`
-                                             + `&#9888; told ${escapeHtml(String(n.sentAt || '').slice(0, 10))} &mdash; `
-                                             + `${Math.abs(left)} day(s) OVERDUE</small>`;
-                                    } else {
-                                        line = `<small style="color: var(--text-dim);">told `
-                                             + `${escapeHtml(String(n.sentAt || '').slice(0, 10))} &mdash; `
-                                             + `${left} day(s) left of ${QID_RENEWAL_DAYS_ALLOWED}</small>`;
-                                    }
-                                    return `<div style="margin-top:7px; padding-top:7px; border-top:1px dashed var(--border);">`
-                                        + `<button class="${rs === 'notice_overdue' ? 'btn-danger' : 'btn-warning'} btn-sm"
-                                              style="white-space: nowrap;"
-                                              onclick="sendQidRenewalNotice('${id}')"
-                                              title="Message the employee himself: renew the Qatar ID within ${QID_RENEWAL_DAYS_ALLOWED} days and send it to the secretary"
-                                              >${iconSvg('plane','ic-sm')} ${rs === 'notice_due' ? 'Tell the employee' : 'Tell him again'}</button>`
-                                        + `<br>${line}`
-                                        // ⚠️ ويُقال إنّ المندوب ينتظر التجديد — فلا
-                                        // يُرسَل إليه الآن فلا يجد ما يبدأ به.
-                                        + `<br><small style="color: var(--text-faint); font-size: 11px;">`
-                                        + `The mandoob comes after he renews.</small></div>`;
-                                })()
                                 : '');
                     })()}</td>
                 </tr>`;
