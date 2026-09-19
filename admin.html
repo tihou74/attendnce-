@@ -2626,14 +2626,16 @@
                 <input type="text" id="procOther" maxlength="80" placeholder="e.g. QID renewal">
             </div>
 
+            <!-- ⚠️ المرحلة **قبل** التاريخ: التاريخ لا معنى له حتى تُعرف المرحلة،
+                 و«تاريخ التقديم» في مرحلةٍ لم يُقدَّم فيها الطلب كذبٌ مكتوب. -->
             <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top: 12px;">
-                <div style="flex:1; min-width: 150px;">
-                    <label for="procSubmitted">Date submitted</label>
-                    <input type="date" id="procSubmitted">
-                </div>
-                <div style="flex:1; min-width: 150px;">
+                <div style="flex:1; min-width: 190px;">
                     <label for="procState">Where it stands</label>
-                    <select id="procState"></select>
+                    <select id="procState" onchange="onProcStateChange()"></select>
+                </div>
+                <div style="flex:1; min-width: 190px;" id="procDateWrap">
+                    <label for="procSubmitted" id="procDateLabel">Date submitted</label>
+                    <input type="date" id="procSubmitted">
                 </div>
             </div>
 
@@ -5648,12 +5650,29 @@
                || PROCEDURE_TYPES_LEGACY.find(x => x.key === k);
         return o ? o.en : '';
     };
-    /** حالات الإجراء: قُدّم ← قيد التنفيذ ← تمّ. */
+    /**
+     * مراحل الإجراء: بداية الإجراء ← قُدّم ← قيد التنفيذ ← تمّ.
+     * ⚠️ «بداية الإجراء» أضافها المالك: بين «بدأنا نجمع الورق» و«قُدّم الطلب
+     * للحكومة» فرقٌ حقيقي، ولم يكن له موضع.
+     * ⚠️⚠️ و`dated` تقول **ما يعنيه التاريخ** في كل مرحلة. فمرحلةٌ لم يُقدَّم فيها
+     * الطلب لا يجوز أن تحمل «تاريخ التقديم» — والخانة كانت تُسمّى كذلك دائمًا،
+     * فكان سيُكتب فيها تاريخٌ ثم يُقرأ لاحقًا «قُدّم في كذا» وهو لم يُقدَّم.
+     */
     const PROCEDURE_STATES = [
-        { key: 'submitted',  en: 'Submitted' },
-        { key: 'inprogress', en: 'In progress' },
-        { key: 'done',       en: 'Completed' }
+        { key: 'notsubmitted', en: 'Procedure started — not submitted yet', dated: 'startedAt' },
+        { key: 'submitted',    en: 'Submitted',   dated: 'submittedAt' },
+        { key: 'inprogress',   en: 'In progress', dated: 'submittedAt' },
+        { key: 'done',         en: 'Completed',   dated: 'submittedAt' }
     ];
+    /** أيُّ حقلِ تاريخٍ تُحرّره هذه المرحلة. */
+    const stateDateField = (k) => {
+        const o = PROCEDURE_STATES.find(x => x.key === k);
+        return o ? o.dated : 'submittedAt';
+    };
+    const DATE_FIELD_LABEL = {
+        startedAt:   'Date the procedure started',
+        submittedAt: 'Date submitted'
+    };
 
     /** الموظفون العاملون الذين تستحقّ هويّتهم تنبيهًا — منتهية أو تنتهي قريبًا. */
     function qidAlertList() {
@@ -5782,10 +5801,20 @@
                         const old = isLegacyProcedure(p.type)
                             ? `<br><small style="color: var(--warning); font-weight: 800;">`
                               + `&#9888; destination not recorded &mdash; open and pick it</small>` : '';
+                        // ⚠️⚠️ التاريخان يُسمَّى كلٌّ منهما باسمه. ولا يُطبع «submitted»
+                        // لتاريخِ بدايةٍ — وهذا هو الكذب الذي مُنع في الحفظ، فلا
+                        // يُعاد في العرض.
+                        const dates = [];
+                        if (p.startedAt) dates.push(`started ${escapeHtml(p.startedAt)}`);
+                        if (p.submittedAt) dates.push(`submitted ${escapeHtml(p.submittedAt)}`);
+                        // ⚠️ مرحلةٌ «لم يُقدَّم بعد» تُوسَم لونًا: هي مرحلةٌ لم يصل
+                        // فيها الطلب إلى أحدٍ بعد، فلا تُقرأ كأنّ العمل جارٍ.
+                        const sttColor = p.state === 'notsubmitted' ? 'var(--warning)' : 'var(--text-dim)';
                         return `<b>${escapeHtml(p.type === 'other' ? (p.otherText || 'Other') : procedureLabel(p.type))}</b>`
                             + old
-                            + `<br><small style="color: var(--text-dim);">${escapeHtml(stt)}`
-                            + `${p.submittedAt ? ` &middot; submitted ${escapeHtml(p.submittedAt)}` : ''}</small>`
+                            + `<br><small style="color: ${sttColor}; font-weight: ${p.state === 'notsubmitted' ? '800' : '400'};">${escapeHtml(stt)}</small>`
+                            + `<small style="color: var(--text-dim);">`
+                            + `${dates.length ? ' &middot; ' + dates.join(' &middot; ') : ''}</small>`
                             + `${p.note ? `<br><small style="color: var(--text-dim);" dir="auto">${escapeHtml(p.note)}</small>` : ''}`
                             + (editable ? `<br><button class="btn-ghost btn-sm" style="margin-top:5px;"
                                  onclick="openProcedureForm('${id}')">Edit</button>` : '');
@@ -5861,6 +5890,43 @@
         document.getElementById('procOtherWrap').style.display = (t === 'other') ? '' : 'none';
     };
 
+    /**
+     * ⭐⭐⭐ التاريخان المحفوظان للإجراء المفتوح.
+     * ⚠️ خانةُ تاريخٍ واحدة تخدم مرحلتين مختلفتي المعنى، فيُحفظ ما كُتب في كلٍّ
+     * منهما هنا. وبلا هذا كان تحويلُ المرحلة من «بداية الإجراء» إلى «قُدّم»
+     * يُحوّل تاريخَ البداية إلى تاريخِ تقديم — أي يكذب بتاريخٍ لم يحدث.
+     */
+    let procDraftDates = { startedAt: '', submittedAt: '' };
+
+    /**
+     * تُنادى عند تغيير المرحلة: تُخزّن ما في الخانة في حقلها، ثم تُظهر حقل
+     * المرحلة الجديدة باسمه الصحيح.
+     * @param {string} prevState المرحلة التي كانت معروضة قبل التغيير
+     */
+    window.onProcStateChange = function(prevState) {
+        const sel = document.getElementById('procState');
+        const input = document.getElementById('procSubmitted');
+        const wrap = document.getElementById('procDateWrap');
+        const label = document.getElementById('procDateLabel');
+        if (!sel || !input) return;
+        // ⚠️ يُخزَّن المكتوب في حقل المرحلة **السابقة** لا الحالية
+        const from = prevState !== undefined ? prevState : sel.dataset.shown || '';
+        if (from) procDraftDates[stateDateField(from)] = input.value || '';
+        const state = sel.value;
+        // ⚠️ بلا مرحلةٍ مختارة تُخفى خانة التاريخ: تاريخٌ بلا معنًى يُكتب ثم يُقرأ خطأً
+        if (!state) {
+            if (wrap) wrap.style.display = 'none';
+            sel.dataset.shown = '';
+            return;
+        }
+        if (wrap) wrap.style.display = '';
+        const field = stateDateField(state);
+        if (label) label.innerText = DATE_FIELD_LABEL[field] || 'Date';
+        // ⚠️ ولا يُفرض تاريخُ اليوم على حقلٍ فيه تاريخٌ محفوظ
+        input.value = procDraftDates[field] || todayISO();
+        sel.dataset.shown = state;
+    };
+
     window.openProcedureForm = function(empId) {
         const emp = allEmployees.find(e => e.id === empId);
         if (!emp) return;
@@ -5897,17 +5963,26 @@
             const lbl = sponsorshipLabel(emp.sponsorship);
             now.innerHTML = `Administrative status now: <b>${escapeHtml(lbl || 'not set')}</b>`;
         }
-        document.getElementById('procState').innerHTML = PROCEDURE_STATES.map(o =>
-            `<option value="${o.key}"${(p.state || 'submitted') === o.key ? ' selected' : ''}>${escapeHtml(o.en)}</option>`).join('');
+        // ⚠️⚠️ ولا مرحلةَ افتراضية لإجراءٍ جديد: كانت «قُدّم» مُعلَّمةً سلفًا، فمن
+        // يحفظ بلا انتباهٍ يُسجّل «قُدّم» على طلبٍ لم يُقدَّم. تُختار صراحةً كالنوع.
+        // وإجراءٌ قائم يُفتح على مرحلته المحفوظة كما هي.
+        document.getElementById('procState').innerHTML =
+            `<option value="">&mdash; choose &mdash;</option>`
+            + PROCEDURE_STATES.map(o =>
+                `<option value="${o.key}"${p.state === o.key ? ' selected' : ''}>${escapeHtml(o.en)}</option>`).join('');
         document.getElementById('procOther').value = p.otherText || '';
-        // ⚠️ تاريخُ اليوم افتراضًا لإجراءٍ جديد فقط: إجراءٌ قائم يُحتفظ بتاريخه
-        // كما سُجّل — واستبدالُه باليوم يُفقد متى قُدّم فعلًا.
-        document.getElementById('procSubmitted').value = p.submittedAt || todayISO();
+        // ⚠️ التاريخان المحفوظان يُحمَّلان معًا، ثم تُظهر onProcStateChange حقلَ
+        // المرحلة الحالية باسمه الصحيح. وإجراءٌ قائم يُحتفظ بتاريخه كما سُجّل —
+        // استبدالُه باليوم يُفقد متى قُدّم فعلًا.
+        procDraftDates = { startedAt: p.startedAt || '', submittedAt: p.submittedAt || '' };
+        document.getElementById('procState').dataset.shown = '';
         document.getElementById('procWith').value = p.handledBy || '';
         document.getElementById('procNote').value = p.note || '';
         document.getElementById('procClearBtn').style.display = p.type ? '' : 'none';
         const msg = document.getElementById('procMsg'); if (msg) msg.innerText = '';
         window.onProcTypeChange();
+        // ⚠️ بـ'' كمرحلةٍ سابقة: أوّل نداءٍ لا يُخزّن قيمةً من خانةٍ لم تُعرض بعد
+        window.onProcStateChange('');
         document.getElementById('procedureModal').style.display = 'flex';
         paintIcons(document.getElementById('procedureModal'));
     };
@@ -5936,11 +6011,20 @@
             say('Write what the procedure is — "Other" on its own says nothing.', 'var(--danger)');
             return;
         }
+        // ⚠️ المرحلة تُختار صراحةً: «قُدّم» مُعلَّمةً سلفًا كانت تُسجّل تقديمًا لم يحدث
+        const state = document.getElementById('procState').value;
+        if (!state) { say('Choose where it stands.', 'var(--danger)'); return; }
+        // ⚠️⚠️ التاريخ يُحفظ في حقل **مرحلته**: تاريخُ بدايةٍ لا يُكتب في
+        // submittedAt، وإلّا قُرئ بعد شهرٍ «قُدّم في كذا» وهو لم يُقدَّم بعد.
+        // وكلا التاريخين يُحفظان، فالانتقال من مرحلةٍ إلى أخرى لا يُفقد الأول.
+        procDraftDates[stateDateField(state)] =
+            document.getElementById('procSubmitted').value || '';
         const payload = {
             type,
             otherText: type === 'other' ? otherText : '',
-            submittedAt: document.getElementById('procSubmitted').value || '',
-            state: document.getElementById('procState').value || 'submitted',
+            startedAt:   procDraftDates.startedAt || '',
+            submittedAt: procDraftDates.submittedAt || '',
+            state,
             handledBy: (document.getElementById('procWith').value || '').trim(),
             note: (document.getElementById('procNote').value || '').trim(),
             updatedAt: new Date().toISOString(),
@@ -5955,7 +6039,9 @@
             // الموظف يحمل صور الهوية أصلًا وحدُّه ميغابايت، والسجل دائمٌ لا يُعدَّل.
             logAudit('Administrative procedure saved',
                 `${emp.name || empId}: ${type === 'other' ? otherText : procedureLabel(type)}`
-                + ` — ${payload.state}${payload.submittedAt ? `, submitted ${payload.submittedAt}` : ''}`
+                + ` — ${payload.state}`
+                + `${payload.startedAt ? `, started ${payload.startedAt}` : ''}`
+                + `${payload.submittedAt ? `, submitted ${payload.submittedAt}` : ''}`
                 + `${payload.handledBy ? `, handled by ${payload.handledBy}` : ''}`);
             say('Saved.', 'var(--success)');
             renderAdminStatus();
