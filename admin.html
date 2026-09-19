@@ -790,6 +790,24 @@
                     </select>
                 </div>
             </div>
+            <!-- ⭐⭐⭐ رقم شركة الأوت سورس — بطلب المالك.
+                 ⚠️ لا يُكتب رقمٌ في الكود بحال: رقمٌ مخترعٌ يفتح محادثةً مع شخصٍ
+                 غريب ويُرسل إليه رقم هوية موظف. فيُدخله المالك هنا مرّةً ويُحفظ.
+                 ⚠️ ويُحفظ في settings — مجموعةٌ قائمة، فلا قواعدَ تُنشر. -->
+            <div style="background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 14px;">
+                <div class="controls" style="align-items: flex-end; gap: 10px; flex-wrap: wrap; margin: 0;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <label for="outsourceName">Outsource company name <span style="text-transform:none; font-weight:400;">&mdash; optional</span></label>
+                        <input type="text" id="outsourceName" maxlength="60" placeholder="Company name">
+                    </div>
+                    <div style="width: 200px;">
+                        <label for="outsourcePhone">Its WhatsApp number</label>
+                        <input type="tel" id="outsourcePhone" inputmode="tel" placeholder="+974 5xxx xxxx" autocomplete="off">
+                    </div>
+                    <button class="btn-accent" onclick="saveOutsourceContact()"><span data-icon="save"></span> Save</button>
+                </div>
+                <p class="card-sub" style="margin: 10px 0 0;" id="outsourceNote"></p>
+            </div>
             <div class="status" id="admStatusMsg" style="min-height: 18px; font-size: 13px; font-weight: 700; margin-bottom: 10px;"></div>
             <div class="table-container">
                 <table>
@@ -797,6 +815,7 @@
                         <th>Employee</th><th>Branch</th><th class="money-col">Qatar ID</th>
                         <th>Expiry</th><th>Time left</th>
                         <th>Administrative status</th><th>Procedure in progress</th>
+                        <th>Follow up</th>
                     </tr></thead>
                     <tbody id="admStatusBody"></tbody>
                 </table>
@@ -4254,7 +4273,9 @@
         if (tabId === 'tab-employees') filterEmployeeDirectory();
         // ⭐ الحالة الإدارية تُرسم عند فتحها: تقرأ allEmployees الموجودة أصلًا في
         // الذاكرة، فلا قراءةَ جديدة من القاعدة ولا انتظار.
-        if (tabId === 'tab-admin-status') renderAdminStatus();
+        // ⭐ ويُقرأ رقم شركة الأوت سورس عند فتح التبويب: الزرّ يعتمد عليه،
+        // ولو رُسم قبل وصوله لظهر «لا رقم محفوظ» وهو محفوظ.
+        if (tabId === 'tab-admin-status') { renderAdminStatus(); loadOutsourceContact(); }
         if (tabId === 'tab-payroll') { renderPayrollMonthLabel(); filterEmployeesList(); }
         if (tabId === 'tab-shifts') renderShiftsTable();
         if (tabId === 'tab-warnings') { renderWarningsTable(); loadManagerRequests(); }
@@ -5674,6 +5695,198 @@
         submittedAt: 'Date submitted'
     };
 
+    // =====================================================================
+    // ⭐⭐⭐ متابعةُ واتساب — بطلب المالك
+    // ---------------------------------------------------------------------
+    // «يجب ان يكون جنب كل اجراء قيد التنفيذ او انتهت اقامته او قربت ان تنتهي
+    // اقامته قبل 10 ايام زر واتساب … فيه اسم الموظف كامل رقم البطاقة الشخصية و
+    // رقم تلفون الموظف و الاجراء المطلوب. اما اذا كان الموظف اوت سورس كومباني
+    // فيكون رقم اخر الخاص بشركة الاوت سورس».
+    //
+    // ⚠️ الشروط الثلاثة بنصّه حرفيًّا: قيد التنفيذ · منتهية · تنتهي خلال ١٠ أيام.
+    // و«١٠ أيام» هي QID_EXPIRY_ALERT_DAYS نفسها، فحالة 'soon' تُطابق شرطَه تمامًا
+    // ولا يُحسب العدد ثانيةً — رقمان لنفس الشيء يفترقان.
+    // ⚠️ ولم يذكر «قُدّم» ولا «بداية الإجراء»، فلا يُزادان من عندي.
+    // =====================================================================
+    /** هل يستحقّ هذا السطر زرَّ متابعة؟ ويُرجع السبب لا مجرّد نعم/لا. */
+    function followUpReason(emp, st) {
+        const p = emp && emp.adminProcedure;
+        if (st.state === 'expired') return 'qid_expired';
+        if (st.state === 'soon') return 'qid_soon';
+        if (p && p.state === 'inprogress') return 'procedure';
+        return '';
+    }
+
+    /** بيانات شركة الأوت سورس — تُقرأ من settings مرّةً وتُحفظ هنا. */
+    let outsourceContact = { name: '', phone: '' };
+
+    /**
+     * ⭐⭐⭐ نصّ رسالة المتابعة.
+     * ⚠️ ولا يُخترع «الإجراء المطلوب» إذا لم يكن مسجَّلًا: يُقال السبب الواقعي
+     * (انتهت الهوية) ويُقال صريحًا أنه لا إجراء مسجَّل. وكتابةُ «التجديد مطلوب»
+     * من عندي تُحوّل تخميني إلى أمرٍ رسميّ يُرسَل إلى جهةٍ خارجية.
+     * ⚠️ والهاتف الناقص يُقال «غير مسجَّل» لا يُحذف السطر: المستقبِل يحتاجه،
+     * وسطرٌ غائب يُقرأ سهوًا لا نقصًا.
+     */
+    function adminFollowUpText(emp, st) {
+        const p = emp.adminProcedure || null;
+        const reason = followUpReason(emp, st);
+        const L = [];
+        L.push('*Administrative follow-up — Al Sheikha Group*');
+        L.push('');
+        L.push(`Name: ${emp.name || emp.id}`);
+        L.push(`Qatar ID: ${emp.qidNumber || 'not recorded'}`);
+        // ⚠️ الرقم كما كُتب في الملف، ومعه الصيغة الدولية إن صلحت — فمن يقرأ
+        // الرسالة يستطيع الاتصال بلا تصحيحٍ يدوي.
+        const dial = waNumber(emp.phone);
+        L.push(`Phone: ${emp.phone ? (dial ? `+${dial}` : String(emp.phone) + ' (not a usable number)') : 'not recorded'}`);
+        if (emp.role) L.push(`Job: ${emp.role}`);
+        if (emp.branch) L.push(`Branch: ${emp.branch}`);
+        L.push('');
+        L.push(`Qatar ID: ${st.state === 'none' ? 'no expiry date recorded' : `${qidLabel(st)} (${st.expiry})`}`);
+        L.push(`Administrative status: ${sponsorshipLabel(emp.sponsorship) || 'not set'}`);
+        if (emp.sponsorship === 'outsource' && outsourceContact.name) {
+            L.push(`Outsource company: ${outsourceContact.name}`);
+        }
+        L.push('');
+        if (p && p.type) {
+            const what = p.type === 'other' ? (p.otherText || 'Other') : procedureLabel(p.type);
+            L.push(`*Required: ${what}*`);
+            const stt = (PROCEDURE_STATES.find(x => x.key === p.state) || {}).en || p.state || '';
+            if (stt) L.push(`Stage: ${stt}`);
+            if (p.startedAt) L.push(`Procedure started: ${p.startedAt}`);
+            if (p.submittedAt) L.push(`Submitted: ${p.submittedAt}`);
+            if (p.handledBy) L.push(`Handled by: ${p.handledBy}`);
+            if (p.note) L.push(`Note: ${p.note}`);
+        } else {
+            // ⚠️ لا إجراء مسجَّل — يُقال، ولا يُسمّى إجراءٌ لم يقله أحد.
+            L.push('*No procedure has been recorded in the system for this yet.*');
+        }
+        L.push('');
+        L.push(`Reason for this message: ${
+            reason === 'qid_expired' ? 'the Qatar ID has already expired'
+            : reason === 'qid_soon' ? `the Qatar ID expires in ${st.days} day(s)`
+            : 'the procedure is in progress'}.`);
+        return L.join('\n');
+    }
+
+    /**
+     * يفتح واتساب برسالة المتابعة.
+     * ⚠️ أوت سورس → رقم الشركة. وغيرُه → **بلا رقم** فتظهر قائمة المشاركة
+     * ويختار المالك المندوب أو المكتب: لا رقمَ مندوبٍ مسجَّلٌ عندي، وفتحُ محادثةٍ
+     * مع رقمٍ مخترع يُرسل رقم هوية موظف إلى غريب.
+     * ⚠️ ووسم <a> يُنشأ ويُضغط لا window.open: متصفّحات الهاتف تحجب النوافذ
+     * المُبرمجة ولا تحجب انتقال الرابط. والزرّ في صفّ جدول فلا يمكن كتابة الرابط فيه.
+     */
+    window.sendAdminFollowUp = function(empId) {
+        const msg = document.getElementById('admStatusMsg');
+        const say = (t, c) => { if (msg) { msg.innerText = t; msg.style.color = c; } };
+        const emp = allEmployees.find(e => e.id === empId);
+        if (!emp) { say('That employee file no longer exists — press Refresh.', 'var(--danger)'); return; }
+        const text = adminFollowUpText(emp, qidStatus(emp));
+        const encoded = encodeURIComponent(text);
+        const isPhone = /android|iphone|ipad|ipod|iemobile|blackberry|opera mini|webos/i.test(navigator.userAgent || '');
+        const isOut = emp.sponsorship === 'outsource';
+        const num = isOut ? waNumber(outsourceContact.phone) : '';
+        let href;
+        if (num) {
+            href = isPhone ? `whatsapp://send?phone=${num}&text=${encoded}`
+                           : `https://wa.me/${num}?text=${encoded}`;
+        } else {
+            href = isPhone ? `whatsapp://send?text=${encoded}`
+                           : `https://wa.me/?text=${encoded}`;
+        }
+        const a = document.createElement('a');
+        a.href = href;
+        if (!isPhone) { a.target = '_blank'; a.rel = 'noopener'; }
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => a.remove(), 0);
+        // ⚠️ ويُقال إلى أين فُتح: زرٌّ يفتح رقمًا لا يعرفه المالك خطرٌ صامت.
+        if (isOut && num) {
+            say(`Opened WhatsApp to the outsource company (+${num}) for ${emp.name || empId}.`, 'var(--success)');
+        } else if (isOut) {
+            say(`${emp.name || empId} is on an outsource company, but no company number is saved yet — `
+                + `WhatsApp opened so you can pick the contact. Save the number above and it will open directly.`,
+                'var(--warning)');
+        } else {
+            say(`WhatsApp opened for ${emp.name || empId} — pick who you are sending it to.`, 'var(--text-dim)');
+        }
+        logAudit('Administrative follow-up sent',
+            `${emp.name || empId}: ${isOut ? (num ? 'outsource company +' + num : 'outsource, no number saved') : 'share sheet'}`);
+    };
+
+    /** يقرأ رقم شركة الأوت سورس من الإعدادات. */
+    window.loadOutsourceContact = async function() {
+        try {
+            const snap = await getDoc(doc(db, "settings", "outsource_company"));
+            if (snap.exists()) {
+                const d = snap.data();
+                outsourceContact = { name: String(d.name || ''), phone: String(d.phone || '') };
+            }
+        } catch (e) {
+            console.error('Could not load the outsource company contact:', e);
+        }
+        const n = document.getElementById('outsourceName');
+        const p = document.getElementById('outsourcePhone');
+        if (n) n.value = outsourceContact.name;
+        if (p) p.value = outsourceContact.phone;
+        renderOutsourceNote();
+    };
+
+    /** سطرٌ يقول ما هو محفوظ وما ينقص — لا «تمّ» صامتة. */
+    function renderOutsourceNote(extra, color) {
+        const note = document.getElementById('outsourceNote');
+        if (!note) return;
+        const dial = waNumber(outsourceContact.phone);
+        const outCount = activeEmployees().filter(e => e.sponsorship === 'outsource').length;
+        const bits = [];
+        if (extra) bits.push(`<b style="color: ${color || 'var(--text)'};">${extra}</b>`);
+        bits.push(dial
+            ? `The follow-up button opens <b>+${escapeHtml(dial)}</b>`
+              + `${outsourceContact.name ? ` (${escapeHtml(outsourceContact.name)})` : ''} `
+              + `for anyone whose administrative status is <b>Outsource company</b>.`
+            : `<b style="color: var(--warning);">&#9888; No outsource company number saved yet.</b> `
+              + `Until it is, the follow-up button for an outsource employee opens WhatsApp without a contact, `
+              + `so you pick it yourself. Nothing is sent to a wrong number.`);
+        bits.push(`${outCount} employee(s) are currently on an outsource company. `
+            + `For everyone else the button opens WhatsApp with the message ready and <b>no contact chosen</b>, `
+            + `so you pick the mandoob or the office &mdash; no number is invented here.`);
+        note.innerHTML = bits.join('<br>');
+    }
+
+    /** يحفظ رقم شركة الأوت سورس. ⚠️ ولا يُحفظ رقمٌ لا يصلح. */
+    window.saveOutsourceContact = async function() {
+        const rawPhone = (document.getElementById('outsourcePhone').value || '').trim();
+        const name = (document.getElementById('outsourceName').value || '').trim();
+        if (!canEditProfiles()) { renderOutsourceNote('You do not have permission to change this.', 'var(--danger)'); return; }
+        // ⚠️ رقمٌ لا يفتحه واتساب يعني زرًّا يُخرج رسالة خطأ، فيُظنّ أن اللوحة
+        // معطوبة. والرفض مع بيان الصيغة أصدق. والتفريغ مسموح صراحةً.
+        if (rawPhone && !waNumber(rawPhone)) {
+            renderOutsourceNote('Not saved — WhatsApp cannot open that number. Write it as +974 5511 2233, '
+                + 'or just the 8 digits 55112233. A number from another country needs its country code.',
+                'var(--danger)');
+            return;
+        }
+        const before = outsourceContact.phone;
+        try {
+            await setDoc(doc(db, "settings", "outsource_company"),
+                { name, phone: rawPhone, updatedAt: serverTimestamp() }, { merge: true });
+            outsourceContact = { name, phone: rawPhone };
+            logAudit('Outsource company contact saved',
+                `${name || '(no name)'}: ${before || '(none)'} -> ${rawPhone || '(cleared)'}`);
+            // ⚠️⚠️ الترتيب مقصود: renderAdminStatus تُعيد رسم هذا السطر نفسه بلا
+            // رسالة، فلو نُوديت **بعد** رسالة «حُفظ» لَمحتها فورًا — فيضغط
+            // المالك Save ولا يرى شيئًا يحدث فيظنّ أنه لم يُحفظ. (وقع هذا فعلًا
+            // وكشفه الفحص.) فالجدول أولًا، ثم كلمة «حُفظ» فوقه.
+            renderAdminStatus();
+            renderOutsourceNote(rawPhone ? 'Saved.' : 'Number cleared.', 'var(--success)');
+        } catch (e) {
+            renderOutsourceNote('Could not save it: ' + e.message, 'var(--danger)');
+        }
+    };
+
     /** الموظفون العاملون الذين تستحقّ هويّتهم تنبيهًا — منتهية أو تنتهي قريبًا. */
     function qidAlertList() {
         return activeEmployees()
@@ -5766,7 +5979,7 @@
             || String(a.e.name || '').localeCompare(String(b.e.name || '')));
 
         if (!rows.length) {
-            body.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:16px;">No employee matches this filter.</td></tr>`;
+            body.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:16px;">No employee matches this filter.</td></tr>`;
         } else {
             body.innerHTML = rows.map(({ e, st }) => {
                 const id = escapeJsAttr(e.id);
@@ -5819,6 +6032,35 @@
                             + (editable ? `<br><button class="btn-ghost btn-sm" style="margin-top:5px;"
                                  onclick="openProcedureForm('${id}')">Edit</button>` : '');
                     })()}</td>
+                    <td>${(() => {
+                        const reason = followUpReason(e, st);
+                        // ⚠️ ولا يُترك الفراغ صامتًا: سطرٌ بلا زرٍّ يُقرأ «الزرّ
+                        // معطوب». يُقال إنه لا يحتاج متابعة، وهذا خبرٌ مطمئن.
+                        if (!reason) return `<span style="color: var(--text-faint); font-size: 12px;">nothing due</span>`;
+                        const isOut = e.sponsorship === 'outsource';
+                        const num = isOut ? waNumber(outsourceContact.phone) : '';
+                        const why = reason === 'qid_expired' ? 'Qatar ID expired'
+                                  : reason === 'qid_soon' ? `Qatar ID in ${st.days} day(s)`
+                                  : 'procedure in progress';
+                        // ⚠️ واللون يتبع الخطر: هويةٌ منتهية أحمر، وما دونها برتقالي.
+                        const cls = reason === 'qid_expired' ? 'btn-danger' : 'btn-warning';
+                        return `<button class="${cls} btn-sm" style="white-space: nowrap;"
+                                    onclick="sendAdminFollowUp('${id}')"
+                                    title="Open WhatsApp with this employee's details and what is needed"
+                                    >${iconSvg('plane','ic-sm')} WhatsApp</button>`
+                            + `<br><small style="color: var(--text-dim);">${escapeHtml(why)}</small>`
+                            // ⚠️ ويُقال إلى أين يفتح **قبل** الضغط، لا بعده.
+                            + (isOut
+                                ? `<br><small style="color: ${num ? 'var(--success)' : 'var(--warning)'}; font-weight: 700;">${
+                                    num ? '&rarr; outsource company'
+                                        : '&#9888; outsource &mdash; no company number saved'}</small>`
+                                : '')
+                            // ⚠️ ورقمٌ ناقص في ملف الموظف يُقال هنا: الرسالة تُرسل
+                            // «Phone: not recorded» وهو أهمّ ما يُطلب منها.
+                            + (!waNumber(e.phone)
+                                ? `<br><small style="color: var(--warning);">&#9888; no phone in his file</small>`
+                                : '');
+                    })()}</td>
                 </tr>`;
             }).join('');
         }
@@ -5849,10 +6091,25 @@
             + `destination became part of the choice</b>, so it only says "transfer" or "secondment" without saying `
             + `to which restaurant. Open each one and pick the destination &mdash; nothing was lost, it was just `
             + `never asked for.`);
+        // ⭐⭐ عدد من يحتاج متابعةً اليوم — يُشتقّ من نفس الدالة التي ترسم الزرّ،
+        // فلا يفترق الرقمُ عن عدد الأزرار المعروضة.
+        const due = all.filter(e => !!followUpReason(e, qidStatus(e)));
+        const dueNoPhone = due.filter(e => !waNumber(e.phone)).length;
+        if (due.length) notes.push(`<b>${due.length} employee(s) need following up today</b> &mdash; a Qatar ID `
+            + `that has expired or expires within ${QID_EXPIRY_ALERT_DAYS} days, or a procedure that is `
+            + `<b>In progress</b>. Each one has a <b>WhatsApp</b> button that opens the message already written: `
+            + `full name, Qatar ID number, his phone and what is needed.`
+            + (dueNoPhone ? ` <b style="color: var(--warning);">${dueNoPhone} of them has no phone number in `
+                + `his file</b>, so the message will say "Phone: not recorded" &mdash; add it in the employee's file.` : ''));
         notes.push(`Changing a status here saves at once and is recorded in the audit log, so you can see later `
             + `who changed what and when. The Qatar ID number and expiry are edited in the employee's own file, `
             + `not here &mdash; they are official document data and belong with the documents.`);
         document.getElementById('admStatusNote').innerHTML = notes.join('<br><br>');
+        // ⚠️ وسطر شركة الأوت سورس يُعاد رسمه: عددُ من هم عليها يتغيّر بتغيير
+        // خانةِ حالةٍ واحدة، فلو بقي قديمًا لقال رقمًا لم يَعُد صحيحًا.
+        renderOutsourceNote();
+        // أزرار المتابعة تحمل data-icon، وإعادة رسم innerHTML تمحو ما رُسم فيها.
+        if (typeof paintIcons === 'function') paintIcons(document.getElementById('tab-admin-status'));
     };
 
     /**
