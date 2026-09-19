@@ -5786,6 +5786,52 @@
     }
 
     /**
+     * ⭐⭐⭐ الترتيب الزمني الذي طلبه المالك:
+     *   «بعد أن يجدّد إقامته نرسل الميساج إلى المندوب».
+     *
+     * أي أنّ المُعارَ المنتهيةَ بطاقتُه له **مرحلتان**، لا زرٌّ واحد:
+     *   1) يُبلَّغ هو: جدّد في خمسة أيام وأرسلها للسكرتيرة.
+     *   2) فإذا جدّد فعلًا → يُرسَل إلى المندوب لبداية إجراء الإعارة.
+     *
+     * ⚠️⚠️ و«هل جدّد؟» لا تُخمَّن: يُحفظ عند الإبلاغ **تاريخُ الانتهاء الذي
+     * أُبلغ عنه** (qidNotice.forExpiry). فإذا صار تاريخُ الهوية في ملفه **أبعد**
+     * منه ولم تبقَ منتهية، فذلك تجديدٌ حدث فعلًا — قياسٌ لا ظنّ.
+     *
+     * ⚠️⚠️⚠️ ولا يُنبَّه إلى المندوب مُعارٌ بلا دليلٍ أنه في هذا المسار: لولا
+     * اشتراطُ أنّ التنبيه أُرسل سابقًا، لأضاء الزرُّ لكل مُعارٍ سليمِ الهوية بلا
+     * إجراء — ومنهم من أُنجزت إعارتُه ورقيًّا قبل سنة. وتنبيهٌ كاذب يُفقد الثقة
+     * بكل تنبيهٍ آخر.
+     *
+     * @returns {''|'notice_due'|'notice_sent'|'notice_overdue'|'renewed'}
+     */
+    function renewalState(emp, st) {
+        if (!emp || !st) return '';
+        if (!SECONDED_SPONSORSHIPS.includes(emp.sponsorship || '')) return '';
+        const n = emp.qidNotice || null;
+        if (st.state === 'expired') {
+            if (!n || !n.sentAt) return 'notice_due';
+            const daysSince = Math.max(0, daysBetweenInclusive(String(n.sentAt).slice(0, 10), todayISO()) - 1);
+            return daysSince > QID_RENEWAL_DAYS_ALLOWED ? 'notice_overdue' : 'notice_sent';
+        }
+        // لم تبقَ منتهية. فهل هو من أُبلغ وجدّد؟
+        if (n && n.sentAt && n.forExpiry && st.expiry && String(st.expiry) > String(n.forExpiry)) {
+            // ⚠️ وإن كان الإجراء قد سُجّل فعلًا فالمتابعة العادية تكفيه، ولا
+            // يُقال «ابدأ» لإجراءٍ بدأ.
+            const p = emp.adminProcedure || null;
+            if (!p || !p.type) return 'renewed';
+        }
+        return '';
+    }
+
+    /** عدد الأيام المتبقّية من مهلة الخمسة، أو سالبًا إن تجاوزها. */
+    function renewalDaysLeft(emp) {
+        const n = emp && emp.qidNotice;
+        if (!n || !n.sentAt) return null;
+        const daysSince = Math.max(0, daysBetweenInclusive(String(n.sentAt).slice(0, 10), todayISO()) - 1);
+        return QID_RENEWAL_DAYS_ALLOWED - daysSince;
+    }
+
+    /**
      * نصُّ التنبيه المُرسل إلى الموظف. عربيٌّ بنصّ المالك حرفيًّا، وتحته إنجليزيّ
      * — كثيرٌ من العاملين لا يقرأ العربية، ورسالةٌ لا تُفهَم لا تُنفَّذ.
      */
@@ -5841,14 +5887,39 @@
         document.body.appendChild(a);
         a.click();
         setTimeout(() => a.remove(), 0);
-        say(num
-            ? `Renewal notice opened for ${emp.name || empId} on +${num}.`
-            : `${emp.name || empId} has no phone number in his file — WhatsApp opened so you can pick him yourself. `
-              + `Add his number in the employee file so it opens directly next time.`,
-            num ? 'var(--success)' : 'var(--warning)');
         logAudit('QID renewal notice sent',
             `${emp.name || empId}: expired ${st.expiry}, ${QID_RENEWAL_DAYS_ALLOWED} days given`
             + `${num ? `, to +${num}` : ', no number on file'}`);
+        // ⚠️⚠️⚠️ ويُسجَّل أنه أُبلغ ومتى وعن **أيّ** تاريخِ انتهاء. وهذا هو ما
+        // يجعل الخطوة الثانية ممكنة: «بعد أن يجدّد إقامته نرسل الميساج إلى
+        // المندوب لكي يبدأ الإجراء» — فبلا هذا السجل لا يُعرف أنه جدّد، ولا
+        // تُقاس مهلة الخمسة أيام، ولا يُعلم من تجاوزها.
+        // ⚠️ حقلٌ واحد بـupdateDoc: لا يُمسّ راتبٌ ولا صورة هوية.
+        const notice = {
+            sentAt: new Date().toISOString(),
+            forExpiry: st.expiry || '',
+            daysAllowed: QID_RENEWAL_DAYS_ALLOWED,
+            sentBy: (currentUser && currentUser.email) || 'unknown',
+            toNumber: num || ''
+        };
+        updateDoc(doc(db, "employees", empId), { qidNotice: notice })
+            .then(() => {
+                emp.qidNotice = notice;
+                renderAdminStatus();
+                say(num
+                    ? `Renewal notice opened for ${emp.name || empId} on +${num}. `
+                      + `Recorded — the deadline is ${QID_RENEWAL_DAYS_ALLOWED} days from today, and once his `
+                      + `Qatar ID is renewed in his file this row will tell you to message the mandoob.`
+                    : `${emp.name || empId} has no phone number in his file — WhatsApp opened so you can pick him `
+                      + `yourself. Recorded all the same, so the ${QID_RENEWAL_DAYS_ALLOWED}-day deadline is tracked.`,
+                    num ? 'var(--success)' : 'var(--warning)');
+            })
+            .catch(e => {
+                // ⚠️ ويُقال إن لم يُسجَّل: الرسالة فُتحت فعلًا، لكن بلا السجل لا
+                // تُقاس المهلة ولا يُعرف أنه جدّد. فلا يُترك ظنًّا أنّ كل شيء تمّ.
+                say(`WhatsApp opened, but it could NOT be recorded: ${e.message} — press the button again, `
+                    + `otherwise the ${QID_RENEWAL_DAYS_ALLOWED}-day deadline is not tracked.`, 'var(--danger)');
+            });
     };
 
     /** هل يستحقّ هذا السطر زرَّ متابعة؟ ويُرجع السبب لا مجرّد نعم/لا. */
@@ -5861,6 +5932,10 @@
         // «قيد التنفيذ»: طلبٌ قُدّم ولم يتحرّك بعد غيرُ طلبٍ يُعمل عليه، والرسالة
         // تقول أيَّهما هو.
         if (p && p.state === 'submitted') return 'procedure_submitted';
+        // ⭐⭐⭐ الخطوة الثانية بطلبه: «بعد أن يجدّد إقامته نرسل الميساج إلى
+        // المندوب لكي يبدأ الإجراء». فبطاقتُه سليمةٌ الآن وإجراؤه لم يُسجَّل بعد،
+        // فالمطلوب من المندوب أن **يبدأ** لا أن يُتابع.
+        if (renewalState(emp, st) === 'renewed') return 'secondment_ready';
         return '';
     }
 
@@ -5922,6 +5997,13 @@
             if (p.submittedAt) L.push(`Submitted: ${p.submittedAt}`);
             if (p.handledBy) L.push(`Handled by: ${p.handledBy}`);
             if (p.note) L.push(`Note: ${p.note}`);
+        } else if (reason === 'secondment_ready') {
+            // ⭐⭐⭐ حالةُ «جدّد فعلًا»: المطلوب أن **يبدأ** الإجراء لا أن يُتابعه.
+            L.push(`*Required: please start the procedure to activate the secondment.*`);
+            L.push(`His Qatar ID has been RENEWED — the new expiry is ${st.expiry}.`);
+            if (emp.qidNotice && emp.qidNotice.forExpiry) {
+                L.push(`It had expired on ${emp.qidNotice.forExpiry}, which is why this was waiting.`);
+            }
         } else {
             // ⚠️ لا إجراء مسجَّل — يُقال، ولا يُسمّى إجراءٌ لم يقله أحد.
             L.push('*No procedure has been recorded in the system for this yet.*');
@@ -5934,6 +6016,8 @@
             // سُلّم، والثانية متابعةُ عملٍ جارٍ. وجملةٌ واحدة لهما تُلبّس المندوب.
             : reason === 'procedure_submitted'
                 ? 'the request has been submitted and we are following up on it'
+            : reason === 'secondment_ready'
+                ? 'his Qatar ID has been renewed, so the secondment procedure can now begin'
             : 'the procedure is in progress'}.`);
         return L.join('\n');
     }
@@ -6233,9 +6317,12 @@
                         const why = reason === 'qid_expired' ? 'Qatar ID expired'
                                   : reason === 'qid_soon' ? `Qatar ID in ${st.days} day(s)`
                                   : reason === 'procedure_submitted' ? 'submitted — chase the mandoob'
+                                  : reason === 'secondment_ready' ? 'renewed — mandoob starts it'
                                   : 'procedure in progress';
                         // ⚠️ واللون يتبع الخطر: هويةٌ منتهية أحمر، وما دونها برتقالي.
-                        const cls = reason === 'qid_expired' ? 'btn-danger' : 'btn-warning';
+                        // و«جدّد» أخضر: خبرٌ سارٌّ وعملٌ جاهز، لا تحذير.
+                        const cls = reason === 'qid_expired' ? 'btn-danger'
+                                  : reason === 'secondment_ready' ? 'btn-success' : 'btn-warning';
                         return `<button class="${cls} btn-sm" style="white-space: nowrap;"
                                     onclick="sendAdminFollowUp('${id}')"
                                     title="Open WhatsApp with this employee's details and what is needed"
@@ -6255,14 +6342,39 @@
                             // ⭐⭐⭐ وزرٌّ ثانٍ **إلى الموظف نفسه**: المُعار الذي
                             // انتهت بطاقته. رسالتان مختلفتان إلى شخصين مختلفين،
                             // فيُفصَل بينهما بخطٍّ كي لا تُضغط الخطأ.
+                            // ⭐⭐⭐ الخطوة الأولى: إبلاغُ الموظف نفسه. وحالتُها
+                            // تُقال بالحرف — أُبلغ متى، وكم بقي من الخمسة، ومن
+                            // تجاوزها. وزرُّ المندوب أعلاه يُوسَم بالانتظار كي لا
+                            // يُرسَل إليه قبل التجديد فلا يجد ما يبدأ به.
                             + (needsRenewalNotice(e, st)
-                                ? `<div style="margin-top:7px; padding-top:7px; border-top:1px dashed var(--border);">`
-                                  + `<button class="btn-warning btn-sm" style="white-space: nowrap;"
-                                        onclick="sendQidRenewalNotice('${id}')"
-                                        title="Message the employee himself: renew the Qatar ID within ${QID_RENEWAL_DAYS_ALLOWED} days and send it to the secretary"
-                                        >${iconSvg('plane','ic-sm')} Tell the employee</button>`
-                                  + `<br><small style="color: var(--text-dim);">seconded &mdash; renew within `
-                                  + `${QID_RENEWAL_DAYS_ALLOWED} days</small></div>`
+                                ? (() => {
+                                    const rs = renewalState(e, st);
+                                    const left = renewalDaysLeft(e);
+                                    const n = e.qidNotice || {};
+                                    let line;
+                                    if (rs === 'notice_due') {
+                                        line = `<small style="color: var(--text-dim);">seconded &mdash; not told yet</small>`;
+                                    } else if (rs === 'notice_overdue') {
+                                        line = `<small style="color: var(--danger); font-weight: 800;">`
+                                             + `&#9888; told ${escapeHtml(String(n.sentAt || '').slice(0, 10))} &mdash; `
+                                             + `${Math.abs(left)} day(s) OVERDUE</small>`;
+                                    } else {
+                                        line = `<small style="color: var(--text-dim);">told `
+                                             + `${escapeHtml(String(n.sentAt || '').slice(0, 10))} &mdash; `
+                                             + `${left} day(s) left of ${QID_RENEWAL_DAYS_ALLOWED}</small>`;
+                                    }
+                                    return `<div style="margin-top:7px; padding-top:7px; border-top:1px dashed var(--border);">`
+                                        + `<button class="${rs === 'notice_overdue' ? 'btn-danger' : 'btn-warning'} btn-sm"
+                                              style="white-space: nowrap;"
+                                              onclick="sendQidRenewalNotice('${id}')"
+                                              title="Message the employee himself: renew the Qatar ID within ${QID_RENEWAL_DAYS_ALLOWED} days and send it to the secretary"
+                                              >${iconSvg('plane','ic-sm')} ${rs === 'notice_due' ? 'Tell the employee' : 'Tell him again'}</button>`
+                                        + `<br>${line}`
+                                        // ⚠️ ويُقال إنّ المندوب ينتظر التجديد — فلا
+                                        // يُرسَل إليه الآن فلا يجد ما يبدأ به.
+                                        + `<br><small style="color: var(--text-faint); font-size: 11px;">`
+                                        + `The mandoob comes after he renews.</small></div>`;
+                                })()
                                 : '');
                     })()}</td>
                 </tr>`;
@@ -6299,6 +6411,17 @@
         // فلا يفترق الرقمُ عن عدد الأزرار المعروضة.
         const due = all.filter(e => !!followUpReason(e, qidStatus(e)));
         const dueNoPhone = due.filter(e => !waNumber(e.phone)).length;
+        // ⭐⭐⭐ المرحلتان تُعدّان بنفس الدالتين اللتين ترسمان زرَّيهما
+        const overdue = all.filter(e => renewalState(e, qidStatus(e)) === 'notice_overdue');
+        const ready = all.filter(e => renewalState(e, qidStatus(e)) === 'renewed');
+        if (overdue.length) notes.push(`<b style="color: var(--danger);">${overdue.length} employee(s) were told to `
+            + `renew and the ${QID_RENEWAL_DAYS_ALLOWED} days have passed.</b> Their Qatar ID is still expired in `
+            + `their file, so either it has not been renewed or the renewed copy never reached the secretary to be `
+            + `entered. Someone whose Qatar ID has expired cannot legally work.`);
+        if (ready.length) notes.push(`<b style="color: var(--success);">&#10004; ${ready.length} employee(s) have `
+            + `RENEWED their Qatar ID after being told.</b> Their row now has a green button that messages the `
+            + `<b>mandoob</b> to <b>start</b> the procedure that activates the secondment &mdash; which is the step `
+            + `that was waiting on the renewal. Once you record the procedure, the row goes back to normal follow-up.`);
         // ⭐⭐ ومن يُنبَّه هو نفسه — يُعدّ بنفس الدالة التي ترسم زرَّه
         const renewals = all.filter(e => needsRenewalNotice(e, qidStatus(e)));
         if (renewals.length) notes.push(`<b style="color: var(--warning);">${renewals.length} seconded `
