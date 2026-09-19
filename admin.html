@@ -5867,28 +5867,26 @@
     }
 
     /**
-     * نصُّ التنبيه المُرسل إلى الموظف. عربيٌّ بنصّ المالك حرفيًّا، وتحته إنجليزيّ
-     * — كثيرٌ من العاملين لا يقرأ العربية، ورسالةٌ لا تُفهَم لا تُنفَّذ.
+     * نصُّ التنبيه المُرسل إلى الموظف — بالإنجليزية وحدها.
+     * ⚠️ بطلب المالك: «كل الرسائل بالإنجليزية، لا داعي إلى العربي». وكان النصّ
+     * بلغتين، فأُزيلت العربية ومعناه محفوظٌ كما كتبه حرفًا بحرف: انتهت، جدّدها
+     * في خمسة أيام، أرسلها للسكرتيرة، لنبدأ إجراء تفعيل الإعارة.
+     * ⚠️ ولا يُكتب حرفٌ عربيٌّ في أيّ رسالةٍ تُرسَل — وفحصٌ يحرس ذلك.
      */
     function qidRenewalNoticeText(emp, st) {
         const L = [];
-        L.push('*تنبيه إداري — مجموعة الشيخة*');
+        L.push('*Administrative notice — Al Sheikha Group*');
         L.push('');
         L.push(`${emp.name || emp.id}`);
-        L.push(`رقم البطاقة الشخصية: ${emp.qidNumber || 'غير مسجَّل'}`);
-        L.push(`تاريخ الانتهاء: ${st.expiry || 'غير مسجَّل'}`);
+        L.push(`Qatar ID: ${emp.qidNumber || 'not recorded'}`);
+        L.push(`Expiry date: ${st.expiry || 'not recorded'}`
+            + `${st.days !== null ? ` — expired ${Math.abs(st.days)} day(s) ago` : ''}`);
         L.push('');
-        L.push(`بطاقتك الشخصية قد انتهت صلاحيتها، لذلك وجب عليك تجديدها في مدة أقصاها `
-            + `${QID_RENEWAL_DAYS_ALLOWED} أيام وإرسالها إلى السكرتيرة، وذلك لنتمكن من بداية `
-            + `الإجراء لتفعيل الإعارة.`);
+        L.push(`Your Qatar ID has expired. You are therefore required to renew it within `
+            + `${QID_RENEWAL_DAYS_ALLOWED} days at the latest and to send it to the secretary, `
+            + `so that we can start the procedure to activate your secondment.`);
         L.push('');
-        L.push('———————————————');
-        L.push('');
-        L.push(`Your Qatar ID has expired. You must renew it within ${QID_RENEWAL_DAYS_ALLOWED} days at the `
-            + `latest and send it to the secretary, so that we can start the procedure to activate your secondment.`);
-        L.push('');
-        L.push(`Qatar ID: ${emp.qidNumber || 'not recorded'} · expired on ${st.expiry || 'not recorded'}`
-            + `${st.days !== null ? ` (${Math.abs(st.days)} day(s) ago)` : ''}`);
+        L.push('Thank you.');
         return L.join('\n');
     }
 
@@ -6003,13 +6001,13 @@
         L.push('');
         // ⚠️ تحيّةٌ بالعربية والإنجليزية: «بكل أدب» بنصّه، ولا أعرف لغة المندوب —
         // فتُقال بالاثنتين، والبياناتُ أرقامٌ وأسماءُ لاتينية لا تحتاج ترجمة.
-        // ⚠️⚠️⚠️ الأدب مُوجز عن قصد. الحرف العربي يُرمَّز ستّة أحرفٍ في الرابط
-        // (%D8%A7)، فتحيّةٌ وخاتمةٌ مُطوَّلتان بلغتين رفعتا الرابط إلى 2555 حرفًا —
-        // وواتساب يقصّ ما زاد على ألفين، فتُقصّ **نهاية** الرسالة حيث يقع الطلب
-        // نفسه. كشفه الفحص بقياس الطول، لا بالنظر.
+        // ⚠️ بالإنجليزية وحدها بطلب المالك: «كل الرسائل بالإنجليزية، لا داعي إلى
+        // العربي». وإزالةُ العربية وفّرت نحو ألف حرفٍ من حدّ الرابط (الحرف العربي
+        // يُرمَّز ستّة أحرف: ا → %D8%A7)، فصار الأدبُ يُقال كاملًا بلا إيجازٍ مُخلّ.
         L.push(isNew
-            ? 'السلام عليكم. معاملة جديدة، نرجو التكرّم بالبدء فيها. التفاصيل:'
-            : 'السلام عليكم. نستفسر بلطف عن مستجدات المعاملة:');
+            ? 'Greetings. We have a new case and would kindly ask you to begin its procedures. '
+              + 'The full details are below.'
+            : 'Greetings. We would kindly ask you for an update on the following case.');
         L.push('');
         L.push('*— EMPLOYEE DETAILS —*');
         L.push(`Name: ${emp.name || emp.id}`);
@@ -6079,11 +6077,12 @@
         // ⭐⭐⭐ الخاتمة: طلبٌ صريحٌ مؤدَّب. والمعاملة الجديدة يُطلب فيها البدء،
         // ويُعرض إرسال أيّ مستندٍ آخر — فسؤالُه عنه لاحقًا يُعطّل يومًا كاملًا.
         if (isNew) {
-            L.push('نرجو البدء في الإجراءات اللازمة، وإبلاغنا بأيّ مستند تحتاجه. شكرًا لتعاونكم.');
-            L.push('Kindly begin the procedures for this case, and tell us if you need any other document. Thank you.');
+            L.push('We would be grateful if you could kindly begin the necessary procedures for this case, '
+                + 'and let us know if you need any other document or information from us. '
+                + 'Thank you for your help.');
         } else {
-            L.push('نرجو إفادتنا بما وصلت إليه المعاملة. شكرًا لتعاونكم.');
-            L.push('Kindly let us know where this has reached. Thank you.');
+            L.push('We would be grateful if you could kindly let us know where this has reached, '
+                + 'and whether anything is needed from our side. Thank you for your help.');
         }
         // ⚠️⚠️ سببُ الرسالة يُحذف **فقط** حين يقوله سطرُ «Required» أصلًا، فتكرارُه
         // يأكل من حدّ الرابط. أما معاملةٌ لا إجراءَ مسجَّلًا لها فسطرُ السبب هو
