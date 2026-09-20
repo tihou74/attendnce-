@@ -823,10 +823,23 @@ service cloud.firestore {
     // no rule for it and the read is refused.
     //
     // The accountant may read it because it is a purchase figure and it belongs
-    // in his stock valuation. NOT the viewers: Mrs Fatima's screen shows what is
-    // being sold and for how much, never what it cost us.
+    // in his stock valuation.
+    //
+    // ⚠️⚠️ THE VIEWERS WERE ADDED BY THE OWNER'S EXPLICIT INSTRUCTION: "هاي
+    // السيدة فاطمة يجب ان يظهر سعر الكوست". This rule previously refused them,
+    // with a comment saying her screen shows what we sell for and never what we
+    // paid — that was MY judgement, and the owner has overruled it. It is a
+    // reasonable call: her panel already shows the shops' sales, the real income,
+    // the commission and what is owed to Shanton, so the purchase price is not a
+    // wider circle of trust than she already stands in.
+    //
+    // ⚠️⚠️⚠️ AND THE KIOSK IS STILL REFUSED, DELIBERATELY. That is not the same
+    // decision. The viewers are two named email/password accounts the owner
+    // created himself. The kiosk is an ANONYMOUS sign-in, which in practice means
+    // anybody who has the saleswoman's link — so cost there would be our purchase
+    // price published to the world. Never add isKiosk() to this rule.
     match /abaya_product_costs/{productId} {
-      allow read: if isAdmin() || isAccountant();
+      allow read: if isAdmin() || isAccountant() || isViewer();
       allow write: if isAdmin();
     }
 

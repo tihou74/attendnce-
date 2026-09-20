@@ -328,10 +328,17 @@
     .catg { display: grid; gap: var(--space-4); grid-template-columns: 1fr 1fr; }
     @media (min-width: 620px) { .catg { grid-template-columns: repeat(3, 1fr); } }
     @media (min-width: 900px) { .catg { grid-template-columns: repeat(4, 1fr); } }
+    /* ⚠️ البطاقة زرٌّ حقيقيّ لا div عليه onclick: الضغط بلوحة المفاتيح وقارئ
+       الشاشة يعملان بلا أي كود. ولهذا **كل ما داخلها span** — وسمُ <p> أو <div>
+       داخل <button> ترميزٌ غير صحيح، وبعض المتصفّحات تُخرجه من الزرّ فتنكسر
+       البطاقة. ومن هنا أُبطلت تنسيقات الزرّ العامة أدناه. */
     .cat {
         background: var(--color-surface); border: var(--border-hairline) solid var(--color-border);
         border-radius: var(--radius-md); overflow: hidden; display: flex; flex-direction: column;
+        width: 100%; padding: 0; min-height: 0; text-align: start; cursor: pointer;
+        font-family: inherit; font-size: inherit; font-weight: inherit; color: inherit;
     }
+    .cat:hover { background: var(--color-surface-2); border-color: var(--color-primary); }
     .cat.out { opacity: 0.55; }
     .cat .ph {
         width: 100%; aspect-ratio: 4 / 5; object-fit: cover; display: block;
@@ -341,7 +348,7 @@
         display: flex; align-items: center; justify-content: center;
         color: var(--color-text-muted); font-size: 11.5px; font-weight: 700; text-align: center;
     }
-    .cat .bd { padding: 10px 11px 12px; display: flex; flex-direction: column; gap: 4px; }
+    .cat .bd { padding: 10px 11px 12px; display: flex; flex-direction: column; gap: 4px; width: 100%; }
     /* ⚠️ الباركود يبقى LTR دائمًا ولو كانت الصفحة عربية — رقمٌ معكوسٌ لا يُقرأ. */
     .cat .code { direction: ltr; font-family: ui-monospace, monospace; font-size: 11.5px;
         font-weight: 700; color: var(--color-text-muted); }
@@ -370,7 +377,71 @@
     .cat .plain { font-size: var(--text-base); font-weight: 800; direction: ltr; margin-top: 2px; }
     .cat .qt { font-size: 12px; font-weight: 700; margin-top: 3px; }
     .cat .qt.zero { color: var(--color-danger); }
-    .cat .per { font-size: 11px; color: var(--color-text-muted); line-height: 1.7; margin-top: 2px; }
+    .cat .per { display: block; font-size: 11px; color: var(--color-text-muted); line-height: 1.7; margin-top: 2px; }
+    /* ⚠️ الكوست: لونٌ ووسمٌ مختلفان عن سعري البيع عن قصد — رقمٌ ثالثٌ بلا وسمٍ
+       واضح كان يُقرأ سعرَ بيعٍ ثالثًا. */
+    .cat .prow .v.cost { color: var(--color-text-muted); font-weight: 700; }
+    .cat .tap {
+        display: block; font-size: 10.5px; font-weight: 700; color: var(--color-primary);
+        margin-top: 5px;
+    }
+
+    /* ============ نافذة العباية: الصورة **كاملةً** ============
+       ⚠️⚠️ صورة البطاقة مقصوصة (object-fit: cover) لتتساوى البطاقات في الشبكة،
+       وهذا يقطع أطراف العباية. وأمرُ المالك: «عندما تظغط على العباية تظهر صورة
+       كل العباية». فهنا object-fit: contain — الصورة كلُّها بلا قصٍّ ولا تمديد. */
+    .catmodal {
+        position: fixed; inset: 0; z-index: 90; display: flex; align-items: center;
+        justify-content: center; padding: var(--space-4);
+        background: rgba(0, 0, 0, 0.72);
+        -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+    }
+    .catmodal .box {
+        background: var(--color-surface); border-radius: var(--radius-lg);
+        max-width: 520px; width: 100%; max-height: 92vh; overflow-y: auto;
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+        -webkit-overflow-scrolling: touch;
+    }
+    .catmodal .top {
+        display: flex; align-items: flex-start; justify-content: space-between;
+        gap: var(--space-3); padding: var(--space-4) var(--space-4) 0;
+    }
+    .catmodal .top h3 { margin: 0; font-size: var(--text-base); font-weight: 800; line-height: 1.4; }
+    .catmodal .top .c { direction: ltr; font-family: ui-monospace, monospace; font-size: 11.5px;
+        font-weight: 700; color: var(--color-text-muted); display: block; margin-top: 2px; }
+    .catmodal .x {
+        width: auto; min-height: 36px; padding: 0 12px; flex: 0 0 auto;
+        background: transparent; color: var(--color-text); border: 1px solid var(--color-border-strong);
+        font-size: 13px;
+    }
+    /* ⚠️ الصورة كاملةً: contain لا cover. والخلفية داكنةٌ خفيفة كي تُرى حدودُ
+       عبايةٍ سوداء على خلفيةٍ بيضاء. */
+    .catmodal .full {
+        display: block; width: 100%; max-height: 62vh; object-fit: contain;
+        background: var(--color-surface-2); margin: var(--space-4) 0 0;
+    }
+    .catmodal .noimg {
+        display: flex; align-items: center; justify-content: center; height: 180px;
+        background: var(--color-surface-2); margin: var(--space-4) 0 0;
+        color: var(--color-text-muted); font-size: var(--text-sm); font-weight: 700;
+    }
+    .catmodal .rows { padding: var(--space-4); }
+    .catmodal .r {
+        display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3);
+        padding: 7px 0; border-bottom: var(--border-hairline) solid var(--color-border);
+        font-size: var(--text-sm);
+    }
+    .catmodal .r:last-child { border-bottom: 0; }
+    .catmodal .r .k { color: var(--color-text-muted); font-weight: 700; }
+    .catmodal .r .v { font-weight: 800; direction: ltr; white-space: nowrap; }
+    .catmodal .r .v.was { color: var(--color-text-muted); text-decoration: line-through; }
+    .catmodal .r .v.disc { color: var(--color-danger); }
+    .catmodal .r .v.cost { color: var(--color-text-muted); }
+    .catmodal .r .v.zero { color: var(--color-danger); }
+    .catmodal .sub {
+        margin: var(--space-3) 0 0; font-size: var(--text-xs); color: var(--color-text-muted);
+        line-height: 1.8;
+    }
     .hidden { display: none !important; }
 </style>
 </head>
@@ -646,6 +717,25 @@
                 <p class="note" id="catSeason" style="margin: 0 0 var(--space-4);"></p>
                 <div class="catg" id="catGrid"></div>
                 <p class="note" id="catNote"></p>
+            </div>
+        </div>
+
+        <!-- ============ نافذة العباية ============
+             ⚠️ بأمر المالك: «عندما تظغط على العباية تظهر صورة كل العباية».
+             صورةُ البطاقة مقصوصةٌ لتتساوى البطاقات، وهذه تُظهرها **كاملة**.
+             ⚠️ وتُغلق بثلاث طرق: زرُّ الإغلاق، والضغط خارج الصندوق، وزرّ Escape —
+             نافذةٌ لا تُغلق إلا بزرٍّ صغيرٍ في زاويةٍ تُحبس القارئ على الهاتف. -->
+        <div id="catModal" class="catmodal hidden" role="dialog" aria-modal="true" aria-labelledby="catModalName">
+            <div class="box" id="catModalBox">
+                <div class="top">
+                    <div>
+                        <h3 id="catModalName">&mdash;</h3>
+                        <span class="c" id="catModalCode">&mdash;</span>
+                    </div>
+                    <button type="button" class="x" id="catModalClose" aria-label="Close">&#10005; Close</button>
+                </div>
+                <div id="catModalImgWrap"></div>
+                <div class="rows" id="catModalRows"></div>
             </div>
         </div>
 
@@ -1134,6 +1224,11 @@
     let catLoadError = '';
     let catShop = '';
     let catHideOut = false;
+    // معرّف العباية المفتوحة في النافذة، أو '' — ويُستعمل لإعادة رسم أرقامها.
+    // ⚠️ يُعرَّف **هنا** مع بقيّة الحالة لا عند النافذة أسفل الملف: showCatalogShop
+    // وrenderCatalog تقرأانه وهما مُعرَّفتان قبلها، فتعريفٌ متأخّر يُخاطر بخطأ
+    // TDZ لو نُوديت إحداهما أثناء تحميل الصفحة.
+    let catModalOpen = '';
     const catImages = new Map();    // id -> data URL (تُقرأ مرّةً واحدة لهذه الجلسة)
 
     /**
@@ -1161,10 +1256,20 @@
         if (catalogLoaded && !force) { renderCatalog(); return; }
         catLoadError = '';
         try {
-            const [prodSnap, seasonSnap] = await Promise.all([
+            const [prodSnap, costSnap, seasonSnap] = await Promise.all([
                 getDocs(collection(db, 'abaya_products')),
+                // ⚠️⚠️ الكوست مجموعةٌ مستقلّة، وفُتحت للمشاهدين بأمر المالك:
+                // «هاي السيدة فاطمة يجب ان يظهر سعر الكوست». وهي تحتاج **نشر
+                // القواعد** من جديد، وإلّا رُفضت هذه القراءة وحدها.
+                // ⚠️⚠️⚠️ وشاشة البياعة ما زالت محجوبةً عنها عن قصد: دخولُها مجهول،
+                // أي أنّ قارئها كلُّ من يملك الرابط.
+                getDocs(collection(db, 'abaya_product_costs')),
                 getDoc(doc(db, 'settings', 'abaya_discount'))
             ]);
+            // ⚠️ فشلُ الكوست وحده لا يُسقط القائمة: Promise.all يرمي، ولهذا
+            // تُقرأ القيمة بحذرٍ أدناه ويبقى الكوست صفرًا إن غاب مستندُه.
+            const costById = {};
+            costSnap.forEach(d => { costById[d.id] = Number((d.data() || {}).cost || 0) || 0; });
             catProducts = [];
             prodSnap.forEach(d => {
                 const v = d.data() || {};
@@ -1177,6 +1282,7 @@
                     name: String(v.name || ''),
                     price: Number(v.price || 0) || 0,
                     discountPrice: Number(v.discountPrice || 0) || 0,
+                    cost: costById[d.id] || 0,
                     qty: (v.qty && typeof v.qty === 'object') ? v.qty : {},
                     hasImage: v.hasImage === true
                 });
@@ -1197,6 +1303,9 @@
 
     function showCatalogShop(which) {
         catShop = which;
+        // ⚠️ نافذةٌ مفتوحةٌ تُغلق عند تغيير المحل أو الخروج من القسم: أعدادُها
+        // تخصّ محلًّا بعينه، فبقاؤها بعد تغييره يُظهر رقمَ محلٍّ آخر.
+        if (catModalOpen) catCloseModal();
         el('catChooser').classList.toggle('hidden', !!which);
         el('catHint').classList.toggle('hidden', !!which);
         el('catPanel').classList.toggle('hidden', !which);
@@ -1289,6 +1398,17 @@
             return String(a.code).localeCompare(String(b.code));
         });
 
+        // ⚠️⚠️ النافذة المفتوحة تُحدَّث مع كل رسم: الشاشة تُقرأ من جديد كل دقيقة،
+        // والبياعات تُنقص الأعداد طول اليوم. فبلا هذا كانت النافذة تُجمّد الرقم
+        // لحظةَ الضغط وتبقى تقول «بقيت ٣» وقد نفدت.
+        // ⚠️ وإن حُذفت العباية أو أخفاها المالك أثناء فتحها تُغلق النافذة — بقاؤها
+        // مفتوحةً على عبايةٍ لم تبقَ في الكتالوج يُظهر بيانات لا وجود لها.
+        if (catModalOpen) {
+            const openP = catProducts.find(x => x.id === catModalOpen);
+            if (openP) catRenderModalRows(openP);
+            else catCloseModal();
+        }
+
         if (!rows.length) {
             el('catGrid').innerHTML = '';
             el('catNote').innerHTML = catProducts.length
@@ -1309,8 +1429,10 @@
             const active = hasDisc && catSeasonOn;
             const off = hasDisc && p.price
                 ? Math.round((1 - Number(p.discountPrice) / Number(p.price)) * 100) : 0;
+            // ⚠️ span لا p: البطاقة صارت <button>، و<p> داخل <button> ترميزٌ غير
+            // صحيح وبعض المتصفّحات تُخرجه من الزرّ فتنكسر البطاقة.
             const per = all
-                ? `<p class="per">${ABAYA_SHOPS.map(s => `${escapeHtml(s)}: <b>${catQtyOf(p, s)}</b>`).join(' &middot; ')}</p>`
+                ? `<span class="per">${ABAYA_SHOPS.map(s => `${escapeHtml(s)}: <b>${catQtyOf(p, s)}</b>`).join(' &middot; ')}</span>`
                 : '';
             // ⚠️⚠️ سطران فقط: قبل الخصم وبعد الخصم. وكان تحتهما سطرٌ ثالث
             // («TAKEN NOW» مع الرقم المأخوذ) فأمر المالك بنزعه: «انزع كلمت تيكت
@@ -1325,18 +1447,28 @@
                 + `<span class="prow"><span class="k">After discount</span>`
                   + `<span class="v disc">${money(p.discountPrice)}`
                   + (off > 0 ? `<span class="off">-${off}%</span>` : '') + `</span></span>`
-                : `<span class="plain">${money(p.price)} QAR</span>`;
-            return `<div class="cat${n <= 0 ? ' out' : ''}">`
+                : `<span class="prow"><span class="k">Price</span>`
+                  + `<span class="v">${money(p.price)}</span></span>`;
+            // ⚠️⚠️ الكوست بأمر المالك: «هاي السيدة فاطمة يجب ان يظهر سعر الكوست».
+            // ⚠️ وموسومٌ «Cost» بلونٍ باهت عن قصد: رقمٌ ثالثٌ بلا وسمٍ مميَّز كان
+            // يُقرأ سعرَ بيعٍ ثالثًا، وقد تقوله لزبونةٍ فتبيع بالخسارة.
+            // ⚠️ ولا يُعرض صفرًا: صفرٌ في خانة كوست يُقرأ «جاءت مجّانًا»، والحقيقة
+            // أن المالك لم يُدخل كوستَها بعد. فيُقال ذلك صريحًا.
+            const costRow = `<span class="prow"><span class="k">Cost</span>`
+                + `<span class="v cost">${Number(p.cost) > 0 ? money(p.cost) : 'not entered'}</span></span>`;
+            return `<button type="button" class="cat${n <= 0 ? ' out' : ''}" data-catopen="${escapeHtml(p.id)}">`
                 + (p.hasImage
                     ? `<img class="ph" data-catimg="${escapeHtml(p.id)}" alt="${escapeHtml(p.name || p.code)}">`
-                    : `<div class="ph none">No picture<br>yet</div>`)
-                + `<div class="bd">`
+                    : `<span class="ph none">No picture<br>yet</span>`)
+                + `<span class="bd">`
                 + `<span class="code">${escapeHtml(p.code)}</span>`
                 + (p.name ? `<span class="nm">${escapeHtml(p.name)}</span>` : '')
                 + prices
+                + costRow
                 + `<span class="qt${n <= 0 ? ' zero' : ''}">${n <= 0 ? 'Sold out' : n + ' piece(s) left'}</span>`
                 + per
-                + `</div></div>`;
+                + `<span class="tap">Tap to see the whole abaya &rarr;</span>`
+                + `</span></button>`;
         }).join('');
 
         const soldOut = rows.filter(p => qtyFor(p) <= 0).length;
@@ -1356,6 +1488,127 @@
 
         observeCatalogImages();
     }
+
+    // =====================================================================
+    // ⭐⭐⭐ نافذة العباية — الصورة **كاملةً** عند الضغط
+    // ---------------------------------------------------------------------
+    // بأمر المالك: «عندما تظغط على العباية تظهر صورة كل العباية».
+    // ⚠️ صورةُ البطاقة مقصوصةٌ (object-fit: cover) لتتساوى البطاقات في الشبكة —
+    // وهو ما يقطع أطراف العباية. وهنا contain: الصورة كلُّها بلا قصٍّ ولا تمديد.
+    // ⚠️ ولا تُقرأ الصورة من جديد إن كانت محفوظة: catImages هي نفسها التي تُغذّي
+    // البطاقات، فالضغطُ على بطاقةٍ رُئيت لا يُنزّل بايتًا واحدًا.
+    // =====================================================================
+    // (catModalOpen مُعرَّفٌ أعلى الملف مع بقيّة الحالة — انظر الملاحظة هناك.)
+
+    function catCloseModal() {
+        catModalOpen = '';
+        el('catModal').classList.add('hidden');
+        // ⚠️ تُفرَّغ الصورة عند الإغلاق: صورةٌ بقيت في DOM تبقى في ذاكرة الهاتف،
+        // وهي نحو 160KB لكل واحدة.
+        el('catModalImgWrap').innerHTML = '';
+        // ⚠️ ويُعاد تمرير الصفحة: حُبس أثناء فتح النافذة فلا تتحرّك الخلفية تحت
+        // إصبعها، ونسيانُ إرجاعه يترك الصفحة **لا تتمرّر** بعد الإغلاق.
+        document.body.style.overflow = '';
+    }
+
+    /**
+     * صفوفُ التفاصيل وحدها — مفصولةٌ عن الفتح عن قصد.
+     * ⚠️ السبب: الشاشة تُحدَّث كل دقيقة، والبياعات تُنقص الأعداد طول اليوم. فبلا
+     * هذا الفصل كانت النافذة تُجمّد الرقم لحظةَ الضغط وتبقى تقول «بقيت ٣» وقد
+     * نفدت. وتُحدَّث الصفوف وحدها بلا مسّ الصورة ولا سلبِ التركيز منها.
+     */
+    function catRenderModalRows(p) {
+        const hasDisc = catHasDiscount(p);
+        const active = hasDisc && catSeasonOn;
+        const off = hasDisc && p.price
+            ? Math.round((1 - Number(p.discountPrice) / Number(p.price)) * 100) : 0;
+
+        el('catModalName').textContent = p.name || p.code;
+        el('catModalCode').textContent = p.code;
+
+        const row = (k, v, cls) => `<span class="r"><span class="k">${k}</span>`
+            + `<span class="v${cls ? ' ' + cls : ''}">${v}</span></span>`;
+        const all = catShop === CAT_ALL;
+        const here = all ? catQtyTotal(p) : catQtyOf(p, catShop);
+        let rows = '';
+        if (hasDisc) {
+            rows += row('Before discount', money(p.price) + ' QAR', active ? 'was' : '');
+            rows += row('After discount', money(p.discountPrice) + ' QAR'
+                + (off > 0 ? ` <span class="off">-${off}%</span>` : ''), 'disc');
+        } else {
+            rows += row('Price', money(p.price) + ' QAR');
+        }
+        // ⚠️ الكوست بأمر المالك — و«not entered» لا صفر: الصفر يُقرأ «مجّانًا».
+        rows += row('Cost', Number(p.cost) > 0 ? money(p.cost) + ' QAR' : 'not entered yet', 'cost');
+        rows += row(all ? 'In all shops' : 'In ' + escapeHtml(catShop),
+            here <= 0 ? 'Sold out' : here + ' piece(s)', here <= 0 ? 'zero' : '');
+        // ⚠️ وتفصيلُ كل محلٍّ دائمًا في النافذة لا في «الكل» وحده: هذا هو الموضع
+        // الذي تُسأل فيه «وهل توجد في محلٍّ آخر؟» — وجوابُه هنا يوفّر تنقّلًا.
+        ABAYA_SHOPS.forEach(s => {
+            const n = catQtyOf(p, s);
+            rows += row('&mdash; ' + escapeHtml(s), n <= 0 ? '0' : String(n), n <= 0 ? 'zero' : '');
+        });
+        el('catModalRows').innerHTML = rows
+            + `<p class="sub">`
+            + (active
+                ? `The discount season is <b>open</b>, so <b>${money(p.discountPrice)} QAR</b> is what the customer pays.`
+                : (hasDisc
+                    ? `The discount season is <b>closed</b>, so <b>${money(p.price)} QAR</b> is what the customer pays.`
+                    : `This abaya has no discount price.`))
+            + `<br>Cost is what we paid. It is shown to you and to the owner only &mdash; the saleswomen's screen `
+            + `cannot read it at all.</p>`;
+    }
+
+    async function catOpenModal(id) {
+        const p = catProducts.find(x => x.id === id);
+        if (!p) return;
+        catModalOpen = id;
+        el('catModalName').textContent = p.name || p.code;
+        el('catModalCode').textContent = p.code;
+        catRenderModalRows(p);
+        document.body.style.overflow = 'hidden';
+
+        // ---- الصورة كاملةً
+        const wrap = el('catModalImgWrap');
+        if (!p.hasImage) {
+            wrap.innerHTML = `<div class="noimg">No picture has been uploaded for this abaya</div>`;
+        } else if (catImages.has(id)) {
+            wrap.innerHTML = `<img class="full" src="${catImages.get(id)}" alt="${escapeHtml(p.name || p.code)}">`;
+        } else {
+            wrap.innerHTML = `<div class="noimg">Loading the picture...</div>`;
+            try {
+                const snap = await getDoc(doc(db, 'abaya_product_images', id));
+                const url = safePhoto(snap.exists() ? snap.data().imageBase64 : '');
+                // ⚠️ يُتحقّق أنّ النافذة ما زالت على نفس العباية: لو أغلقتها أو
+                // فتحت غيرها أثناء القراءة لظهرت صورةُ عبايةٍ فوق تفاصيل أخرى.
+                if (catModalOpen !== id) return;
+                if (url) {
+                    catImages.set(id, url);
+                    wrap.innerHTML = `<img class="full" src="${url}" alt="${escapeHtml(p.name || p.code)}">`;
+                } else {
+                    wrap.innerHTML = `<div class="noimg">The picture could not be read</div>`;
+                }
+            } catch (e) {
+                if (catModalOpen === id) wrap.innerHTML = `<div class="noimg">The picture could not be read</div>`;
+            }
+        }
+        el('catModal').classList.remove('hidden');
+        el('catModalClose').focus();
+    }
+
+    el('catGrid').addEventListener('click', (ev) => {
+        const b = ev.target.closest('button[data-catopen]');
+        if (b) catOpenModal(b.getAttribute('data-catopen'));
+    });
+    el('catModalClose').addEventListener('click', catCloseModal);
+    // الضغط خارج الصندوق يُغلق
+    el('catModal').addEventListener('click', (ev) => {
+        if (!ev.target.closest('#catModalBox')) catCloseModal();
+    });
+    // ⚠️ وEscape: نافذةٌ لا تُغلق إلا بزرٍّ صغيرٍ في زاويةٍ تحبس القارئ.
+    document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape' && !el('catModal').classList.contains('hidden')) catCloseModal();
+    });
 
     /**
      * ⭐ تُقرأ صورةُ كل بطاقة لحظةَ وصولها إلى الشاشة، ومرّةً واحدة.
