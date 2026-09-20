@@ -1266,6 +1266,29 @@
             return true;
         });
 
+        // ---- الترتيب: ذواتُ التخفيض أوّلًا ----------------------------------
+        // ⚠️ بأمر المالك: «ضع الاشياء التي عليها تخفيضات هي تظهر اول بعدها
+        // الاعادي».
+        // ⚠️⚠️ والمعيار **وجودُ سعر خصمٍ مكتوب** لا كونُ الموسم مفتوحًا: الرقمان
+        // يُعرضان دائمًا (بأمره كذلك)، فلو عُلّق الترتيب على الموسم لتبدّل صفُّ
+        // البطاقات كلَّما فُتح الموسم أو أُغلق — وقائمةٌ يتبدّل ترتيبُها بلا سببٍ
+        // ظاهر تُفقد القارئ موضعَه.
+        // ⚠️ وفرزٌ ثانويّ: المتوفّر قبل الناقص **داخل كل مجموعة** — فلا يتصدّر
+        // الشاشةَ صفٌّ من عباياتٍ نفدت. وهذا لا ينقض أمره: كلُّ ذوات التخفيض
+        // تبقى فوق كلِّ العادية.
+        // ⚠️⚠️ والفرز على `rows` وحدها — وهي مصفوفةٌ جديدة من filter. ولو فُرزت
+        // `catProducts` نفسها لتبدّل ترتيبُ المصدر، ومنه تُبنى أعدادُ أزرار
+        // المحلات، فيتغيّر ما لا علاقة له بالعرض.
+        rows.sort((a, b) => {
+            const da = catHasDiscount(a) ? 0 : 1;
+            const db = catHasDiscount(b) ? 0 : 1;
+            if (da !== db) return da - db;
+            const oa = qtyFor(a) > 0 ? 0 : 1;
+            const ob = qtyFor(b) > 0 ? 0 : 1;
+            if (oa !== ob) return oa - ob;
+            return String(a.code).localeCompare(String(b.code));
+        });
+
         if (!rows.length) {
             el('catGrid').innerHTML = '';
             el('catNote').innerHTML = catProducts.length
@@ -1317,9 +1340,16 @@
         }).join('');
 
         const soldOut = rows.filter(p => qtyFor(p) <= 0).length;
+        const discCount = rows.filter(p => catHasDiscount(p)).length;
         el('catNote').innerHTML =
             `<b>${rows.length}</b> design(s) shown`
             + (catHideOut ? ` &mdash; the sold-out ones are hidden right now.` : (soldOut ? ` &mdash; ${soldOut} of them sold out.` : '.'))
+            // ⚠️ ترتيبٌ لا يُقال يُقرأ عشوائيًّا، فتُقلَّب الشاشة بحثًا عن ترتيبٍ
+            // أبجديٍّ لا وجود له. ويُقال العددُ كذلك فيُعرف أين تنتهي المخفَّضة.
+            + (discCount
+                ? `<br>The <b>${discCount}</b> abaya(s) that have a discount price are listed <b>first</b>, `
+                  + `then the ones at their normal price.`
+                : `<br>None of these has a discount price, so they are listed by barcode.`)
             + `<br>Each picture is fetched only when its card reaches the screen, so this page stays light on your data.`
             + `<br>&#9888; This is <b>not</b> the Stock screen and the two numbers are <b>not meant to match</b>: Stock counts by
                <b>type</b> (Shanton, Dress, Inner…) and feeds the money, while this counts <b>individual pieces</b> and feeds no money at all.`;
