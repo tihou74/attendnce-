@@ -146,6 +146,9 @@
     /* اختيار المحل داخل الستوك: أربعة أزرار (ثلاثة محلات + الكل مجتمعين). */
     @media (min-width: 560px) and (max-width: 899px) { .chooser.four { grid-template-columns: 1fr 1fr; } }
     @media (min-width: 900px) { .chooser.four { grid-template-columns: repeat(4, 1fr); } }
+    /* خمسة أقسام: ثلاثةٌ ثم اثنان على الشاشة المتوسطة، وخمسةٌ في صفٍّ على الواسعة */
+    @media (min-width: 560px) and (max-width: 899px) { .chooser.five { grid-template-columns: 1fr 1fr; } }
+    @media (min-width: 900px) { .chooser.five { grid-template-columns: repeat(5, 1fr); } }
     /* زرّ «الكل مجتمعين» يُميَّز بحدّه الذهبي: هو ملخّصٌ لا محلًّا. */
     .pick.all { border-top: 3px solid var(--color-brand); }
     /* شريط الرجوع: اسم المحل بجانب زرّ العودة إلى أزرار المحلات. */
@@ -319,6 +322,40 @@
         display: inline-flex; align-items: center; border-radius: 999px;
         font-size: 12px; font-weight: 700;
     }
+    /* ============ كتالوج العبايات ============
+       بطاقاتٌ لا جدول: هذه الشاشة تُقرأ على هاتف، وصورةُ العباية هي المقصودة.
+       ⚠️ وشكلُ البطاقة طويلٌ (٤:٥) لأن العباية طويلة — مربّعٌ كان يقطعها. */
+    .catg { display: grid; gap: var(--space-4); grid-template-columns: 1fr 1fr; }
+    @media (min-width: 620px) { .catg { grid-template-columns: repeat(3, 1fr); } }
+    @media (min-width: 900px) { .catg { grid-template-columns: repeat(4, 1fr); } }
+    .cat {
+        background: var(--color-surface); border: var(--border-hairline) solid var(--color-border);
+        border-radius: var(--radius-md); overflow: hidden; display: flex; flex-direction: column;
+    }
+    .cat.out { opacity: 0.55; }
+    .cat .ph {
+        width: 100%; aspect-ratio: 4 / 5; object-fit: cover; display: block;
+        background: var(--color-surface-2);
+    }
+    .cat .ph.none {
+        display: flex; align-items: center; justify-content: center;
+        color: var(--color-text-muted); font-size: 11.5px; font-weight: 700; text-align: center;
+    }
+    .cat .bd { padding: 10px 11px 12px; display: flex; flex-direction: column; gap: 4px; }
+    /* ⚠️ الباركود يبقى LTR دائمًا ولو كانت الصفحة عربية — رقمٌ معكوسٌ لا يُقرأ. */
+    .cat .code { direction: ltr; font-family: ui-monospace, monospace; font-size: 11.5px;
+        font-weight: 700; color: var(--color-text-muted); }
+    .cat .nm { font-size: var(--text-sm); font-weight: 700; line-height: 1.45; }
+    .cat .pr { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; margin-top: 2px; }
+    .cat .pr .now { font-size: var(--text-base); font-weight: 800; }
+    .cat .pr .was { font-size: 12px; color: var(--color-text-muted); text-decoration: line-through; }
+    .cat .pr .off {
+        font-size: 10.5px; font-weight: 800; padding: 1px 6px; border-radius: 999px;
+        background: var(--color-danger); color: #fff;
+    }
+    .cat .qt { font-size: 12px; font-weight: 700; margin-top: 3px; }
+    .cat .qt.zero { color: var(--color-danger); }
+    .cat .per { font-size: 11px; color: var(--color-text-muted); line-height: 1.7; margin-top: 2px; }
     .hidden { display: none !important; }
 </style>
 </head>
@@ -361,7 +398,7 @@
         </div>
 
         <!-- ثلاثة أزرار، ولا نتائج قبل الضغط -->
-        <div class="chooser four" id="chooser">
+        <div class="chooser five" id="chooser">
             <!-- ⭐⭐ «Who is in the shops now» أوّلًا عن قصد: هذا هو السؤال الذي
                  يُسأل عشر مرّات في اليوم، والأرقام تُقرأ مرّةً في اليوم. -->
             <button type="button" class="pick" id="pickDuty" aria-pressed="false" aria-controls="viewDuty">
@@ -390,6 +427,16 @@
                 <span>
                     <span class="t1">Stock</span>
                     <span class="t2">Pick a shop, or see all three together</span>
+                </span>
+            </button>
+            <!-- ⭐⭐ الكتالوج: صورة العباية وباركودها وسعرها والعدد الموجود.
+                 ⚠️ آخرُ زرٍّ عن قصد: الأقسام الأربعة فوقه تُقرأ كل يوم، وهذا
+                 يُفتح عند السؤال عن عبايةٍ بعينها. -->
+            <button type="button" class="pick" id="pickCatalog" aria-pressed="false" aria-controls="viewCatalog">
+                <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h16v18H4z"/><path d="M8 3v18"/><path d="M12 7h5"/><path d="M12 11h5"/></svg></span>
+                <span>
+                    <span class="t1">Abaya catalogue</span>
+                    <span class="t2">The picture, the barcode, the price and how many are left</span>
                 </span>
             </button>
         </div>
@@ -549,6 +596,41 @@
                     </div>
                     <p class="note" id="shNote"></p>
                 </div>
+            </div>
+        </div>
+
+        <!-- ============ 4) كتالوج العبايات ============
+             ⚠️⚠️ مبنيٌّ على كلام المالك: «الصور أغلبها نفسها في كل المحلات تختلف
+             الكمية». فالصورة والباركود والسعر **مشتركة**، والعدد وحده لكل محل.
+             ⚠️⚠️ والصور **لا تُنزَّل مع القائمة**: هذه الصفحة تُقرأ على هاتف
+             السيدة فاطمة، وتحميل ١٠٠ صورة في كل فتحةٍ ≈ ١٦MB من بياناتها. فتُقرأ
+             صورةُ كل عباية **لحظةَ وصول بطاقتها إلى الشاشة** وحدها.
+             ⚠️⚠️ ولا يُحمَّل هذا القسم إلا عند فتحه (catalogLoaded) — تمامًا
+             كلوحة الحضور، ولنفس السبب.
+             ⚠️⚠️ وهذا **ليس** الستوك الذي فوقه: ذاك بالصنف (شانتون، دريس…) ويغذّي
+             المال، وهذا بالقطعة ولا يغذّي مالًا. الرقمان صحيحان معًا لأنهما
+             يجيبان سؤالين مختلفين، ويُقال ذلك صريحًا أسفل الشاشة كي لا يُقرأ
+             اختلافُهما عطلًا. -->
+        <div id="viewCatalog" class="hidden">
+            <div class="chooser four" id="catChooser"></div>
+            <p class="pickhint" id="catHint">Choose a shop to see what it is holding, with the pictures.</p>
+
+            <div id="catPanel" class="hidden">
+                <div class="backbar">
+                    <button class="ghost" id="catBack">&#9664; All shops</button>
+                    <p class="ttl" id="catTitle">&mdash;</p>
+                </div>
+                <div class="bar">
+                    <div style="width: 240px;">
+                        <label for="catSearch">Search &mdash; barcode or name</label>
+                        <input type="text" id="catSearch" placeholder="Type a barcode or a name" autocomplete="off">
+                    </div>
+                    <button class="ghost" id="catOnlyIn" aria-pressed="false">Hide the sold-out ones</button>
+                </div>
+                <p class="err" id="catError"></p>
+                <p class="note" id="catSeason" style="margin: 0 0 var(--space-4);"></p>
+                <div class="catg" id="catGrid"></div>
+                <p class="note" id="catNote"></p>
             </div>
         </div>
 
@@ -963,15 +1045,18 @@
     let activeView = '';
     function showView(which) {
         activeView = which;
-        const views = { duty: 'viewDuty', account: 'viewAccount', target: 'viewTarget', stock: 'viewStock' };
+        const views = { duty: 'viewDuty', account: 'viewAccount', target: 'viewTarget', stock: 'viewStock', catalog: 'viewCatalog' };
         Object.entries(views).forEach(([k, id]) => el(id).classList.toggle('hidden', k !== which));
         el('pickDuty').setAttribute('aria-pressed', String(which === 'duty'));
         el('pickAccount').setAttribute('aria-pressed', String(which === 'account'));
         el('pickTarget').setAttribute('aria-pressed', String(which === 'target'));
         el('pickStock').setAttribute('aria-pressed', String(which === 'stock'));
+        el('pickCatalog').setAttribute('aria-pressed', String(which === 'catalog'));
         el('pickHint').classList.toggle('hidden', !!which);
         // كل دخول إلى الستوك يبدأ من أزرار المحلات، وكل خروج منه يُنسي المُختار.
         showStock('');
+        // ونفس القاعدة للكتالوج.
+        showCatalogShop('');
         // ⭐⭐ لوحة الحضور تُحمَّل عند فتحها لا مع كل دخول: هي القراءة الوحيدة التي
         // تُنزّل صورًا، فتحميلُها لمن جاء ليقرأ الأرقام وحدها إهدارٌ لبياناته.
         if (which === 'duty') {
@@ -983,6 +1068,7 @@
     el('pickAccount').addEventListener('click', () => showView('account'));
     el('pickTarget').addEventListener('click', () => showView('target'));
     el('pickStock').addEventListener('click', () => showView('stock'));
+    el('pickCatalog').addEventListener('click', () => { showView('catalog'); loadCatalog(); });
 
     // ---------------------------------------------------------------------
     // اختيار المحل داخل الستوك
@@ -1005,6 +1091,230 @@
         if (b) showStock(b.getAttribute('data-shop'));
     });
     el('stBack').addEventListener('click', () => showStock(''));
+
+    // =====================================================================
+    // ⭐⭐⭐ كتالوج العبايات — للقراءة فقط
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ مستندٌ واحدٌ لكل تصميم: الصورة والباركود والسعران مشتركة بين المحلات
+    // (كلام المالك: «الصور أغلبها نفسها في كل المحلات تختلف الكمية»)، والعدد
+    // وحده لكل محل داخل خريطة qty.
+    //
+    // ⚠️⚠️ الصور **لا تُنزَّل مع القائمة**. قائمةُ ١٠٠ تصميمٍ بالأسماء والأسعار
+    // بضعةُ كيلوبايت، أمّا صورُها فنحو ١٦MB — في كل فتحةٍ لهذه الشاشة، على هاتف.
+    // فصورةُ كل عباية مستندٌ مستقل يُقرأ **لحظةَ وصول بطاقتها إلى الشاشة**، ومرّةً
+    // واحدة (catImages).
+    //
+    // ⚠️⚠️ ولا تُقرأ هذه المجموعات إلا عند فتح القسم (catalogLoaded) — تمامًا
+    // كلوحة الحضور، ولأن التحديث التلقائي كل دقيقة لا يجوز أن يُعيد تنزيل أي
+    // صورة.
+    //
+    // ⚠️⚠️⚠️ ولا علاقة لهذا بالستوك أعلاه: ذاك يعدّ بالصنف ويغذّي المال
+    // والعمولة والتارقت، وهذا يعدّ بالقطعة ولا يغذّي مالًا إطلاقًا. اختلافُ
+    // الرقمين **ليس عطلًا**، ويُقال ذلك صريحًا أسفل الشاشة كي لا يُظنّ عطلًا.
+    // =====================================================================
+    const CAT_ALL = '__ALL__';
+    let catProducts = [];           // [{ id, code, name, price, discountPrice, qty{}, active, hasImage }]
+    let catSeasonOn = false;
+    let catalogLoaded = false;
+    let catLoadError = '';
+    let catShop = '';
+    let catHideOut = false;
+    const catImages = new Map();    // id -> data URL (تُقرأ مرّةً واحدة لهذه الجلسة)
+
+    /**
+     * ⚠️⚠️ نسخةٌ **مطابقة حرفيًّا** لما في admin.html وabaya-seller.html، وفحصٌ
+     * يحرس تطابقها الثلاثي. لو اختلفت هنا لقرأت هذه الشاشة مفتاحًا لا تكتبه
+     * البياعة — فتبيع قطعةً ويبقى العدد على الشاشة كما هو.
+     */
+    function abayaShopKey(shop) {
+        return String(shop || '').trim().toUpperCase()
+            .replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    }
+    function catQtyOf(p, shop) { return Number((p.qty || {})[abayaShopKey(shop)] || 0) || 0; }
+    function catQtyTotal(p) { return ABAYA_SHOPS.reduce((s, sh) => s + catQtyOf(p, sh), 0); }
+    function catHasDiscount(p) {
+        const d = Number(p.discountPrice || 0), pr = Number(p.price || 0);
+        return isFinite(d) && d > 0 && d < pr;
+    }
+
+    /**
+     * ⚠️ بلا orderBy: فايرستور يُسقط بصمتٍ كل مستندٍ لا يحمل الحقل المرتَّب به —
+     * وهو العطل الذي أخفى تقارير البياعات فعلًا. الترتيب محليٌّ بالباركود.
+     * ⚠️ وتُقرأ مرّةً واحدة لهذه الجلسة: زرّ Refresh هو ما يُعيد قراءتها.
+     */
+    async function loadCatalog(force) {
+        if (catalogLoaded && !force) { renderCatalog(); return; }
+        catLoadError = '';
+        try {
+            const [prodSnap, seasonSnap] = await Promise.all([
+                getDocs(collection(db, 'abaya_products')),
+                getDoc(doc(db, 'settings', 'abaya_discount'))
+            ]);
+            catProducts = [];
+            prodSnap.forEach(d => {
+                const v = d.data() || {};
+                // ⚠️ المخفيّة عن المحلات لا تُعرض هنا: هذه الشاشة تجيب «ماذا
+                // يُعرض للزبونة الآن»، وعبايةٌ أخفاها المالك ليست معروضة.
+                if (v.active === false) return;
+                catProducts.push({
+                    id: d.id,
+                    code: String(v.code || d.id),
+                    name: String(v.name || ''),
+                    price: Number(v.price || 0) || 0,
+                    discountPrice: Number(v.discountPrice || 0) || 0,
+                    qty: (v.qty && typeof v.qty === 'object') ? v.qty : {},
+                    hasImage: v.hasImage === true
+                });
+            });
+            catProducts.sort((a, b) => String(a.code).localeCompare(String(b.code)));
+            catSeasonOn = !!(seasonSnap.exists() && seasonSnap.data().on === true);
+            catalogLoaded = true;
+        } catch (e) {
+            console.error('Could not read the abaya catalogue:', e);
+            // ⚠️ رسالةٌ تقول ما فشل ولا تُفرغ الشاشة: إن كانت هناك قائمةٌ قديمة
+            // فهي أنفع من فراغ، ويُقال صريحًا أنها قد تكون قديمة.
+            catLoadError = /permission/i.test(String(e && e.message))
+                ? 'The catalogue is not readable yet — the new rules have not been published.'
+                : 'The catalogue could not be read just now. What you see may be a saved copy.';
+        }
+        renderCatalog();
+    }
+
+    function showCatalogShop(which) {
+        catShop = which;
+        el('catChooser').classList.toggle('hidden', !!which);
+        el('catHint').classList.toggle('hidden', !!which);
+        el('catPanel').classList.toggle('hidden', !which);
+        renderCatalog();
+    }
+    el('catChooser').addEventListener('click', (ev) => {
+        const b = ev.target.closest('button[data-catshop]');
+        if (b) showCatalogShop(b.getAttribute('data-catshop'));
+    });
+    el('catBack').addEventListener('click', () => showCatalogShop(''));
+    el('catSearch').addEventListener('input', () => renderCatalog());
+    el('catOnlyIn').addEventListener('click', () => {
+        catHideOut = !catHideOut;
+        el('catOnlyIn').setAttribute('aria-pressed', String(catHideOut));
+        el('catOnlyIn').textContent = catHideOut ? 'Show the sold-out ones too' : 'Hide the sold-out ones';
+        renderCatalog();
+    });
+
+    function renderCatalog() {
+        // ---- أزرار المحلات: على كل زرّ عددُ القطع الموجودة فيه الآن
+        const box = (svg) => `<span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${svg}</svg></span>`;
+        const SHOP_IC = '<path d="M3 9.5 5 4h14l2 5.5"/><path d="M4 9.5h16V20H4z"/><path d="M9.5 20v-5h5v5"/>';
+        const ALL_IC = '<path d="M4 3h16v18H4z"/><path d="M8 3v18"/><path d="M12 7h5"/><path d="M12 11h5"/>';
+        el('catChooser').innerHTML = ABAYA_SHOPS.map(shop => {
+            const n = catProducts.reduce((a, p) => a + catQtyOf(p, shop), 0);
+            const designs = catProducts.filter(p => catQtyOf(p, shop) > 0).length;
+            return `
+            <button type="button" class="pick" data-catshop="${escapeHtml(shop)}">
+                ${box(SHOP_IC)}
+                <span>
+                    <span class="t1">${escapeHtml(shop)}</span>
+                    <span class="t2">${n} piece(s) &middot; ${designs} design(s)</span>
+                </span>
+            </button>`;
+        }).join('')
+            + `<button type="button" class="pick all" data-catshop="${CAT_ALL}">
+                ${box(ALL_IC)}
+                <span>
+                    <span class="t1">All shops together</span>
+                    <span class="t2">${catProducts.reduce((a, p) => a + catQtyTotal(p), 0)} piece(s) &middot; ${catProducts.length} design(s)</span>
+                </span>
+            </button>`;
+
+        el('catError').textContent = catLoadError;
+
+        if (!catShop) return;
+        const all = catShop === CAT_ALL;
+        el('catTitle').textContent = all ? 'All shops together' : catShop;
+
+        // ---- موسم الخصم: يُقال صريحًا، فسعرٌ مختلفٌ بلا تفسير يُقرأ خطأً
+        el('catSeason').innerHTML = catSeasonOn
+            ? `<b>Discount season is open.</b> Where an abaya has a discount price it is the one shown, with the normal price crossed out beside it.`
+            : `Discount season is closed &mdash; the normal prices are the ones shown.`;
+
+        const q = String(el('catSearch').value || '').trim().toUpperCase();
+        const qtyFor = (p) => all ? catQtyTotal(p) : catQtyOf(p, catShop);
+        const rows = catProducts.filter(p => {
+            if (q && !(String(p.code).toUpperCase().includes(q) || String(p.name).toUpperCase().includes(q))) return false;
+            if (catHideOut && qtyFor(p) <= 0) return false;
+            return true;
+        });
+
+        if (!rows.length) {
+            el('catGrid').innerHTML = '';
+            el('catNote').innerHTML = catProducts.length
+                ? `Nothing matches what you typed.`
+                : `The catalogue is empty &mdash; no abaya has been added to it yet.`;
+            return;
+        }
+
+        el('catGrid').innerHTML = rows.map(p => {
+            const n = qtyFor(p);
+            const disc = catHasDiscount(p) && catSeasonOn;
+            const now = disc ? Number(p.discountPrice) : Number(p.price || 0);
+            const off = disc && p.price ? Math.round((1 - Number(p.discountPrice) / Number(p.price)) * 100) : 0;
+            const per = all
+                ? `<p class="per">${ABAYA_SHOPS.map(s => `${escapeHtml(s)}: <b>${catQtyOf(p, s)}</b>`).join(' &middot; ')}</p>`
+                : '';
+            return `<div class="cat${n <= 0 ? ' out' : ''}">`
+                + (p.hasImage
+                    ? `<img class="ph" data-catimg="${escapeHtml(p.id)}" alt="${escapeHtml(p.name || p.code)}">`
+                    : `<div class="ph none">No picture<br>yet</div>`)
+                + `<div class="bd">`
+                + `<span class="code">${escapeHtml(p.code)}</span>`
+                + (p.name ? `<span class="nm">${escapeHtml(p.name)}</span>` : '')
+                + `<span class="pr">`
+                + `<span class="now">${money(now)} QAR</span>`
+                + (disc ? `<span class="was">${money(p.price)}</span>` : '')
+                + (disc && off > 0 ? `<span class="off">-${off}%</span>` : '')
+                + `</span>`
+                + `<span class="qt${n <= 0 ? ' zero' : ''}">${n <= 0 ? 'Sold out' : n + ' piece(s) left'}</span>`
+                + per
+                + `</div></div>`;
+        }).join('');
+
+        const soldOut = rows.filter(p => qtyFor(p) <= 0).length;
+        el('catNote').innerHTML =
+            `<b>${rows.length}</b> design(s) shown`
+            + (catHideOut ? ` &mdash; the sold-out ones are hidden right now.` : (soldOut ? ` &mdash; ${soldOut} of them sold out.` : '.'))
+            + `<br>Each picture is fetched only when its card reaches the screen, so this page stays light on your data.`
+            + `<br>&#9888; This is <b>not</b> the Stock screen and the two numbers are <b>not meant to match</b>: Stock counts by
+               <b>type</b> (Shanton, Dress, Inner…) and feeds the money, while this counts <b>individual pieces</b> and feeds no money at all.`;
+
+        observeCatalogImages();
+    }
+
+    /**
+     * ⭐ تُقرأ صورةُ كل بطاقة لحظةَ وصولها إلى الشاشة، ومرّةً واحدة.
+     * ⚠️ ولا تُعطّل صورةٌ لا تُقرأ الشاشة: البطاقة تبقى بمكانها بلا صورة.
+     * ⚠️ وتمرّ كل صورة بـsafePhoto: نصٌّ غير data:image في src قد يكون رابطًا خارجيًّا.
+     */
+    function observeCatalogImages() {
+        const imgs = Array.from(document.querySelectorAll('img[data-catimg]'));
+        if (!imgs.length) return;
+        const fill = async (img) => {
+            const id = img.getAttribute('data-catimg');
+            if (!id || img.dataset.catDone === '1') return;
+            img.dataset.catDone = '1';
+            if (catImages.has(id)) { img.src = catImages.get(id); return; }
+            try {
+                const snap = await getDoc(doc(db, 'abaya_product_images', id));
+                const url = safePhoto(snap.exists() ? snap.data().imageBase64 : '');
+                if (url) { catImages.set(id, url); img.src = url; }
+            } catch (e) { /* صورةٌ واحدةٌ لا تُعطّل القائمة */ }
+        };
+        if (typeof IntersectionObserver !== 'function') { imgs.forEach(fill); return; }
+        const obs = new IntersectionObserver((entries) => {
+            entries.forEach(en => {
+                if (en.isIntersecting) { fill(en.target); obs.unobserve(en.target); }
+            });
+        }, { rootMargin: '300px' });
+        imgs.forEach(i => { if (i.dataset.catDone !== '1') obs.observe(i); });
+    }
 
     // =====================================================================
     // 1) الحساب
@@ -1638,10 +1948,24 @@
     async function refreshShown() {
         await loadAll();
         if (activeView === 'duty') await loadDuty();
+        // ⭐ الكتالوج يُعاد قراءته وهو مفتوح: البياعات تُنقص الأعداد طول اليوم،
+        // وشاشةٌ تعرض «بقيت ٣» وقد نفدت تُوقع في وعدٍ للزبونة لا يُنفَّذ.
+        // ⚠️ والصور **لا تُنزَّل ثانيةً**: catImages تحفظها لهذه الجلسة، فالقراءة
+        // المتكرّرة أسماءٌ وأسعارٌ وأعدادٌ فقط — بضعةُ كيلوبايت.
+        if (activeView === 'catalog') await loadCatalog(true);
     }
     // ⚠️ زرّ Refresh يُصفّر علَم البطاقات: صورةٌ رفعها المالك قبل دقيقة يجب أن
     // تظهر عند الضغط، وبلا هذا التصفير كانت لن تظهر حتى تُغلق الصفحة وتُفتح.
-    el('refreshBtn').addEventListener('click', () => { dutyCardsLoaded = false; refreshShown(); });
+    // ⚠️ وعلَم الكتالوج يُصفّر معه: عبايةٌ أضافها المالك قبل دقيقة، أو صورةٌ
+    // بدّلها، يجب أن تظهر عند الضغط. وacImages تُمحى وإلّا بقيت الصورة القديمة
+    // معروضةً بعد تبديلها — شاشةٌ تعرض عبايةً غير التي في الكيس.
+    el('refreshBtn').addEventListener('click', () => {
+        dutyCardsLoaded = false;
+        catalogLoaded = false;
+        catImages.clear();
+        refreshShown();
+        if (activeView === 'catalog') loadCatalog(true);
+    });
     el('logoutBtn').addEventListener('click', () => signOut(auth));
 
     // ⚠️ بديلٌ إن لم يُحمَّل الشعار: صورةٌ مكسورة تُقرأ عطلًا، والحرفان مقصودان.

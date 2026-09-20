@@ -555,6 +555,9 @@
         <button class="nav-tab-btn" data-tab="tab-abaya-month" data-biz="abaya">
             <span class="ic-slot" data-icon="dollar"></span> Abaya &mdash; Monthly
         </button>
+        <button class="nav-tab-btn" data-tab="tab-abaya-catalog" data-biz="abaya">
+            <span class="ic-slot" data-icon="inbox"></span> Abaya &mdash; Catalogue
+        </button>
         <button class="nav-tab-btn" data-tab="tab-finance" data-biz="rest">
             <span class="ic-slot" data-icon="dollar"></span> Monthly Financial
         </button>
@@ -1800,6 +1803,205 @@
                 <button class="btn-success" onclick="saveAbayaRates()"><span data-icon="save"></span> Save rates</button>
                 <span id="abRatesStatus" style="font-weight: 600; font-size: 13px;"></span>
             </div>
+        </div>
+    </div>
+
+    <!-- ==================================================================
+         العبايات — الكتالوج: قطعةٌ لكل تصميم، وكميّةٌ لكل محل
+         ------------------------------------------------------------------
+         ⚠️⚠️ كلام المالك حرفيًّا: «الصور أغلبها نفسها في كل المحلات تختلف
+         الكمية». فالتصميم مبنيٌّ على ذلك: الصورة والباركود والكوست والسعران
+         تُكتب **مرّةً واحدة**، والكمية وحدها لكل محل.
+         بلا هذا كنّا سنحفظ نفس الصورة أربع مرّات — ٤٠٠ صورة بدل ١٠٠ —
+         و**أربعة مواضع** تُصحَّح عند تغيير سعرٍ واحد، وهكذا يختلف سعر العباية
+         نفسها بين محلَّين.
+
+         ⚠️⚠️ وهذا **ليس** ستوك الأصناف القديم ولا يمسّه بحرف: ذاك يعدّ
+         بالصنف (شانتون، دريس…) ويغذّي المال، وهذا يعدّ بالقطعة ولا يغذّي
+         مالًا إطلاقًا. الاثنان صحيحان معًا لأنهما يجيبان سؤالين مختلفين.
+         ================================================================== -->
+    <div id="tab-abaya-catalog" class="tab-content">
+        <div class="filter-section">
+            <h3><span data-icon="inbox"></span> Al Sheikha Style &mdash; Abaya Catalogue
+                <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">كتالوج العبايات</span></h3>
+            <p class="card-sub" style="margin: 0 0 12px;">
+                One line per <b>design</b>: its picture, its barcode, its cost and its two prices &mdash; written
+                <b>once</b> &mdash; and the quantity <b>of each shop</b> beside it. The saleswomen see the picture and
+                the price on their own screen, and selling a piece takes it off that shop's quantity by itself.
+            </p>
+            <div class="date-group">
+                <div style="flex: 1; min-width: 220px;"><label for="acSearch">Search &mdash; barcode or name</label>
+                    <input type="text" id="acSearch" placeholder="Type a barcode or a name" oninput="renderAbayaCatalog()">
+                </div>
+                <div style="width: 210px;"><label for="acFilterShop">Shop</label>
+                    <select id="acFilterShop" onchange="renderAbayaCatalog()"></select>
+                </div>
+                <div style="width: 190px;"><label for="acFilterState">Show</label>
+                    <select id="acFilterState" onchange="renderAbayaCatalog()">
+                        <option value="all">Everything</option>
+                        <option value="instock">In stock only</option>
+                        <option value="out">Sold out only</option>
+                        <option value="discount">On discount only</option>
+                        <option value="hidden">Hidden from the shops</option>
+                    </select>
+                </div>
+                <button class="btn-ghost" onclick="loadAbayaCatalog(true)"><span data-icon="refresh"></span> Refresh</button>
+                <button class="btn-ghost" onclick="clearAbayaCatalogFilters()" title="Clear the search and the filters so nothing can stay hidden">Show everything</button>
+                <button class="btn-success" onclick="exportAbayaCatalogExcel()"><span data-icon="download"></span> Export Excel</button>
+            </div>
+        </div>
+
+        <!-- ============ موسم الخصم ============
+             ⚠️ مفتاحٌ واحدٌ عامّ لا مفتاحٌ لكل محل: السعر نفسه في كل المحلات
+             (كلام المالك)، فموسمٌ في محلٍّ دون آخر كان سيُنتج سعرين لعبايةٍ
+             واحدة على شاشتَي بياعتين — وهو بالضبط ما تجنّبناه بالتصميم المشترك.
+             ⚠️ والمفتاح **لا يحذف** سعر الخصم ولا يكتبه: يقول للشاشات
+             «اعرضي سعر الخصم الآن». فإغلاق الموسم لا يُفقد رقمًا أُدخل. -->
+        <div class="card" style="border-left: 4px solid var(--accent);">
+            <h3><span data-icon="dollar"></span> Discount season <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">موسم الخصومات</span></h3>
+            <p class="card-sub">
+                While this is <b>open</b> every screen shows the discount price of any abaya that has one, with the
+                normal price crossed out beside it. While it is <b>closed</b> only the normal price is shown.
+                Closing it <b>never erases</b> a discount price you have already typed &mdash; it only stops showing it.
+            </p>
+            <div class="controls" style="gap: 14px; flex-wrap: wrap; align-items: center;">
+                <label style="display: inline-flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer;">
+                    <input type="checkbox" id="acSeason" style="width: 18px; height: 18px; cursor: pointer;" onchange="saveAbayaDiscountSeason()">
+                    <span id="acSeasonLabel">Discount season is closed</span>
+                </label>
+                <span id="acSeasonStatus" style="font-weight: 600; font-size: 13px;"></span>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box"><div class="stat-icon" data-icon="inbox"></div><div><h3>Designs</h3><p id="acStatDesigns">0</p></div></div>
+            <div class="stat-box"><div class="stat-icon" data-icon="inbox"></div><div><h3>Pieces in the shops</h3><p id="acStatPieces">0</p></div></div>
+            <div class="stat-box"><div class="stat-icon" data-icon="alertTriangle"></div><div><h3>Sold out</h3><p id="acStatOut">0</p></div></div>
+            <div class="stat-box money-only"><div class="stat-icon" data-icon="dollar"></div><div><h3>Stock at cost</h3><p id="acStatCost">0 QAR</p></div></div>
+            <div class="stat-box money-only"><div class="stat-icon" data-icon="dollar"></div><div><h3>Stock at selling price</h3><p id="acStatValue">0 QAR</p></div></div>
+        </div>
+
+        <!-- ============ إضافة / تعديل عباية ============ -->
+        <div class="card">
+            <h3><span data-icon="edit"></span> <span id="acFormTitle">Add an abaya</span></h3>
+            <p class="card-sub" id="acFormHint">
+                The barcode is the abaya's <b>name in the system</b> and cannot be repeated &mdash; typing a barcode that
+                already exists opens that abaya for editing instead of creating a second one.
+            </p>
+            <div class="date-group" style="align-items: flex-start;">
+                <div style="width: 210px;"><label for="acCode">Barcode <span style="color: var(--danger);">*</span></label>
+                    <input type="text" id="acCode" placeholder="e.g. AS-1042" autocomplete="off" oninput="onAbayaCodeTyped()">
+                </div>
+                <div style="flex: 1; min-width: 220px;"><label for="acName">Name / model</label>
+                    <input type="text" id="acName" placeholder="e.g. Black crepe, silver embroidery" autocomplete="off">
+                </div>
+                <div style="width: 150px;"><label for="acCost">Cost (QAR)</label>
+                    <input type="number" id="acCost" step="1" min="0" placeholder="0">
+                </div>
+                <div style="width: 160px;"><label for="acPrice">Selling price (QAR) <span style="color: var(--danger);">*</span></label>
+                    <input type="number" id="acPrice" step="1" min="0" placeholder="0">
+                </div>
+                <div style="width: 180px;"><label for="acDisc">Price after discount</label>
+                    <input type="number" id="acDisc" step="1" min="0" placeholder="leave empty = no discount">
+                </div>
+            </div>
+
+            <!-- الكمية لكل محل — تُبنى من ABAYA_SHOPS فلا يُنسى محلٌّ جديد -->
+            <div style="margin: 16px 0 6px;">
+                <b style="font-size: 13.5px;">How many pieces in each shop</b>
+                <span class="card-sub" style="display: block; margin-top: 4px;">
+                    Leave a shop at 0 if this abaya is not there. A shop showing 0 is not shown to its saleswoman as
+                    available &mdash; she sees it marked sold out.
+                </span>
+            </div>
+            <div class="date-group" id="acQtyWrap"></div>
+
+            <div class="date-group" style="align-items: flex-start; margin-top: 10px;">
+                <div style="flex: 1; min-width: 260px;">
+                    <label for="acPhoto">Picture of the abaya</label>
+                    <input type="file" id="acPhoto" accept="image/*" onchange="onAbayaPhotoPicked(event)">
+                    <p class="card-sub" style="margin: 6px 0 0; font-size: 11.5px;" id="acPhotoNote">
+                        The picture is <b>shrunk and compressed here before it is saved</b> &mdash; a full camera photo of
+                        100 abayas would be tens of megabytes on the saleswomen's telephones.
+                    </p>
+                </div>
+                <div style="width: 170px; text-align: center;">
+                    <img id="acPhotoImg" alt="" style="display: none; width: 150px; height: 190px; object-fit: cover;
+                        border-radius: 10px; border: 1px solid var(--border);">
+                    <p class="card-sub" id="acPhotoEmpty" style="margin: 6px 0 0; font-size: 11.5px;">No picture yet</p>
+                    <button class="btn-ghost btn-sm" id="acPhotoClear" style="display: none; margin-top: 6px;" onclick="clearAbayaPhoto()">Remove the picture</button>
+                </div>
+                <div style="width: 200px;">
+                    <label style="display: inline-flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; margin-top: 22px;">
+                        <input type="checkbox" id="acActive" checked style="width: 17px; height: 17px; cursor: pointer;">
+                        <span>Show it to the shops</span>
+                    </label>
+                    <p class="card-sub" style="margin: 6px 0 0; font-size: 11.5px;">
+                        Unticking <b>hides</b> it from the saleswomen without deleting it or losing its quantity.
+                    </p>
+                </div>
+            </div>
+
+            <div class="controls" style="gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px;">
+                <button class="btn-success" id="acSaveBtn" onclick="saveAbayaProduct()"><span data-icon="save"></span> Save the abaya</button>
+                <button class="btn-ghost" id="acCancelBtn" style="display: none;" onclick="resetAbayaForm()">Cancel the edit</button>
+                <span id="acFormStatus" style="font-weight: 600; font-size: 13px;"></span>
+            </div>
+        </div>
+
+        <!-- ============ الجدول ============ -->
+        <div class="card">
+            <h3><span data-icon="fileText"></span> The catalogue</h3>
+            <p class="card-sub" id="acTableNote">&mdash;</p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Picture</th>
+                            <th>Barcode</th>
+                            <th>Name</th>
+                            <th class="money-col money-only">Cost</th>
+                            <th class="money-col">Price</th>
+                            <th class="money-col">After discount</th>
+                            <th id="acQtyHead">Quantity</th>
+                            <th class="money-col">Total pieces</th>
+                            <th>Shown</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="acBody"><tr><td colspan="10" style="text-align:center;">Loading...</td></tr></tbody>
+                    <tfoot id="acFoot"></tfoot>
+                </table>
+            </div>
+            <p class="card-sub" style="margin: 12px 0 0; font-size: 11.5px;" id="acLoadedAt"></p>
+        </div>
+
+        <!-- ============ حركة القطع ============
+             ⚠️ سجلٌّ لا يُعدَّل ولا يُعاد كتابته: هو الجواب على «الكمية نقصت — من؟».
+             ولا يحمل مالًا ولا يغذّي التقرير اليومي ولا العمولة ولا التارقت. -->
+        <div class="card">
+            <h3><span data-icon="clock"></span> What moved, and who moved it</h3>
+            <p class="card-sub">
+                Newest first. Every line a saleswoman's page wrote when she sold a piece, and every correction you made
+                here. This log carries <b>no money</b> and does not touch the daily report or the commission.
+            </p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>When</th>
+                            <th>Shop</th>
+                            <th>Barcode</th>
+                            <th>Name</th>
+                            <th class="money-col">Change</th>
+                            <th>Why</th>
+                            <th>Who</th>
+                        </tr>
+                    </thead>
+                    <tbody id="acMovesBody"><tr><td colspan="7" style="text-align:center;">&mdash;</td></tr></tbody>
+                </table>
+            </div>
+            <p class="card-sub" style="margin: 12px 0 0;" id="acMovesNote"></p>
         </div>
     </div>
 
@@ -4389,6 +4591,13 @@
         if (tabId === 'tab-abaya' || tabId === 'tab-abaya-month') {
             if (abayaLoaded) renderAbayaAll();
             loadAbayaData();
+        }
+        // ⭐ الكتالوج: مجموعاتٌ مستقلّة تمامًا، فيُقرأ وحده ولا يُثقل تبويبَي
+        // العبايات الآخرين. ⚠️ ويُعاد قراءته في كل فتحة لا مرّةً واحدة: البياعات
+        // تُنقص الكميّات طول اليوم، وشاشةٌ تعرض عددًا قديمًا وتُسمّيه الحالي تكذب.
+        if (tabId === 'tab-abaya-catalog') {
+            if (abayaCatalogLoaded) renderAbayaCatalog();
+            loadAbayaCatalog();
         }
         // النوافذ الثلاث تتغذّى من نفس البيانات، فتحميلها واحد.
         if (tabId === 'tab-finance' || tabId === 'tab-fixed' || tabId === 'tab-variable') {
@@ -9851,6 +10060,754 @@
     /** مفتاح حقل العدد/المبلغ لنوع بيع: abayaReady -> qtyAbayaReady */
     function abQtyField(key) { return 'qty' + key.charAt(0).toUpperCase() + key.slice(1); }
     function abAmtField(key) { return 'amt' + key.charAt(0).toUpperCase() + key.slice(1); }
+
+    // =====================================================================
+    // ⭐⭐⭐ كتالوج العبايات — تصميمٌ واحدٌ مشترك، وكميّةٌ لكل محل
+    // ---------------------------------------------------------------------
+    // كلام المالك حرفيًّا: «الصور أغلبها نفسها في كل المحلات تختلف الكمية».
+    // فمستندٌ واحدٌ لكل تصميم يحمل الصورة والباركود والكوست والسعرين، وداخله
+    // خريطةُ كميّات: qty: { GULF_MALL: 4, VENDOME_MALL: 2, ... }.
+    //
+    // ⚠️⚠️ ولماذا هذا ليس تفصيلًا: البديل (مستندٌ لكل تصميم **لكل محل**) كان
+    // سيحفظ **نفس الصورة أربع مرّات** — ٤٠٠ صورة بدل ١٠٠ — وأربعةَ مواضع
+    // تُصحَّح عند تغيير سعرٍ واحد. ومن هناك يأتي أسوأ عطل ممكن في متجر:
+    // محلّان يقولان للزبونة سعرين مختلفين لنفس العباية.
+    //
+    // ⚠️⚠️ ومعرّف المستند هو **الباركود** نفسه (بعد تنقيته). فقراءةُ باركود عند
+    // البيع = قراءةُ مستندٍ واحدٍ بمعرّفه: بلا query، وبلا فهرس مركّب، وبلا مسح
+    // المجموعة. وهو أيضًا ما يجعل تكرار الباركود **مستحيلًا** لا مكروهًا.
+    //
+    // ⚠️⚠️⚠️ وهذا **ليس** ستوك الأصناف القديم ولم يُلمس منه حرف: ذاك يعدّ
+    // بالصنف (شانتون، دريس، إنر…) ويغذّي المال والعمولة والتارقت، وهذا يعدّ
+    // بالقطعة ولا يغذّي مالًا إطلاقًا. الاثنان صحيحان معًا لأنهما يجيبان
+    // سؤالين مختلفين — وبقاء القديم كما هو **شرطُ المالك الصريح**:
+    // «واريد ان لا يؤثر هذا على البرنامج».
+    // =====================================================================
+    const ABAYA_PRODUCTS_COLL = 'abaya_products';
+    // ⚠️⚠️⚠️ الكوست في مجموعةٍ مستقلّة، وهذا **ليس ترتيبًا** بل حمايةٌ لرقم:
+    // مستند المنتج **لا بدّ** أن تقرأه شاشة البياعة (لتجد الباركود عند البيع)،
+    // وتلك الشاشة تدخل بحسابٍ مجهول — أي أن قارئها عمليًّا كلُّ من يملك الرابط.
+    // وفايرستور لا يُعيد «بعض الحقول» من مستند: القراءة تجلبه كلّه. فلو كان
+    // الكوست حقلًا على المنتج لصار سعرُ شرائنا مقروءًا لكل من يفتح الرابط —
+    // وهو الرقم الذي لا يُعطى لأحد. وفي مستندٍ مستقلٍّ لا قاعدةَ للكشك عليه
+    // إطلاقًا، فتُرفض القراءة من أصلها.
+    const ABAYA_PRODUCT_COSTS_COLL = 'abaya_product_costs';
+    const ABAYA_PRODUCT_IMAGES_COLL = 'abaya_product_images';
+    const ABAYA_PRODUCT_MOVES_COLL = 'abaya_product_moves';
+    const ABAYA_DISCOUNT_DOC = 'abaya_discount';
+
+    // ⚠️ أكبر ضلعٍ للصورة بعد التصغير، و**بلا قصٍّ مركزي**: بطاقة المدير تُقصّ
+    // مربّعًا لأنها تُعرض دائرية، أمّا العباية فطويلة — وقصُّها يقطع الفستان
+    // نفسه، فتُحفظ نسبتُها كما هي.
+    const ABAYA_PHOTO_PX = 640;
+    const ABAYA_PHOTO_MAX_BYTES = 160 * 1024;
+    // حدُّ الباركود: طولٌ معقول يمنع معرّف مستندٍ مشوّهًا.
+    const ABAYA_CODE_MAX = 40;
+    // كم حركةً تُعرض. ⚠️ العدد المقروء يُقال على الشاشة كي لا يكون القصّ صامتًا.
+    const ABAYA_MOVES_SHOWN = 200;
+
+    let abayaProducts = [];          // [{ id, code, name, cost, price, discountPrice, qty{}, active }]
+    let abayaProductMoves = [];      // [{ id, ... }]
+    let abayaCatalogLoaded = false;
+    let abayaCatalogLoadedAt = null;
+    let abayaDiscountSeason = false;
+    let acEditingId = '';            // '' = إضافةٌ جديدة
+    let acPendingPhoto = null;       // data URL مُصغَّرة بانتظار الحفظ
+    let acPhotoCleared = false;      // طُلب حذف الصورة صريحًا
+    const acImageCache = new Map();  // id -> data URL (تُقرأ مرّةً واحدة)
+
+    /**
+     * مفتاح المحل داخل خريطة الكميّات.
+     * ⚠️⚠️ هذه الدالة **مكرّرة حرفيًّا في ثلاثة ملفات** (admin, balances, seller)
+     * وفحصٌ يحرس تطابقها. تغييرُها في ملفٍ واحد يجعل البياعة تُنقص كميّة مفتاحٍ
+     * لا يقرؤه أحد — فتبيع قطعةً ويبقى العدد كما هو.
+     * ⚠️ ولا نقطة في الناتج: النقطة في مسار حقلٍ تعني تفرّعًا داخليًّا في فايرستور.
+     */
+    function abayaShopKey(shop) {
+        return String(shop || '').trim().toUpperCase()
+            .replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    }
+
+    /**
+     * معرّف المستند من الباركود.
+     * ⚠️ الرموز التي تمنعها فايرستور في المعرّف (/ و\ و. و# و[ و] و* و?) تُبدّل
+     * بشرطة. وهذا يعني أنّ باركودَين مختلفَين قد ينتج عنهما معرّفٌ واحد
+     * ("A.B" و"A-B") — ولهذا **يُحفظ الباركود الأصلي في الحقل `code`**
+     * وترفض دالةُ الحفظ الكتابة فوق باركودٍ أصليٍّ مختلف. بلا هذا الحرس كان
+     * تصميمٌ يمحو تصميمًا آخر بصمت.
+     */
+    function abayaProductId(code) {
+        return String(code || '').trim().toUpperCase()
+            .replace(/\s+/g, '-')
+            .replace(/[\/\\.#\[\]*?]+/g, '-')
+            .replace(/-{2,}/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, ABAYA_CODE_MAX);
+    }
+
+    /**
+     * خريطةُ كميّاتٍ نظيفة: المحلات المعروفة وحدها، وأعدادٌ صحيحة.
+     * ⚠️⚠️ والسالب **يُحفظ كما هو ولا يُقرَّب إلى صفر**. قد يبدو تقريبُه أنظف،
+     * لكنه يُخفي العطل الوحيد الممكن هنا: لو بيعت آخرُ قطعةٍ مرّتين في اللحظة
+     * نفسها (وincrement ذرّيٌّ فلا يُلغي إحداهما) يصير العدد −١. وعرضُه صفرًا
+     * يعني أن المالك لا يعرف أنّ قطعةً خرجت من الرفّ بلا رصيد. فيُعرض السالب
+     * بالأحمر وتُقال جملةٌ صريحة أسفل الجدول، ويُصحَّح بحفظ العدد الصحيح.
+     */
+    function abayaQtyMap(raw) {
+        const out = {};
+        ABAYA_SHOPS.forEach(s => {
+            const k = abayaShopKey(s);
+            const v = Math.floor(Number((raw || {})[k]));
+            out[k] = isFinite(v) ? v : 0;
+        });
+        return out;
+    }
+    function abayaQtyOf(p, shop) { return Number((p.qty || {})[abayaShopKey(shop)] || 0) || 0; }
+    function abayaQtyTotal(p) {
+        return ABAYA_SHOPS.reduce((s, sh) => s + abayaQtyOf(p, sh), 0);
+    }
+    /** هل لهذه العباية سعرُ خصمٍ صالح؟ (أقل من السعر العادي وأكبر من صفر) */
+    function abayaHasDiscount(p) {
+        const d = Number(p.discountPrice || 0), pr = Number(p.price || 0);
+        return isFinite(d) && d > 0 && d < pr;
+    }
+    /** السعر المعروض الآن: سعر الخصم إن كان الموسم مفتوحًا وللعباية خصم. */
+    function abayaShownPrice(p, seasonOn) {
+        return (seasonOn && abayaHasDiscount(p)) ? Number(p.discountPrice) : Number(p.price || 0);
+    }
+
+    /**
+     * يُصغّر صورة عباية ويضغطها JPEG **محافظًا على نسبتها**.
+     * ⚠️ دالةٌ مستقلّة عن shrinkImageToDataUrl عن قصد ولم تُعمَّم تلك: تلك تخدم
+     * بطاقات المدراء بقصٍّ مربّع وحدٍّ ٢٥٦px، وتعميمُها كان سيُخاطر ببطاقاتٍ
+     * تعمل اليوم من أجل ميزةٍ جديدة. شرطُ المالك: لا يتأثّر ما يعمل.
+     */
+    function shrinkAbayaPhoto(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onerror = () => reject(new Error('Could not read the picture file.'));
+            reader.onload = () => {
+                const img = new Image();
+                img.onerror = () => reject(new Error('That file is not a picture the browser can open.'));
+                img.onload = () => {
+                    try {
+                        const w = img.width, h = img.height;
+                        if (!w || !h) throw new Error('That picture has no size the browser can read.');
+                        const scale = Math.min(1, ABAYA_PHOTO_PX / Math.max(w, h));
+                        const ow = Math.max(1, Math.round(w * scale));
+                        const oh = Math.max(1, Math.round(h * scale));
+                        const canvas = document.createElement('canvas');
+                        canvas.width = ow; canvas.height = oh;
+                        const ctx = canvas.getContext('2d');
+                        // خلفيةٌ بيضاء: صورةُ PNG شفّافة تُصبح سوداء في JPEG.
+                        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, ow, oh);
+                        ctx.drawImage(img, 0, 0, w, h, 0, 0, ow, oh);
+                        let quality = 0.82, url = canvas.toDataURL('image/jpeg', quality);
+                        while (url.length * 0.75 > ABAYA_PHOTO_MAX_BYTES && quality > 0.35) {
+                            quality -= 0.08;
+                            url = canvas.toDataURL('image/jpeg', quality);
+                        }
+                        if (url.length * 0.75 > ABAYA_PHOTO_MAX_BYTES) {
+                            throw new Error('That picture is still too heavy after compressing. Please pick a smaller one.');
+                        }
+                        resolve(url);
+                    } catch (e) { reject(e); }
+                };
+                img.src = reader.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // ---- التحميل ---------------------------------------------------------
+    /**
+     * ⚠️ بلا orderBy على المنتجات: فايرستور يُسقط بصمتٍ كل مستندٍ لا يحمل الحقل
+     * المرتَّب به — وهو العطل نفسه الذي أخفى تقارير البياعات. الترتيب محليٌّ.
+     * ⚠️ والحركات تُقرأ بـorderBy('at') وحدَّ عدد، و`at` يُكتب **دائمًا** نصًّا
+     * ISO من المتصفّح (لا serverTimestamp) فلا يمكن أن يغيب فيسقط السطر.
+     */
+    window.loadAbayaCatalog = async function(force) {
+        if (!canSeeAbaya()) return;
+        const body = document.getElementById('acBody');
+        if (body && !abayaCatalogLoaded) {
+            body.innerHTML = `<tr><td colspan="10" style="text-align:center;">Loading...</td></tr>`;
+        }
+        try {
+            const [prodSnap, costSnap, moveSnap, seasonSnap] = await Promise.all([
+                getDocs(collection(db, ABAYA_PRODUCTS_COLL)),
+                // الكوست: مجموعةٌ مستقلّة لا يقرؤها الكشك — انظر الملاحظة فوق الثابت.
+                getDocs(collection(db, ABAYA_PRODUCT_COSTS_COLL)),
+                getDocs(query(collection(db, ABAYA_PRODUCT_MOVES_COLL), orderBy('at', 'desc'), limit(ABAYA_MOVES_SHOWN))),
+                getDoc(doc(db, 'settings', ABAYA_DISCOUNT_DOC))
+            ]);
+
+            const costById = {};
+            costSnap.forEach(d => { costById[d.id] = Number((d.data() || {}).cost || 0) || 0; });
+
+            abayaProducts = [];
+            prodSnap.forEach(d => {
+                const v = d.data() || {};
+                abayaProducts.push({
+                    id: d.id,
+                    code: String(v.code || d.id),
+                    name: String(v.name || ''),
+                    cost: costById[d.id] || 0,
+                    price: Number(v.price || 0) || 0,
+                    discountPrice: Number(v.discountPrice || 0) || 0,
+                    qty: abayaQtyMap(v.qty),
+                    active: v.active !== false,
+                    hasImage: v.hasImage === true
+                });
+            });
+            abayaProducts.sort((a, b) => String(a.code).localeCompare(String(b.code)));
+
+            abayaProductMoves = [];
+            moveSnap.forEach(d => abayaProductMoves.push({ id: d.id, ...(d.data() || {}) }));
+
+            abayaDiscountSeason = !!(seasonSnap.exists() && seasonSnap.data().on === true);
+            abayaCatalogLoaded = true;
+            abayaCatalogLoadedAt = new Date();
+            if (force) acImageCache.clear();
+            renderAbayaCatalog();
+        } catch (e) {
+            console.error('Error loading the abaya catalogue:', e);
+            if (body) {
+                body.innerHTML = `<tr><td colspan="10" style="text-align:center; color: var(--danger);">`
+                    + `Error loading: ${escapeHtml(e.message)}`
+                    + `<br><span style="font-weight:400; font-size:12px;">If it says "permission", the new rules have not been published yet.</span>`
+                    + `</td></tr>`;
+            }
+        }
+    };
+
+    // ---- بناء خانات الكميّة وقائمة المحلات ---------------------------------
+    /** ⚠️ تُبنى من ABAYA_SHOPS لا بيدٍ: محلٌّ جديد يظهر وحده ولا يُنسى. */
+    function buildAbayaCatalogShopInputs() {
+        const wrap = document.getElementById('acQtyWrap');
+        if (wrap && !wrap.dataset.built) {
+            wrap.innerHTML = ABAYA_SHOPS.map(s => {
+                const k = abayaShopKey(s);
+                return `<div style="width: 175px;">`
+                    + `<label for="acQty_${k}">${escapeHtml(s)}</label>`
+                    + `<input type="number" id="acQty_${k}" step="1" min="0" value="0">`
+                    + `</div>`;
+            }).join('');
+            wrap.dataset.built = '1';
+        }
+        const sel = document.getElementById('acFilterShop');
+        if (sel && !sel.dataset.built) {
+            sel.innerHTML = `<option value="">All shops together</option>`
+                + ABAYA_SHOPS.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+            sel.dataset.built = '1';
+        }
+    }
+
+    window.clearAbayaCatalogFilters = function() {
+        const s = document.getElementById('acSearch'); if (s) s.value = '';
+        const f = document.getElementById('acFilterShop'); if (f) f.value = '';
+        const st = document.getElementById('acFilterState'); if (st) st.value = 'all';
+        renderAbayaCatalog();
+    };
+
+    // ---- العرض -----------------------------------------------------------
+    /** الصفوف المعروضة بعد البحث والمصافي — ويُقال على الشاشة كم أُخفي. */
+    function abayaCatalogRows() {
+        const q = String((document.getElementById('acSearch') || {}).value || '').trim().toUpperCase();
+        const shop = String((document.getElementById('acFilterShop') || {}).value || '');
+        const state = String((document.getElementById('acFilterState') || {}).value || 'all');
+        return abayaProducts.filter(p => {
+            if (q && !(String(p.code).toUpperCase().includes(q) || String(p.name).toUpperCase().includes(q))) return false;
+            const n = shop ? abayaQtyOf(p, shop) : abayaQtyTotal(p);
+            if (state === 'instock' && n <= 0) return false;
+            if (state === 'out' && n > 0) return false;
+            if (state === 'discount' && !abayaHasDiscount(p)) return false;
+            if (state === 'hidden' && p.active) return false;
+            return true;
+        });
+    }
+
+    window.renderAbayaCatalog = function() {
+        if (!canSeeAbaya()) return;
+        buildAbayaCatalogShopInputs();
+        const shop = String((document.getElementById('acFilterShop') || {}).value || '');
+        const rows = abayaCatalogRows();
+
+        // ---- مفتاح الموسم
+        const cb = document.getElementById('acSeason');
+        if (cb) cb.checked = abayaDiscountSeason;
+        const lb = document.getElementById('acSeasonLabel');
+        if (lb) lb.textContent = abayaDiscountSeason ? 'Discount season is OPEN' : 'Discount season is closed';
+
+        // ---- الأرقام
+        const countFor = p => shop ? abayaQtyOf(p, shop) : abayaQtyTotal(p);
+        const pieces = abayaProducts.reduce((s, p) => s + countFor(p), 0);
+        const out = abayaProducts.filter(p => countFor(p) <= 0).length;
+        const atCost = abayaProducts.reduce((s, p) => s + countFor(p) * Number(p.cost || 0), 0);
+        const atPrice = abayaProducts.reduce((s, p) => s + countFor(p) * abayaShownPrice(p, abayaDiscountSeason), 0);
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        set('acStatDesigns', String(abayaProducts.length));
+        set('acStatPieces', String(pieces));
+        set('acStatOut', String(out));
+        set('acStatCost', money(atCost) + ' QAR');
+        set('acStatValue', money(atPrice) + ' QAR');
+
+        const qtyHead = document.getElementById('acQtyHead');
+        if (qtyHead) qtyHead.textContent = shop ? `Quantity — ${shop}` : 'Quantity in each shop';
+
+        // ---- الملاحظة فوق الجدول: القصُّ لا يكون صامتًا
+        const note = document.getElementById('acTableNote');
+        if (note) {
+            const hidden = abayaProducts.length - rows.length;
+            // ⚠️⚠️ رقمٌ سالب يُقال صريحًا: هو الأثر الوحيد لبيع آخرِ قطعةٍ مرّتين
+            // في اللحظة نفسها، ولو أُخفي لخرجت قطعةٌ من الرفّ بلا أن يعلم أحد.
+            const neg = abayaProducts.filter(p => ABAYA_SHOPS.some(s => abayaQtyOf(p, s) < 0));
+            note.innerHTML = abayaProducts.length === 0
+                ? `Nothing in the catalogue yet. Add the first abaya from the form above.`
+                : `<b>${rows.length}</b> of <b>${abayaProducts.length}</b> designs shown`
+                  + (hidden > 0 ? ` &mdash; <b style="color: var(--warning);">${hidden} hidden by the search or the filters.</b>` : '.')
+                  + ` The picture of each row is fetched only when the row reaches the screen.`
+                  + (neg.length
+                      ? `<br><b style="color: var(--danger);">&#9888; ${neg.length} design(s) show a NEGATIVE quantity`
+                        + ` (${neg.slice(0, 5).map(p => escapeHtml(p.code)).join(', ')}${neg.length > 5 ? '…' : ''}).</b>`
+                        + ` That happens when the last piece was sold twice in the same moment. The piece did leave the`
+                        + ` shelf &mdash; press Edit and type the number that is really there.`
+                      : '');
+        }
+
+        // ---- الجدول
+        const body = document.getElementById('acBody');
+        if (body) {
+            if (!rows.length) {
+                body.innerHTML = `<tr><td colspan="10" style="text-align:center;">`
+                    + (abayaProducts.length ? 'Nothing matches the search or the filters.' : 'No abaya yet.')
+                    + `</td></tr>`;
+            } else {
+                body.innerHTML = rows.map(p => {
+                    const disc = abayaHasDiscount(p);
+                    const qtyCell = shop
+                        ? `<b>${abayaQtyOf(p, shop)}</b>`
+                        : ABAYA_SHOPS.map(s => {
+                              const n = abayaQtyOf(p, s);
+                              return `<span style="display:inline-block; margin: 0 8px 2px 0; font-size: 12px;">`
+                                  + `${escapeHtml(s)}: <b style="color: ${n > 0 ? 'inherit' : 'var(--danger)'};">${n}</b></span>`;
+                          }).join('');
+                    const total = abayaQtyTotal(p);
+                    return `<tr>`
+                        + `<td>${p.hasImage
+                              ? `<img data-acimg="${escapeHtml(p.id)}" alt="" loading="lazy" style="width:54px; height:68px; object-fit:cover; border-radius:6px; border:1px solid var(--border); background: var(--bg-soft);">`
+                              : `<span style="font-size:11.5px; color: var(--text-dim);">no picture</span>`}</td>`
+                        + `<td style="font-family: monospace; direction: ltr;"><b>${escapeHtml(p.code)}</b></td>`
+                        + `<td>${escapeHtml(p.name) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
+                        + `<td class="money-col money-only">${money(p.cost)}</td>`
+                        + `<td class="money-col"${disc && abayaDiscountSeason ? ' style="text-decoration: line-through; color: var(--text-dim);"' : ''}>${money(p.price)}</td>`
+                        + `<td class="money-col">${disc ? `<b style="color: var(--success);">${money(p.discountPrice)}</b>` : '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
+                        + `<td>${qtyCell}</td>`
+                        + `<td class="money-col"><b>${total}</b></td>`
+                        + `<td>${p.active
+                              ? '<span style="color: var(--success); font-weight: 700;">Shown</span>'
+                              : '<span style="color: var(--warning); font-weight: 700;">Hidden</span>'}</td>`
+                        + `<td style="white-space: nowrap;">`
+                        + `<button class="btn-ghost btn-sm" onclick="editAbayaProduct('${escapeHtml(p.id)}')">Edit</button> `
+                        + `<button class="btn-danger btn-sm" onclick="deleteAbayaProduct('${escapeHtml(p.id)}')">Delete</button>`
+                        + `</td></tr>`;
+                }).join('');
+            }
+        }
+
+        const foot = document.getElementById('acFoot');
+        if (foot) {
+            foot.innerHTML = rows.length
+                ? `<tr><th colspan="3">Total of the ${rows.length} shown</th>`
+                  + `<th class="money-col money-only">${money(rows.reduce((s, p) => s + countFor(p) * Number(p.cost || 0), 0))}</th>`
+                  + `<th class="money-col">&mdash;</th><th class="money-col">&mdash;</th>`
+                  + `<th>&mdash;</th>`
+                  + `<th class="money-col">${rows.reduce((s, p) => s + abayaQtyTotal(p), 0)}</th>`
+                  + `<th></th><th></th></tr>`
+                : '';
+        }
+
+        const at = document.getElementById('acLoadedAt');
+        if (at) {
+            at.textContent = abayaCatalogLoadedAt
+                ? `Read from the database at ${abayaCatalogLoadedAt.toLocaleTimeString('en-GB')}. Press Refresh to read it again.`
+                : '';
+        }
+
+        renderAbayaCatalogMoves();
+        observeAbayaThumbs();
+    };
+
+    /**
+     * ⭐ الصور تُقرأ **عند وصول الصفّ إلى الشاشة** لا مع الجدول.
+     * ⚠️ السبب رقمٌ لا رأي: ١٠٠ تصميم × ١٦٠KB ≈ ١٦MB في كل فتحةٍ للنافذة.
+     * ⚠️ ولا تُقرأ الصورة مرّتين: acImageCache يحفظها لهذه الجلسة.
+     */
+    function observeAbayaThumbs() {
+        const imgs = Array.from(document.querySelectorAll('img[data-acimg]'));
+        if (!imgs.length) return;
+        const fill = async (img) => {
+            const id = img.getAttribute('data-acimg');
+            if (!id || img.dataset.acDone === '1') return;
+            img.dataset.acDone = '1';
+            if (acImageCache.has(id)) { img.src = acImageCache.get(id); return; }
+            try {
+                const snap = await getDoc(doc(db, ABAYA_PRODUCT_IMAGES_COLL, id));
+                const url = snap.exists() ? String(snap.data().imageBase64 || '') : '';
+                // ⚠️ data:image وحدها تُقبل: نصٌّ آخر في src قد يكون رابطًا خارجيًّا.
+                if (/^data:image\/(png|jpe?g|webp|gif);base64,/.test(url)) {
+                    acImageCache.set(id, url);
+                    img.src = url;
+                }
+            } catch (e) { /* صورةٌ لا تُقرأ لا تُعطّل الجدول */ }
+        };
+        if (typeof IntersectionObserver !== 'function') { imgs.forEach(fill); return; }
+        const obs = new IntersectionObserver((entries) => {
+            entries.forEach(en => {
+                if (en.isIntersecting) { fill(en.target); obs.unobserve(en.target); }
+            });
+        }, { rootMargin: '200px' });
+        imgs.forEach(i => { if (i.dataset.acDone !== '1') obs.observe(i); });
+    }
+
+    const ABAYA_MOVE_REASONS = {
+        sold: 'Sold in the shop',
+        adjust: 'Corrected by the owner',
+        added: 'Added to the catalogue',
+        returned: 'Returned by a customer'
+    };
+
+    function renderAbayaCatalogMoves() {
+        const body = document.getElementById('acMovesBody');
+        const note = document.getElementById('acMovesNote');
+        if (!body) return;
+        if (!abayaProductMoves.length) {
+            body.innerHTML = `<tr><td colspan="7" style="text-align:center;">Nothing has moved yet.</td></tr>`;
+            if (note) note.textContent = '';
+            return;
+        }
+        body.innerHTML = abayaProductMoves.map(m => {
+            const change = Number(m.change || 0);
+            const when = String(m.at || '').replace('T', ' ').slice(0, 16);
+            return `<tr>`
+                + `<td style="white-space: nowrap; direction: ltr;">${escapeHtml(when)}</td>`
+                + `<td>${escapeHtml(String(m.shop || '&mdash;'))}</td>`
+                + `<td style="font-family: monospace; direction: ltr;">${escapeHtml(String(m.code || ''))}</td>`
+                + `<td>${escapeHtml(String(m.name || ''))}</td>`
+                + `<td class="money-col"><b style="color: ${change < 0 ? 'var(--danger)' : 'var(--success)'};">`
+                + `${change > 0 ? '+' : ''}${change}</b></td>`
+                + `<td>${escapeHtml(ABAYA_MOVE_REASONS[String(m.kind || '')] || String(m.kind || ''))}</td>`
+                + `<td>${escapeHtml(String(m.byName || ''))}</td>`
+                + `</tr>`;
+        }).join('');
+        if (note) {
+            note.innerHTML = abayaProductMoves.length >= ABAYA_MOVES_SHOWN
+                ? `Showing the newest <b>${ABAYA_MOVES_SHOWN}</b> movements. Older ones are kept in the database and are not deleted &mdash; only this screen stops at ${ABAYA_MOVES_SHOWN}.`
+                : `<b>${abayaProductMoves.length}</b> movements, all of them shown.`;
+        }
+    }
+
+    // ---- النموذج ---------------------------------------------------------
+    window.onAbayaCodeTyped = function() {
+        const st = document.getElementById('acFormStatus');
+        if (!st) return;
+        const id = abayaProductId((document.getElementById('acCode') || {}).value);
+        if (!id || (acEditingId && id === acEditingId)) { st.textContent = ''; return; }
+        const found = abayaProducts.find(p => p.id === id);
+        st.innerHTML = found
+            ? `<span style="color: var(--warning);">This barcode already exists (${escapeHtml(found.code)}`
+              + `${found.name ? ' &mdash; ' + escapeHtml(found.name) : ''}). Saving will <b>update</b> it, not add a second one.</span>`
+            : '';
+    };
+
+    window.onAbayaPhotoPicked = async function(ev) {
+        const file = ev && ev.target && ev.target.files && ev.target.files[0];
+        const st = document.getElementById('acFormStatus');
+        if (!file) return;
+        if (st) { st.style.color = ''; st.textContent = 'Compressing the picture...'; }
+        try {
+            acPendingPhoto = await shrinkAbayaPhoto(file);
+            acPhotoCleared = false;
+            showAbayaFormPhoto(acPendingPhoto);
+            const kb = Math.round(acPendingPhoto.length * 0.75 / 1024);
+            if (st) { st.style.color = ''; st.textContent = `Picture ready (${kb} KB after compressing). Press Save.`; }
+        } catch (e) {
+            acPendingPhoto = null;
+            showAbayaFormPhoto('');
+            if (st) { st.style.color = 'var(--danger)'; st.textContent = e.message; }
+        }
+        if (ev.target) ev.target.value = '';
+    };
+
+    function showAbayaFormPhoto(url) {
+        const img = document.getElementById('acPhotoImg');
+        const empty = document.getElementById('acPhotoEmpty');
+        const clr = document.getElementById('acPhotoClear');
+        const has = !!url;
+        if (img) { img.style.display = has ? '' : 'none'; if (has) img.src = url; else img.removeAttribute('src'); }
+        if (empty) empty.style.display = has ? 'none' : '';
+        if (clr) clr.style.display = has ? '' : 'none';
+    }
+
+    window.clearAbayaPhoto = function() {
+        acPendingPhoto = null;
+        acPhotoCleared = true;
+        showAbayaFormPhoto('');
+        const st = document.getElementById('acFormStatus');
+        if (st) { st.style.color = ''; st.textContent = 'The picture will be removed when you press Save.'; }
+    };
+
+    window.resetAbayaForm = function() {
+        acEditingId = '';
+        acPendingPhoto = null;
+        acPhotoCleared = false;
+        const v = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        v('acCode', ''); v('acName', ''); v('acCost', ''); v('acPrice', ''); v('acDisc', '');
+        ABAYA_SHOPS.forEach(s => v('acQty_' + abayaShopKey(s), '0'));
+        const act = document.getElementById('acActive'); if (act) act.checked = true;
+        const code = document.getElementById('acCode'); if (code) code.disabled = false;
+        showAbayaFormPhoto('');
+        const t = document.getElementById('acFormTitle'); if (t) t.textContent = 'Add an abaya';
+        const c = document.getElementById('acCancelBtn'); if (c) c.style.display = 'none';
+        const st = document.getElementById('acFormStatus'); if (st) { st.style.color = ''; st.textContent = ''; }
+    };
+
+    window.editAbayaProduct = async function(id) {
+        buildAbayaCatalogShopInputs();
+        const p = abayaProducts.find(x => x.id === id);
+        if (!p) { alert('That abaya is no longer in the list. Press Refresh.'); return; }
+        acEditingId = id;
+        acPendingPhoto = null;
+        acPhotoCleared = false;
+        const v = (eid, val) => { const el = document.getElementById(eid); if (el) el.value = val; };
+        v('acCode', p.code);
+        v('acName', p.name);
+        v('acCost', p.cost ? String(p.cost) : '');
+        v('acPrice', p.price ? String(p.price) : '');
+        v('acDisc', p.discountPrice ? String(p.discountPrice) : '');
+        ABAYA_SHOPS.forEach(s => v('acQty_' + abayaShopKey(s), String(abayaQtyOf(p, s))));
+        const act = document.getElementById('acActive'); if (act) act.checked = p.active !== false;
+        // ⚠️ الباركود يُقفل في التحرير: تغييرُه معرّفٌ جديد، أي **تصميمٌ ثانٍ**
+        // بلا أن يُقصد. من أراد باركودًا آخر يحذف ويُضيف.
+        const code = document.getElementById('acCode'); if (code) code.disabled = true;
+        const t = document.getElementById('acFormTitle'); if (t) t.textContent = 'Edit ' + p.code;
+        const c = document.getElementById('acCancelBtn'); if (c) c.style.display = '';
+        const st = document.getElementById('acFormStatus'); if (st) { st.style.color = ''; st.textContent = ''; }
+        showAbayaFormPhoto('');
+        if (p.hasImage) {
+            if (acImageCache.has(id)) showAbayaFormPhoto(acImageCache.get(id));
+            else {
+                try {
+                    const snap = await getDoc(doc(db, ABAYA_PRODUCT_IMAGES_COLL, id));
+                    const url = snap.exists() ? String(snap.data().imageBase64 || '') : '';
+                    if (/^data:image\//.test(url)) { acImageCache.set(id, url); showAbayaFormPhoto(url); }
+                } catch (e) { /* لا تُعطّل التحرير */ }
+            }
+        }
+        const form = document.getElementById('acFormTitle');
+        if (form && form.scrollIntoView) form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
+    window.saveAbayaProduct = async function() {
+        if (!canEditAbayaSetup()) { alert('Only the owner can change the catalogue.'); return; }
+        const st = document.getElementById('acFormStatus');
+        const fail = (msg) => { if (st) { st.style.color = 'var(--danger)'; st.textContent = msg; } };
+        const rawCode = String((document.getElementById('acCode') || {}).value || '').trim();
+        const id = acEditingId || abayaProductId(rawCode);
+        if (!id) return fail('The barcode is required — it is how the saleswoman finds the abaya.');
+        const name = String((document.getElementById('acName') || {}).value || '').trim();
+        const cost = Number((document.getElementById('acCost') || {}).value || 0) || 0;
+        const price = Number((document.getElementById('acPrice') || {}).value || 0) || 0;
+        const discRaw = String((document.getElementById('acDisc') || {}).value || '').trim();
+        const disc = discRaw === '' ? 0 : (Number(discRaw) || 0);
+        if (price <= 0) return fail('The selling price is required — the saleswoman quotes it to the customer.');
+        if (cost < 0 || disc < 0) return fail('A price cannot be below zero.');
+        if (disc > 0 && disc >= price) {
+            return fail('The discount price must be LESS than the normal price, otherwise it is not a discount.');
+        }
+        const qty = {};
+        ABAYA_SHOPS.forEach(s => {
+            const k = abayaShopKey(s);
+            const n = Math.floor(Number((document.getElementById('acQty_' + k) || {}).value || 0));
+            qty[k] = (isFinite(n) && n > 0) ? n : 0;
+        });
+        const active = !!((document.getElementById('acActive') || {}).checked);
+        const existing = abayaProducts.find(p => p.id === id);
+        const codeToSave = acEditingId ? (existing ? existing.code : rawCode) : rawCode;
+
+        // ⚠️⚠️ حرسُ المعرّف المشترك: باركودان مختلفان قد يُنقّيا إلى معرّفٍ واحد
+        // ("AS.12" و"AS-12"). بلا هذا الحرس كان الحفظ **يمحو تصميمًا آخر** بصمت.
+        if (!acEditingId && existing && String(existing.code).toUpperCase() !== rawCode.toUpperCase()) {
+            return fail(`That barcode becomes the same internal name as "${existing.code}", which already exists. `
+                + `Please change one character so the two cannot be confused.`);
+        }
+        if (!acEditingId && existing) {
+            if (!confirm(`Barcode ${existing.code} already exists`
+                + `${existing.name ? ' (' + existing.name + ')' : ''}.\n\nUpdate that abaya with what you typed?`)) return;
+        }
+
+        const btn = document.getElementById('acSaveBtn');
+        if (btn) btn.disabled = true;
+        if (st) { st.style.color = ''; st.textContent = 'Saving...'; }
+        try {
+            // ⚠️⚠️ الصورة تُكتب **قبل** وسم hasImage على المنتج: وسمٌ يقول «فيها
+            // صورة» وليس لها صورة يُنتج مربّعًا فارغًا على شاشة البياعة إلى
+            // الأبد. فراغٌ صريح أهون من وسمٍ يكذب.
+            let hasImage = existing ? existing.hasImage === true : false;
+            if (acPendingPhoto) {
+                await setDoc(doc(db, ABAYA_PRODUCT_IMAGES_COLL, id), {
+                    imageBase64: acPendingPhoto,
+                    updatedAt: serverTimestamp(),
+                    updatedBy: (currentUser && currentUser.email) || ''
+                });
+                acImageCache.set(id, acPendingPhoto);
+                hasImage = true;
+            } else if (acPhotoCleared) {
+                try { await deleteDoc(doc(db, ABAYA_PRODUCT_IMAGES_COLL, id)); } catch (e) { /* لم تكن موجودة */ }
+                acImageCache.delete(id);
+                hasImage = false;
+            }
+
+            // ⚠️⚠️ ولا حقلَ `cost` هنا بحال: هذا المستند تقرؤه شاشة البياعة
+            // بحسابٍ مجهول، وفايرستور يُعيد المستند كلّه لا بعض حقوله.
+            await setDoc(doc(db, ABAYA_PRODUCTS_COLL, id), {
+                code: codeToSave,
+                name, price,
+                discountPrice: disc,
+                qty, active, hasImage,
+                updatedAt: serverTimestamp(),
+                updatedBy: (currentUser && currentUser.email) || '',
+                ...(existing ? {} : { createdAt: serverTimestamp() })
+            }, { merge: true });
+
+            // الكوست في مستنده المستقل — للمالك والمحاسب وحدهما بالقواعد.
+            await setDoc(doc(db, ABAYA_PRODUCT_COSTS_COLL, id), {
+                cost,
+                updatedAt: serverTimestamp(),
+                updatedBy: (currentUser && currentUser.email) || ''
+            }, { merge: true });
+
+            // ---- سجلُّ الحركة لكل محلٍّ تغيّر عدده
+            // ⚠️ فوق مستند المنتج لا داخله: السجل غير قابل للتعديل بقواعده،
+            // فهو الجواب الدائم على «الكمية نقصت — من؟».
+            const moves = [];
+            ABAYA_SHOPS.forEach(s => {
+                const k = abayaShopKey(s);
+                const before = existing ? abayaQtyOf(existing, s) : 0;
+                const diff = qty[k] - before;
+                if (diff !== 0) {
+                    moves.push({
+                        productId: id, code: codeToSave, name, shop: s,
+                        change: diff,
+                        after: qty[k],
+                        kind: existing ? 'adjust' : 'added',
+                        by: (currentUser && currentUser.email) || '', byName: 'Owner',
+                        at: new Date().toISOString(),
+                        createdAt: serverTimestamp()
+                    });
+                }
+            });
+            for (const m of moves) {
+                try { await addDoc(collection(db, ABAYA_PRODUCT_MOVES_COLL), m); } catch (e) { console.error(e); }
+            }
+
+            logAudit('abaya_catalog_saved', `${codeToSave} — ${name || 'no name'} — `
+                + ABAYA_SHOPS.map(s => `${s}:${qty[abayaShopKey(s)]}`).join(', '));
+            resetAbayaForm();
+            if (st) { st.style.color = 'var(--success)'; st.textContent = `Saved ${codeToSave}.`; }
+            await loadAbayaCatalog();
+            // ⚠️ الرسالة تُعاد بعد العرض: renderAbayaCatalog لا يمسّها، لكن
+            // resetAbayaForm فوقها تمسحها — فترتيبُ السطرين مقصود.
+            if (st) { st.style.color = 'var(--success)'; st.textContent = `Saved ${codeToSave}.`; }
+        } catch (e) {
+            console.error('Error saving the abaya:', e);
+            fail(`Could not save: ${e.message}`
+                + (/permission/i.test(String(e.message)) ? ' — the new rules have not been published yet.' : ''));
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    };
+
+    window.deleteAbayaProduct = async function(id) {
+        if (!canEditAbayaSetup()) { alert('Only the owner can change the catalogue.'); return; }
+        const p = abayaProducts.find(x => x.id === id);
+        if (!p) return;
+        const total = abayaQtyTotal(p);
+        if (!confirm(`Delete ${p.code}${p.name ? ' — ' + p.name : ''} from the catalogue?\n\n`
+            + (total > 0
+                ? `⚠️ It still shows ${total} piece(s) in the shops. If you only want to stop showing it to the `
+                  + `saleswomen, press Cancel and untick "Show it to the shops" instead — that keeps the quantity.\n\n`
+                : '')
+            + `The movement history stays.`)) return;
+        try {
+            await deleteDoc(doc(db, ABAYA_PRODUCTS_COLL, id));
+            try { await deleteDoc(doc(db, ABAYA_PRODUCT_IMAGES_COLL, id)); } catch (e) { /* لا صورة */ }
+            try { await deleteDoc(doc(db, ABAYA_PRODUCT_COSTS_COLL, id)); } catch (e) { /* لا كوست */ }
+            acImageCache.delete(id);
+            logAudit('abaya_catalog_deleted', `${p.code} — ${p.name || 'no name'} — had ${total} piece(s)`);
+            if (acEditingId === id) resetAbayaForm();
+            await loadAbayaCatalog();
+        } catch (e) {
+            alert(`Could not delete: ${e.message}`);
+        }
+    };
+
+    window.saveAbayaDiscountSeason = async function() {
+        const cb = document.getElementById('acSeason');
+        const st = document.getElementById('acSeasonStatus');
+        if (!cb) return;
+        if (!canEditAbayaSetup()) {
+            cb.checked = abayaDiscountSeason;
+            if (st) { st.style.color = 'var(--danger)'; st.textContent = 'Only the owner can open or close the season.'; }
+            return;
+        }
+        const on = !!cb.checked;
+        if (st) { st.style.color = ''; st.textContent = 'Saving...'; }
+        try {
+            await setDoc(doc(db, 'settings', ABAYA_DISCOUNT_DOC), {
+                on,
+                updatedAt: serverTimestamp(),
+                updatedBy: (currentUser && currentUser.email) || ''
+            }, { merge: true });
+            abayaDiscountSeason = on;
+            logAudit('abaya_discount_season', on ? 'opened' : 'closed');
+            // ⚠️ الرسالة **لا تُمحى** بمؤقّت: «Saved» التي تختفي فورًا كانت
+            // تجعل المالك يظنّ أنه لم يُحفظ شيء — عطلٌ وقع فعلًا في رقم الأوت سورس.
+            if (st) {
+                st.style.color = 'var(--success)';
+                st.textContent = on
+                    ? 'Saved. Every screen now shows the discount prices.'
+                    : 'Saved. Every screen is back to the normal prices.';
+            }
+            renderAbayaCatalog();
+        } catch (e) {
+            cb.checked = abayaDiscountSeason;
+            if (st) { st.style.color = 'var(--danger)'; st.textContent = `Could not save: ${e.message}`; }
+        }
+    };
+
+    window.exportAbayaCatalogExcel = function() {
+        const rows = abayaCatalogRows();
+        if (!rows.length) { alert('Nothing to export.'); return; }
+        const sheet = rows.map(p => {
+            const r = {
+                'Barcode': p.code,
+                'Name': p.name,
+                'Cost': p.cost,
+                'Selling price': p.price,
+                'Price after discount': abayaHasDiscount(p) ? p.discountPrice : '',
+                'Discount shown now': (abayaDiscountSeason && abayaHasDiscount(p)) ? 'Yes' : 'No'
+            };
+            ABAYA_SHOPS.forEach(s => { r[s] = abayaQtyOf(p, s); });
+            r['Total pieces'] = abayaQtyTotal(p);
+            r['Shown to the shops'] = p.active ? 'Yes' : 'No';
+            r['Has a picture'] = p.hasImage ? 'Yes' : 'No';
+            return r;
+        });
+        const ws = XLSX.utils.json_to_sheet(sheet);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Abaya Catalogue');
+        XLSX.writeFile(wb, `Abaya_Catalogue_${todayISO()}.xlsx`);
+    };
 
     // ---- التحميل ---------------------------------------------------------
     window.loadAbayaData = async function() {
@@ -17080,7 +18037,14 @@
         // ولا نسخة أخرى منها في أي مكان — فبلا هذا السطر تُفقد صور البياعات
         // نهائيًّا ويُعيد رفعها واحدةً واحدة. ونسيان هذا السطر وقع فعلًا مرّةً
         // مع أدلّة التدريب.
-        "abaya_seller_cards", "abaya_presence"
+        "abaya_seller_cards", "abaya_presence",
+        // ⭐⭐ وكتالوج العبايات بمجموعاته الثلاث. ⚠️ `abaya_product_images` تحمل
+        // **الصورة نفسها** ولا نسخة أخرى منها في أي مكان — فبلا هذا السطر تُفقد
+        // صور مئة عباية نهائيًّا ويُعاد رفعها واحدةً واحدة. ونسيان سطرٍ كهذا
+        // وقع فعلًا مرّتين: مع أدلّة التدريب ومع بطاقات البياعات.
+        // و`abaya_product_moves` سجلٌّ غير قابل للتعديل بقواعده — أي إثبات، ولا
+        // يُعاد بناؤه من شيء آخر.
+        "abaya_products", "abaya_product_costs", "abaya_product_images", "abaya_product_moves"
     ];
     // =====================================================================
     // تعيين المدراء بضغطة

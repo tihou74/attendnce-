@@ -756,6 +756,119 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ======================================================================
+    // ---- THE ABAYA CATALOGUE — three collections ---------------------------
+    // ======================================================================
+    // The owner's own words: "most of the pictures are THE SAME in every shop,
+    // only the quantity differs". So the catalogue is built around ONE document
+    // per DESIGN — its picture, its barcode, its cost and its two prices are
+    // stored ONCE — and the per-shop quantities live inside that same document
+    // as a map: qty: { GULF_MALL: 4, VENDOME_MALL: 2, ... }.
+    //
+    // ⚠️ WHY THAT MATTERS AND IS NOT A DETAIL: the alternative (one document per
+    // design PER SHOP) would store the SAME photograph four times. At roughly
+    // 100 designs that is 400 pictures instead of 100 — four times the storage,
+    // four times Mrs Fatima's mobile data, and worst of all FOUR PLACES to
+    // correct when one price changes, which is how two shops end up quoting two
+    // different prices for the same abaya.
+    //
+    // ⚠️ THE DOCUMENT ID IS THE BARCODE (sanitised). That is deliberate: when a
+    // saleswoman scans or types a barcode the page reads ONE document directly
+    // by id — no query, no composite index, no collection scan. It is also what
+    // makes a duplicate barcode IMPOSSIBLE rather than merely discouraged.
+    //
+    // ⚠️ THIS IS NOT THE OLD STOCK COUNT AND MUST NEVER BE MIXED WITH IT. The
+    // existing figures (abaya_sales_reports + settings/abaya_stock_opening) count
+    // stock BY TYPE — Shanton, Dress, Inner… — and feed the money. This counts
+    // individual PIECES and feeds nothing financial. Both are true at once
+    // because they answer different questions. By the owner's explicit
+    // instruction the old count is left exactly as it was.
+
+    // ---- abaya_products (one document per DESIGN, id = the barcode) ---------
+    // Fields: code, name, cost, price, discountPrice, qty{shopKey:n}, active,
+    // hasImage, createdAt, updatedAt. NO picture here — see the next collection.
+    //
+    // Reading: the owner and the accountant run the business; the VIEWERS are
+    // the owner's second account and Mrs Fatima, whose read-only panel shows the
+    // catalogue; and the KIOSK is the saleswoman's own page, which must be able
+    // to look a barcode up in order to sell it.
+    //
+    // ⚠️ Writing is split in two on purpose. The saleswoman's page signs in
+    // ANONYMOUSLY, so "the kiosk" is in practice anyone who opens that link.
+    // Granting it a plain update would let a stranger rewrite the SELLING PRICE
+    // of every abaya. So the kiosk may change NOTHING BUT the quantity map:
+    // affectedKeys().hasOnly(['qty','updatedAt']). Prices, cost, barcode and
+    // name are the owner's alone, and a rule — not a screen — is what enforces
+    // that, because a screen can be bypassed from the browser's own tools.
+    match /abaya_products/{productId} {
+      allow read: if isAdmin() || isAccountant() || isViewer() || isKiosk();
+      allow create: if isAdmin();
+      allow delete: if isAdmin();
+      allow update: if isAdmin()
+        || (isKiosk()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['qty', 'updatedAt']));
+    }
+
+    // ---- abaya_product_costs (WHAT THE ABAYA COST US) -----------------------
+    // id = the same id as the product, holding one number: cost.
+    //
+    // ⚠️⚠️⚠️ WHY THIS IS NOT A FIELD ON THE PRODUCT, and it is not a detail:
+    // abaya_products must be readable by the KIOSK, because the saleswoman's page
+    // has to look a barcode up in order to sell it — and that page signs in
+    // ANONYMOUSLY, so "the kiosk" is in practice ANYONE who opens the link.
+    // Firestore cannot return "some fields" of a document: a read brings the
+    // whole thing. So a cost field sitting on the product would be readable by
+    // anyone with the link — our purchase price, the one number a competitor
+    // would most like to have. Kept in its own document, the kiosk simply has
+    // no rule for it and the read is refused.
+    //
+    // The accountant may read it because it is a purchase figure and it belongs
+    // in his stock valuation. NOT the viewers: Mrs Fatima's screen shows what is
+    // being sold and for how much, never what it cost us.
+    match /abaya_product_costs/{productId} {
+      allow read: if isAdmin() || isAccountant();
+      allow write: if isAdmin();
+    }
+
+    // ---- abaya_product_images (the photograph, one document per design) -----
+    // id = the SAME id as the product, holding nothing but the compressed JPEG
+    // as a base64 data URL.
+    //
+    // ⚠️ WHY THE PICTURE IS NOT A FIELD ON THE PRODUCT: Firestore cannot return
+    // "some fields" of a document — a read brings the whole thing. With the
+    // picture inside, listing 100 designs would download about 15 MB onto Mrs
+    // Fatima's telephone every time she opened the screen, to show a list of
+    // names. Split like this, the list costs a few kilobytes and a picture is
+    // fetched ONLY for the abaya actually being looked at.
+    //
+    // Only the owner uploads: a saleswoman changing a photograph would change
+    // what the shop is shown to be selling.
+    match /abaya_product_images/{productId} {
+      allow read: if isAdmin() || isAccountant() || isViewer() || isKiosk();
+      allow write: if isAdmin();
+    }
+
+    // ---- abaya_product_moves (who moved which piece, and when) -------------
+    // One document per movement: the design, the shop, how many, why, and which
+    // saleswoman did it. This is the ANSWER to "the quantity went down — who?".
+    //
+    // ⚠️ Append-only, exactly like abaya_presence: the page signs in
+    // anonymously, so update must stay closed or an old line could be rewritten
+    // to hide a piece. A correction is a NEW line in the opposite direction.
+    //
+    // ⚠️ This is NOT a sales record and carries no money. It does not feed the
+    // daily report, the commission or the target. A missing line here means the
+    // movement write did not land — never that nothing was sold.
+    match /abaya_product_moves/{moveId} {
+      allow read: if isAdmin() || isAccountant() || isViewer();
+      allow create: if isKiosk() || isAdmin();
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    // NOTE: the discount-season switch (settings/abaya_discount) needs NO rule of
+    // its own — it lives inside the settings collection already covered above.
+
     // ---- employee_offers (the job-offer PDF for a sponsorship transfer) ------
     // One document per employee, id = the employee id, holding the offer PDF as
     // a base64 data URL plus the file name and who uploaded it.

@@ -279,6 +279,60 @@
         min-height: var(--btn-height); line-height: var(--btn-height);
         border-radius: var(--btn-radius); margin-top: var(--space-4);
     }
+    /* ============ بيع عباية من الكتالوج ============
+       ⚠️ كل شيء مُسمّى داخل .cpcard أو .cpg حتى لا يتعارض اسمٌ عامٌّ مع تنسيقٍ
+       قائمٍ في هذه الصفحة. */
+    .cpcard {
+        display: flex; gap: var(--space-4); align-items: flex-start;
+        background: var(--color-surface-2); border: var(--border-hairline) solid var(--color-border);
+        border-radius: var(--radius-md); padding: var(--space-3);
+    }
+    .cpcard .ph {
+        width: 92px; height: 115px; flex: 0 0 auto; object-fit: cover;
+        border-radius: var(--radius-sm); background: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-border);
+    }
+    .cpcard .ph.none { display: none; }
+    .cpbd { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    /* الباركود LTR دائمًا — رقمٌ معكوسٌ لا يُقرأ */
+    .cpbd .code { direction: ltr; font-family: ui-monospace, monospace; font-size: 12px;
+        font-weight: 700; color: var(--color-text-muted); }
+    .cpbd .nm { font-size: var(--text-sm); font-weight: 700; line-height: 1.45; }
+    .cpbd .pr { font-size: var(--text-base); font-weight: 800; }
+    .cpbd .pr .was { font-size: 12px; font-weight: 400; color: var(--color-text-muted);
+        text-decoration: line-through; margin-inline-start: 7px; }
+    .cpbd .qt { font-size: 12px; font-weight: 700; }
+    .cpbd .qt.zero { color: var(--color-danger); }
+
+    .cpg { display: grid; gap: var(--space-3); grid-template-columns: 1fr 1fr; margin-top: var(--space-3); }
+    @media (min-width: 620px) { .cpg { grid-template-columns: repeat(3, 1fr); } }
+    .cpg .it {
+        background: var(--color-surface-2); border: var(--border-hairline) solid var(--color-border);
+        border-radius: var(--radius-md); overflow: hidden; text-align: start;
+        padding: 0; min-height: 0; width: 100%; color: var(--color-text);
+        display: flex; flex-direction: column; cursor: pointer;
+    }
+    .cpg .it[disabled] { opacity: 0.5; cursor: not-allowed; }
+    .cpg .it img, .cpg .it .noimg {
+        width: 100%; aspect-ratio: 4 / 5; object-fit: cover; display: block;
+        background: var(--color-surface);
+    }
+    .cpg .it .noimg { display: flex; align-items: center; justify-content: center;
+        font-size: 11px; color: var(--color-text-muted); font-weight: 700; }
+    .cpg .it .tx { padding: 7px 8px 9px; display: flex; flex-direction: column; gap: 2px; }
+    .cpg .it .c { direction: ltr; font-family: ui-monospace, monospace; font-size: 11px;
+        font-weight: 700; color: var(--color-text-muted); }
+    .cpg .it .p { font-size: 13px; font-weight: 800; }
+    .cpg .it .q { font-size: 11px; font-weight: 700; }
+    .cpg .it .q.zero { color: var(--color-danger); }
+
+    .cpsold {
+        display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+        flex-wrap: wrap; border: var(--border-hairline) solid var(--color-border);
+        border-radius: var(--radius-sm); padding: 9px 11px; margin-bottom: var(--space-3);
+        font-size: var(--text-sm);
+    }
+    .cpsold button { width: auto; min-height: 36px; padding: 0 12px; font-size: 12px; }
     .hidden { display: none !important; }
 </style>
 </head>
@@ -370,6 +424,78 @@
                 Ask the owner to open <b>Al Sheikha Style &rarr; Settings &rarr; Saleswomen</b> and press
                 <b>Create employee file</b> next to your name. Sending the daily report still works normally.
             </p>
+        </div>
+
+        <!-- ==================================================================
+             ⭐⭐⭐ بيع عباية من الكتالوج — بطلب المالك:
+             «واذا اي بياعة باعت عباية تنقص الكمية»
+             ------------------------------------------------------------------
+             ⚠️⚠️⚠️ هذا القسم **منفصلٌ تمامًا** عن التقرير اليومي أسفله ولا يمسّه
+             بحرف: لا يكتب في مبيعات الشيخة ستايل، ولا في الكاش والكارد، ولا في
+             قسم شانتون، ولا في حركات الستوك، ولا في مجموعة التقارير إطلاقًا.
+             يكتب في مجموعتين جديدتين وحدهما. وشرطُ المالك كان صريحًا:
+             «واريد ان لا يؤثر هذا على البرنامج».
+
+             ⚠️ ولا مال هنا: هذه الشاشة تُنقص **عددًا**، والمال يبقى حيث كان —
+             في التقرير اليومي الذي تُرسله كما كانت تفعل تمامًا. فلو نُسي هذا
+             القسم يومًا لم يضع ريالٌ واحد.
+
+             ⚠️ وموضعُه بعد اختيار المحل عن قصد: النقص يجب أن يقع على **محلّها
+             اليوم**، والجهاز مشترك ولا تعمل في محل ثابت (قرار الإدارة).
+             ================================================================== -->
+        <div class="panel" id="cpPanel">
+            <h2>Sell an abaya</h2>
+            <p class="ar">Type the barcode, or press <b>Show the abayas</b> and tap the picture</p>
+
+            <label for="cpCode">Barcode</label>
+            <input type="text" id="cpCode" autocomplete="off" spellcheck="false" dir="ltr" placeholder="e.g. AS-1042">
+            <div class="bar" style="margin-top: var(--space-3);">
+                <button id="cpFind" style="width: auto;">Find it</button>
+                <button class="ghost" id="cpBrowse" style="width: auto;">Show the abayas</button>
+            </div>
+            <p class="status" id="cpMsg" style="margin-top: var(--space-3);"></p>
+
+            <!-- العباية التي وُجدت -->
+            <div id="cpFound" class="hidden" style="margin-top: var(--space-4);">
+                <div class="cpcard">
+                    <img id="cpImg" class="ph" alt="">
+                    <div class="cpbd">
+                        <span class="code" id="cpFoundCode">&mdash;</span>
+                        <span class="nm" id="cpFoundName"></span>
+                        <span class="pr" id="cpFoundPrice"></span>
+                        <span class="qt" id="cpFoundLeft"></span>
+                    </div>
+                </div>
+                <div class="two" style="margin-top: var(--space-4);">
+                    <div>
+                        <label for="cpQty">How many are you selling</label>
+                        <input type="number" id="cpQty" inputmode="numeric" step="1" min="1" value="1">
+                    </div>
+                    <div style="display: flex; align-items: flex-end;">
+                        <button id="cpConfirm" style="background: #16a34a;">Confirm the sale</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- كل العبايات بالصور -->
+            <div id="cpList" class="hidden" style="margin-top: var(--space-4);">
+                <label for="cpSearch">Search &mdash; barcode or name</label>
+                <input type="text" id="cpSearch" autocomplete="off" placeholder="Type a barcode or a name">
+                <div class="cpg" id="cpGrid"></div>
+                <p class="ar" id="cpListNote" style="margin-top: var(--space-3);"></p>
+            </div>
+
+            <!-- ما بِعتِه من هذه الشاشة اليوم — مع تصحيحٍ لضغطةٍ خطأ -->
+            <div id="cpSoldWrap" class="hidden" style="margin-top: var(--space-5);">
+                <p class="sect" style="font-size: var(--text-sm); font-weight: 700; margin: 0 0 var(--space-3);">
+                    What you took off the shelf from this screen
+                </p>
+                <div id="cpSoldList"></div>
+                <p class="ar" style="margin-top: var(--space-3);">
+                    Pressed one by mistake? <b>Put it back</b> returns the piece to the shop and leaves an honest line in
+                    the owner's log &mdash; nothing is ever erased.
+                </p>
+            </div>
         </div>
 
         <div class="panel">
@@ -601,6 +727,12 @@
         getFirestore, collection, addDoc, doc, getDoc, getDocs, serverTimestamp,
         // ⭐ query/where لقراءة بصمات اليوم لهذه البياعة وحدها — لا المجموعة كلها.
         query, where,
+        // ⭐⭐ updateDoc + increment لبيع عباية من الكتالوج.
+        // ⚠️ increment لا قراءةٌ ثم كتابةُ رقمٍ ثابت: لو باعت بياعتان آخرَ قطعتين
+        // في اللحظة نفسها فإن كتابة رقمٍ ثابتٍ **تُلغي** إحدى العمليتين، فتخرج
+        // قطعتان من الرفّ وينقص العدد واحدًا. وincrement عمليةٌ ذرّية في الخادم
+        // فلا تُفقد أيٌّ منهما.
+        updateDoc, increment,
         initializeFirestore, persistentLocalCache, persistentMultipleTabManager
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -1384,14 +1516,434 @@
         }
         buildMoveSelects();
         recalc();
+        // ⭐⭐ قسم بيع العبايات يُصفّر مع تغيير المحل: الجهاز مشترك، والعدد يجب
+        // أن ينقص من **محلّها اليوم**. وعبايةٌ وُجدت في محلٍّ سابق لا يجوز أن
+        // تبقى مُختارةً بعد الانتقال إلى محلٍّ آخر.
+        resetCatalogSell();
         showStep('stepForm');
         // ⭐ حالة البصمة تُقرأ بعد ظهور الشاشة لا قبلها: قراءةٌ من الشبكة لا يجوز
         // أن تُبطئ ظهور النموذج، وهي لا تمنع شيئًا إن تأخّرت.
         setMsg('attendMsg', '', '');
         paintAttendState();
         loadTodayPunch();
+        // ⭐⭐ ويُقرأ الكتالوج هنا لا عند الضغط على «Show the abayas» وحده.
+        // ⚠️ السبب سعرٌ خطأ يُقال لزبونة: البحث بالباركود يقرأ مستندًا واحدًا، لكن
+        // **مفتاح موسم الخصم** مستندٌ آخر — وبلا قراءته كانت الشاشة تُظهر السعر
+        // العادي في عزّ الموسم. وهذه قراءةٌ خفيفة (أسماءٌ وأسعارٌ بلا صور) وتُقرأ
+        // مرّةً واحدة لهذه الجلسة، ولا تمنع ظهور النموذج لأنها بلا await.
+        loadSellerCatalog();
     }
     el('btnBackShop').addEventListener('click', () => showStep('stepShop'));
+
+    // =====================================================================
+    // ⭐⭐⭐ بيع عباية من الكتالوج — «اذا اي بياعة باعت عباية تنقص الكمية»
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️⚠️ منفصلٌ تمامًا عن التقرير: لا يكتب في abaya_sales_reports، ولا يلمس
+    // خانةً ماليّةً واحدة، ولا حركات الستوك، ولا قسم شانتون. يكتب في
+    // abaya_products (خانة الكمية وحدها) وفي abaya_product_moves وحدهما.
+    // وشرطُ المالك: «واريد ان لا يؤثر هذا على البرنامج».
+    //
+    // ⚠️⚠️ والقواعد **هي** الحارس لا هذه الشاشة: هذه الصفحة تدخل بحسابٍ مجهول،
+    // أي أن «الكشك» عمليًّا هو كلُّ من يفتح الرابط. فالقاعدة تسمح له بتغيير
+    // مفتاحَي qty وupdatedAt وحدهما (hasOnly) — فلا يستطيع أحدٌ تغيير سعر بيع
+    // ولو عدّل هذه الصفحة من أدوات المتصفّح.
+    //
+    // ⚠️ ولا مال هنا إطلاقًا: تُنقص **عددًا**. والمال يبقى في التقرير اليومي كما
+    // كان بالحرف — فلو لم تستعمل بياعةٌ هذا القسم يومًا كاملًا لم يضع ريالٌ واحد.
+    // =====================================================================
+    /**
+     * ⚠️⚠️ نسخةٌ **مطابقة حرفيًّا** لما في admin.html وabaya-balances.html، وفحصٌ
+     * يحرس تطابقها الثلاثي. لو اختلفت هنا لكتبت البياعة نقصًا على مفتاحٍ لا
+     * تقرؤه اللوحة — فتخرج العباية من الرفّ ويبقى العدد على الشاشة كما هو.
+     */
+    function abayaShopKey(shop) {
+        return String(shop || '').trim().toUpperCase()
+            .replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    }
+    /**
+     * ⚠️⚠️ مطابقةٌ **حرفيًّا** لـabayaProductId في admin.html — وهي كيف يُعرف
+     * الباركود. واسم الثابت نفسُه (ABAYA_CODE_MAX) مقصود: لو اختلف الاسمان لما
+     * استطاع فحصٌ أن يُقارن الدالّتين حرفًا بحرف، وهذه دالّةٌ اختلافُها في ملفٍ
+     * واحدٍ يعني أن باركود البياعة لا يجد عبايته إطلاقًا.
+     */
+    const ABAYA_CODE_MAX = 40;
+    function abayaProductId(code) {
+        return String(code || '').trim().toUpperCase()
+            .replace(/\s+/g, '-')
+            .replace(/[\/\\.#\[\]*?]+/g, '-')
+            .replace(/-{2,}/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, ABAYA_CODE_MAX);
+    }
+    /** ⚠️ data:image وحدها تُقبل في src — كنسخة abaya-balances.html حرفيًّا. */
+    function safePhoto(v) {
+        const s = String(v || '');
+        return /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(s) ? s : '';
+    }
+
+    let cpProducts = [];          // كل العبايات المعروضة (بلا صور)
+    let cpSeasonOn = false;
+    let cpLoaded = false;
+    let cpSelected = null;        // العباية المُختارة الآن
+    let cpBusy = false;
+    let cpSoldHere = [];          // [{ id, code, name, qty, moveId }] لهذه الجلسة
+    const cpImages = new Map();   // id -> data URL
+
+    function cpQtyOf(p, shop) { return Number((p.qty || {})[abayaShopKey(shop)] || 0) || 0; }
+    function cpHasDiscount(p) {
+        const d = Number(p.discountPrice || 0), pr = Number(p.price || 0);
+        return isFinite(d) && d > 0 && d < pr;
+    }
+    function cpShownPrice(p) { return (cpSeasonOn && cpHasDiscount(p)) ? Number(p.discountPrice) : Number(p.price || 0); }
+
+    /** يُعيد كل شيء إلى البداية — يُنادى عند تغيير المحل (الجهاز مشترك). */
+    function resetCatalogSell() {
+        cpSelected = null;
+        cpSoldHere = [];
+        el('cpCode').value = '';
+        el('cpQty').value = '1';
+        if (el('cpSearch')) el('cpSearch').value = '';
+        el('cpFound').classList.add('hidden');
+        el('cpList').classList.add('hidden');
+        el('cpSoldWrap').classList.add('hidden');
+        setMsg('cpMsg', '', '');
+    }
+
+    /**
+     * ⚠️ بلا orderBy: فايرستور يُسقط بصمتٍ كل مستندٍ لا يحمل الحقل المرتَّب به.
+     * ⚠️ وبلا صور: هذه قائمةُ أسماءٍ وأسعارٍ وأعداد — بضعةُ كيلوبايت. وصورةُ كل
+     * عباية تُقرأ عند النظر إليها وحدها، فهاتف البياعة لا يُنزّل ١٦MB.
+     */
+    async function loadSellerCatalog(force) {
+        if (cpLoaded && !force) return;
+        try {
+            const [prodSnap, seasonSnap] = await Promise.all([
+                getDocs(collection(db, 'abaya_products')),
+                getDoc(doc(db, 'settings', 'abaya_discount'))
+            ]);
+            cpProducts = [];
+            prodSnap.forEach(d => {
+                const v = d.data() || {};
+                if (v.active === false) return;   // أخفاها المالك عن المحلات
+                cpProducts.push({
+                    id: d.id,
+                    code: String(v.code || d.id),
+                    name: String(v.name || ''),
+                    price: Number(v.price || 0) || 0,
+                    discountPrice: Number(v.discountPrice || 0) || 0,
+                    qty: (v.qty && typeof v.qty === 'object') ? v.qty : {},
+                    hasImage: v.hasImage === true
+                });
+            });
+            cpProducts.sort((a, b) => String(a.code).localeCompare(String(b.code)));
+            cpSeasonOn = !!(seasonSnap.exists() && seasonSnap.data().on === true);
+            cpLoaded = true;
+        } catch (e) {
+            console.error('Could not read the abaya catalogue:', e);
+            // ⚠️ ولا يُعطَّل التقرير بحال: قسمٌ لا يُقرأ لا يمنعها من إرسال يومها.
+            setMsg('cpMsg', 'The abaya list could not be read just now. Your daily report still works normally.', 'warn');
+        }
+    }
+
+    // ---- البحث بالباركود -------------------------------------------------
+    /**
+     * ⚠️ قراءةُ مستندٍ واحدٍ بمعرّفه لا مسحُ المجموعة: الباركود **هو** المعرّف.
+     * فالبحث فوريٌّ وبلا فهرس، ويعمل ولو كان في الكتالوج ألف عباية.
+     */
+    async function cpFindByCode(raw) {
+        const id = abayaProductId(raw);
+        if (!id) { setMsg('cpMsg', 'Type the barcode first.', 'err'); return; }
+        setMsg('cpMsg', 'Looking...', 'load');
+        try {
+            const snap = await getDoc(doc(db, 'abaya_products', id));
+            if (!snap.exists()) {
+                cpSelected = null;
+                el('cpFound').classList.add('hidden');
+                setMsg('cpMsg', `No abaya has the barcode ${raw}. Check it, or press "Show the abayas" and tap the picture.`, 'err');
+                return;
+            }
+            const v = snap.data() || {};
+            if (v.active === false) {
+                cpSelected = null;
+                el('cpFound').classList.add('hidden');
+                setMsg('cpMsg', `That abaya is not being offered right now. Ask the owner.`, 'warn');
+                return;
+            }
+            cpSelect({
+                id: snap.id,
+                code: String(v.code || snap.id),
+                name: String(v.name || ''),
+                price: Number(v.price || 0) || 0,
+                discountPrice: Number(v.discountPrice || 0) || 0,
+                qty: (v.qty && typeof v.qty === 'object') ? v.qty : {},
+                hasImage: v.hasImage === true
+            });
+            setMsg('cpMsg', '', '');
+        } catch (e) {
+            setMsg('cpMsg', /permission/i.test(String(e && e.message))
+                ? 'The abaya list is not ready yet. Ask the owner to publish the new rules.'
+                : 'Could not look that up just now. Try again.', 'err');
+        }
+    }
+
+    async function cpSelect(p) {
+        cpSelected = p;
+        const left = cpQtyOf(p, state.shop);
+        el('cpList').classList.add('hidden');
+        el('cpFound').classList.remove('hidden');
+        el('cpFoundCode').innerText = p.code;
+        el('cpFoundName').innerText = p.name || '';
+        const disc = cpSeasonOn && cpHasDiscount(p);
+        el('cpFoundPrice').innerHTML = `${money(cpShownPrice(p))} QAR`
+            + (disc ? `<span class="was">${money(p.price)}</span>` : '');
+        const q = el('cpFoundLeft');
+        q.className = 'qt' + (left <= 0 ? ' zero' : '');
+        q.innerText = left <= 0
+            ? `Sold out in ${state.shop}`
+            : `${left} piece(s) left in ${state.shop}`;
+        el('cpQty').value = '1';
+        el('cpQty').max = String(Math.max(1, left));
+        el('cpConfirm').disabled = left <= 0;
+        // الصورة: تُقرأ مرّةً واحدة وتُحفظ لهذه الجلسة
+        const img = el('cpImg');
+        img.className = 'ph' + (p.hasImage ? '' : ' none');
+        img.removeAttribute('src');
+        if (p.hasImage) {
+            if (cpImages.has(p.id)) img.src = cpImages.get(p.id);
+            else {
+                try {
+                    const s = await getDoc(doc(db, 'abaya_product_images', p.id));
+                    const url = safePhoto(s.exists() ? s.data().imageBase64 : '');
+                    if (url) { cpImages.set(p.id, url); img.src = url; }
+                } catch (e) { /* صورةٌ لا تُقرأ لا تمنع البيع */ }
+            }
+        }
+    }
+
+    el('cpFind').addEventListener('click', () => cpFindByCode(el('cpCode').value));
+    // ⭐ قارئ الباركود يُرسل Enter بعد الرقم، فالضغط على Enter يبحث.
+    el('cpCode').addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') { ev.preventDefault(); cpFindByCode(el('cpCode').value); }
+    });
+
+    // ---- استعراض الصور ---------------------------------------------------
+    el('cpBrowse').addEventListener('click', async () => {
+        const shown = !el('cpList').classList.contains('hidden');
+        if (shown) { el('cpList').classList.add('hidden'); return; }
+        setMsg('cpMsg', 'Loading the abayas...', 'load');
+        await loadSellerCatalog();
+        setMsg('cpMsg', '', '');
+        el('cpFound').classList.add('hidden');
+        el('cpList').classList.remove('hidden');
+        cpRenderGrid();
+    });
+    el('cpSearch').addEventListener('input', () => cpRenderGrid());
+
+    function cpRenderGrid() {
+        const q = String(el('cpSearch').value || '').trim().toUpperCase();
+        const rows = cpProducts.filter(p => {
+            if (cpQtyOf(p, state.shop) <= 0) return false;   // ما ليس في محلّها لا يُعرض
+            if (!q) return true;
+            return String(p.code).toUpperCase().includes(q) || String(p.name).toUpperCase().includes(q);
+        });
+        if (!rows.length) {
+            el('cpGrid').innerHTML = '';
+            el('cpListNote').innerHTML = cpProducts.length
+                ? `Nothing in <b>${escapeHtml(state.shop || '')}</b> matches that.`
+                : `The owner has not added any abaya to the list yet.`;
+            return;
+        }
+        el('cpGrid').innerHTML = rows.map(p => {
+            const left = cpQtyOf(p, state.shop);
+            const disc = cpSeasonOn && cpHasDiscount(p);
+            return `<button type="button" class="it" data-cpid="${escapeHtml(p.id)}">`
+                + (p.hasImage
+                    ? `<img data-cpimg="${escapeHtml(p.id)}" alt="${escapeHtml(p.name || p.code)}">`
+                    : `<span class="noimg">No picture</span>`)
+                + `<span class="tx">`
+                + `<span class="c">${escapeHtml(p.code)}</span>`
+                + `<span class="p">${money(cpShownPrice(p))} QAR${disc ? ' &#9733;' : ''}</span>`
+                + `<span class="q">${left} left</span>`
+                + `</span></button>`;
+        }).join('');
+        el('cpListNote').innerHTML = `<b>${rows.length}</b> abaya(s) available in `
+            + `<b>${escapeHtml(state.shop || '')}</b>. Tap one to sell it.`
+            + (cpSeasonOn ? ` A &#9733; means the discount price is the one shown.` : '');
+        cpObserveImages();
+    }
+
+    el('cpGrid').addEventListener('click', (ev) => {
+        const b = ev.target.closest('button[data-cpid]');
+        if (!b) return;
+        const p = cpProducts.find(x => x.id === b.getAttribute('data-cpid'));
+        if (p) cpSelect(p);
+    });
+
+    /** ⚠️ صورةُ كل بطاقة تُقرأ عند وصولها إلى الشاشة، ومرّةً واحدة — على بيانات هاتفها. */
+    function cpObserveImages() {
+        const imgs = Array.from(document.querySelectorAll('img[data-cpimg]'));
+        if (!imgs.length) return;
+        const fill = async (img) => {
+            const id = img.getAttribute('data-cpimg');
+            if (!id || img.dataset.cpDone === '1') return;
+            img.dataset.cpDone = '1';
+            if (cpImages.has(id)) { img.src = cpImages.get(id); return; }
+            try {
+                const s = await getDoc(doc(db, 'abaya_product_images', id));
+                const url = safePhoto(s.exists() ? s.data().imageBase64 : '');
+                if (url) { cpImages.set(id, url); img.src = url; }
+            } catch (e) { /* لا تُعطّل القائمة */ }
+        };
+        if (typeof IntersectionObserver !== 'function') { imgs.forEach(fill); return; }
+        const obs = new IntersectionObserver((entries) => {
+            entries.forEach(en => { if (en.isIntersecting) { fill(en.target); obs.unobserve(en.target); } });
+        }, { rootMargin: '300px' });
+        imgs.forEach(i => { if (i.dataset.cpDone !== '1') obs.observe(i); });
+    }
+
+    // ---- تأكيد البيع -----------------------------------------------------
+    el('cpConfirm').addEventListener('click', async () => {
+        if (cpBusy) return;                       // حمايةٌ من الضغط المزدوج
+        if (!cpSelected) { setMsg('cpMsg', 'Find the abaya first.', 'err'); return; }
+        if (!state.shop) { setMsg('cpMsg', 'Pick your shop first.', 'err'); return; }
+        const n = Math.floor(Number(el('cpQty').value || 0));
+        if (!isFinite(n) || n < 1) { setMsg('cpMsg', 'How many are you selling? At least one.', 'err'); return; }
+        const key = abayaShopKey(state.shop);
+        const id = cpSelected.id;
+
+        cpBusy = true;
+        el('cpConfirm').disabled = true;
+        setMsg('cpMsg', 'Saving...', 'load');
+        try {
+            // ⚠️⚠️ يُقرأ العدد من الخادم **الآن** لا من القائمة المحفوظة: القائمة
+            // قد تكون عمرها دقائق وبياعةٌ أخرى في نفس المحل باعت منها. وبلا هذه
+            // القراءة كان العدد يهبط تحت الصفر ويظهر للمالك سالبًا بلا تفسير.
+            const fresh = await getDoc(doc(db, 'abaya_products', id));
+            if (!fresh.exists()) throw new Error('That abaya is no longer in the list.');
+            const fv = fresh.data() || {};
+            const left = Number((fv.qty || {})[key] || 0) || 0;
+            if (left < n) {
+                cpSelected.qty = (fv.qty && typeof fv.qty === 'object') ? fv.qty : {};
+                await cpSelect(cpSelected);
+                setMsg('cpMsg', left <= 0
+                    ? `There are none of these left in ${state.shop}. Tell the owner if one is still on the shelf.`
+                    : `Only ${left} left in ${state.shop} — you asked for ${n}.`, 'err');
+                return;
+            }
+
+            // ⚠️ increment لا كتابةُ رقمٍ ثابت: عمليّةٌ ذرّيّة في الخادم، فبيعتان
+            // في اللحظة نفسها تُنقصان قطعتين ولا تُلغي إحداهما الأخرى.
+            // ⚠️ ولا حقلَ غير qty وupdatedAt: القاعدة ترفض أي حقلٍ آخر من هذه
+            // الصفحة، وهذا مقصود — فلا تستطيع شاشةٌ معدَّلةٌ تغيير سعر.
+            await updateDoc(doc(db, 'abaya_products', id), {
+                ['qty.' + key]: increment(-n),
+                updatedAt: serverTimestamp()
+            });
+
+            // ⚠️ السجل **بعد** النقص لا قبله: سطرٌ يقول «بيعت» ولم تنقص يكذب،
+            // وأهونُ منه نقصٌ بلا سطر — والنقص هو ما يراه المالك على أي حال.
+            let moveId = '';
+            try {
+                const ref = await addDoc(collection(db, 'abaya_product_moves'), {
+                    productId: id,
+                    code: cpSelected.code,
+                    name: cpSelected.name || '',
+                    shop: state.shop,
+                    change: -n,
+                    after: left - n,
+                    kind: 'sold',
+                    by: state.sellerId || '',
+                    byName: state.sellerName || '',
+                    at: new Date().toISOString(),
+                    createdAt: serverTimestamp()
+                });
+                moveId = ref.id;
+            } catch (e) { console.error('Movement line failed (the quantity did go down):', e); }
+
+            // القائمة المحفوظة تُحدَّث محليًّا كي يظهر العدد الجديد فورًا
+            const localP = cpProducts.find(x => x.id === id);
+            const after = left - n;
+            if (localP) { localP.qty = Object.assign({}, localP.qty, { [key]: after }); }
+            cpSelected.qty = Object.assign({}, cpSelected.qty, { [key]: after });
+
+            cpSoldHere.unshift({ id, code: cpSelected.code, name: cpSelected.name || '', qty: n, moveId });
+            cpRenderSold();
+            await cpSelect(cpSelected);
+            if (!el('cpList').classList.contains('hidden')) cpRenderGrid();
+            setMsg('cpMsg', `Done — ${n} × ${cpSelected.code} taken off ${state.shop}. `
+                + `${after} left. Remember the money still goes in your daily report below.`, 'ok');
+            el('cpCode').value = '';
+        } catch (e) {
+            console.error('Could not record the sale:', e);
+            setMsg('cpMsg', /permission/i.test(String(e && e.message))
+                ? 'Not allowed yet — ask the owner to publish the new rules.'
+                : `Could not save it: ${e.message}`, 'err');
+        } finally {
+            cpBusy = false;
+            el('cpConfirm').disabled = false;
+        }
+    });
+
+    // ---- تصحيح ضغطةٍ خطأ: تُعاد القطعة ولا يُمحى شيء ----------------------
+    function cpRenderSold() {
+        const wrap = el('cpSoldWrap');
+        if (!cpSoldHere.length) { wrap.classList.add('hidden'); return; }
+        wrap.classList.remove('hidden');
+        el('cpSoldList').innerHTML = cpSoldHere.map((s, i) => `
+            <div class="cpsold">
+                <span><b dir="ltr">${escapeHtml(s.code)}</b>${s.name ? ' &mdash; ' + escapeHtml(s.name) : ''}
+                    &nbsp;&middot;&nbsp; ${s.qty} piece(s)</span>
+                <button type="button" class="ghost" data-cpback="${i}">Put it back</button>
+            </div>`).join('');
+    }
+
+    el('cpSoldList').addEventListener('click', async (ev) => {
+        const b = ev.target.closest('button[data-cpback]');
+        if (!b || cpBusy) return;
+        const i = Number(b.getAttribute('data-cpback'));
+        const s = cpSoldHere[i];
+        if (!s) return;
+        if (!confirm(`Put ${s.qty} × ${s.code} back on the shelf?`)) return;
+        cpBusy = true;
+        b.disabled = true;
+        const key = abayaShopKey(state.shop);
+        try {
+            await updateDoc(doc(db, 'abaya_products', s.id), {
+                ['qty.' + key]: increment(s.qty),
+                updatedAt: serverTimestamp()
+            });
+            // ⚠️ سطرٌ جديدٌ في الاتجاه المعاكس — ولا يُحذف السطر الأول إطلاقًا.
+            // السجل غير قابل للتعديل بقواعده، وهذا مقصود: التصحيح يُرى ولا يُخفى.
+            try {
+                await addDoc(collection(db, 'abaya_product_moves'), {
+                    productId: s.id, code: s.code, name: s.name || '',
+                    shop: state.shop, change: s.qty, kind: 'returned',
+                    undoOf: s.moveId || '',
+                    by: state.sellerId || '', byName: state.sellerName || '',
+                    at: new Date().toISOString(), createdAt: serverTimestamp()
+                });
+            } catch (e) { console.error(e); }
+            const localP = cpProducts.find(x => x.id === s.id);
+            if (localP) {
+                localP.qty = Object.assign({}, localP.qty,
+                    { [key]: (Number(localP.qty[key] || 0) || 0) + s.qty });
+            }
+            cpSoldHere.splice(i, 1);
+            cpRenderSold();
+            if (cpSelected && cpSelected.id === s.id) {
+                cpSelected.qty = Object.assign({}, cpSelected.qty,
+                    { [key]: (Number(cpSelected.qty[key] || 0) || 0) + s.qty });
+                await cpSelect(cpSelected);
+            }
+            if (!el('cpList').classList.contains('hidden')) cpRenderGrid();
+            setMsg('cpMsg', `${s.qty} × ${s.code} is back on the shelf.`, 'ok');
+        } catch (e) {
+            b.disabled = false;
+            setMsg('cpMsg', `Could not put it back: ${e.message}`, 'err');
+        } finally {
+            cpBusy = false;
+        }
+    });
 
     // =====================================================================
     // الإرسال
