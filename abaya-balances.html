@@ -365,15 +365,8 @@
         font-size: 10px; font-weight: 800; padding: 1px 5px; border-radius: 999px;
         background: var(--color-danger); color: #fff; margin-inline-start: 5px;
     }
-    .cat .now2 {
-        margin-top: 5px; padding-top: 5px; border-top: var(--border-hairline) dashed var(--color-border);
-        font-size: var(--text-base); font-weight: 800; direction: ltr; text-align: start;
-    }
-    .cat .now2 .lbl {
-        display: block; direction: inherit; font-size: 10.5px; font-weight: 700;
-        color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.04em;
-    }
-    .cat .now2.on { color: var(--color-danger); }
+    /* ⚠️ كان هنا سطرٌ ثالث (.now2) يُعيد الرقم المأخوذ، ونُزع بأمر المالك: الرقم
+       المأخوذ يساوي أحد السطرين فوقه، فكان ٦٠٠ تظهر مرّتين في بطاقةٍ واحدة. */
     .cat .plain { font-size: var(--text-base); font-weight: 800; direction: ltr; margin-top: 2px; }
     .cat .qt { font-size: 12px; font-weight: 700; margin-top: 3px; }
     .cat .qt.zero { color: var(--color-danger); }
@@ -1254,14 +1247,15 @@
         el('catTitle').textContent = all ? 'All shops together' : catShop;
 
         // ---- موسم الخصم: يُقال صريحًا، فسعرٌ مختلفٌ بلا تفسير يُقرأ خطأً
-        // ⚠️⚠️ الرقمان يُعرضان دائمًا (بطلب المالك)، فهذا السطر لم يبقَ يقول
-        // «أيُّهما يُعرض» بل **أيُّهما يُؤخذ** — وهو الفرق الذي يمنع أن يُقال رقمٌ
-        // لزبونةٍ ثم يُخلَف في الكاشير.
-        el('catSeason').innerHTML = `Every abaya below shows <b>both</b> prices &mdash; before the discount and after it `
-            + `&mdash; and underneath them the one that is <b>actually taken</b> right now.<br>`
+        // ⚠️⚠️ الرقمان يُعرضان دائمًا (بطلب المالك). ونُزع السطر الثالث من البطاقة
+        // بأمره كذلك، فصار بيانُ «أيُّهما مأخوذ» **هنا وحده** — ولهذا لا يجوز
+        // حذفُ هذا السطر ولا تقصيرُه: بلا كلمةٍ واحدة عن حالة الموسم يبقى رقمان
+        // بلا معرفةِ أيِّهما تدفعه الزبونة.
+        el('catSeason').innerHTML = `Every abaya below shows <b>both</b> prices &mdash; before the discount and after it.<br>`
             + (catSeasonOn
-                ? `<b>Discount season is OPEN</b>, so where an abaya has a discount price, that is what the customer pays.`
-                : `<b>Discount season is closed</b>, so the price before the discount is what the customer pays. `
+                ? `<b>Discount season is OPEN</b>, so where an abaya has a discount price, <b>that</b> is what the `
+                  + `customer pays &mdash; and its old price is crossed out on the card.`
+                : `<b>Discount season is closed</b>, so <b>the price before the discount</b> is what the customer pays. `
                   + `The discount price is still listed so you can see it.`);
 
         const q = String(el('catSearch').value || '').trim().toUpperCase();
@@ -1292,23 +1286,22 @@
             const active = hasDisc && catSeasonOn;
             const off = hasDisc && p.price
                 ? Math.round((1 - Number(p.discountPrice) / Number(p.price)) * 100) : 0;
-            const charged = active ? Number(p.discountPrice) : Number(p.price || 0);
             const per = all
                 ? `<p class="per">${ABAYA_SHOPS.map(s => `${escapeHtml(s)}: <b>${catQtyOf(p, s)}</b>`).join(' &middot; ')}</p>`
                 : '';
-            // ⚠️⚠️⚠️ ولا يُعرض الرقمان بلا بيانٍ أيُّهما مُطبَّق: لو عُرض ٦٠٠ و٣٥٧
-            // بلا تفسيرٍ لقالت للزبونة ٣٥٧ والمحلُّ يأخذ ٦٠٠ — ورقمٌ يُقال لزبونةٍ
-            // ثم يُخلَف في الكاشير خسارةٌ في الثقة لا في المال وحده. فسطرُ
-            // «المأخوذ الآن» إلزامي.
+            // ⚠️⚠️ سطران فقط: قبل الخصم وبعد الخصم. وكان تحتهما سطرٌ ثالث
+            // («TAKEN NOW» مع الرقم المأخوذ) فأمر المالك بنزعه: «انزع كلمت تيكت
+            // ناو … لماذا السعر قبل الخصم يظهر تحت، خلص سعر قبل الخصم وسعر بعد
+            // الخصم». وكان محقًّا — الرقم المأخوذ يساوي أحد السطرين فوقه، فكان
+            // ٦٠٠ تظهر **مرّتين** في بطاقةٍ واحدة على شاشة هاتف.
+            // ⚠️ وبيانُ «أيُّهما مأخوذ» لم يُفقد: يبقى في سطر الموسم فوق القائمة،
+            // وفي **الشطب** على السعر القديم حين يكون الخصم مُطبَّقًا فعلًا.
             const prices = hasDisc
                 ? `<span class="prow"><span class="k">Before discount</span>`
                   + `<span class="v${active ? ' was' : ''}">${money(p.price)}</span></span>`
                 + `<span class="prow"><span class="k">After discount</span>`
                   + `<span class="v disc">${money(p.discountPrice)}`
                   + (off > 0 ? `<span class="off">-${off}%</span>` : '') + `</span></span>`
-                + `<span class="now2${active ? ' on' : ''}">`
-                  + `<span class="lbl">${active ? 'Discount is on &mdash; taken now' : 'Taken now'}</span>`
-                  + `${money(charged)} QAR</span>`
                 : `<span class="plain">${money(p.price)} QAR</span>`;
             return `<div class="cat${n <= 0 ? ' out' : ''}">`
                 + (p.hasImage
