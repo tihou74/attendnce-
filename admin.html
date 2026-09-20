@@ -975,9 +975,15 @@
                 days are earned at <b>one per six days worked</b> and are not tied to a fixed weekday, so two days off
                 in a row can be perfectly legitimate &mdash; the point is that you see it and decide.
             </p>
+            <!-- ⚠️⚠️⚠️ حارسُ العدل قبل إرسال أي تنبيه: إن كان **كل** موظفي فرعٍ
+                 لم يُسجّل أحدٌ منهم قطّ، فالسبب في الفرع لا في الناس — كشكٌ لم
+                 يُركَّب، أو أرقامٌ سرّيةٌ لم تُوزَّع. وإرسالُ «آخر تنبيه» إلى
+                 اثني عشر رجلًا في هذه الحالة ظلمٌ، ويُفقد التنبيه قيمتَه كلَّها
+                 حين يشتكون ويظهر أن البرنامج هو الذي لم يعمل. -->
+            <div id="missedBranchWarn" style="display: none;"></div>
             <div class="table-container">
                 <table>
-                    <thead><tr><th>Employee</th><th>Branch</th><th>Days missed</th><th>Which days</th><th>Note</th><th></th></tr></thead>
+                    <thead><tr><th>Employee</th><th>Branch</th><th>Days missed</th><th>Which days</th><th>Note</th><th>Last notice</th><th></th></tr></thead>
                     <tbody id="missedCheckinBody"></tbody>
                 </table>
             </div>
@@ -7999,6 +8005,144 @@
         return { days: dates.length, dates, never: worked.size === 0 };
     }
 
+    /**
+     * ⭐⭐⭐ نصُّ تنبيه الحضور الأخير — يُرسل إلى الموظف نفسه على واتساب.
+     * بطلب المالك: «الموظفين الذين لم يسجّلوا حضورًا منذ يومين يجب أن يظهر لهم
+     * زرّ واتساب يرسل لهم ميساج ينبّههم أنه آخر تنبيه، ميساج مرتّب، دائمًا
+     * بالإنجليزية».
+     *
+     * ⚠️⚠️ حالتان مختلفتان لا واحدة، والبرنامج **يعرف** الفرق (m.never):
+     *   · انقطع بعد أن كان يُسجّل → يعرف الكشك، فالتنبيه على الانقطاع.
+     *   · لم يُسجّل قطّ → قد يكون رقمه السرّي لا يعمل أو لم يُدرَّب. فتنبيهٌ
+     *     يُهدّده بلا أن يقول له **كيف يُصلح** تهديدٌ لا يستطيع تنفيذه، ويرجع
+     *     عليك حين يشتكي. فيُقال له آخرُ تنبيه **ومعه المخرج**.
+     *
+     * ⚠️⚠️⚠️ ولا تقول الرسالة «يُخصم من راتبك» عن يومٍ ناقص: أيامُ الراحة
+     * مستحقّةٌ يومًا لكل ستّةٍ عُملت (WORK_DAYS_PER_EARNED_OFF_DAY) ولا تُربط بيومٍ
+     * ثابت، فقد يكون اليومان راحةً مستحقّةً ولا يُخصم منهما شيء. فجملةُ الخصم
+     * كانت ستكون **كذبًا في ورقةٍ رسمية** يُحاسَب عليه، فقيلت الحقيقة بدقّة:
+     * الحضورُ هو ما يُثبت العمل.
+     */
+    function missedCheckinNoticeText(emp, m) {
+        const L = [];
+        const from = m.dates[m.dates.length - 1] || '';
+        const to = m.dates[0] || '';
+        L.push(m.never
+            ? '*FINAL NOTICE — No attendance has ever been recorded*'
+            : '*FINAL NOTICE — Attendance not recorded*');
+        L.push('Al Sheikha Group');
+        L.push('');
+        L.push(`${emp.name || emp.id}`);
+        if (emp.branch) L.push(`Branch: ${emp.branch}`);
+        if (emp.role) L.push(`Job: ${emp.role}`);
+        L.push('');
+
+        if (m.never) {
+            L.push(`*Not one Check-In has ever been recorded for you* — nothing at all for `
+                + `${m.days} day(s), from ${from} to ${to}.`);
+            L.push('');
+            // ⚠️ المخرج **قبل** التهديد: رسالةٌ تُهدّد بلا أن تقول كيف يُصلح تُقرأ ظلمًا.
+            L.push(`If your PIN does not work, or if nobody has shown you how to use the branch kiosk, go to the `
+                + `secretary *today* and it will be sorted out in minutes. Not knowing how is not a reason to stop.`);
+        } else {
+            L.push(`You have recorded *no Check-In for ${m.days} day(s)* in a row:`);
+            // ⚠️ التواريخ تُسمّى واحدًا واحدًا (حتى سبعة): «يومان» بلا تاريخٍ تُجادَل،
+            // وتاريخٌ مكتوبٌ لا يُجادَل. وما زاد يُلخَّص بمدىً كي لا تطول الرسالة.
+            if (m.dates.length <= 7) {
+                m.dates.slice().reverse().forEach(d => L.push('  ' + d));
+            } else {
+                L.push(`  ${from} → ${to}`);
+            }
+            L.push('');
+            L.push(`You have recorded your attendance before, so you already know how the kiosk works.`);
+        }
+
+        L.push('');
+        L.push(`*This is your final notice.*`);
+        L.push(`From today you are required to record your *Check-In* when you start and your *Check-Out* when you `
+            + `finish, on the branch kiosk, every day you work.`);
+        L.push('');
+        // ⚠️ الصياغة الدقيقة: الحضور يُثبت العمل. ولا وعدَ بخصمٍ تلقائي — انظر الملاحظة أعلاه.
+        L.push(`Your attendance record is what proves that you worked. A day with no Check-In cannot be counted as a `
+            + `day worked, and a day that is not covered by an approved leave or by an earned rest day is treated `
+            + `as absence.`);
+        L.push('');
+        L.push(`If any of these days was an approved leave or a rest day, tell the secretary today so your record `
+            + `can be corrected.`);
+        L.push('');
+        L.push('Thank you.');
+        return L.join('\n');
+    }
+
+    /**
+     * ⭐⭐ يفتح واتساب بتنبيه الحضور **إلى الموظف نفسه**، ويُسجّل أنه أُبلغ ومتى.
+     * ⚠️ والتسجيل ليس زينة: «آخر تنبيه» لا معنى له إن لم يُعرف أنه أُبلغ من قبل.
+     * فيُحفظ على ملفّه (attNotice) ويظهر في عمود «Last notice» — فلا يُرسل تنبيهٌ
+     * «أخير» ثلاث مرّات، ولا يُنكر الموظف أنه أُبلغ.
+     * ⚠️ ولا رقمَ له → تُفتح قائمة المشاركة ويُقال ذلك صريحًا: قد يكون رقمه في
+     * هاتف المالك ولو لم يكن في الملف. ولا يُرسَل إلى رقمٍ آخر بحال.
+     */
+    window.sendMissedCheckinNotice = function(empId) {
+        const emp = (allEmployees || []).find(e => e.id === empId);
+        if (!emp) { alert('That employee file no longer exists — press Refresh.'); return; }
+        // ⚠️⚠️ حارسٌ على الشرط نفسه لا على الزرّ: زرٌّ بقي على الشاشة بعد أن سجّل
+        // الموظف حضوره لا يجوز أن يُرسل له «آخر تنبيه» وهو حاضرٌ فعلًا.
+        const m = missedCheckinStreak(emp);
+        if (m.days < MISSED_CHECKIN_ALERT_DAYS) {
+            alert(`${emp.name || empId} has recorded attendance since this list was drawn. `
+                + `Nothing will be sent. Press Refresh to update the list.`);
+            renderMissedCheckins();
+            return;
+        }
+        const text = missedCheckinNoticeText(emp, m);
+        const encoded = encodeURIComponent(text);
+        // ⚠️ حارسُ طولٍ يُحذّر ولا يمنع: رسالةٌ طويلةٌ قد تُقصّ في بعض الأنظمة،
+        // ومنعُ الإرسال يُعطّل عملًا. والقياس **بعد الترميز**.
+        if (encoded.length > WA_URL_SAFE_LIMIT) {
+            console.warn('Attendance notice is long:', encoded.length, 'encoded characters.');
+        }
+        const isPhone = /android|iphone|ipad|ipod|iemobile|blackberry|opera mini|webos/i.test(navigator.userAgent || '');
+        const num = waNumber(emp.phone);
+        const href = num
+            ? (isPhone ? `whatsapp://send?phone=${num}&text=${encoded}` : `https://wa.me/${num}?text=${encoded}`)
+            : (isPhone ? `whatsapp://send?text=${encoded}` : `https://wa.me/?text=${encoded}`);
+        // ⚠️ وسمُ رابطٍ لا window.open: المتصفّحات تحجب النوافذ المبرمَجة ولا تحجب
+        // تنقّل الرابط. ولا target="_blank" مع whatsapp:// — يُبقي تبويبًا فارغًا.
+        const a = document.createElement('a');
+        a.href = href;
+        if (!isPhone) { a.target = '_blank'; a.rel = 'noopener'; }
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => a.remove(), 0);
+
+        logAudit('Attendance final notice sent',
+            `${emp.name || empId}: ${m.days} day(s) missed (${m.dates[m.dates.length - 1]} → ${m.dates[0]})`
+            + `${m.never ? ', never checked in at all' : ''}`
+            + `${num ? `, to +${num}` : ', no number on file'}`);
+
+        const notice = {
+            sentAt: new Date().toISOString(),
+            daysMissed: m.days,
+            firstMissed: m.dates[m.dates.length - 1] || '',
+            lastMissed: m.dates[0] || '',
+            neverCheckedIn: !!m.never,
+            sentBy: (currentUser && currentUser.email) || 'unknown',
+            toNumber: num || ''
+        };
+        // ⚠️ حقلٌ واحد بـupdateDoc: لا يُمسّ راتبٌ ولا صورةُ هوية، والقواعد تشترط
+        // بقاء الراتب كما هو.
+        updateDoc(doc(db, "employees", empId), { attNotice: notice })
+            .then(() => { emp.attNotice = notice; renderMissedCheckins(); })
+            .catch(e => {
+                console.error('Could not record the attendance notice:', e);
+                // ⚠️ الرسالة فُتحت فعلًا، فلا يُقال إنها لم تُرسل. ويُقال إنّ
+                // **التسجيل** هو ما فشل — وبلا هذا الفرق يُرسل التنبيه مرّتين.
+                alert(`WhatsApp was opened, but the notice could not be recorded on his file: ${e.message}\n\n`
+                    + `Send it, then press Refresh — if "Last notice" is still empty, tell me.`);
+            });
+    };
+
     /** الموظفون الذين تجاوزوا الحدّ — بنفس الدالة التي تُحسب في الجدول. */
     function missedCheckinList() {
         return activeEmployees()
@@ -8020,10 +8164,60 @@
         }
         card.style.display = 'block';
         if (badge) { badge.innerText = rows.length; badge.style.display = 'inline-block'; }
+
+        // ============ حارسُ العدل: فرعٌ لم يُسجّل فيه أحدٌ قطّ ============
+        // ⚠️⚠️⚠️ لقطةُ المالك كانت اثني عشر اسمًا، كلُّهم في فرعٍ واحد، وكلُّهم
+        // «لم يُسجّل قطّ» منذ ٤٥ يومًا. واحتمالُ أن يتوقّف اثنا عشر رجلًا عن
+        // البصمة في يومٍ واحدٍ بعينه ضعيفٌ جدًّا؛ والأرجح أن الكشك لم يُركَّب في
+        // الفرع أو أن الأرقام السرّية لم تُوزَّع. فإرسالُ «آخر تنبيه» إليهم جميعًا
+        // ظلمٌ، ويُفقد التنبيهَ قيمتَه كلَّها حين يشتكون ويظهر أن البرنامج هو
+        // الذي لم يعمل. فيُقال هذا **قبل** الجدول، ولا يُخفى.
+        const warnBox = document.getElementById('missedBranchWarn');
+        if (warnBox) {
+            const perBranch = {};
+            (activeEmployees() || []).forEach(e => {
+                const b = e.branch || '—';
+                if (!perBranch[b]) perBranch[b] = { total: 0, never: 0 };
+                perBranch[b].total++;
+                if (missedCheckinStreak(e).never) perBranch[b].never++;
+            });
+            // فرعٌ فيه ٣ أو أكثر، ولم يُسجّل فيه أحدٌ قطّ
+            const dead = Object.entries(perBranch)
+                .filter(([, v]) => v.total >= 3 && v.never === v.total)
+                .map(([b, v]) => ({ branch: b, n: v.total }));
+            if (dead.length) {
+                warnBox.style.display = 'block';
+                warnBox.innerHTML = `<div style="background: rgba(217,119,6,0.10); border-left: 3px solid var(--warning);
+                        border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; font-size: 13px; line-height: 1.85;">
+                    <b style="display:block; margin-bottom:6px;">&#9888; Read this before you send any notice</b>
+                    ${dead.map(d => `In <b>${escapeHtml(d.branch)}</b>, <b>not one</b> of the `
+                        + `<b>${d.n}</b> employees has ever recorded a single Check-In.`).join('<br>')}
+                    <br><br>
+                    ${dead.length === 1 ? 'That points at that branch' : 'That points at those branches'}, not at the
+                    people: a kiosk that was never set up, or PINs that were never handed out. It is very unlikely that
+                    every single one of them stopped on the same day.
+                    <br><b>Check the kiosk and the PINs first.</b> A final notice sent to a man who cannot punch is a
+                    notice you will have to withdraw &mdash; and after that nobody fears the next one.
+                </div>`;
+            } else {
+                warnBox.style.display = 'none';
+                warnBox.innerHTML = '';
+            }
+        }
+
         body.innerHTML = rows.map(({ emp, m }) => {
             const id = escapeJsAttr(emp.id);
             const from = m.dates[m.dates.length - 1] || '';
             const to = m.dates[0] || '';
+            const num = waNumber(emp.phone);
+            const n = emp.attNotice || null;
+            // ⚠️ «آخر تنبيه» لا معنى له إن لم يُعرف أنه أُبلغ من قبل. فيُعرض متى
+            // أُبلغ وعن كم يوم — فلا يُرسل «الأخير» ثلاث مرّات، ولا يُنكر الموظف.
+            const noticeCell = n && n.sentAt
+                ? `<b style="color: var(--warning);">${escapeHtml(String(n.sentAt).slice(0, 10))}</b>`
+                  + `<br><small style="color: var(--text-dim);">for ${Number(n.daysMissed) || 0} day(s)`
+                  + `${n.toNumber ? ` &middot; +${escapeHtml(String(n.toNumber))}` : ' &middot; no number'}</small>`
+                : `<small style="color: var(--text-dim);">not sent yet</small>`;
             return `<tr${m.days >= 4 ? ' style="background: rgba(185,28,28,0.07);"' : ''}>
                 <td><span class="emp-link" onclick="openProfileModal('${id}')"><b>${escapeHtml(emp.name || emp.id)}</b></span>
                     <br><small style="color: var(--text-dim);">${escapeHtml(emp.role || '—')}</small></td>
@@ -8034,7 +8228,14 @@
                     ? `<b style="color: var(--warning);">Never checked in at all</b>`
                       + `<br><small style="color: var(--text-dim);">May not know how to use the kiosk, or his PIN is wrong &mdash; not necessarily absent.</small>`
                     : `<small style="color: var(--text-dim);">He has checked in before, so he knows how. His case needs reviewing.</small>`}</td>
-                <td><button class="btn-ghost btn-sm" onclick="openAttReportModal('${id}')">${iconSvg('fileText','ic-sm')} Attendance</button></td>
+                <td style="white-space: nowrap;">${noticeCell}</td>
+                <td style="white-space: nowrap;">
+                    <button class="btn-accent btn-sm" onclick="sendMissedCheckinNotice('${id}')"
+                        title="${num ? 'Opens WhatsApp on +' + escapeHtml(String(num)) : 'No phone number on his file — WhatsApp will open so you can pick him'}">
+                        ${iconSvg('plane','ic-sm')} ${n && n.sentAt ? 'Send again' : 'Final notice'}</button>
+                    <button class="btn-ghost btn-sm" onclick="openAttReportModal('${id}')">${iconSvg('fileText','ic-sm')} Attendance</button>
+                    ${!num ? `<br><small style="color: var(--warning);">&#9888; no phone in his file</small>` : ''}
+                </td>
             </tr>`;
         }).join('');
         paintIcons(card);
