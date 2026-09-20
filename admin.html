@@ -595,7 +595,11 @@
              ================================================================== -->
         <div class="stats">
             <div class="stat-box" data-biz="both"><div class="stat-icon" data-icon="users"></div><div><h3>Active Employees</h3><p id="homeEmpCount">0</p></div></div>
-            <div class="stat-box" data-biz="both"><div class="stat-icon" data-icon="calendar"></div><div><h3>Attendance Logs</h3><p id="homeLogCount">0</p></div></div>
+            <!-- ⚠️⚠️ كانت «Attendance Logs» تعرض **عدد كل البصمات من أول يوم** (538).
+                 وقال المالك: «هذا غلط، هذا يزحم اللوحة ويخربط الأمور — الأفضل أن
+                 يظهر عدد الموظفين الذين هم الآن في الدوام لكي أعرف من هو موجود».
+                 ورقمٌ تراكميّ لا يُجاب عن سؤال، و«من في الدوام الآن» سؤالٌ حقيقي. -->
+            <div class="stat-box" data-biz="both"><div class="stat-icon" data-icon="clock"></div><div><h3>On Duty Right Now</h3><p id="homeOnDutyCount">0</p><small id="homeOnDutyNote" style="display:block; margin-top:4px; font-size:11px; color:var(--text-dim); font-weight:600;"></small></div></div>
             <div class="stat-box" data-biz="rest"><div class="stat-icon" data-icon="inbox"></div><div><h3>Pending Requests</h3><p id="homeReqCount">0</p></div></div>
             <div class="stat-box" data-biz="rest"><div class="stat-icon" data-icon="userPlus"></div><div><h3>New Applications</h3><p id="homeAppCount">0</p></div></div>
             <div class="stat-box money-only" data-biz="both"><div class="stat-icon" data-icon="dollar"></div><div><h3>Net Payroll (This Month)</h3><p id="homeNetPayroll">0 QAR</p></div></div>
@@ -953,11 +957,44 @@
 
     <!-- 3. سجلات الحضور -->
     <div id="tab-attendance" class="tab-content">
+        <!-- ⭐⭐⭐ تنبيهُ الغياب المتتالي — بطلب المالك: «أيّ موظف لم يسجّل دخول
+             مرتين متتاليتين يجب أن يظهر تنبيه في الشاشة … يجب مراجعة أمره». -->
+        <div class="card" id="missedCheckinCard" style="display: none; border-left: 4px solid var(--danger);">
+            <h3><span data-icon="alertTriangle"></span> Not checked in for two days or more &mdash; needs reviewing
+                <span id="missedCheckinCount" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
+            <p class="card-sub">
+                These employees have recorded <b>no Check-In</b> for <b>two or more days in a row</b>, counted from
+                <b>yesterday</b> backwards &mdash; today is not counted, because an evening shift has not started yet.
+                Days covered by <b>annual leave</b> or by a <b>manual deduction</b> are not counted either, and nor is
+                any day before the employee joined.
+                <br><br>
+                <b>This is a prompt to look, not a deduction.</b> Nothing here changes any salary. Remember that rest
+                days are earned at <b>one per six days worked</b> and are not tied to a fixed weekday, so two days off
+                in a row can be perfectly legitimate &mdash; the point is that you see it and decide.
+            </p>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Employee</th><th>Branch</th><th>Days missed</th><th>Which days</th><th>Note</th><th></th></tr></thead>
+                    <tbody id="missedCheckinBody"></tbody>
+                </table>
+            </div>
+        </div>
         <div class="filter-section">
             <h3><span data-icon="calendar"></span> Attendance Logs Filter &amp; Branch View</h3>
+            <!-- ⚠️⚠️ بطلب المالك: «في نافذة الأتندنس لوق يظهر فقط الذين داوموا
+                 خلال آخر 48 ساعة والباقي يختفي أوتوماتيكيًّا». وكان الجدول يعرض
+                 الشهر كاملًا (538 سجلًّا) فيزحم الشاشة.
+                 ⚠️ وهي مصفاةُ **عرض** لا حذف: السجل كلُّه باقٍ، والرواتب تقرؤه. -->
+            <div style="margin-bottom: 14px; padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);">
+                <label style="display:flex; align-items:center; gap:10px; font-size:13px; font-weight:700; text-transform:none; letter-spacing:0; margin:0; cursor:pointer; color: var(--text);">
+                    <input type="checkbox" id="attRecentOnly" checked onchange="filterData()"
+                        style="width:18px; height:18px; flex-shrink:0; cursor:pointer;">
+                    Last 48 hours only &mdash; hide older shifts to keep this screen clear
+                </label>
+            </div>
             <div class="date-group">
-                <div><label for="startDate">From</label><input type="date" id="startDate"></div>
-                <div><label for="endDate">To</label><input type="date" id="endDate"></div>
+                <div><label for="startDate">From</label><input type="date" id="startDate" onchange="onAttDateChanged()"></div>
+                <div><label for="endDate">To</label><input type="date" id="endDate" onchange="onAttDateChanged()"></div>
                 <div style="flex: 1; min-width: 200px;"><label for="filterBranch">Branch</label>
                     <select id="filterBranch" onchange="filterData()">
                         <option value="">All Branches &amp; Office</option>
@@ -1005,6 +1042,7 @@
                     </tbody>
                 </table>
             </div>
+            <p class="card-sub" id="attWindowNote" style="margin-top: 14px;"></p>
         </div>
     </div>
 
@@ -4156,7 +4194,10 @@
                          renderHomeExtraStats, refreshHomeCounters,
                          renderRecentActivity, renderQidAlert, renderAdminStatus,
                          renderServerTimeDiagnostic, renderCancelledDays, renderTamperAlert,
-                         renderClockSkewAlert, renderOpenShifts, renderMonthArchive];
+                         renderClockSkewAlert, renderOpenShifts, renderMonthArchive,
+                         // ⭐ وتنبيهُ الغياب المتتالي يتبع النشاط كذلك: قائمتُه من
+                         // activeEmployees، فلو لم يُعَد رسمُه لبقيت أسماء النشاط الآخر.
+                         renderMissedCheckins];
         redraws.forEach(fn => {
             try { if (typeof fn === 'function') fn(); }
             catch (e) { console.error('Redraw after business switch failed:', e); }
@@ -4270,7 +4311,18 @@
         // ⚠️ البصمات تُرشَّح بصاحبها لا باسم الفرع — والمصفاة واحدة مشتركة
         // (bizLogs) فلا يفترق هذا الرقم عن الجدول والتنبيهات أسفله.
         if (Array.isArray(allAttendance)) {
-            set('homeLogCount', bizLogs(allAttendance).length);
+            const duty = onDutyNow();
+            set('homeOnDutyCount', String(duty.length));
+            const note = document.getElementById('homeOnDutyNote');
+            if (note) {
+                // ⚠️ ويُقال من هم بالأسماء إن كانوا قليلين: الرقم وحده يُجيب «كم»
+                // وسؤالُه كان «**من** هو موجود».
+                note.innerText = duty.length
+                    ? (duty.length <= 4
+                        ? duty.map(s => s.employeeName || '?').join(' · ')
+                        : `${duty.slice(0, 3).map(s => s.employeeName || '?').join(' · ')} +${duty.length - 3} more`)
+                    : 'Nobody is checked in right now.';
+            }
         }
     }
 
@@ -7687,6 +7739,110 @@
     // =====================================================================
     const SHIFT_CANCEL_AFTER_HOURS = 15;
     const OPEN_SHIFT_ALERT_HOURS = SHIFT_CANCEL_AFTER_HOURS;
+    /** نافذةُ جدول الحضور — بطلب المالك: «يظهر فقط الذين داوموا خلال آخر 48 ساعة». */
+    const ATT_RECENT_HOURS = 48;
+    /** تنبيهُ الغياب المتتالي — بطلبه: «لم يسجل دخول مرتين متتاليتين». */
+    const MISSED_CHECKIN_ALERT_DAYS = 2;
+
+    /**
+     * ⭐⭐⭐ من هو في الدوام **الآن**.
+     * ⚠️ يُعاد استعمال قاعدة الحضور الموجودة أصلًا (`checkIn && !checkOut` من
+     * buildSessions) ولا تُبتكر قاعدةٌ ثانية: قاعدتان لنفس السؤال تفترقان، فيرى
+     * المالك رقمًا في الرئيسية وقائمةً تخالفه في الجدول.
+     * ⚠️ ووردياتٌ مضى عليها أكثر من 15 ساعة **ليست** دوامًا جاريًا: هي عالقةٌ بلا
+     * انصراف وتُلغى (SHIFT_CANCEL_AFTER_HOURS)، ولها بطاقتُها الخاصة. فعدّها
+     * «موجودًا الآن» يجعل الرقم يكبر بمن انصرف ولم يُسجّل.
+     */
+    /**
+     * ⭐⭐⭐ سلسلةُ الأيام المتتالية بلا تسجيل حضور — بطلب المالك:
+     * «أيّ موظف لم يسجّل دخول مرتين متتاليتين يجب أن يظهر تنبيه في الشاشة أنه لم
+     *  يسجّل حضورًا مرتين متتاليتين، يجب مراجعة أمره».
+     *
+     * ⚠️⚠️ تُعدّ من **أمس** لا من اليوم: اليوم لم ينتهِ بعد، وموظفٌ ورديتُه تبدأ
+     * الرابعة عصرًا لم يتأخّر في العاشرة صباحًا. وعدُّ اليوم كان سيُنبّه على كل
+     * الموظفين كل صباح.
+     * ⚠️⚠️ ويُقطع العدُّ بيومٍ **مُبرَّر**: إجازةٌ سنوية، أو يومٌ عليه خصمٌ يدوي
+     * (فقد سُوّي أمرُه أصلًا)، أو يومٌ قبل تاريخ التحاقه. فتنبيهٌ على غيابٍ مُبرَّر
+     * يُفقد الثقة بالتنبيه كلِّه.
+     * ⚠️ وهذا تنبيهُ **مراجعة** لا خصم: أيامُ الراحة مستحقّةٌ يومًا لكل ستّة
+     * (WORK_DAYS_PER_EARNED_OFF_DAY) وليست مربوطةً بيومٍ ثابت من الأسبوع، فقد
+     * يكون اليومان راحةً مستحقّة. ولا يُغيّر هذا شيئًا في الراتب بحال.
+     */
+    const MISSED_SCAN_MAX_DAYS = 45;   // حدٌّ أعلى للمسح، فلا دورةَ بلا نهاية
+    function missedCheckinStreak(emp) {
+        if (!emp || !emp.id) return { days: 0, dates: [], never: false };
+        const empLogs = (allAttendance || []).filter(l => l.employeeId === emp.id);
+        const worked = getWorkedDateSet(buildSessions(empLogs));
+        const leave = getLeaveCoveredDateSet(emp.id);
+        const manual = getManuallyDeductedDateSet(emp.id);
+        const hire = getEmploymentStartISO(emp);
+        const dates = [];
+        let d = prevDayISO(todayISO());
+        for (let i = 0; i < MISSED_SCAN_MAX_DAYS; i++) {
+            if (hire && d < String(hire)) break;          // قبل التحاقه لا يُحاسب
+            if (worked.has(d)) break;                      // داوم — انقطعت السلسلة
+            if (leave.has(d) || manual.has(d)) break;      // يومٌ مُبرَّر
+            dates.push(d);
+            d = prevDayISO(d);
+        }
+        // ⚠️ ويُفرَّق بين «توقّف عن الحضور» و«لم يستعمل الكشك قطّ»: الثاني نقصُ
+        // تدريبٍ أو رقمٍ لا غياب، ورسالةٌ واحدة للحالتين تُضلّل.
+        return { days: dates.length, dates, never: worked.size === 0 };
+    }
+
+    /** الموظفون الذين تجاوزوا الحدّ — بنفس الدالة التي تُحسب في الجدول. */
+    function missedCheckinList() {
+        return activeEmployees()
+            .map(e => ({ emp: e, m: missedCheckinStreak(e) }))
+            .filter(x => x.m.days >= MISSED_CHECKIN_ALERT_DAYS)
+            .sort((a, b) => b.m.days - a.m.days);
+    }
+
+    function renderMissedCheckins() {
+        const card = document.getElementById('missedCheckinCard');
+        const body = document.getElementById('missedCheckinBody');
+        if (!card || !body) return;
+        const rows = missedCheckinList();
+        const badge = document.getElementById('missedCheckinCount');
+        if (!rows.length) {
+            card.style.display = 'none';
+            if (badge) badge.style.display = 'none';
+            return;
+        }
+        card.style.display = 'block';
+        if (badge) { badge.innerText = rows.length; badge.style.display = 'inline-block'; }
+        body.innerHTML = rows.map(({ emp, m }) => {
+            const id = escapeJsAttr(emp.id);
+            const from = m.dates[m.dates.length - 1] || '';
+            const to = m.dates[0] || '';
+            return `<tr${m.days >= 4 ? ' style="background: rgba(185,28,28,0.07);"' : ''}>
+                <td><span class="emp-link" onclick="openProfileModal('${id}')"><b>${escapeHtml(emp.name || emp.id)}</b></span>
+                    <br><small style="color: var(--text-dim);">${escapeHtml(emp.role || '—')}</small></td>
+                <td>${escapeHtml(emp.branch || '—')}</td>
+                <td style="color: var(--danger); font-weight: 800; white-space: nowrap;">${m.days} day(s)</td>
+                <td style="white-space: nowrap;">${escapeHtml(from)}${from !== to ? ` &rarr; ${escapeHtml(to)}` : ''}</td>
+                <td>${m.never
+                    ? `<b style="color: var(--warning);">Never checked in at all</b>`
+                      + `<br><small style="color: var(--text-dim);">May not know how to use the kiosk, or his PIN is wrong &mdash; not necessarily absent.</small>`
+                    : `<small style="color: var(--text-dim);">He has checked in before, so he knows how. His case needs reviewing.</small>`}</td>
+                <td><button class="btn-ghost btn-sm" onclick="openAttReportModal('${id}')">${iconSvg('fileText','ic-sm')} Attendance</button></td>
+            </tr>`;
+        }).join('');
+        paintIcons(card);
+    }
+
+    function onDutyNow() {
+        const nowMs = Date.now();
+        return buildSessions(bizLogs(allAttendance || []))
+            .filter(s => s.checkIn && !s.checkOut && !s.cancelled)
+            .filter(s => {
+                const ms = tsToMillis(s.checkIn);
+                if (!ms) return false;
+                const hours = (nowMs - ms) / 3600000;
+                return hours >= 0 && hours < SHIFT_CANCEL_AFTER_HOURS;
+            })
+            .sort((a, b) => tsToMillis(b.checkIn) - tsToMillis(a.checkIn));
+    }
     const CANCEL_REASON_AR = 'ملغي أوتوماتيكيًا لعدم تسجيل خروج';
     const CANCEL_REASON_EN = 'Cancelled automatically — no Check-Out was recorded';
 
@@ -8140,6 +8296,7 @@
             renderTamperAlert();
             renderServerTimeDiagnostic();
             renderCancelledDays();
+            renderMissedCheckins();
             maybeAutoCloseOnce();
         } catch (error) {
             try {
@@ -8157,6 +8314,7 @@
                 renderTamperAlert();
                 renderServerTimeDiagnostic();
                 renderCancelledDays();
+                renderMissedCheckins();
                 maybeAutoCloseOnce();
             } catch (err) {
             reportLoadFailure('Attendance logs', err);
@@ -8180,7 +8338,13 @@
         let branchLogs = bizLogs(allAttendance).filter(l =>
             !filterBranch || (l.branch || "") === filterBranch);
 
-        let sessions = sessionsInRange(branchLogs, startDate, endDate);
+        // ⚠️⚠️⚠️ ولا يُمسّ allAttendance بحال: محرّكُ الرواتب يقرؤها من الذاكرة
+        // (computePayroll)، ومحرّكُ الغياب يعدّ كلَّ يومٍ لا جلسةَ فيه غيابًا. فترشيحُ
+        // المصفوفة نفسها إلى 48 ساعة كان سيجعل كلَّ يومٍ سابقٍ في الشهر «غيابًا»
+        // فينهار صافي الراتب. المصفاة هنا على **نسخةٍ محليّة** وحدها.
+        let sessions = attRecentOnly()
+            ? recentSessions(branchLogs)
+            : sessionsInRange(branchLogs, startDate, endDate);
         sessions = sessions.filter(s => {
             let name = (s.employeeName || "").toLowerCase();
             let matchName = !searchInput || name.includes(searchInput);
@@ -8189,7 +8353,58 @@
         });
 
         renderAttendanceTable(sessions);
+        renderAttWindowNote(sessions.length, branchLogs);
     };
+
+    /** هل نافذة الـ48 ساعة مفعَّلة؟ */
+    function attRecentOnly() {
+        const el = document.getElementById('attRecentOnly');
+        return !!(el && el.checked);
+    }
+
+    /**
+     * ⭐⭐⭐ جلساتُ آخر 48 ساعة — بالساعة الحقيقية لا بمقارنة التواريخ.
+     * ⚠️ «داوموا خلال آخر 48 ساعة» بنصّه. ومقارنةُ التواريخ وحدها تُعطي بين 24
+     * و72 ساعة بحسب ساعة فتح الشاشة — فتُقاس لحظةُ الحضور نفسها.
+     */
+    function recentSessions(logs) {
+        const cutoff = Date.now() - ATT_RECENT_HOURS * 3600000;
+        return buildSessions(logs).filter(s => {
+            const ms = tsToMillis(s.checkIn || s.checkOut);
+            return !!ms && ms >= cutoff;
+        });
+    }
+
+    /** ⚠️ تُغلق النافذة تلقائيًّا متى غيّر تاريخًا، وإلّا بدا أنّ تغييره لا يفعل شيئًا. */
+    window.onAttDateChanged = function() {
+        const el = document.getElementById('attRecentOnly');
+        if (el) el.checked = false;
+        filterData();
+    };
+
+    /**
+     * ⚠️⚠️ سطرٌ يقول ما يُعرض، وكم خُفي، و**أين ذهب**.
+     * قال المالك «والباقي يختفي أوتوماتيكيًّا ويُحفظ في سجل الموظف». وهذا صحيحٌ
+     * للعرض: القديم يُرى في ملفّ الموظف وفي تقريره الشهري. لكن **لا شيء يُحذف** —
+     * الرواتب تحتاج التاريخ كلَّه. فيُقال ذلك صريحًا: لا يظنّ أنّ البيانات فُقدت،
+     * ولا يظنّ أنها حُذفت فيطمئنّ خطأً.
+     */
+    function renderAttWindowNote(shown, branchLogs) {
+        const el = document.getElementById('attWindowNote');
+        if (!el) return;
+        const total = buildSessions(branchLogs).length;
+        if (attRecentOnly()) {
+            const hidden = Math.max(0, total - shown);
+            el.innerHTML = `Showing the <b>last ${ATT_RECENT_HOURS} hours</b> &mdash; <b>${shown}</b> shift(s). `
+                + (hidden ? `<b>${hidden} older shift(s) are hidden, not deleted.</b> ` : '')
+                + `Nothing is ever removed: every shift stays in the employee's own file (click his name, or `
+                + `<b>Monthly Attendance Report</b>), and the payroll still counts the whole history. `
+                + `Untick the box above, or change the dates, to see any period you want.`;
+        } else {
+            el.innerHTML = `Showing the dates you chose &mdash; <b>${shown}</b> shift(s) of ${total} on record. `
+                + `Tick <b>Last ${ATT_RECENT_HOURS} hours only</b> to go back to the short view.`;
+        }
+    }
 
     /**
      * وسمٌ صغير بجانب أي وقت **غير** مأخوذ من ساعة الخادم.
@@ -8351,6 +8566,10 @@
         document.getElementById("filterBranch").value = "";
         document.getElementById("searchInput").value = "";
         document.getElementById("filterType").value = "";
+        // ⚠️ و«Reset» يعود إلى النافذة القصيرة: هي الوضع الذي طلبه المالك، فالرجوع
+        // إلى الشهر كاملًا كان سيُعيد الزحمة التي شكا منها.
+        const r = document.getElementById("attRecentOnly");
+        if (r) r.checked = true;
         filterData();
     };
 
@@ -14682,12 +14901,19 @@
         // نفس سياسة «الوردية تتبع يوم بدايتها» المطبَّقة في الجدول والرواتب.
         // ⚠️ bizLogs: الملفّ المُصدَّر يجب أن يطابق الجدول المعروض حرفًا بحرف —
         // ملفٌّ فيه أسماء نشاطٍ آخر يُرسَل إلى محاسبٍ فيُبنى عليه قرار.
-        const sessions = sessionsInRange(bizLogs(allAttendance), startDate, endDate);
+        // ⚠️⚠️ ويتبع **نفس** نافذة الجدول: لو صدّر الشهر كاملًا والشاشة تعرض 48
+        // ساعة، لخالف الملفُّ ما رآه — وهو ملفٌّ يُرسَل ويُبنى عليه قرار.
+        const recent = attRecentOnly();
+        const sessions = recent
+            ? recentSessions(bizLogs(allAttendance))
+            : sessionsInRange(bizLogs(allAttendance), startDate, endDate);
         const ws = XLSX.utils.json_to_sheet(sessionsToRows(sessions));
         ws['!cols'] = [{ wch: 26 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 26 }];
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-        XLSX.writeFile(wb, `Attendance_Logs_${startDate}_to_${endDate}.xlsx`);
+        XLSX.writeFile(wb, recent
+            ? `Attendance_Logs_last_${ATT_RECENT_HOURS}h.xlsx`
+            : `Attendance_Logs_${startDate}_to_${endDate}.xlsx`);
     };
 
     // ---- Bulk payroll export: one row per employee for the whole company,
