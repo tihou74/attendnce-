@@ -346,13 +346,35 @@
     .cat .code { direction: ltr; font-family: ui-monospace, monospace; font-size: 11.5px;
         font-weight: 700; color: var(--color-text-muted); }
     .cat .nm { font-size: var(--text-sm); font-weight: 700; line-height: 1.45; }
-    .cat .pr { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; margin-top: 2px; }
-    .cat .pr .now { font-size: var(--text-base); font-weight: 800; }
-    .cat .pr .was { font-size: 12px; color: var(--color-text-muted); text-decoration: line-through; }
-    .cat .pr .off {
-        font-size: 10.5px; font-weight: 800; padding: 1px 6px; border-radius: 999px;
-        background: var(--color-danger); color: #fff;
+    /* ============ السعران معًا ============
+       ⚠️⚠️ بطلب المالك: «يجب ان يظهر في شاشة السيدة فاطمة السعر قبل الخصم
+       والسعر بعد الخصم». فالرقمان يظهران **دائمًا** ما دام سعرُ الخصم مكتوبًا،
+       بلا نظرٍ إلى كون الموسم مفتوحًا أو مغلقًا.
+       ⚠️⚠️⚠️ ولأن إظهار رقمين بلا بيانٍ أيُّهما مُطبَّق كان سيجعلها تقول ٣٥٧
+       لزبونةٍ والمحلُّ يأخذ ٦٠٠ — يوضع تحتهما سطرٌ صريح «المأخوذ الآن». */
+    .cat .prow {
+        display: flex; align-items: baseline; justify-content: space-between;
+        gap: 8px; font-size: 12px; line-height: 1.7;
     }
+    .cat .prow .k { color: var(--color-text-muted); font-weight: 700; }
+    .cat .prow .v { font-weight: 800; direction: ltr; white-space: nowrap; }
+    /* السعر القديم يُشطب **فقط** حين يكون الخصم مُطبَّقًا فعلًا */
+    .cat .prow .v.was { color: var(--color-text-muted); text-decoration: line-through; font-weight: 700; }
+    .cat .prow .v.disc { color: var(--color-danger); }
+    .cat .off {
+        font-size: 10px; font-weight: 800; padding: 1px 5px; border-radius: 999px;
+        background: var(--color-danger); color: #fff; margin-inline-start: 5px;
+    }
+    .cat .now2 {
+        margin-top: 5px; padding-top: 5px; border-top: var(--border-hairline) dashed var(--color-border);
+        font-size: var(--text-base); font-weight: 800; direction: ltr; text-align: start;
+    }
+    .cat .now2 .lbl {
+        display: block; direction: inherit; font-size: 10.5px; font-weight: 700;
+        color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .cat .now2.on { color: var(--color-danger); }
+    .cat .plain { font-size: var(--text-base); font-weight: 800; direction: ltr; margin-top: 2px; }
     .cat .qt { font-size: 12px; font-weight: 700; margin-top: 3px; }
     .cat .qt.zero { color: var(--color-danger); }
     .cat .per { font-size: 11px; color: var(--color-text-muted); line-height: 1.7; margin-top: 2px; }
@@ -1232,9 +1254,15 @@
         el('catTitle').textContent = all ? 'All shops together' : catShop;
 
         // ---- موسم الخصم: يُقال صريحًا، فسعرٌ مختلفٌ بلا تفسير يُقرأ خطأً
-        el('catSeason').innerHTML = catSeasonOn
-            ? `<b>Discount season is open.</b> Where an abaya has a discount price it is the one shown, with the normal price crossed out beside it.`
-            : `Discount season is closed &mdash; the normal prices are the ones shown.`;
+        // ⚠️⚠️ الرقمان يُعرضان دائمًا (بطلب المالك)، فهذا السطر لم يبقَ يقول
+        // «أيُّهما يُعرض» بل **أيُّهما يُؤخذ** — وهو الفرق الذي يمنع أن يُقال رقمٌ
+        // لزبونةٍ ثم يُخلَف في الكاشير.
+        el('catSeason').innerHTML = `Every abaya below shows <b>both</b> prices &mdash; before the discount and after it `
+            + `&mdash; and underneath them the one that is <b>actually taken</b> right now.<br>`
+            + (catSeasonOn
+                ? `<b>Discount season is OPEN</b>, so where an abaya has a discount price, that is what the customer pays.`
+                : `<b>Discount season is closed</b>, so the price before the discount is what the customer pays. `
+                  + `The discount price is still listed so you can see it.`);
 
         const q = String(el('catSearch').value || '').trim().toUpperCase();
         const qtyFor = (p) => all ? catQtyTotal(p) : catQtyOf(p, catShop);
@@ -1254,12 +1282,34 @@
 
         el('catGrid').innerHTML = rows.map(p => {
             const n = qtyFor(p);
-            const disc = catHasDiscount(p) && catSeasonOn;
-            const now = disc ? Number(p.discountPrice) : Number(p.price || 0);
-            const off = disc && p.price ? Math.round((1 - Number(p.discountPrice) / Number(p.price)) * 100) : 0;
+            // ⚠️⚠️ فرقٌ جوهريٌّ بين أمرين كانا مختلطين:
+            //   hasDisc = لهذه العباية سعرُ خصمٍ **مكتوب**  ← يُعرض دائمًا
+            //   active  = وهو **المُطبَّق الآن** (الموسم مفتوح) ← هو ما يُؤخذ
+            // بطلب المالك: «يجب ان يظهر … السعر قبل الخصم والسعر بعد الخصم»،
+            // فالعرضُ لم يبقَ معلَّقًا على الموسم. والموسم بقي يحكم **أيُّهما
+            // يُؤخذ** وحده.
+            const hasDisc = catHasDiscount(p);
+            const active = hasDisc && catSeasonOn;
+            const off = hasDisc && p.price
+                ? Math.round((1 - Number(p.discountPrice) / Number(p.price)) * 100) : 0;
+            const charged = active ? Number(p.discountPrice) : Number(p.price || 0);
             const per = all
                 ? `<p class="per">${ABAYA_SHOPS.map(s => `${escapeHtml(s)}: <b>${catQtyOf(p, s)}</b>`).join(' &middot; ')}</p>`
                 : '';
+            // ⚠️⚠️⚠️ ولا يُعرض الرقمان بلا بيانٍ أيُّهما مُطبَّق: لو عُرض ٦٠٠ و٣٥٧
+            // بلا تفسيرٍ لقالت للزبونة ٣٥٧ والمحلُّ يأخذ ٦٠٠ — ورقمٌ يُقال لزبونةٍ
+            // ثم يُخلَف في الكاشير خسارةٌ في الثقة لا في المال وحده. فسطرُ
+            // «المأخوذ الآن» إلزامي.
+            const prices = hasDisc
+                ? `<span class="prow"><span class="k">Before discount</span>`
+                  + `<span class="v${active ? ' was' : ''}">${money(p.price)}</span></span>`
+                + `<span class="prow"><span class="k">After discount</span>`
+                  + `<span class="v disc">${money(p.discountPrice)}`
+                  + (off > 0 ? `<span class="off">-${off}%</span>` : '') + `</span></span>`
+                + `<span class="now2${active ? ' on' : ''}">`
+                  + `<span class="lbl">${active ? 'Discount is on &mdash; taken now' : 'Taken now'}</span>`
+                  + `${money(charged)} QAR</span>`
+                : `<span class="plain">${money(p.price)} QAR</span>`;
             return `<div class="cat${n <= 0 ? ' out' : ''}">`
                 + (p.hasImage
                     ? `<img class="ph" data-catimg="${escapeHtml(p.id)}" alt="${escapeHtml(p.name || p.code)}">`
@@ -1267,11 +1317,7 @@
                 + `<div class="bd">`
                 + `<span class="code">${escapeHtml(p.code)}</span>`
                 + (p.name ? `<span class="nm">${escapeHtml(p.name)}</span>` : '')
-                + `<span class="pr">`
-                + `<span class="now">${money(now)} QAR</span>`
-                + (disc ? `<span class="was">${money(p.price)}</span>` : '')
-                + (disc && off > 0 ? `<span class="off">-${off}%</span>` : '')
-                + `</span>`
+                + prices
                 + `<span class="qt${n <= 0 ? ' zero' : ''}">${n <= 0 ? 'Sold out' : n + ' piece(s) left'}</span>`
                 + per
                 + `</div></div>`;
