@@ -332,14 +332,33 @@
        الشاشة يعملان بلا أي كود. ولهذا **كل ما داخلها span** — وسمُ <p> أو <div>
        داخل <button> ترميزٌ غير صحيح، وبعض المتصفّحات تُخرجه من الزرّ فتنكسر
        البطاقة. ومن هنا أُبطلت تنسيقات الزرّ العامة أدناه. */
+    /* ⚠️⚠️ البطاقة صارت **غلافًا** لا زرًّا: صار فيها زرّ واتساب، وزرٌّ داخل زرٍّ
+       ترميزٌ غير صحيح تُفكّكه المتصفّحات. فالغلاف div، وفيه زرّان متجاوران:
+       .catmain (الصورة والتفاصيل — يفتح العباية) و.cwa (واتساب). */
     .cat {
         background: var(--color-surface); border: var(--border-hairline) solid var(--color-border);
         border-radius: var(--radius-md); overflow: hidden; display: flex; flex-direction: column;
-        width: 100%; padding: 0; min-height: 0; text-align: start; cursor: pointer;
-        font-family: inherit; font-size: inherit; font-weight: inherit; color: inherit;
     }
-    .cat:hover { background: var(--color-surface-2); border-color: var(--color-primary); }
+    .cat:hover { border-color: var(--color-primary); }
     .cat.out { opacity: 0.55; }
+    /* الزرّ الذي يفتح العباية — تنسيقات الزرّ العامة مُبطلةٌ عليه */
+    .catmain {
+        display: flex; flex-direction: column; flex: 1;
+        width: 100%; padding: 0; min-height: 0; text-align: start; cursor: pointer;
+        background: transparent; color: inherit; border: 0; border-radius: 0;
+        font-family: inherit; font-size: inherit; font-weight: inherit;
+    }
+    .catmain:hover:not([disabled]) { background: var(--color-surface-2); }
+    /* ⚠️ زرّ واتساب بلونه المعروف — ولونُ الأزرار العامّ مُبطلٌ عليه بصراحةٍ أعلى */
+    .cwa {
+        width: 100%; min-height: 40px; padding: 0 10px;
+        border: 0; border-top: var(--border-hairline) solid var(--color-border); border-radius: 0;
+        background: #25D366; color: #ffffff; font-size: 12px; font-weight: 800;
+        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+        cursor: pointer; font-family: inherit;
+    }
+    .cwa:hover:not([disabled]) { background: #1ebe5a; }
+    .cwa svg { width: 15px; height: 15px; flex: 0 0 auto; }
     .cat .ph {
         width: 100%; aspect-ratio: 4 / 5; object-fit: cover; display: block;
         background: var(--color-surface-2);
@@ -442,6 +461,64 @@
         margin: var(--space-3) 0 0; font-size: var(--text-xs); color: var(--color-text-muted);
         line-height: 1.8;
     }
+
+    /* ============ نافذة طلب الواتساب ============ */
+    .catwa .opts { display: grid; gap: var(--space-3); grid-template-columns: 1fr; margin: 0 0 var(--space-4); }
+    .catwa .opt {
+        width: 100%; min-height: 48px; text-align: start; padding: 10px 12px;
+        background: var(--color-surface-2); color: var(--color-text);
+        border: var(--border-hairline) solid var(--color-border); border-radius: var(--radius-md);
+        font-family: inherit; font-size: var(--text-sm); font-weight: 700; cursor: pointer;
+        display: block;
+    }
+    .catwa .opt:hover:not([disabled]) { background: var(--color-surface-2); border-color: var(--color-primary); }
+    .catwa .opt[aria-pressed="true"] {
+        border-color: var(--color-primary); border-width: 2px;
+        background: var(--color-surface);
+    }
+    .catwa .opt small { display: block; font-weight: 400; font-size: var(--text-xs);
+        color: var(--color-text-muted); margin-top: 2px; }
+    .catwa label { display: block; font-size: var(--text-xs); font-weight: 700;
+        color: var(--color-text-muted); margin: var(--space-3) 0 4px; }
+    .catwa input, .catwa select, .catwa textarea {
+        width: 100%; font-family: inherit; font-size: var(--text-sm);
+        padding: 10px 12px; border: 1px solid var(--color-border-strong);
+        border-radius: var(--radius-md); background: var(--color-surface);
+        color: var(--color-text); margin: 0;
+    }
+    .catwa textarea { min-height: 84px; resize: vertical; }
+    /* ⚠️ معاينةُ الرسالة قبل الإرسال: رسالةٌ تُرسل بلا أن تُقرأ تُرسل مرّتين */
+    .catwa .prev {
+        white-space: pre-wrap; direction: ltr; text-align: start;
+        font-family: ui-monospace, monospace; font-size: 11.5px; line-height: 1.75;
+        background: var(--color-surface-2); border: var(--border-hairline) solid var(--color-border);
+        border-radius: var(--radius-md); padding: 10px 11px; margin: var(--space-3) 0 0;
+        max-height: 190px; overflow-y: auto;
+    }
+    .catwa .send {
+        width: 100%; min-height: 48px; margin: var(--space-4) 0 0;
+        background: #25D366; color: #fff; border: 0; border-radius: var(--radius-md);
+        font-family: inherit; font-size: var(--text-base); font-weight: 800; cursor: pointer;
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .catwa .send:hover:not([disabled]) { background: #1ebe5a; }
+    .catwa .send[disabled] { opacity: 0.45; cursor: not-allowed; }
+    /* ⚠️ البديل **وسمُ رابطٍ** لا زرّ: المتصفّحات تحجب النوافذ المبرمَجة ولا تحجب
+       تنقّل الرابط. ويبقى ظاهرًا دائمًا: لو لم تكن لوحة المشاركة مدعومة فهذا
+       هو الطريق الوحيد، وإخفاؤه يترك القارئة واقفةً بلا مخرج. */
+    .catwa .alt {
+        display: block; text-align: center; margin: var(--space-3) 0 0;
+        min-height: 44px; line-height: 44px; text-decoration: none;
+        border: 1px solid var(--color-border-strong); border-radius: var(--radius-md);
+        color: var(--color-text); font-size: var(--text-sm); font-weight: 700;
+    }
+    .catwa .dl {
+        width: 100%; min-height: 44px; margin: var(--space-3) 0 0;
+        background: transparent; color: var(--color-text);
+        border: 1px solid var(--color-border-strong); border-radius: var(--radius-md);
+        font-family: inherit; font-size: var(--text-sm); font-weight: 700; cursor: pointer;
+    }
+    .catwa .err { margin: var(--space-3) 0 0; }
     .hidden { display: none !important; }
 </style>
 </head>
@@ -736,6 +813,78 @@
                 </div>
                 <div id="catModalImgWrap"></div>
                 <div class="rows" id="catModalRows"></div>
+            </div>
+        </div>
+
+        <!-- ============ نافذة طلب الواتساب ============
+             بطلب المالك: زرُّ واتساب تحت كل عباية، برسالةٍ جاهزة **مع صورتها**،
+             وخياراتٌ: تغيير سعر البيع · إرسالها إلى متجرٍ آخر · أو نصٌّ تكتبه هي.
+
+             ⚠️⚠️⚠️ حقيقةٌ تقنيّةٌ لا تُخفى: **رابط واتساب لا يحمل صورةً إطلاقًا** —
+             لا wa.me ولا whatsapp://. كلاهما نصٌّ فقط. والطريقة الوحيدة لإرسال
+             الصورة من صفحة ويب هي لوحةُ مشاركة النظام (navigator.share مع files)،
+             وهي مدعومةٌ على آيفون وأندرويد الحديثين وغيرُ مدعومةٍ على معظم
+             أجهزة سطح المكتب. فهنا ثلاثة طرق مرتَّبةٌ بالصراحة:
+               ١) «Send with the picture» — لوحة المشاركة، تُرسل الصورة والنصّ.
+               ٢) رابطٌ ظاهرٌ دائمًا يفتح واتساب **بالنصّ وحده**.
+               ٣) زرُّ تنزيل الصورة، لتُرفقها بيدها إن أرادت.
+             ⚠️ وهذه الشاشة **لا تكتب في القاعدة شيئًا**: السيدة فاطمة مُشاهِدةٌ
+             بلا أي صلاحية كتابة، والطلب رسالةٌ تُرسل لا تعديلٌ في الكتالوج. -->
+        <div id="catWaModal" class="catmodal catwa hidden" role="dialog" aria-modal="true" aria-labelledby="catWaTitle">
+            <div class="box" id="catWaBox">
+                <div class="top">
+                    <div>
+                        <h3 id="catWaTitle">Send a request on WhatsApp</h3>
+                        <span class="c" id="catWaCode">&mdash;</span>
+                    </div>
+                    <button type="button" class="x" id="catWaClose" aria-label="Close">&#10005; Close</button>
+                </div>
+                <div class="rows">
+                    <div class="opts">
+                        <button type="button" class="opt" id="catWaOptPrice" aria-pressed="false" data-waopt="price">
+                            Change the selling price
+                            <small>Ask the owner to approve a new price</small>
+                        </button>
+                        <button type="button" class="opt" id="catWaOptMove" aria-pressed="false" data-waopt="move">
+                            Send it to another shop
+                            <small>Ask for the piece to be moved</small>
+                        </button>
+                        <button type="button" class="opt" id="catWaOptFree" aria-pressed="false" data-waopt="free">
+                            Something else
+                            <small>Write your own message about this abaya</small>
+                        </button>
+                    </div>
+
+                    <!-- تغيير السعر -->
+                    <div id="catWaPrice" class="hidden">
+                        <label for="catWaNewPrice">New selling price (QAR)</label>
+                        <input type="number" id="catWaNewPrice" inputmode="decimal" step="1" min="0" placeholder="0">
+                    </div>
+
+                    <!-- النقل إلى متجرٍ آخر -->
+                    <div id="catWaMove" class="hidden">
+                        <label for="catWaFrom">From which shop</label>
+                        <select id="catWaFrom"></select>
+                        <label for="catWaTo">To which shop</label>
+                        <select id="catWaTo"></select>
+                        <label for="catWaQty">How many pieces</label>
+                        <input type="number" id="catWaQty" inputmode="numeric" step="1" min="1" value="1">
+                    </div>
+
+                    <label for="catWaNote" id="catWaNoteLabel">Note (optional)</label>
+                    <textarea id="catWaNote" placeholder="Anything you want to add"></textarea>
+
+                    <p class="err" id="catWaErr"></p>
+                    <div class="prev" id="catWaPrev">&mdash;</div>
+
+                    <button type="button" class="send" id="catWaSend">
+                        <span aria-hidden="true">&#128247;</span> Send with the picture
+                    </button>
+                    <!-- ⚠️ وسمُ رابطٍ لا زرّ، ويبقى ظاهرًا دائمًا — انظر الملاحظة أعلى النافذة -->
+                    <a class="alt" id="catWaAlt" href="#">Open WhatsApp with the text only</a>
+                    <button type="button" class="dl" id="catWaDl">Download the picture</button>
+                    <p class="sub" id="catWaHint"></p>
+                </div>
             </div>
         </div>
 
@@ -1229,6 +1378,10 @@
     // وrenderCatalog تقرأانه وهما مُعرَّفتان قبلها، فتعريفٌ متأخّر يُخاطر بخطأ
     // TDZ لو نُوديت إحداهما أثناء تحميل الصفحة.
     let catModalOpen = '';
+    // ونافذةُ طلب الواتساب — تُعرَّف هنا لنفس السبب: showCatalogShop تُغلقها وهي
+    // مُعرَّفةٌ قبلها في الملف.
+    let catWaId = '';                  // العباية المفتوح عليها الطلب
+    let catWaKind = '';                // price | move | free
     const catImages = new Map();    // id -> data URL (تُقرأ مرّةً واحدة لهذه الجلسة)
 
     /**
@@ -1306,6 +1459,7 @@
         // ⚠️ نافذةٌ مفتوحةٌ تُغلق عند تغيير المحل أو الخروج من القسم: أعدادُها
         // تخصّ محلًّا بعينه، فبقاؤها بعد تغييره يُظهر رقمَ محلٍّ آخر.
         if (catModalOpen) catCloseModal();
+        if (catWaId) catCloseWa();
         el('catChooser').classList.toggle('hidden', !!which);
         el('catHint').classList.toggle('hidden', !!which);
         el('catPanel').classList.toggle('hidden', !which);
@@ -1408,6 +1562,12 @@
             if (openP) catRenderModalRows(openP);
             else catCloseModal();
         }
+        // ⚠️ ونفس القاعدة لنافذة طلب الواتساب: معاينةُ الرسالة تحمل أعدادَ
+        // المحلات، فلو بقيت قديمةً لأُرسل إلى المالك رقمٌ لم يبقَ صحيحًا.
+        if (catWaId) {
+            if (catProducts.some(x => x.id === catWaId)) catWaRefresh();
+            else catCloseWa();
+        }
 
         if (!rows.length) {
             el('catGrid').innerHTML = '';
@@ -1456,7 +1616,11 @@
             // أن المالك لم يُدخل كوستَها بعد. فيُقال ذلك صريحًا.
             const costRow = `<span class="prow"><span class="k">Cost</span>`
                 + `<span class="v cost">${Number(p.cost) > 0 ? money(p.cost) : 'not entered'}</span></span>`;
-            return `<button type="button" class="cat${n <= 0 ? ' out' : ''}" data-catopen="${escapeHtml(p.id)}">`
+            // ⚠️⚠️ غلافٌ div وفيه **زرّان متجاوران**: زرٌّ داخل زرٍّ ترميزٌ غير
+            // صحيح تُفكّكه المتصفّحات، فلمّا أُضيف زرّ الواتساب لم يبقَ للبطاقة
+            // نفسها أن تكون زرًّا.
+            return `<div class="cat${n <= 0 ? ' out' : ''}">`
+                + `<button type="button" class="catmain" data-catopen="${escapeHtml(p.id)}">`
                 + (p.hasImage
                     ? `<img class="ph" data-catimg="${escapeHtml(p.id)}" alt="${escapeHtml(p.name || p.code)}">`
                     : `<span class="ph none">No picture<br>yet</span>`)
@@ -1468,7 +1632,12 @@
                 + `<span class="qt${n <= 0 ? ' zero' : ''}">${n <= 0 ? 'Sold out' : n + ' piece(s) left'}</span>`
                 + per
                 + `<span class="tap">Tap to see the whole abaya &rarr;</span>`
-                + `</span></button>`;
+                + `</span></button>`
+                + `<button type="button" class="cwa" data-catwa="${escapeHtml(p.id)}"`
+                + ` aria-label="Send a WhatsApp request about ${escapeHtml(p.code)}">`
+                + `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2c-5.5 0-9.94 4.44-9.94 9.92 0 1.75.46 3.45 1.32 4.95L2 22l5.27-1.38a9.9 9.9 0 0 0 4.77 1.22h.01c5.48 0 9.93-4.44 9.93-9.92C21.98 6.44 17.53 2 12.04 2zm5.8 14.02c-.24.68-1.4 1.3-1.93 1.35-.53.05-1.03.2-3.52-.85-2.99-1.27-4.86-4.4-5-4.6-.15-.2-1.2-1.63-1.2-3.1 0-1.48.77-2.2 1.05-2.5.27-.3.6-.37.8-.37.2 0 .4 0 .58.01.19.01.44-.07.68.52.25.6.85 2.08.92 2.23.08.15.13.32.03.52-.1.2-.15.32-.3.5-.15.17-.31.38-.44.51-.15.15-.3.31-.13.6.17.3.76 1.26 1.63 2.04 1.12 1 2.06 1.31 2.35 1.46.3.15.47.13.64-.08.17-.2.74-.86.94-1.16.2-.3.4-.25.66-.15.27.1 1.7.8 2 .95.3.15.5.22.57.35.07.13.07.75-.17 1.43z"/></svg>`
+                + ` WhatsApp</button>`
+                + `</div>`;
         }).join('');
 
         const soldOut = rows.filter(p => qtyFor(p) <= 0).length;
@@ -1598,7 +1767,9 @@
 
     el('catGrid').addEventListener('click', (ev) => {
         const b = ev.target.closest('button[data-catopen]');
-        if (b) catOpenModal(b.getAttribute('data-catopen'));
+        if (b) { catOpenModal(b.getAttribute('data-catopen')); return; }
+        const w = ev.target.closest('button[data-catwa]');
+        if (w) catOpenWa(w.getAttribute('data-catwa'));
     });
     el('catModalClose').addEventListener('click', catCloseModal);
     // الضغط خارج الصندوق يُغلق
@@ -1606,8 +1777,309 @@
         if (!ev.target.closest('#catModalBox')) catCloseModal();
     });
     // ⚠️ وEscape: نافذةٌ لا تُغلق إلا بزرٍّ صغيرٍ في زاويةٍ تحبس القارئ.
+    // ⚠️ Escape يُغلق **النافذتين**: نافذةٌ ثانيةٌ لا تُغلق بـEscape تُقرأ عطلًا،
+    // والأولى تُغلق فتبدو الثانية عالقة. وتُغلق نافذة الطلب أوّلًا لأنها فوقها.
     document.addEventListener('keydown', (ev) => {
-        if (ev.key === 'Escape' && !el('catModal').classList.contains('hidden')) catCloseModal();
+        if (ev.key !== 'Escape') return;
+        if (!el('catWaModal').classList.contains('hidden')) { catCloseWa(); return; }
+        if (!el('catModal').classList.contains('hidden')) catCloseModal();
+    });
+
+    // =====================================================================
+    // ⭐⭐⭐ طلبٌ على الواتساب من تحت كل عباية — مع صورتها
+    // ---------------------------------------------------------------------
+    // بطلب المالك: «زر واتساب يكون فيه ميساج اوتوماتيكي يرسل مع صورة العباية مع
+    // خيارات تغيير سعر البيع او ارسال العباية الى متجر اخر او شيء اخر هي تريد
+    // كتابته».
+    //
+    // ⚠️⚠️⚠️ الحقيقة التقنيّة التي بُنيت عليها هذه الشاشة، ولا تُخفى:
+    // **رابط واتساب لا يحمل صورةً إطلاقًا.** لا `wa.me/?text=` ولا
+    // `whatsapp://send?text=` — كلاهما نصٌّ فقط، وليس في واتساب معاملٌ للصورة.
+    // فالسبيل الوحيد لإرسال الصورة من صفحة ويب هو لوحةُ مشاركة النظام
+    // (navigator.share مع files)، وهي:
+    //   · مدعومةٌ على iOS Safari 15+ وأندرويد كروم الحديث،
+    //   · غيرُ مدعومةٍ على معظم متصفّحات سطح المكتب،
+    //   · وتحتاج HTTPS (والموقع على HTTPS) ولمسةَ مستخدمٍ حقيقية (وهي ضغطة الزرّ).
+    // فثلاثُ طرقٍ مرتَّبةٌ بالصراحة: بالصورة إن أمكن، ثم نصٌّ وحده، ثم تنزيل
+    // الصورة لترفعها بيدها.
+    //
+    // ⚠️⚠️ ولا رقم هاتفٍ في الرابط عن قصد: رابطٌ برقمٍ يفتح محادثةً فرديّةً
+    // **ولا يستطيع** فتح مجموعة أبدًا. وحذفُ الرقم يفتح لوحةَ مشاركة واتساب
+    // فتختار هي المالكَ أو المجموعة. وهذا أيضًا يوفّر إعدادَ رقمٍ جديدٍ عليه.
+    //
+    // ⚠️⚠️ وهذه الشاشة **لا تكتب في القاعدة حرفًا**: السيدة فاطمة مُشاهِدةٌ بلا
+    // صلاحية كتابةٍ في أي مجموعة، والطلبُ رسالةٌ تُرسل لا تعديلٌ في الكتالوج.
+    // فلا يتغيّر سعرٌ ولا تنتقل قطعةٌ إلا بيد المالك من لوحته.
+    // =====================================================================
+    const WA_TEXT_SAFE_LIMIT = 1800;   // حدُّ طولٍ آمنٌ لرابط النصّ وحده
+    // (catWaId وcatWaKind مُعرَّفان أعلى الملف مع بقيّة الحالة.)
+
+    /** هل يستطيع هذا الجهاز مشاركة **ملف**؟ (أي: هل تُرسل الصورة؟) */
+    function catCanShareFiles() {
+        try {
+            return typeof navigator !== 'undefined'
+                && typeof navigator.share === 'function'
+                && typeof navigator.canShare === 'function';
+        } catch (e) { return false; }
+    }
+
+    function catWaProduct() { return catProducts.find(x => x.id === catWaId) || null; }
+
+    function catCloseWa() {
+        catWaId = '';
+        el('catWaModal').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    function catOpenWa(id) {
+        const p = catProducts.find(x => x.id === id);
+        if (!p) return;
+        catWaId = id;
+        catWaKind = '';
+        el('catWaCode').textContent = p.code + (p.name ? ' — ' + p.name : '');
+        el('catWaNewPrice').value = '';
+        el('catWaQty').value = '1';
+        el('catWaNote').value = '';
+        el('catWaErr').textContent = '';
+
+        // ---- محلّا النقل: المصدر يبدأ بالمحل المعروض، والوجهة أوّلُ محلٍّ غيره
+        // ⚠️ ويُكتب على كل خيارٍ عددُه الحالي: طلبُ نقلِ قطعةٍ من محلٍّ فارغ يُرسل
+        // المالكَ إلى رفٍّ لا شيء فيه.
+        const opts = ABAYA_SHOPS.map(s =>
+            `<option value="${escapeHtml(s)}">${escapeHtml(s)} — ${catQtyOf(p, s)} piece(s) now</option>`).join('');
+        el('catWaFrom').innerHTML = opts;
+        el('catWaTo').innerHTML = opts;
+        const src = (catShop && catShop !== CAT_ALL) ? catShop
+            : (ABAYA_SHOPS.find(s => catQtyOf(p, s) > 0) || ABAYA_SHOPS[0]);
+        el('catWaFrom').value = src;
+        el('catWaTo').value = ABAYA_SHOPS.find(s => s !== src) || ABAYA_SHOPS[0];
+
+        catWaPickKind('price');
+        el('catWaDl').classList.toggle('hidden', !p.hasImage);
+        // ⚠️ يُقال صريحًا هل ستُرسل الصورة على **هذا الجهاز** — لا وعدٌ عامّ.
+        el('catWaHint').innerHTML = p.hasImage
+            ? (catCanShareFiles()
+                ? `A WhatsApp link can never carry a picture. <b>Send with the picture</b> uses your phone's own `
+                  + `share sheet instead, then you pick the owner or the group. If your phone refuses it, use the `
+                  + `text-only link and attach the downloaded picture yourself.`
+                : `<b>This device cannot attach the picture by itself.</b> Use the text-only link, and press `
+                  + `<b>Download the picture</b> to attach it in WhatsApp yourself.`)
+            : `This abaya has no picture in the catalogue yet, so only the text can be sent.`;
+        el('catWaSend').disabled = !p.hasImage || !catCanShareFiles();
+
+        catWaRefresh();
+        el('catWaModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        el('catWaClose').focus();
+    }
+
+    function catWaPickKind(kind) {
+        catWaKind = kind;
+        ['price', 'move', 'free'].forEach(k => {
+            const btn = document.querySelector(`button[data-waopt="${k}"]`);
+            if (btn) btn.setAttribute('aria-pressed', String(k === kind));
+        });
+        el('catWaPrice').classList.toggle('hidden', kind !== 'price');
+        el('catWaMove').classList.toggle('hidden', kind !== 'move');
+        // ⚠️ في «شيءٌ آخر» يصير النصُّ إلزاميًّا لا اختياريًّا — وإلّا أُرسلت
+        // رسالةٌ عنوانُها «رسالة» وجسمُها فارغ.
+        el('catWaNoteLabel').textContent = kind === 'free'
+            ? 'Your message (required)' : 'Note (optional)';
+        catWaRefresh();
+    }
+
+    /**
+     * يبني نصّ الرسالة، أو يُعيد الخطأ الذي يمنع الإرسال.
+     * ⚠️ الرسائل بالإنجليزية كلُّها — بأمر المالك: «كل الرسائل بالانجليزية».
+     * ⚠️ و*نجمة* حول العناوين: واتساب يعرضها عريضة.
+     */
+    function catWaBuild() {
+        const p = catWaProduct();
+        if (!p) return { err: 'That abaya is no longer in the list.' };
+        const note = String(el('catWaNote').value || '').trim();
+        const hasDisc = catHasDiscount(p);
+        const L = [];
+        const head = () => {
+            L.push('');
+            L.push('Barcode: ' + p.code);
+            if (p.name) L.push('Name: ' + p.name);
+        };
+
+        if (catWaKind === 'price') {
+            const np = Number(el('catWaNewPrice').value);
+            if (!el('catWaNewPrice').value.trim()) return { err: 'Type the new selling price you are asking for.' };
+            if (!isFinite(np) || np <= 0) return { err: 'The new price must be a number above zero.' };
+            if (np === Number(p.price)) return { err: 'That is the same as the current price — nothing would change.' };
+            L.push('*PRICE CHANGE REQUEST — Al Sheikha Style*');
+            head();
+            L.push('');
+            L.push('Current selling price: ' + money(p.price) + ' QAR');
+            if (hasDisc) L.push('Price after discount: ' + money(p.discountPrice) + ' QAR');
+            // ⚠️ الكوست يُدرج هنا **فقط**: هو الرقم الذي يحكم به المالك على سعرٍ
+            // جديد. ولا يُدرج في بقيّة الطلبات — رسالةٌ تُحوَّل تحمل سعرَ شرائنا.
+            if (Number(p.cost) > 0) L.push('Cost: ' + money(p.cost) + ' QAR');
+            L.push('');
+            L.push('*Requested new price: ' + money(np) + ' QAR*');
+            if (np < Number(p.price)) {
+                L.push('(That is ' + money(Number(p.price) - np) + ' QAR lower than now.)');
+            } else {
+                L.push('(That is ' + money(np - Number(p.price)) + ' QAR higher than now.)');
+            }
+            if (note) { L.push(''); L.push('Note: ' + note); }
+            L.push('');
+            L.push('Please confirm so the catalogue can be updated.');
+        } else if (catWaKind === 'move') {
+            const from = el('catWaFrom').value, to = el('catWaTo').value;
+            const q = Math.floor(Number(el('catWaQty').value));
+            if (from === to) return { err: 'Pick two different shops — it cannot move to the same shop.' };
+            if (!isFinite(q) || q < 1) return { err: 'How many pieces? At least one.' };
+            const have = catQtyOf(p, from);
+            if (have <= 0) return { err: `There is nothing in ${from} to move.` };
+            if (q > have) return { err: `${from} only has ${have} piece(s) — you asked to move ${q}.` };
+            L.push('*MOVE REQUEST — Al Sheikha Style*');
+            head();
+            L.push('');
+            L.push('From: ' + from + ' (' + have + ' piece(s) there now)');
+            L.push('To: ' + to + ' (' + catQtyOf(p, to) + ' piece(s) there now)');
+            L.push('');
+            L.push('*Pieces to move: ' + q + '*');
+            if (note) { L.push(''); L.push('Note: ' + note); }
+            L.push('');
+            L.push('Please confirm the transfer so the counts can be corrected.');
+        } else if (catWaKind === 'free') {
+            if (!note) return { err: 'Write your message first.' };
+            L.push('*ABOUT THIS ABAYA — Al Sheikha Style*');
+            head();
+            L.push('Selling price: ' + money(p.price) + ' QAR'
+                + (hasDisc ? ' (after discount: ' + money(p.discountPrice) + ' QAR)' : ''));
+            L.push('');
+            L.push('*' + note + '*');
+        } else {
+            return { err: 'Choose what you are asking for.' };
+        }
+
+        L.push('');
+        const who = (auth.currentUser && auth.currentUser.email) || 'the abaya panel';
+        L.push('Sent from the abaya panel by ' + who);
+        L.push(new Date().toLocaleString('en-GB'));
+        return { text: L.join('\n') };
+    }
+
+    /** يُعيد رسمَ المعاينة والرابط البديل — يُنادى مع كل تغييرٍ في الخانات. */
+    function catWaRefresh() {
+        const built = catWaBuild();
+        const p = catWaProduct();
+        el('catWaErr').textContent = built.err || '';
+        const text = built.text || '';
+        el('catWaPrev').textContent = text || '—';
+        el('catWaSend').disabled = !!built.err || !p || !p.hasImage || !catCanShareFiles();
+
+        // ---- الرابط البديل: نصٌّ وحده
+        // ⚠️ بلا رقم: رابطٌ برقمٍ لا يفتح مجموعةً أبدًا، وحذفُه يفتح لوحةَ
+        // المشاركة فتختار هي المستقبِل.
+        // ⚠️ ويُقصّ الطويل: رابطٌ طويلٌ جدًّا يُقصّ في بعض الأنظمة فيضيع **آخرُ**
+        // الرسالة — وآخرُها هو الطلب نفسه. فالقصُّ هنا صريحٌ وموسوم.
+        const alt = el('catWaAlt');
+        if (built.err || !text) {
+            alt.removeAttribute('href');
+            alt.setAttribute('aria-disabled', 'true');
+            alt.textContent = 'Open WhatsApp with the text only';
+        } else {
+            let t = text;
+            if (encodeURIComponent(t).length > WA_TEXT_SAFE_LIMIT) {
+                while (encodeURIComponent(t + '\n[shortened]').length > WA_TEXT_SAFE_LIMIT && t.length > 40) {
+                    t = t.slice(0, -40);
+                }
+                t += '\n[shortened]';
+            }
+            const enc = encodeURIComponent(t);
+            alt.href = IS_PHONE ? `whatsapp://send?text=${enc}` : `https://wa.me/?text=${enc}`;
+            if (IS_PHONE) alt.removeAttribute('target');
+            else { alt.target = '_blank'; alt.rel = 'noopener'; }
+            alt.removeAttribute('aria-disabled');
+            alt.textContent = 'Open WhatsApp with the text only';
+        }
+    }
+
+    /** data URL -> File، لتُمرَّر إلى لوحة المشاركة. */
+    async function catImageFile(p) {
+        const url = catImages.get(p.id);
+        if (!url) return null;
+        const blob = await (await fetch(url)).blob();
+        const type = blob.type || 'image/jpeg';
+        const ext = /png/.test(type) ? 'png' : 'jpg';
+        return new File([blob], `${p.code}.${ext}`, { type });
+    }
+
+    el('catWaSend').addEventListener('click', async () => {
+        const built = catWaBuild();
+        const p = catWaProduct();
+        if (built.err || !p) { el('catWaErr').textContent = built.err || 'Pick an abaya first.'; return; }
+        const btn = el('catWaSend');
+        btn.disabled = true;
+        try {
+            // ⚠️ الصورة قد لا تكون محفوظةً بعد (بطاقةٌ لم تصل الشاشة). فتُقرأ الآن.
+            if (!catImages.has(p.id) && p.hasImage) {
+                const snap = await getDoc(doc(db, 'abaya_product_images', p.id));
+                const u = safePhoto(snap.exists() ? snap.data().imageBase64 : '');
+                if (u) catImages.set(p.id, u);
+            }
+            const file = await catImageFile(p);
+            if (!file || !navigator.canShare || !navigator.canShare({ files: [file] })) {
+                // ⚠️ لا يُقال «فشل»: لم يفشل شيء — الجهاز لا يدعم إرسال ملف.
+                // ويُدَلّ على المخرج بدل تركها واقفة.
+                el('catWaErr').textContent =
+                    'This device will not attach the picture. Use the text-only link below, '
+                    + 'and press Download the picture to attach it yourself.';
+                return;
+            }
+            await navigator.share({ files: [file], text: built.text });
+            catCloseWa();
+        } catch (e) {
+            // ⚠️ إلغاءُ لوحة المشاركة يرمي AbortError — وهو **ليس عطلًا**.
+            // وإظهارُ خطأٍ عند الإلغاء يجعل القارئة تظنّ أنها أفسدت شيئًا.
+            const nm = String((e && e.name) || '');
+            if (nm === 'AbortError' || nm === 'NotAllowedError') { /* أُلغيت بيدها */ }
+            else {
+                el('catWaErr').textContent = 'The share sheet did not open. Use the text-only link below.';
+            }
+        } finally {
+            catWaRefresh();
+        }
+    });
+
+    el('catWaDl').addEventListener('click', async () => {
+        const p = catWaProduct();
+        if (!p) return;
+        try {
+            if (!catImages.has(p.id) && p.hasImage) {
+                const snap = await getDoc(doc(db, 'abaya_product_images', p.id));
+                const u = safePhoto(snap.exists() ? snap.data().imageBase64 : '');
+                if (u) catImages.set(p.id, u);
+            }
+            const url = catImages.get(p.id);
+            if (!url) { el('catWaErr').textContent = 'The picture could not be read.'; return; }
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${p.code}.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        } catch (e) {
+            el('catWaErr').textContent = 'The picture could not be downloaded.';
+        }
+    });
+
+    document.querySelectorAll('button[data-waopt]').forEach(b => {
+        b.addEventListener('click', () => catWaPickKind(b.getAttribute('data-waopt')));
+    });
+    ['catWaNewPrice', 'catWaFrom', 'catWaTo', 'catWaQty', 'catWaNote'].forEach(id => {
+        el(id).addEventListener('input', catWaRefresh);
+        el(id).addEventListener('change', catWaRefresh);
+    });
+    el('catWaClose').addEventListener('click', catCloseWa);
+    el('catWaModal').addEventListener('click', (ev) => {
+        if (!ev.target.closest('#catWaBox')) catCloseWa();
     });
 
     /**
