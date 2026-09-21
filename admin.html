@@ -1025,16 +1025,21 @@
         <!-- ⭐⭐⭐ تنبيهُ الغياب المتتالي — بطلب المالك: «أيّ موظف لم يسجّل دخول
              مرتين متتاليتين يجب أن يظهر تنبيه في الشاشة … يجب مراجعة أمره». -->
         <div class="card" id="missedCheckinCard" style="display: none; border-left: 4px solid var(--danger);">
-            <h3><span data-icon="alertTriangle"></span> Not checked in for two days or more &mdash; needs reviewing
+            <h3><span data-icon="alertTriangle"></span> Not checked in for <span id="missedDaysH">3</span> days or more &mdash; needs reviewing
                 <span id="missedCheckinCount" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
             <p class="card-sub">
-                These employees have recorded <b>no Check-In</b> for <b>two or more days in a row</b>, counted from
-                <b>yesterday</b> backwards &mdash; today is not counted, because an evening shift has not started yet.
+                These employees have recorded <b>no Check-In</b> for <b><span id="missedDaysP">3</span> or more days in
+                a row</b>, counted from <b>yesterday</b> backwards &mdash; today is not counted, because an evening
+                shift has not started yet.
                 Days covered by <b>annual leave</b> or by a <b>manual deduction</b> are not counted either, and nor is
                 any day before the employee joined.
                 <br><br>
+                <b>Anyone who records a Check-In leaves this list at once.</b> The moment an employee punches in today
+                he is off it, however many days he had missed before &mdash; he is back, so there is nothing left to
+                review. Those earlier days are <b>not erased</b>: they stay in his monthly report and in the payroll.
+                <br><br>
                 <b>This is a prompt to look, not a deduction.</b> Nothing here changes any salary. Remember that rest
-                days are earned at <b>one per six days worked</b> and are not tied to a fixed weekday, so two days off
+                days are earned at <b>one per six days worked</b> and are not tied to a fixed weekday, so a few days off
                 in a row can be perfectly legitimate &mdash; the point is that you see it and decide.
             </p>
             <!-- ⚠️⚠️⚠️ حارسُ العدل قبل إرسال أي تنبيه: إن كان **كل** موظفي فرعٍ
@@ -8141,7 +8146,12 @@
     /** نافذةُ جدول الحضور — بطلب المالك: «يظهر فقط الذين داوموا خلال آخر 48 ساعة». */
     const ATT_RECENT_HOURS = 48;
     /** تنبيهُ الغياب المتتالي — بطلبه: «لم يسجل دخول مرتين متتاليتين». */
-    const MISSED_CHECKIN_ALERT_DAYS = 2;
+    // ⚠️ كان الحدُّ يومين، وصار **ثلاثة** بأمر المالك: «من يومين إلى ٣ أيام».
+    // ⚠️⚠️ ولا يُكتب الرقم في نصوص الشاشة بيدٍ: عنوانُ البطاقة وشرحُها يُشتقّان
+    // من هذا الثابت في renderMissedCheckins. كانا مكتوبَين «two days» حرفيًّا،
+    // فلو غُيّر الثابت وحدَه لبقيت الشاشة تقول يومين وهي تعدّ ثلاثة — وشرحٌ
+    // يكذب على قارئه أسوأ من غياب الشرح.
+    const MISSED_CHECKIN_ALERT_DAYS = 3;
 
     /**
      * ⭐⭐⭐ من هو في الدوام **الآن**.
@@ -8175,6 +8185,23 @@
         const leave = getLeaveCoveredDateSet(emp.id);
         const manual = getManuallyDeductedDateSet(emp.id);
         const hire = getEmploymentStartISO(emp);
+        // ==============================================================
+        // ⭐⭐⭐⭐ من سجّل الدخول **اليوم** يختفي من القائمة فورًا
+        // --------------------------------------------------------------
+        // بأمر المالك: «وأيّ موظف يسجّل الدخول يختفي من هذه القائمة».
+        //
+        // ⚠️⚠️ والعدُّ يبقى من **أمس** كما كان (اليوم لم ينتهِ بعد، ووردية
+        // تبدأ الرابعة عصرًا لم تتأخّر في العاشرة صباحًا) — لكنّ بصمةَ اليوم
+        // تُصفّر السلسلة كلَّها. وبلا هذا السطر كان من بصم هذا الصباح يبقى
+        // في القائمة بأربعين يومًا، لأن الأمسَ وما قبله ما زالت ناقصة: وهو
+        // بعينه ما رآه المالك على شاشته.
+        //
+        // ⚠️ والقائمةُ «تحتاج مراجعة» لا سجلُّ غياب: من عاد فلا شيء يُراجَع.
+        // والأيام الناقصة الماضية باقيةٌ في تقريره الشهري وفي الرواتب — لا
+        // يُمحى منها شيء، إنما يُخرج من قائمة **المتابعة**.
+        // ==============================================================
+        if (worked.has(todayISO())) return { days: 0, dates: [], never: false };
+
         const dates = [];
         let d = prevDayISO(todayISO());
         for (let i = 0; i < MISSED_SCAN_MAX_DAYS; i++) {
@@ -8835,6 +8862,14 @@
         card.style.display = 'block';
         if (badge) { badge.innerText = rows.length; badge.style.display = 'inline-block'; }
 
+        // ⚠️⚠️ الرقمُ في العنوان والشرح يُشتقّ من الثابت لا يُكتب بيد: كانا
+        // «two days» حرفيًّا، فتغييرُ الحدّ وحدَه كان سيُبقي الشاشة تقول يومين
+        // وهي تعدّ ثلاثة — وشرحٌ يكذب على قارئه أسوأُ من غياب الشرح.
+        ['missedDaysH', 'missedDaysP'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = String(MISSED_CHECKIN_ALERT_DAYS);
+        });
+
         // ============ حارسُ العدل: فرعٌ لم يُسجّل فيه أحدٌ قطّ ============
         // ⚠️⚠️⚠️ لقطةُ المالك كانت اثني عشر اسمًا، كلُّهم في فرعٍ واحد، وكلُّهم
         // «لم يُسجّل قطّ» منذ ٤٥ يومًا. واحتمالُ أن يتوقّف اثنا عشر رجلًا عن
@@ -8888,7 +8923,9 @@
                   + `<br><small style="color: var(--text-dim);">for ${Number(n.daysMissed) || 0} day(s)`
                   + `${n.toNumber ? ` &middot; +${escapeHtml(String(n.toNumber))}` : ' &middot; no number'}</small>`
                 : `<small style="color: var(--text-dim);">not sent yet</small>`;
-            return `<tr${m.days >= 4 ? ' style="background: rgba(185,28,28,0.07);"' : ''}>
+            // ⚠️ الخلفيةُ الحمراء لمن تجاوز الحدَّ بيومين — تُشتقّ من الثابت كذلك،
+            // فكانت مكتوبةً `>= 4` بيدٍ وتفقد معناها لو غُيّر الحدّ.
+            return `<tr${m.days >= MISSED_CHECKIN_ALERT_DAYS + 2 ? ' style="background: rgba(185,28,28,0.07);"' : ''}>
                 <td><span class="emp-link" onclick="openProfileModal('${id}')"><b>${escapeHtml(emp.name || emp.id)}</b></span>
                     <br><small style="color: var(--text-dim);">${escapeHtml(emp.role || '—')}</small></td>
                 <td>${escapeHtml(emp.branch || '—')}</td>
