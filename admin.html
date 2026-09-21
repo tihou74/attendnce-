@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=138">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=139">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -202,7 +202,18 @@
        فصارت ثلاثَ مجموعاتٍ يفصلها خطٌّ رقيق: **حالةٌ · أوامرُ · خروج**. وهذا
        ترتيبٌ يُقرأ بلمحةٍ بدل أن يُفتَّش فيه.
        ===================================================================== */
+    /* ⚠️⚠️⚠️ ارتفاعٌ واحدٌ لكلّ عنصرٍ في الترويسة — وهذا عيبٌ رأيتُه بعيني في
+       لقطةٍ من المتصفّح بعد الرفع، ولم يكن أيُّ فحصٍ يراه: كانت الأحجامُ ثلاثةً
+       في صفٍّ واحد — شارةُ الدور 31px، ورقاقةُ النشاط 34px، وقطعةُ الأوامر 40px،
+       والخروجُ 38px. والعينُ لا تقرأ الأرقام لكنها تقرأ **الخطَّ المكسور**: صفٌّ
+       تتفاوت فيه الأحجامُ يبدو غيرَ مرتّبٍ ولو كان كلُّ عنصرٍ فيه جميلًا وحدَه.
+       وهذا بعينه الفرقُ بين «حسن» و«متقن». فصار المقاسُ واحدًا من متغيّرٍ واحد،
+       وقطعةُ الأوامر أزرارُها ناقصةٌ 2px لأنّ حدَّها العلويَّ والسفليَّ يكملانها. */
+    :root {
+        --hdr-ctl-h: 38px;
+    }
     .header-btns { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .header-btns > button { height: var(--hdr-ctl-h); }
 
     /* (١) مجموعةُ الحالة: ما أنت عليه الآن — لا ما تفعله */
     .hdr-state { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -211,7 +222,8 @@
     .role-chip {
         display: none; align-items: center; gap: 7px;
         font-size: 11.5px; font-weight: 800; letter-spacing: .02em;
-        padding: 6px 12px 6px 10px; border-radius: 999px;
+        height: var(--hdr-ctl-h); box-sizing: border-box;
+        padding: 0 13px 0 11px; border-radius: 999px;
         background: var(--accent-soft); color: var(--accent);
         border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
         cursor: default; white-space: nowrap;
@@ -225,7 +237,8 @@
     .biz-chip {
         background: var(--surface-2); color: var(--text-dim);
         border-color: var(--border); font-weight: 700; font-size: 12.5px;
-        padding: 8px 12px; border-radius: 999px;
+        height: var(--hdr-ctl-h); box-sizing: border-box;
+        padding: 0 14px; border-radius: 999px;
     }
     .biz-chip:hover { background: var(--surface-hover); color: var(--text); border-color: color-mix(in srgb, var(--wine) 40%, var(--border)); }
     .biz-chip .bc-caret { opacity: .55; font-size: 10px; margin-inline-start: 2px; }
@@ -243,7 +256,9 @@
     html.dark-mode .hdr-actions { box-shadow: inset 0 1px 0 color-mix(in srgb, var(--neutral-0, #fff) 7%, transparent); }
     .hdr-actions > button, .hdr-actions > .hdr-bell > button {
         background: transparent; border: none; border-radius: 0;
-        box-shadow: none; color: var(--text-dim); height: 38px; padding: 0 13px;
+        box-shadow: none; color: var(--text-dim);
+        /* ناقصةٌ 2px: حدُّ القطعة العلويُّ والسفليُّ يُكملانها إلى المقاس الواحد */
+        height: calc(var(--hdr-ctl-h) - 2px); padding: 0 13px;
     }
     .hdr-actions > button:hover, .hdr-actions > .hdr-bell > button:hover {
         background: var(--surface-hover); color: var(--wine); transform: none;
@@ -253,7 +268,7 @@
     .hdr-actions > button + button,
     .hdr-actions > .hdr-bell + button,
     .hdr-actions > button + .hdr-bell > button { border-inline-start: 1px solid var(--border); }
-    .hdr-actions .btn-icon { width: 40px; padding: 0; }
+    .hdr-actions .btn-icon { width: 40px; height: calc(var(--hdr-ctl-h) - 2px); flex: 0 0 40px; padding: 0; }
     .hdr-bell { position: relative; display: inline-flex; }
     /* ⚠️ الحلقةُ داخلَ القطعة لا حولها: القطعةُ overflow:hidden فحلقةٌ خارجيةٌ
        تُقصّ. فتُرسم بالظلّ داخلًا وتبقى مرئيةً كاملة. */
@@ -275,9 +290,24 @@
     /* ⭐⭐ شريطُ الشعارات: كان بطاقةً كبيرةً شبهَ فارغةٍ تأكل شريحةً من الشاشة
        بلا معلومةٍ واحدة — وهو ظاهرٌ في لقطة المالك. فصار شريطًا نحيفًا بخطٍّ
        عنابيٍّ في أعلاه يُعلن أنه شريطُ هويةٍ لا بطاقةَ محتوًى ناقصة. */
-    .brand-logos { padding: 10px 20px !important; border-top: 2px solid var(--wine); gap: 26px !important; }
-    .brand-logos img { height: 34px !important; }
-    .brand-logos img.main-logo { height: 42px !important; }
+    /* ⚠️⚠️ ورأيتُ في اللقطة أنّ تقليصَ الحشوة وحدَه لم يكفِ: بقي الشريطُ عريضًا
+       وفيه ثلاثةُ شعاراتٍ صغيرةٍ تائهةٍ في وسطه، فما زال يُقرأ «بطاقةً فارغة».
+       فالعلّةُ نسبةُ المحتوى إلى الفراغ لا الارتفاعُ وحدَه. فصارت الشعاراتُ أكبرَ
+       والشريطُ أخفضَ وخلفيتُه بيجًا خفيفًا — فيُقرأ **شريطَ هويةٍ مقصودًا** لا
+       بطاقةَ محتوًى لم تكتمل. */
+    .brand-logos {
+        padding: 8px 20px !important; gap: 30px !important;
+        border-top: 2px solid var(--wine);
+        background: linear-gradient(to bottom, var(--surface-2), var(--surface)) !important;
+        margin-bottom: 20px !important;
+    }
+    .brand-logos img { height: 40px !important; }
+    .brand-logos img.main-logo { height: 50px !important; }
+    @media (max-width: 680px) {
+        .brand-logos { gap: 18px !important; padding: 8px 12px !important; }
+        .brand-logos img { height: 30px !important; }
+        .brand-logos img.main-logo { height: 38px !important; }
+    }
 
     /* Notification bell dropdown */
     .notif-dropdown {
