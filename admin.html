@@ -3051,9 +3051,21 @@
 
              ⚠️⚠️⚠️ والرسالة تُعرض كاملةً قبل الإرسال: هذه ورقةٌ تُوجَّه إلى شخص،
              ورسالةٌ تُرسل بلا أن تُقرأ تُرسل مرّتين — أو تُرسل بتاريخٍ خطأ. -->
-        <div class="card" id="empMsgCard" style="border-left: 4px solid #25D366; margin-bottom: 18px;">
-            <h3><span data-icon="plane"></span> Send this employee a WhatsApp message</h3>
-            <p class="card-sub" id="empMsgWho">&mdash;</p>
+        <!-- ⚠️⚠️ مطويّةٌ افتراضيًّا (details/summary) بأمر المالك: «لماذا يظهر كل
+             هذا في الشاشة، يأخذ كل المكان، رتّبه بطريقة أفضل». وكانت البطاقة
+             مفتوحةً فتأكل أعلى الملفّ كلَّه وتدفع حقولَ الموظف إلى الأسفل — ومن
+             يفتح الملفّ يفتحه للحقول في الأغلب لا ليُرسل رسالة.
+             ⚠️ وdetails/summary لا JavaScript: الطيُّ من المتصفّح نفسه، فلا حالةٌ
+             تُدار ولا زرٌّ يتعطّل. والنمط مستعملٌ في هذا الملف أصلًا.
+             ⚠️ والسطرُ المطويّ يحمل ما يجب أن يُرى بلا فتح: أنّ للموظف رسالةً
+             سابقةً ومتى، وأنه بلا رقمٍ إن كان كذلك. -->
+        <details class="card" id="empMsgCard" style="border-left: 4px solid #25D366; margin-bottom: 14px; padding: 14px 18px;">
+            <summary id="empMsgSummary" style="cursor: pointer; font-size: 13.5px; font-weight: 700;
+                    display: flex; align-items: center; gap: 9px; flex-wrap: wrap; color: var(--text);">
+                <span data-icon="plane"></span> Send this employee a WhatsApp message
+                <span id="empMsgBadge" style="font-weight: 600; font-size: 11.5px; color: var(--text-dim);"></span>
+            </summary>
+            <p class="card-sub" id="empMsgWho" style="margin: 14px 0 14px;">&mdash;</p>
             <div class="date-group">
                 <div style="flex: 1; min-width: 220px;">
                     <label for="empMsgKind">What is it about</label>
@@ -3078,21 +3090,31 @@
                 </div>
             </div>
             <label for="empMsgNote" id="empMsgNoteLabel" style="display: block; margin-top: 10px;">Anything to add (optional)</label>
-            <textarea id="empMsgNote" rows="3" oninput="renderEmpMessage()"
-                placeholder="The secretary writes here — it is added to the message word for word."
-                style="width: 100%; font-family: inherit; font-size: 13px; padding: 10px 12px;
+            <!-- ⚠️ سطران لا ثلاثة، ويتمدّد بالسحب إن احتاجت — الطولُ الافتراضي
+                 هو ما يأكل الشاشة، لا الحدّ الأقصى. -->
+            <textarea id="empMsgNote" rows="2" oninput="renderEmpMessage()"
+                placeholder="The secretary writes here — added word for word."
+                style="width: 100%; font-family: inherit; font-size: 13px; padding: 9px 12px;
                        border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
                        color: var(--text); resize: vertical;"></textarea>
-            <div class="controls" style="gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px;">
-                <a id="empMsgWaLink" class="btn-success" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;"><span data-icon="plane"></span> Send on WhatsApp</a>
-                <button class="btn-ghost" onclick="copyEmpMessage()"><span data-icon="fileText"></span> Copy the text</button>
+            <div class="controls" style="gap: 10px; flex-wrap: wrap; align-items: center; margin: 12px 0 0;">
+                <a id="empMsgWaLink" class="btn-success btn-sm" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;"><span data-icon="plane"></span> Send on WhatsApp</a>
+                <button class="btn-ghost btn-sm" onclick="copyEmpMessage()"><span data-icon="fileText"></span> Copy the text</button>
+                <span class="card-sub" style="margin: 0;" id="empMsgStatus"></span>
             </div>
-            <p class="card-sub" style="margin: 10px 0 0;" id="empMsgStatus"></p>
-            <div id="empMsgPreview" style="white-space: pre-wrap; direction: ltr; text-align: left;
-                font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.8;
-                background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
-                padding: 12px 14px; margin-top: 10px; max-height: 240px; overflow-y: auto;">&mdash;</div>
-        </div>
+            <!-- ⚠️ المعاينةُ مطويّةٌ داخل الطيّة كذلك: هي أطولُ شيءٍ في البطاقة،
+                 ومن يعرف نصَّ رسالته لا يحتاج قراءتَه في كل مرّة. لكنها **تبقى
+                 موجودة** — رسالةٌ تُرسل بلا أن تُقرأ تُرسل مرّتين أو بتاريخٍ خطأ. -->
+            <details style="margin-top: 10px;">
+                <summary style="cursor: pointer; font-size: 12px; color: var(--text-dim); padding: 4px 0;">
+                    Show the message before sending
+                </summary>
+                <div id="empMsgPreview" style="white-space: pre-wrap; direction: ltr; text-align: left;
+                    font-family: ui-monospace, monospace; font-size: 11.5px; line-height: 1.7;
+                    background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+                    padding: 10px 12px; margin-top: 8px; max-height: 190px; overflow-y: auto;">&mdash;</div>
+            </details>
+        </details>
 
         <div class="edit-profile-grid">
             <div><label>Employee Full Name</label><input type="text" id="editEmpName"></div>
@@ -8181,6 +8203,10 @@
         if (g('empMsgWhat')) g('empMsgWhat').value = '';
         if (g('empMsgNote')) g('empMsgNote').value = '';
         if (g('empMsgStatus')) { g('empMsgStatus').innerHTML = ''; g('empMsgStatus').style.color = ''; }
+        // ⚠️⚠️ وتُغلق الطيّة: بلا هذا تبقى مفتوحةً من الموظف السابق فتأكل أعلى
+        // الملفّ في كل مرّة — وهو بعينه ما شكا منه المالك.
+        const card = g('empMsgCard');
+        if (card) card.open = false;
         renderEmpMessage();
     }
 
@@ -8255,6 +8281,23 @@
 
         // ---- من هو، وهل له رقم
         const num = emp ? waNumber(emp.phone) : '';
+        // ⚠️⚠️ الشارةُ على السطر المطويّ: ما **يجب** أن يُرى بلا فتح الطيّة —
+        // أنّ الموظف بلا رقم، أو أنّ رسالةً سابقةً أُرسلت إليه ومتى. وبلا هذا
+        // كان الطيُّ يُخفي معلومةً تُتّخذ عليها قرار.
+        const badge = g('empMsgBadge');
+        if (badge) {
+            const last = emp && emp.staffNotice && emp.staffNotice.sentAt
+                ? String(emp.staffNotice.sentAt).slice(0, 10) : '';
+            if (!emp) { badge.innerHTML = ''; }
+            else if (!num) {
+                badge.innerHTML = `<span style="color: var(--warning);">&#9888; no phone in his file</span>`
+                    + (last ? ` &middot; last sent ${escapeHtml(last)}` : '');
+            } else {
+                badge.innerHTML = last
+                    ? `&middot; last sent <b>${escapeHtml(last)}</b>`
+                    : `&middot; nothing sent yet`;
+            }
+        }
         const who = g('empMsgWho');
         if (who) {
             who.innerHTML = !emp
