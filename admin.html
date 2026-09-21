@@ -3325,8 +3325,22 @@
 <div id="warningModal" class="modal-overlay">
     <div class="modal-card modal-sm">
         <div class="modal-header">
-            <h2><span data-icon="alertTriangle"></span> Add Warning Letter</h2>
+            <h2><span data-icon="alertTriangle"></span> <span id="warningModalTitle">Add Warning Letter</span></h2>
             <button class="close-modal" onclick="closeWarningModal()"><span data-icon="x"></span> Close</button>
+        </div>
+
+        <!-- ⚠️⚠️⚠️ سطرُ التنبيه عند التعديل: كتابُ الإنذار مستندٌ تأديبيّ، وتعديلُه
+             في صمتٍ يُفقده قيمتَه كدليل. فيُقال للمُعدِّل صريحًا إنّ التعديل
+             يُسجَّل باسمه في سجلّ المراجعة الذي لا يُمحى، وإنّ تغييرَ أيام الخصم
+             أو التاريخ **يُغيّر راتبًا**. -->
+        <div id="warningEditNotice" style="display: none; background: var(--warning-soft); border: 1px solid color-mix(in srgb, var(--warning) 35%, transparent); border-left: 4px solid var(--warning); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 18px; font-size: 12.5px; line-height: 1.8; color: var(--text);">
+            <b>You are editing a warning letter that has already been issued.</b>
+            The change is recorded in the audit log under your name, with what it was before and what it became &mdash;
+            a warning letter is a disciplinary document, so nothing about it changes quietly.
+            <br>
+            If you change the <b>deduction days</b>, the <b>date</b> or the <b>employee</b>, the linked payroll
+            deduction is rebuilt to match, so the salary follows what you see here.
+            <span id="warningEditOrphanNote" style="display: none; color: var(--danger); font-weight: 700;"></span>
         </div>
 
         <div class="edit-profile-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
@@ -3354,12 +3368,45 @@
         <div style="margin-bottom: 22px;">
             <label>Warning Letter (PDF)</label>
             <input type="file" id="warningPdfInput" accept="application/pdf">
+            <!-- ⚠️ حالةُ الملفّ المرفق تُقال صريحًا عند التعديل: بلا هذا السطر لا
+                 يعرف المُعدِّل هل سيُستبدل الملفّ أم سيبقى، فيرفع الملفَّ مرّتين
+                 أو يظنّ أنه ضاع. -->
+            <p id="warningPdfState" class="card-sub" style="display: none; margin: 8px 0 0;"></p>
+            <label id="warningPdfRemoveRow" style="display: none; margin: 10px 0 0; font-weight: 600; font-size: 12.5px; cursor: pointer;">
+                <input type="checkbox" id="warningPdfRemove" style="width: auto; margin-right: 6px; vertical-align: middle;">
+                Remove the attached PDF from this letter
+            </label>
         </div>
 
         <div style="display: flex; justify-content: flex-end; align-items: center; gap: 14px;">
             <span id="warningModalStatus" style="font-weight: 600; font-size: 13px;"></span>
-            <button class="btn-success" onclick="saveWarningLetter()"><span data-icon="save"></span> Save Warning Letter</button>
+            <button class="btn-success" onclick="saveWarningLetter()"><span data-icon="save"></span> <span id="warningSaveBtnLabel">Save Warning Letter</span></button>
         </div>
+    </div>
+</div>
+
+<!-- ⭐⭐⭐⭐⭐ عارضُ ملفّ الإنذار — بشكوى المالك: «حتى لو فتحتُه من الشاشة لا يفتح».
+     ⚠️⚠️ والعرضُ داخل الصفحة **لا** في تبويبٍ جديد، لأنّ حاجبَ النوافذ المنبثقة
+     في المتصفّح يمنع التبويب الجديد أحيانًا بلا أن يُخبر أحدًا — فيظنّ المالك
+     أنّ البرنامج معطوب. والإطارُ داخل الصفحة لا يُحجب أبدًا.
+     ⚠️ ومعه زرُّ تنزيلٍ صريح: على الآيفون لا يعرض سفاري ملفَّ PDF داخل إطارٍ
+     كما ينبغي، فالتنزيلُ هو الطريقُ المضمون هناك، ومكتوبٌ ذلك للمستخدم. -->
+<div id="warningPdfModal" class="modal-overlay">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h2><span data-icon="fileText"></span> Warning Letter <span id="warningPdfWho" style="font-weight: 600; font-size: 14px; color: var(--text-dim);"></span></h2>
+            <button class="close-modal" onclick="closeWarningPdf()"><span data-icon="x"></span> Close</button>
+        </div>
+        <div class="controls" style="gap: 10px; margin-bottom: 14px;">
+            <button class="btn-success" onclick="downloadWarningPdfFromViewer()"><span data-icon="download"></span> Download the PDF</button>
+            <button class="btn-ghost" onclick="openWarningPdfInNewTab()"><span data-icon="eye"></span> Open in a new tab</button>
+        </div>
+        <p class="card-sub" style="margin: 0 0 12px;">
+            If the letter does not appear in the frame below &mdash; this happens on iPhone and iPad, where Safari will
+            not display a PDF inside a page &mdash; press <b>Download the PDF</b>. The file is always there; only the
+            preview is limited.
+        </p>
+        <iframe id="warningPdfFrame" title="Warning letter" style="width: 100%; height: 68vh; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2);"></iframe>
     </div>
 </div>
 
@@ -4968,6 +5015,11 @@
         if (e.key === 'Escape') {
             const modal = document.getElementById('globalSearchModal');
             if (modal && modal.style.display === 'flex') window.closeGlobalSearch();
+            // ⚠️ عارضُ كتاب الإنذار يُغلق بـEscape كذلك: هو نافذةٌ تشغل الشاشة
+            // كلَّها فيضغط المستخدم Escape بالفطرة. والإغلاقُ الصحيح هو ما
+            // يُحرّر ملفَّ العرض من الذاكرة، فلا يبقى معلّقًا.
+            const pdf = document.getElementById('warningPdfModal');
+            if (pdf && pdf.style.display === 'flex' && window.closeWarningPdf) window.closeWarningPdf();
         }
     });
 
@@ -17421,21 +17473,101 @@
     // file on the admin's computer (instead of just viewing it inline),
     // using the original MIME type's extension so e.g. a QID JPEG downloads
     // as a proper .jpg, and a warning-letter PDF downloads as a proper .pdf.
+    function mimeFromDataUrl(dataUrl) {
+        const match = /^data:([^;,]+)/.exec(String(dataUrl || ""));
+        return match ? match[1] : "";
+    }
     function extensionFromDataUrl(dataUrl) {
-        const match = /^data:([^;]+);/.exec(dataUrl || "");
-        const mime = match ? match[1] : "";
+        const mime = mimeFromDataUrl(dataUrl);
         const map = { "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif", "application/pdf": "pdf" };
         return map[mime] || "bin";
     }
+    function safeFileName(base, ext) {
+        const clean = String(base || 'file').replace(/[^A-Z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'file';
+        return `${clean}.${ext}`;
+    }
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ فتحُ الملفات المحفوظة وتنزيلُها — إصلاحُ عطلٍ حقيقيّ
+    // ---------------------------------------------------------------------
+    // بشكوى المالك: «البي دي إف لا يُحمَّل، يجب أن أحمّله متى شئت، وحتى لو
+    // فتحتُه من الشاشة لا يفتح».
+    //
+    // ⚠️⚠️⚠️ والسببُ ليس في الملفّ ولا في القواعد ولا في فايربيس: كان الكود
+    // ينادي window.open('data:application/pdf;base64,…'). وكلُّ المتصفّحات
+    // الحديثة (كروم وإيدج وفايرفوكس وسفاري) **تمنع** الانتقال بصفحةٍ كاملة
+    // إلى عنوانٍ من نوع data: — منعًا تمّ لأنّ المخادعين استعملوا هذه
+    // العناوين لتزييف صفحات البنوك. فالمتصفّح يفتح تبويبًا فارغًا ثم يُغلقه
+    // بلا رسالةٍ ولا خطأٍ في وحدة التحكّم. أي: لا شيء يحدث أبدًا، مهما ضغط.
+    //
+    // ⚠️⚠️ والحلُّ أن يُحوَّل ما هو محفوظٌ نصًّا (base64) إلى **ملفٍّ حقيقيّ**
+    // في ذاكرة المتصفّح (Blob) ثم يُعطى عنوانًا من نوع blob:. وهذا العنوان
+    // من أصل الصفحة نفسها، فلا يُمنع: يُفتح في تبويب، ويُحمَّل بزرّ التنزيل،
+    // ويُعرض داخل إطارٍ في الصفحة.
+    //
+    // ⚠️ ولا شيءَ من هذا يحتاج نشرَ قواعدٍ ولا تغييرَ إعدادات: الملفّ محفوظٌ
+    // في فايرستور كما هو، والعطلُ كان في **طريقة العرض** وحدها.
+    // =====================================================================
+    /** يُحوِّل data:…;base64,… إلى ملفٍّ حقيقيّ. يُعيد null إن كان النصّ تالفًا. */
+    function dataUrlToBlob(dataUrl) {
+        const s = String(dataUrl || '');
+        const comma = s.indexOf(',');
+        if (comma < 0) return null;
+        const head = s.slice(0, comma);
+        if (!/^data:/i.test(head)) return null;
+        const mime = mimeFromDataUrl(s) || 'application/octet-stream';
+        // ⚠️ atob تُخفق على أيّ مسافةٍ أو سطرٍ جديدٍ داخل النصّ، وبعض الملفات
+        // القديمة حُفظت بسطورٍ مقطّعة. فتُنزع المسافاتُ أوّلًا.
+        const payload = s.slice(comma + 1).replace(/\s+/g, '');
+        let bytes;
+        if (/;base64/i.test(head)) {
+            let bin;
+            try { bin = atob(payload); } catch (e) { return null; }
+            bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        } else {
+            try { bytes = new TextEncoder().encode(decodeURIComponent(payload)); }
+            catch (e) { return null; }
+        }
+        return new Blob([bytes], { type: mime });
+    }
+
+    // ⚠️ عناوينُ blob تُحجز ذاكرةً حتى تُحرَّر. والتحريرُ **فورًا** بعد الفتح
+    // يقتل التبويبَ الجديد قبل أن يُحمّل الملفّ — وهذا خطأٌ شائع. فيُحرَّر
+    // بعد مهلةٍ سخيّة، أو عند إغلاق نافذة العرض التي نتحكّم في عمرها.
+    const BLOB_URL_TTL_MS = 3 * 60 * 1000;
+    function blobUrlFor(dataUrl, ttlMs) {
+        const blob = dataUrlToBlob(dataUrl);
+        if (!blob) return '';
+        const url = URL.createObjectURL(blob);
+        if (ttlMs !== 0) {
+            setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) { /* مُحرَّر سابقًا */ } },
+                ttlMs || BLOB_URL_TTL_MS);
+        }
+        return url;
+    }
+
+    /**
+     * يُنزّل ملفًّا محفوظًا كـ data URL تنزيلًا حقيقيًّا على جهاز المستخدم.
+     * ⚠️ يُعيد true/false، ولا يبقى صامتًا عند الفشل: كان الصمتُ هو المشكلة.
+     */
     function downloadDataUrl(dataUrl, filenameBase) {
-        if (!dataUrl) return;
-        const ext = extensionFromDataUrl(dataUrl);
+        if (!dataUrl) { alert('There is no file attached to download.'); return false; }
+        const name = safeFileName(filenameBase, extensionFromDataUrl(dataUrl));
+        const url = blobUrlFor(dataUrl, 60000);
+        if (!url) {
+            alert('The attached file could not be read — it looks damaged.\n\n'
+                + 'Open the letter again with Edit and attach the PDF once more.');
+            return false;
+        }
         const a = document.createElement("a");
-        a.href = dataUrl;
-        a.download = `${filenameBase.replace(/[^A-Z0-9]+/gi, '_')}.${ext}`;
+        a.href = url;
+        a.download = name;
+        a.style.display = 'none';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        return true;
     }
     // Downloads a document belonging to the employee currently open in the
     // Profile modal (fieldKey is one of qidFront/qidBack/healthCard/
@@ -18401,33 +18533,118 @@
             const empName = emp ? emp.name : (w.employeeName || "-");
             const days = Number(w.deductionDays) || 0;
             const safeId = escapeJsAttr(w.id);
+            // ⚠️⚠️ زرّان لا زرٌّ واحد: «عرض» يفتح الملفّ داخل الصفحة، و«تنزيل»
+            // يحفظه على الجهاز. بطلب المالك: «يجب أن أحمّله متى شئت» — فالتنزيلُ
+            // لا يُخفى وراء نافذةِ عرضٍ يجب فتحُها أوّلًا.
             const letterCell = w.pdfFile
-                ? `<button class="btn-accent btn-sm" onclick="viewWarningPdf('${safeId}')">${iconSvg('download', 'ic-sm')} View PDF</button>`
+                ? `<button class="btn-accent btn-sm" onclick="viewWarningPdf('${safeId}')">${iconSvg('eye', 'ic-sm')} View</button>
+                   <button class="btn-ghost btn-sm" style="margin-left: 6px;" onclick="downloadWarningPdf('${safeId}')">${iconSvg('download', 'ic-sm')} Download</button>`
                 : '<span class="restricted-cell">No file</span>';
+            // ⚠️⚠️⚠️ علامةُ «مُعدَّل» ليست زخرفة: كتابُ الإنذار مستندٌ تأديبيّ، فمن
+            // يقرأ الجدول بعد شهرٍ يجب أن يعرف أنّ هذا السطر ليس كما صدر أوّلَ
+            // مرّة، ومن عدّله ومتى. وتفصيلُ ما تغيّر في سجلّ المراجعة الذي لا يُمحى.
+            const editedMark = w.updatedAt
+                ? `<br><small style="color: var(--warning); font-weight: 700;">edited${w.updatedBy ? ' by ' + escapeHtml(String(w.updatedBy).split('@')[0]) : ''}</small>`
+                : '';
+            // ⚠️ سطرٌ يذكر خصمًا بلا سجلِّ خصمٍ مرتبطٍ به: حالةٌ تحدث إن حُذف الخصم
+            // يدويًّا من تبويب الرواتب. تُعرض ولا تُصلَح في صمت — الإصلاحُ الصامت
+            // قد يُنشئ خصمًا ثانيًا على نفس اليوم.
+            const orphan = days > 0 && !w.linkedDeductionId
+                ? ` <span title="This letter is not linked to a deduction record — check the Employees &amp; Payroll tab" style="color: var(--danger); font-weight: 800;">!</span>`
+                : '';
 
             html += `<tr>
-                <td><b>${escapeHtml(w.date || '-')}</b></td>
+                <td><b>${escapeHtml(w.date || '-')}</b>${editedMark}</td>
                 <td>${escapeHtml(empName)}</td>
-                <td>${days > 0 ? escapeHtml(days) + ' day(s)' : '-'}</td>
+                <td>${days > 0 ? escapeHtml(days) + ' day(s)' + orphan : '-'}</td>
                 <td>${escapeHtml(w.reason || '-')}</td>
                 <td>${letterCell}</td>
                 <td>
-                    <button class="btn-danger btn-sm" onclick="deleteWarningLetter('${safeId}')">${iconSvg('trash', 'ic-sm')} Delete</button>
+                    <button class="btn-accent btn-sm" onclick="openWarningModal('${safeId}')">${iconSvg('edit', 'ic-sm')} Edit</button>
+                    <button class="btn-danger btn-sm" style="margin-left: 6px;" onclick="deleteWarningLetter('${safeId}')">${iconSvg('trash', 'ic-sm')} Delete</button>
                 </td>
             </tr>`;
         });
         body.innerHTML = html;
     }
 
-    window.openWarningModal = function() {
+    // ⭐⭐⭐⭐ نافذةٌ واحدةٌ للإضافة والتعديل — بطلب المالك: «يجب أن يكون هنا زرٌّ
+    // للتعديل إذا فيه أيُّ شيءٍ أريد تعديله».
+    //
+    // ⚠️⚠️ ونافذةٌ واحدةٌ لا نافذتان بقصد: نافذةٌ ثانيةٌ للتعديل تعني حقولًا
+    // مكرّرةً وتحقّقًا مكرّرًا، فيُصلَح في إحداهما ما يبقى معطوبًا في الأخرى.
+    // والحالةُ تُحفظ في متغيّرٍ واحد: فارغٌ = إضافة، وفيه معرّف = تعديل.
+    let warningEditingId = '';
+
+    window.openWarningModal = function(warningId) {
+        const w = warningId ? allWarnings.find(x => x.id === warningId) : null;
+        // ⚠️ إن طُلب تعديلُ سجلٍّ غير موجود (حُذف في تبويبٍ آخر) فلا تُفتح نافذةٌ
+        // فارغةٌ تبدو إضافةً جديدة — يُقال الحقيقة ويُعاد رسمُ الجدول.
+        if (warningId && !w) {
+            alert('That warning letter is no longer in the list — it may have been deleted. Press Refresh.');
+            renderWarningsTable();
+            return;
+        }
+        warningEditingId = w ? w.id : '';
+
         const select = document.getElementById("warningEmployeeSelect");
-        select.innerHTML = '<option value="">-- Select Employee --</option>' +
-            activeEmployees().slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-                .map(e => `<option value="${escapeJsAttr(e.id)}">${escapeHtml(e.name)}</option>`).join('');
-        document.getElementById("warningDate").value = todayISO();
-        document.getElementById("warningDeductionDays").value = "";
-        document.getElementById("warningReason").value = "";
+        // ⚠️⚠️ عند التعديل تُضاف خيارُ الموظف **حتى لو لم يكن في القائمة النشطة**:
+        // من انتهت خدمتُه يخرج من activeEmployees، فبلا هذا السطر يُفتح إنذارُه
+        // وخانةُ الموظف فارغة، فيُحفظ بلا موظف — أو يُنسب لموظفٍ آخر بالخطأ.
+        const opts = activeEmployees().slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+            .map(e => `<option value="${escapeJsAttr(e.id)}">${escapeHtml(e.name)}</option>`);
+        if (w && w.employeeId && !activeEmployees().some(e => e.id === w.employeeId)) {
+            const nm = w.employeeName || w.employeeId;
+            opts.unshift(`<option value="${escapeJsAttr(w.employeeId)}">${escapeHtml(nm)} (service ended)</option>`);
+        }
+        select.innerHTML = '<option value="">-- Select Employee --</option>' + opts.join('');
+
+        select.value = w ? (w.employeeId || '') : '';
+        document.getElementById("warningDate").value = w ? (w.date || todayISO()) : todayISO();
+        document.getElementById("warningDeductionDays").value = w ? (Number(w.deductionDays) > 0 ? String(Number(w.deductionDays)) : "") : "";
+        document.getElementById("warningReason").value = w ? (w.reason === '-' ? '' : (w.reason || '')) : "";
         document.getElementById("warningPdfInput").value = "";
+
+        const removeBox = document.getElementById("warningPdfRemove");
+        if (removeBox) removeBox.checked = false;
+        const removeRow = document.getElementById("warningPdfRemoveRow");
+        const stateEl = document.getElementById("warningPdfState");
+        const hasPdf = !!(w && w.pdfFile);
+        if (removeRow) removeRow.style.display = hasPdf ? 'block' : 'none';
+        if (stateEl) {
+            if (hasPdf) {
+                stateEl.style.display = 'block';
+                stateEl.innerHTML = '<b>A PDF is already attached.</b> Leave the box above empty to keep it, '
+                    + 'or choose a file to replace it.';
+            } else if (w) {
+                stateEl.style.display = 'block';
+                stateEl.innerHTML = 'No PDF is attached to this letter yet. You can attach one now.';
+            } else {
+                stateEl.style.display = 'none';
+                stateEl.innerHTML = '';
+            }
+        }
+
+        const notice = document.getElementById("warningEditNotice");
+        if (notice) notice.style.display = w ? 'block' : 'none';
+        const orphanNote = document.getElementById("warningEditOrphanNote");
+        if (orphanNote) {
+            // ⚠️⚠️⚠️ لا يُصلَح هذا في صمت: لو أنشأنا خصمًا تلقائيًّا وكان هناك خصمٌ
+            // قديمٌ غيرُ مرتبط، خُصم اليومُ **مرّتين** من راتب الرجل. فيُقال
+            // للمالك ويُترك القرار له.
+            const broken = w && Number(w.deductionDays) > 0 && !w.linkedDeductionId;
+            orphanNote.style.display = broken ? 'inline' : 'none';
+            orphanNote.innerText = broken
+                ? ' This letter records deduction days but is NOT linked to a deduction record — check the '
+                  + 'Employees & Payroll tab before you change the days, so the day is not deducted twice.'
+                : '';
+        }
+
+        const titleEl = document.getElementById("warningModalTitle");
+        if (titleEl) titleEl.innerText = w ? 'Edit Warning Letter' : 'Add Warning Letter';
+        const btnLabel = document.getElementById("warningSaveBtnLabel");
+        if (btnLabel) btnLabel.innerText = w ? 'Save Changes' : 'Save Warning Letter';
+
         const statusEl = document.getElementById("warningModalStatus");
         if (statusEl) { statusEl.innerText = ""; }
         document.getElementById("warningModal").style.display = "flex";
@@ -18435,6 +18652,10 @@
 
     window.closeWarningModal = function() {
         document.getElementById("warningModal").style.display = "none";
+        // ⚠️ التصفيرُ عند الإغلاق ضروريّ: بلا هذا يبقى المعرّف القديم، فيفتح
+        // المالك «Add Warning Letter» بعدها فيُعدّل إنذارَ رجلٍ آخر وهو يظنّ
+        // أنه يُنشئ إنذارًا جديدًا.
+        warningEditingId = '';
     };
 
     window.saveWarningLetter = async function() {
@@ -18443,15 +18664,28 @@
         const days = Number(document.getElementById("warningDeductionDays").value) || 0;
         const reason = document.getElementById("warningReason").value.trim();
         const statusEl = document.getElementById("warningModalStatus");
+        const editing = warningEditingId
+            ? allWarnings.find(x => x.id === warningEditingId)
+            : null;
 
         if (!empId || !date) {
             if (statusEl) { statusEl.innerText = "Please select an employee and a date."; statusEl.style.color = "var(--danger)"; }
+            return;
+        }
+        // ⚠️ أيامُ خصمٍ سالبةٌ تُزيد الراتب بلا قصد — تُرفض صريحًا.
+        if (days < 0) {
+            if (statusEl) { statusEl.innerText = "Deduction days cannot be a negative number."; statusEl.style.color = "var(--danger)"; }
+            return;
+        }
+        if (warningEditingId && !editing) {
+            if (statusEl) { statusEl.innerText = "That letter is no longer in the list — press Refresh."; statusEl.style.color = "var(--danger)"; }
             return;
         }
 
         if (statusEl) { statusEl.innerText = "Saving..."; statusEl.style.color = "var(--warning)"; }
         try {
             const emp = allEmployees.find(e => e.id === empId);
+            const empLabel = emp ? emp.name : (editing && editing.employeeId === empId ? (editing.employeeName || empId) : empId);
             let pdfFile = "";
             try {
                 pdfFile = await readFileIfPresent(document.getElementById("warningPdfInput"));
@@ -18460,31 +18694,146 @@
                 return;
             }
 
-            let linkedDeductionId = "";
-            if (days > 0) {
-                // source:'warning' ليس زخرفة: قواعد الأمان تسمح للسكرتيرة
-                // بإنشاء خصم **إن كان** هذا الحقل موجودًا، فلا تستطيع إنشاء
-                // خصم راتب حرّ. لا تحذفه ولا تُغيّر قيمته.
-                const dedRef = await addDoc(collection(db, "deductions"), {
-                    employeeId: empId, date, days,
-                    note: "Warning letter deduction",
-                    source: 'warning',
+            // =============================================================
+            // مسارُ الإضافة — كما كان حرفيًّا، لم يُمسّ
+            // =============================================================
+            if (!editing) {
+                let linkedDeductionId = "";
+                if (days > 0) {
+                    // source:'warning' ليس زخرفة: قواعد الأمان تسمح للسكرتيرة
+                    // بإنشاء خصم **إن كان** هذا الحقل موجودًا، فلا تستطيع إنشاء
+                    // خصم راتب حرّ. لا تحذفه ولا تُغيّر قيمته.
+                    const dedRef = await addDoc(collection(db, "deductions"), {
+                        employeeId: empId, date, days,
+                        note: "Warning letter deduction",
+                        source: 'warning',
+                        createdAt: serverTimestamp()
+                    });
+                    linkedDeductionId = dedRef.id;
+                }
+
+                await addDoc(collection(db, "employee_warnings"), {
+                    employeeId: empId,
+                    employeeName: emp ? emp.name : "",
+                    date, deductionDays: days, reason: reason || "-",
+                    pdfFile: pdfFile || "", linkedDeductionId,
                     createdAt: serverTimestamp()
                 });
-                linkedDeductionId = dedRef.id;
+
+                if (days > 0) { await loadDeductions(); }
+                await loadWarnings();
+                logAudit("Warning Letter Added", `${empLabel} on ${date}${days > 0 ? ` (${days} day(s) deducted)` : ''}`);
+                if (statusEl) { statusEl.innerText = "Saved!"; statusEl.style.color = "var(--success)"; }
+                window.closeWarningModal();
+                return;
             }
 
-            await addDoc(collection(db, "employee_warnings"), {
-                employeeId: empId,
-                employeeName: emp ? emp.name : "",
-                date, deductionDays: days, reason: reason || "-",
-                pdfFile: pdfFile || "", linkedDeductionId,
-                createdAt: serverTimestamp()
-            });
+            // =============================================================
+            // ⭐⭐⭐⭐⭐ مسارُ التعديل
+            // -------------------------------------------------------------
+            // ⚠️⚠️⚠️ أخطرُ ما هنا هو الخصمُ المرتبط. سجلُّ الخصم مؤرَّخٌ، ومحرّكُ
+            // الرواتب يقرؤه للشهر الذي يقع فيه تاريخُه وحدَه. فلو عُدّل عددُ
+            // الأيام في كتاب الإنذار ولم يُعدّل سجلُّ الخصم، لبقي الراتبُ يُخصم
+            // بالرقم القديم والجدولُ يقول رقمًا آخر — وهذا كذبٌ في ورقةٍ يوقّعها
+            // المالك، لا مجرّد عيبٍ في الشاشة.
+            //
+            // ⚠️⚠️ والخصمُ يُهدَم ويُبنى (حذفٌ ثم إنشاء) ولا يُعدَّل بـupdateDoc.
+            // والسببُ ليس أسلوبًا: قواعدُ الأمان تُعطي السكرتيرة حقَّ **إنشاء**
+            // خصمٍ مصدرُه 'warning' وحقَّ **حذفِه**، ولا تُعطيها حقَّ تعديله
+            // (allow update: isAdmin() || isAccountant() وحدهما). فلو استعملنا
+            // updateDoc لعمل الزرُّ عند المالك وحده وأخفق عند السكرتيرة برسالة
+            // permission-denied — وهي من تُصدر الإنذارات أصلًا. وهذا الطريق
+            // يعمل بالصلاحيات الموجودة اليوم، فلا يحتاج نشرَ قواعدٍ جديدة.
+            //
+            // ⚠️ والترتيب: حذفٌ **ثمّ** إنشاء. فلو أخفق الإنشاء بعد الحذف بقي
+            // الرجلُ بلا خصم (الشركة تخسر يومًا) — وهو أهونُ بكثيرٍ من العكس:
+            // إنشاءٌ ينجح وحذفٌ يُخفق فيُخصم اليومُ **مرّتين** من راتب عامل.
+            // ولا يُترك ذلك صامتًا: يُنزَل عددُ الأيام في السجل إلى صفرٍ ويُصاح
+            // في المالك، فلا يبقى سطرٌ يدّعي خصمًا لا وجود له.
+            // =============================================================
+            const wasEmp = editing.employeeId || '';
+            const wasDate = editing.date || '';
+            const wasDays = Number(editing.deductionDays) || 0;
+            const wasReason = editing.reason || '';
+            const hadPdf = !!editing.pdfFile;
+            const removePdf = !!(document.getElementById("warningPdfRemove") || {}).checked;
 
-            if (days > 0) { await loadDeductions(); }
+            const dedNeedsRebuild = (empId !== wasEmp) || (date !== wasDate) || (days !== wasDays);
+            let linkedDeductionId = editing.linkedDeductionId || '';
+            let effectiveDays = days;
+            let dedNote = '';
+
+            if (dedNeedsRebuild) {
+                if (linkedDeductionId) {
+                    try {
+                        await deleteDoc(doc(db, "deductions", linkedDeductionId));
+                    } catch (delErr) {
+                        // ⚠️ الفشلُ هنا يُوقف كلَّ شيء ولا يُغيّر حرفًا: لو مضينا
+                        // لأنشأنا خصمًا ثانيًا فوق الأول.
+                        if (statusEl) {
+                            statusEl.innerText = "Nothing was changed — the old deduction could not be removed: " + delErr.message;
+                            statusEl.style.color = "var(--danger)";
+                        }
+                        return;
+                    }
+                }
+                linkedDeductionId = '';
+                if (days > 0) {
+                    try {
+                        const dedRef = await addDoc(collection(db, "deductions"), {
+                            employeeId: empId, date, days,
+                            note: "Warning letter deduction",
+                            source: 'warning',
+                            createdAt: serverTimestamp()
+                        });
+                        linkedDeductionId = dedRef.id;
+                    } catch (addErr) {
+                        // ⚠️⚠️ الخصمُ القديم حُذف ولم يُنشأ الجديد. فلا يُكتب في
+                        // السجل أنّ هناك خصمًا: يُكتب صفرٌ حتى يُطابق الجدولُ
+                        // الواقع، ويُقال للمالك بصوتٍ عالٍ ماذا يفعل.
+                        effectiveDays = 0;
+                        dedNote = ' (deduction NOT created)';
+                        alert('The letter was saved, but the payroll deduction could not be created:\n\n'
+                            + addErr.message
+                            + '\n\nThe letter now shows 0 deduction days on purpose, so the table does not claim a '
+                            + 'deduction that does not exist. Press Edit, put the days back in and Save again.');
+                    }
+                }
+            }
+
+            const patch = {
+                employeeId: empId,
+                employeeName: emp ? emp.name : (editing.employeeName || ''),
+                date,
+                deductionDays: effectiveDays,
+                reason: reason || "-",
+                linkedDeductionId,
+                updatedAt: serverTimestamp(),
+                updatedBy: (currentUser && currentUser.email) || 'unknown'
+            };
+            // ⚠️ الملفُّ لا يُمسّ إلا بطلبٍ صريح: بلا هذا الشرط يُمحى المرفَق كلَّ
+            // مرّةٍ يُعدَّل فيها سببُ الإنذار، فيضيع الكتابُ الموقَّع في صمت.
+            if (pdfFile) patch.pdfFile = pdfFile;
+            else if (removePdf) patch.pdfFile = '';
+
+            await updateDoc(doc(db, "employee_warnings", editing.id), patch);
+
+            if (dedNeedsRebuild) { await loadDeductions(); }
             await loadWarnings();
-            logAudit("Warning Letter Added", `${emp ? emp.name : empId} on ${date}${days > 0 ? ` (${days} day(s) deducted)` : ''}`);
+
+            // ⚠️⚠️ سجلُّ المراجعة يحمل **ما كان وما صار**، لا كلمة «عُدّل». وسجلُّ
+            // المراجعة لا يُعدَّل ولا يُحذف بالقواعد، فهذا هو الأثرُ الدائم الذي
+            // يحمي قيمةَ كتاب الإنذار كدليل.
+            const changes = [];
+            if (empId !== wasEmp) changes.push(`employee ${editing.employeeName || wasEmp} → ${empLabel}`);
+            if (date !== wasDate) changes.push(`date ${wasDate || '—'} → ${date}`);
+            if (effectiveDays !== wasDays) changes.push(`deduction days ${wasDays} → ${effectiveDays}${dedNote}`);
+            if ((reason || '-') !== wasReason) changes.push('reason rewritten');
+            if (pdfFile) changes.push(hadPdf ? 'PDF replaced' : 'PDF attached');
+            else if (removePdf && hadPdf) changes.push('PDF removed');
+            logAudit("Warning Letter Edited",
+                `${empLabel} on ${date} — ${changes.length ? changes.join('; ') : 'saved with no change'}`);
+
             if (statusEl) { statusEl.innerText = "Saved!"; statusEl.style.color = "var(--success)"; }
             window.closeWarningModal();
         } catch (error) {
@@ -18492,10 +18841,82 @@
         }
     };
 
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ عرضُ كتاب الإنذار وتنزيلُه
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️⚠️ الكودُ القديم كان window.open(dataUrl) وهو **ممنوعٌ في كل
+    // المتصفّحات الحديثة** — انظر الشرح الطويل عند dataUrlToBlob. فلم يكن
+    // يفتح شيئًا ولا يُخبر أحدًا. هذه هي شكوى المالك بعينها.
+    // =====================================================================
+    let warningPdfViewer = { url: '', id: '' };
+
+    function releaseWarningPdfUrl() {
+        if (warningPdfViewer.url) {
+            try { URL.revokeObjectURL(warningPdfViewer.url); } catch (e) { /* مُحرَّر سابقًا */ }
+        }
+        warningPdfViewer = { url: '', id: '' };
+    }
+
     window.viewWarningPdf = function(warningId) {
         const w = allWarnings.find(x => x.id === warningId);
-        if (!w || !w.pdfFile) return;
-        window.open(w.pdfFile, '_blank');
+        if (!w || !w.pdfFile) { alert('There is no PDF attached to this warning letter.'); return; }
+        // ⚠️ عنوانٌ واحدٌ حيّ في كل لحظة: فتحُ إنذارٍ ثانٍ يُحرّر الأوّل فلا تتراكم
+        // الذاكرة على من يفتح عشرين كتابًا.
+        releaseWarningPdfUrl();
+        const url = blobUrlFor(w.pdfFile, 0);      // عمرُه بيدنا: يُحرَّر عند الإغلاق
+        if (!url) {
+            alert('The attached file could not be read — it looks damaged.\n\n'
+                + 'Press Edit on this letter and attach the PDF again.');
+            return;
+        }
+        warningPdfViewer = { url, id: warningId };
+        const frame = document.getElementById('warningPdfFrame');
+        if (frame) frame.src = url;
+        const who = document.getElementById('warningPdfWho');
+        if (who) {
+            const emp = allEmployees.find(e => e.id === w.employeeId);
+            who.innerText = `— ${(emp ? emp.name : (w.employeeName || w.employeeId || ''))} · ${w.date || ''}`;
+        }
+        document.getElementById('warningPdfModal').style.display = 'flex';
+        logAudit("Warning Letter Opened", `${w.employeeName || w.employeeId} on ${w.date || '—'}`);
+    };
+
+    window.closeWarningPdf = function() {
+        const frame = document.getElementById('warningPdfFrame');
+        // ⚠️ يُفرَّغ الإطارُ **قبل** تحرير العنوان: لو حُرِّر والإطارُ ما زال
+        // يحمله، تركت بعض المتصفّحات الملفَّ معلّقًا في الذاكرة.
+        if (frame) frame.src = 'about:blank';
+        document.getElementById('warningPdfModal').style.display = 'none';
+        releaseWarningPdfUrl();
+    };
+
+    /** التنزيلُ من الجدول مباشرةً — «يجب أن أحمّله متى شئت» بنصّ المالك. */
+    window.downloadWarningPdf = function(warningId) {
+        const w = allWarnings.find(x => x.id === warningId);
+        if (!w || !w.pdfFile) { alert('There is no PDF attached to this warning letter.'); return; }
+        const emp = allEmployees.find(e => e.id === w.employeeId);
+        const who = emp ? emp.name : (w.employeeName || w.employeeId || 'employee');
+        if (downloadDataUrl(w.pdfFile, `Warning_${who}_${w.date || ''}`)) {
+            logAudit("Warning Letter Downloaded", `${who} on ${w.date || '—'}`);
+        }
+    };
+
+    window.downloadWarningPdfFromViewer = function() {
+        if (warningPdfViewer.id) window.downloadWarningPdf(warningPdfViewer.id);
+    };
+
+    /**
+     * فتحٌ في تبويبٍ جديد — اختياريّ، وليس الطريقَ الأساسيّ.
+     * ⚠️⚠️ حاجبُ النوافذ المنبثقة قد يمنعه، فيُفحَص الراجعُ ويُقال للمستخدم ماذا
+     * يفعل. والصمتُ عند المنع هو بعينه ما جعل المالك يظنّ البرنامجَ معطوبًا.
+     */
+    window.openWarningPdfInNewTab = function() {
+        if (!warningPdfViewer.url) return;
+        const win = window.open(warningPdfViewer.url, '_blank');
+        if (!win) {
+            alert('Your browser blocked the new tab.\n\n'
+                + 'Use "Download the PDF" instead — that is never blocked.');
+        }
     };
 
     window.deleteWarningLetter = async function(warningId) {
