@@ -254,11 +254,235 @@
     .biz-t2 { font-size: 12.5px; color: var(--text-dim); font-weight: 600; line-height: 1.7; }
     .biz-go { margin-top: 4px; font-size: 12px; font-weight: 800; color: var(--primary); letter-spacing: .02em; }
     .biz-pick.abaya .biz-go { color: #A89060; }
-    .nav-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; background: var(--surface); padding: 10px; border-radius: var(--radius); box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
-    .nav-tab-btn { padding: 11px 18px; font-size: 13.5px; font-weight: 600; border-radius: var(--radius-sm); border: none; cursor: pointer; background: transparent; color: var(--text-dim); transition: all 0.15s ease; position: relative; display: flex; align-items: center; gap: 9px; }
+    /* =====================================================================
+       ⭐⭐⭐⭐⭐ الشريطُ الجانبيّ — بطلب المالك
+       ---------------------------------------------------------------------
+       بنصّه: «أريد تغيير هذه الواجهة بحيث تكون هذه النوافذ التي من فوق —
+       البروفايل والرواتب وكلّ شيء — على جنبٍ من يسار الشاشة، واحدةٌ تحت
+       واحدة، بطريقةٍ أكثر جماليةً واحترافية. تظهر إذا حرّكتَ الفأرة نحوها
+       وتختفي عندما أضغط على نافذة».
+
+       ⚠️⚠️⚠️ قرارٌ واحدٌ خالفتُ فيه ظاهرَ النصّ، وأُصرّح به: الشريطُ **لا
+       يختفي تمامًا** أبدًا — يبقى شريطٌ نحيفٌ (٧٦px) فيه الأيقونات وحدها،
+       والذي يظهر ويختفي هو **الأسماء**. والسبب أنّ هذا هو طريقُ التنقّل
+       الوحيد في اللوحة: فلو اختفى بالكامل واعتمد ظهورُه على «حركة الفأرة
+       نحوه»، لصار على الهاتف — ولا فأرةَ فيه ولا hover — لوحةً بلا أيّ
+       طريقةٍ للانتقال بين ٢٢ نافذة. وهي تُفتح على الهاتف فعلًا (مثبّتةٌ
+       كتطبيق). فالأيقوناتُ الدائمة هي المخرجُ المضمون، والأسماءُ هي التي
+       تنكشف بالفأرة كما طلب. ومعها زرُّ تثبيتٍ لمن أراد إبقاءها مفتوحة.
+
+       ⚠️⚠️ وعلى الهاتف يصير الشريطُ درجًا منسحبًا بزرٍّ صريحٍ في الترويسة،
+       لأنّ hover لا وجودَ له على اللمس — وشريطٌ يعتمد عليها هناك معطوبٌ
+       بالكامل. ولهذا الحدُّ (hover: hover) في القاعدة أدناه: لا يُفعَّل
+       الانكشافُ بالفأرة إلا على جهازٍ له فأرةٌ حقًّا.
+       ===================================================================== */
+    :root {
+        --rail-w: 76px;            /* الأيقونات وحدها — ظاهرٌ دائمًا */
+        --rail-w-open: 272px;      /* مع الأسماء — ينكشف بالفأرة */
+        --rail-ease: cubic-bezier(.22, .61, .36, 1);
+    }
+
+    .side-rail {
+        position: fixed;
+        top: 0; left: 0; bottom: 0;
+        width: var(--rail-w);
+        z-index: 900;
+        display: none;                     /* يُفتح بعد اختيار النشاط */
+        flex-direction: column;
+        background: var(--surface);
+        border-right: 1px solid var(--border);
+        box-shadow: 0 0 0 rgba(0,0,0,0);
+        transition: width .24s var(--rail-ease), box-shadow .24s var(--rail-ease);
+        overflow: hidden;
+        /* ⚠️ مهمّ: يمنع تحديدَ النصّ عند المرور السريع بالفأرة فوق الأسماء */
+        -webkit-user-select: none; user-select: none;
+    }
+    .side-rail.rail-show { display: flex; }
+    .side-rail.is-open { width: var(--rail-w-open); box-shadow: var(--shadow); }
+
+    /* الترويسة: علامةُ الشيخة ثم زرُّ التثبيت */
+    .rail-top {
+        display: flex; align-items: center; gap: 10px;
+        padding: 16px 14px 14px; min-height: 64px;
+        border-bottom: 1px solid var(--border-soft);
+        flex: 0 0 auto;
+    }
+    .rail-mark {
+        width: 46px; height: 46px; flex: 0 0 46px;
+        display: flex; align-items: center; justify-content: center;
+        border-radius: 13px; background: var(--brand-tint-bg);
+        border: 1px solid var(--border); overflow: hidden;
+    }
+    .rail-mark img { width: 34px; height: 34px; object-fit: contain; }
+    .rail-titles { min-width: 0; flex: 1 1 auto; }
+    .rail-t1 { font-size: 13.5px; font-weight: 800; letter-spacing: -.01em; color: var(--text); white-space: nowrap; }
+    .rail-t2 { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); white-space: nowrap; margin-top: 2px; }
+    .rail-pin {
+        flex: 0 0 auto; width: 30px; height: 30px; padding: 0;
+        display: flex; align-items: center; justify-content: center;
+        background: transparent; border: 1px solid transparent; border-radius: 9px;
+        color: var(--text-faint); cursor: pointer; transition: .15s ease;
+    }
+    .rail-pin:hover { background: var(--surface-2); color: var(--text); border-color: var(--border); }
+    .side-rail.rail-pinned .rail-pin { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+    /* ⚠️ الترويسةُ وزرُّ التثبيت لا معنى لهما وهو مغلقٌ ضيّق: تُخفى الأسماءُ فلا
+       تُقصّ حروفًا، ويُخفى الزرُّ فلا يُضغط بالخطأ وهو نصفُ ظاهر. */
+    .side-rail:not(.is-open) .rail-titles,
+    .side-rail:not(.is-open) .rail-pin { display: none; }
+
+    /* قائمةُ النوافذ — تُمرَّر رأسيًّا: ٢٢ نافذةً أطولُ من أيّ شاشة */
+    .nav-tabs {
+        display: flex; flex-direction: column; gap: 3px;
+        padding: 12px 12px 16px; margin: 0;
+        flex: 1 1 auto; min-height: 0;
+        overflow-y: auto; overflow-x: hidden;
+        background: transparent; border: none; border-radius: 0; box-shadow: none;
+        /* شريطُ التمرير مخفيٌّ بصريًّا ويعمل — شريطٌ رماديٌّ داخل ٧٦px يُفسد الشكل */
+        scrollbar-width: none; -ms-overflow-style: none;
+    }
+    .nav-tabs::-webkit-scrollbar { width: 0; height: 0; }
+
+    /* عناوينُ المجموعات: تصير خطًّا رقيقًا وهو مغلق، ونصًّا وهو مفتوح */
+    .rail-group {
+        font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+        color: var(--text-faint); padding: 14px 12px 6px; white-space: nowrap;
+        opacity: 0; transition: opacity .18s var(--rail-ease);
+    }
+    .side-rail.is-open .rail-group { opacity: 1; }
+    .side-rail:not(.is-open) .rail-group {
+        height: 1px; padding: 0; margin: 9px 14px; overflow: hidden;
+        background: var(--border); opacity: 1; color: transparent;
+    }
+    .rail-group:first-child { padding-top: 2px; }
+    .side-rail:not(.is-open) .rail-group:first-child { display: none; }
+
+    .nav-tab-btn {
+        padding: 11px 13px; font-size: 13.5px; font-weight: 600;
+        border-radius: 11px; border: none; cursor: pointer;
+        background: transparent; color: var(--text-dim);
+        transition: background .15s ease, color .15s ease;
+        position: relative; display: flex; align-items: center; gap: 12px;
+        width: 100%; text-align: start; flex: 0 0 auto;
+        white-space: nowrap; overflow: hidden;
+    }
+    .nav-tab-btn .ic-slot { flex: 0 0 22px; display: flex; align-items: center; justify-content: center; }
+    /* ⚠️⚠️ الأسمُ في عنصرٍ خاصٍّ به لا نصًّا عاريًا: نصٌّ عارٍ لا يُمكن أن يُخفى
+       بالـCSS، فكان سيُقصّ نصفُ الكلمة («Emplo») في الشريط الضيّق — وهو أقبحُ
+       من غيابها. وبهذا العنصر تذوب الأسماءُ وتظهر بلا قصٍّ أبدًا. */
+    .tab-label {
+        flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+        opacity: 0; transform: translateX(-4px);
+        transition: opacity .16s var(--rail-ease), transform .2s var(--rail-ease);
+    }
+    .side-rail.is-open .tab-label { opacity: 1; transform: none; }
+
     .nav-tab-btn:hover { background: var(--surface-2); color: var(--text); }
     .nav-tab-btn.active { background: var(--primary); color: white; }
+    /* ⚠️ علامةٌ على حافّة الزرّ النشِط: وهو مغلقٌ لا يُقرأ اسمٌ، فاللونُ وحده هو
+       ما يقول «أنت هنا» — والعلامةُ تجعله واضحًا بلا أيّ نصّ. */
+    .nav-tab-btn.active::before {
+        content: ''; position: absolute; left: -12px; top: 50%; transform: translateY(-50%);
+        width: 3px; height: 22px; border-radius: 0 3px 3px 0; background: var(--accent);
+    }
+
     .notification-badge { background-color: var(--danger); color: white; padding: 1px 7px; border-radius: 20px; font-size: 10.5px; font-weight: 700; position: absolute; top: -6px; right: -6px; display: none; border: 2px solid var(--surface); }
+    /* ⚠️⚠️ شارةُ العدد داخل الشريط: موضعُها الأصليّ (top/right سالب) كان يقع
+       **خارج** الشريط الضيّق فتُقَصّ ولا تُرى — وهي تنبيهُ طلبٍ جديد. فوهو
+       مغلقٌ تصير نقطةً على كتف الأيقونة، ووهو مفتوحٌ تعود رقمًا في آخر السطر. */
+    .side-rail .nav-tab-btn .notification-badge {
+        position: static; margin-inline-start: auto; border: none; flex: 0 0 auto;
+    }
+    .side-rail:not(.is-open) .nav-tab-btn .notification-badge {
+        position: absolute; top: 7px; left: 30px; margin: 0;
+        min-width: 8px; height: 8px; padding: 0; border-radius: 50%;
+        color: transparent; overflow: hidden; border: 2px solid var(--surface);
+    }
+
+    /* تذييلُ الشريط: حقوقُ الفريق — انظر التذييل الكبير أسفل الصفحة */
+    .rail-foot {
+        flex: 0 0 auto; padding: 12px 14px 16px; border-top: 1px solid var(--border-soft);
+        font-size: 10.5px; font-weight: 700; line-height: 1.6; color: var(--text-faint);
+        white-space: nowrap; overflow: hidden;
+    }
+    .side-rail:not(.is-open) .rail-foot { text-align: center; padding: 12px 6px 14px; }
+    .rail-foot .rf-long { display: none; }
+    .side-rail.is-open .rail-foot .rf-long { display: block; }
+    .side-rail.is-open .rail-foot .rf-short { display: none; }
+
+    /* المحتوى يُزاح بعرض الشريط النحيف وحدَه: الانكشافُ يطفو فوق المحتوى ولا
+       يدفعه — ⚠️ الدفعُ كان سيُعيد تصميمَ كلِّ جدولٍ في الصفحة مع كل مرور
+       فأرة، وهو ثقيلٌ ومُقلق للعين. */
+    /* ⚠️ الـ28px هي حشوةُ الصفحة الأصلية في قاعدة body: لو كُتب عرضُ الشريط
+       وحدَه لالتصق أوّلُ جدولٍ بحافّته بلا مسافةٍ تتنفّس. فالإزاحةُ عرضُه + حشوتُه. */
+    body.rail-on { padding-left: calc(var(--rail-w) + 28px); transition: padding-left .24s var(--rail-ease); }
+
+    /* زرُّ الدرج للهاتف + الحاجب المعتم */
+    .rail-toggle { display: none; }
+    .rail-scrim {
+        position: fixed; inset: 0; z-index: 899; background: var(--scrim);
+        opacity: 0; pointer-events: none; transition: opacity .2s ease;
+    }
+
+    /* ⚠️⚠️⚠️ لا قاعدةَ :hover هنا بقصد، وهذا قرارٌ يُذكر: كان عندي انكشافٌ
+       بالـCSS (:hover) **و** صنفٌ يُكتب بالجافاسكربت (is-open)، فصار للحالة
+       الواحدة مصدرانِ يمكن أن يختلفا — وأسوأُ ما فيه أنّ الإغلاق «عند الضغط
+       على نافذة» يحتاج جافاسكربت أصلًا (الفأرةُ ما زالت فوق الشريط بعد
+       الضغط، فـ:hover يُبقيه مفتوحًا). فوُحِّد المصدر: is-open وحده يفتح،
+       ويُكتب من mouseenter/mouseleave بعد التحقّق أنّ للجهاز فأرةً حقًّا.
+       وبهذا يُمكن فحصُ السلوك كلِّه بالكود، ولا تتناقض قاعدتان. */
+
+    /* ⭐⭐ الهاتف واللوح: درجٌ منسحبٌ بزرٍّ صريح — لا اعتمادَ على hover إطلاقًا */
+    @media (max-width: 900px) {
+        .side-rail {
+            width: min(84vw, var(--rail-w-open));
+            transform: translateX(-102%);
+            transition: transform .26s var(--rail-ease);
+            box-shadow: var(--shadow);
+        }
+        .side-rail.rail-show { transform: translateX(-102%); }
+        .side-rail.rail-show.drawer-open { transform: none; }
+        /* في الدرج تظهر الأسماءُ دائمًا: لا معنى لدرجٍ يُفتح على أيقوناتٍ صامتة */
+        .side-rail.drawer-open .tab-label,
+        .side-rail.drawer-open .rail-group { opacity: 1; transform: none; }
+        .side-rail.drawer-open .rail-titles { display: block; }
+        .side-rail.drawer-open .rail-pin { display: none; }
+        .side-rail.drawer-open .rail-foot .rf-long { display: block; }
+        .side-rail.drawer-open .rail-foot .rf-short { display: none; }
+        .side-rail.drawer-open .nav-tab-btn .notification-badge {
+            position: static; margin-inline-start: auto; border: none;
+            min-width: auto; height: auto; padding: 1px 7px; border-radius: 20px; color: white;
+        }
+        .side-rail.drawer-open .rail-group { height: auto; padding: 14px 12px 6px; margin: 0; background: transparent; color: var(--text-faint); }
+        /* ⚠️ تعود إلى حشوة الصفحة العادية لا إلى صفر: ٧٦px من ٣٦٠px هي خمسُ
+           الشاشة، والصفرُ يُلصق الجداولَ بالحافّة. */
+        body.rail-on { padding-left: 28px; }
+        .rail-toggle { display: inline-flex; }
+        body.drawer-open .rail-scrim { opacity: 1; pointer-events: auto; }
+        /* ⚠️ أزرارُ الدرج أكبرُ للإصبع: ٤٤px هو الحدّ الأدنى الموصى به للمس */
+        .side-rail .nav-tab-btn { padding: 13px 14px; }
+    }
+
+    /* ⭐⭐⭐ تذييلُ الصفحة — «ومن تحت يكون فيه وسم: برنامجٌ من إنشاء فريق
+       الشيخة قروب، كلُّ الحقوق محفوظة» بنصّ المالك.
+       ⚠️ بالعربية والإنجليزية: اللوحةُ كلُّها بالإنجليزية ويقرؤها المحاسبُ
+       والسكرتيرة، والنصُّ العربيُّ هو نصُّ المالك نفسه. و dir="auto" على
+       السطر العربي حتى يُقرأ من اليمين في صفحةٍ اتجاهُها من اليسار. */
+    .app-foot {
+        margin: 34px 0 10px; padding: 22px 26px 26px;
+        border-top: 1px solid var(--border);
+        display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+        gap: 14px;
+    }
+    .af-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .af-mark { width: 34px; height: 34px; flex: 0 0 34px; object-fit: contain; opacity: .9; }
+    .af-lines { min-width: 0; }
+    .af-ar { font-size: 12.5px; font-weight: 700; color: var(--text-dim); line-height: 1.9; }
+    .af-en { font-size: 11.5px; font-weight: 600; color: var(--text-faint); line-height: 1.8; letter-spacing: .01em; }
+    .af-rule { font-size: 11px; font-weight: 700; color: var(--text-faint); letter-spacing: .04em; }
+    @media (max-width: 680px) {
+        .app-foot { padding: 18px 16px 22px; }
+        .af-rule { width: 100%; }
+    }
 
     .tab-content { display: none; animation: fadeIn 0.25s ease-in-out; }
     .tab-content.active { display: block; }
@@ -397,6 +621,12 @@
             </div>
         </div>
         <div class="header-btns">
+            <!-- ⭐⭐⭐ زرُّ الشريط الجانبيّ للهاتف واللوح — يظهر تحت ٩٠٠px وحدها.
+                 ⚠️⚠️ ضروريٌّ لا زخرفة: الشريطُ ينكشف بحركة الفأرة، ولا فأرةَ على
+                 الهاتف ولا hover. فبلا هذا الزرّ تصير اللوحةُ على الهاتف بلا أيّ
+                 طريقةٍ للانتقال بين ٢٢ نافذة — وهي تُفتح على الهاتف فعلًا. -->
+            <button class="btn-ghost rail-toggle" id="railToggleBtn" onclick="openRailDrawer()"
+                    title="Menu" aria-label="Open the menu"><span data-icon="listChecks"></span> Menu</button>
             <button class="btn-ghost" onclick="openGlobalSearch()" title="Search everything (Ctrl+K)"><span data-icon="search"></span> Search</button>
             <div style="position: relative;">
                 <button class="btn-ghost" id="btnNotifBell" onclick="toggleNotifDropdown()" title="Notifications">
@@ -510,62 +740,99 @@
         <img src="./brand/al-sheikha-style-logo.png" alt="Al Sheikha Style" class="main-logo">
     </div>
 
-    <div class="nav-tabs">
-        <button class="nav-tab-btn active" data-tab="tab-home" data-biz="both"><span class="ic-slot" data-icon="home"></span> Home</button>
-        <button class="nav-tab-btn" data-tab="tab-employees" data-biz="both"><span class="ic-slot" data-icon="users"></span> Employee Profiles</button>
-        <!-- ⭐⭐ الحالة الإدارية — بطلب المالك. موضعُها بعد ملفّات الموظفين مباشرةً
-             لأنها تقرأ منها: الهوية وتاريخها والأيام المتبقّية.
-             ⚠️ data-biz="rest": الخيارات الستّة كلها كفالاتُ مطاعم (شاي بو حمد،
-             قيمر وكاهي، إعارة بينهما، أوت سورس). ولا خيارَ للعبايات — فإن أرادها
-             المالك لهنّ فسؤالٌ مطروح عليه، ولا تُخمَّن. -->
-        <button class="nav-tab-btn" data-tab="tab-admin-status" data-biz="rest"><span class="ic-slot" data-icon="fileText"></span> Administrative Status</button>
-        <button class="nav-tab-btn" data-tab="tab-payroll" data-biz="both"><span class="ic-slot" data-icon="dollar"></span> Payroll</button>
-        <button class="nav-tab-btn" data-tab="tab-attendance" data-biz="both"><span class="ic-slot" data-icon="calendar"></span> Attendance Logs</button>
-        <button class="nav-tab-btn" data-tab="tab-shifts" data-biz="both"><span class="ic-slot" data-icon="clock"></span> Shifts</button>
-        <button class="nav-tab-btn" data-tab="tab-requests" data-biz="rest">
-            <span class="ic-slot" data-icon="inbox"></span> Requests
-            <span id="requestsNavBadge" class="notification-badge">0</span>
-        </button>
-        <button class="nav-tab-btn" data-tab="tab-applications" data-biz="rest">
-            <span class="ic-slot" data-icon="userPlus"></span> Applications
-            <span id="applicationsNavBadge" class="notification-badge">0</span>
-        </button>
-        <button class="nav-tab-btn" data-tab="tab-warnings" data-biz="rest">
-            <span class="ic-slot" data-icon="alertTriangle"></span> Warnings
-        </button>
-        <button class="nav-tab-btn" data-tab="tab-leaves" data-biz="both">
-            <span class="ic-slot" data-icon="plane"></span> Annual Leaves
-        </button>
-        <button class="nav-tab-btn" data-tab="tab-training" data-biz="rest">
-            <span class="ic-slot" data-icon="graduationCap"></span> Employee Training
-        </button>
-        <button class="nav-tab-btn" data-tab="tab-audit" data-biz="both">
-            <span class="ic-slot" data-icon="listChecks"></span> Audit Log
-        </button>
-        <button class="nav-tab-btn" data-tab="tab-sales" data-biz="rest">
-            <span class="ic-slot" data-icon="dollar"></span> Daily Report
-        </button>
-        <button class="nav-tab-btn" data-tab="tab-target" data-biz="rest">
-            <span class="ic-slot" data-icon="check"></span> Daily Target
-        </button>
-        <!-- العبايات: عملٌ منفصل تمامًا عن المطاعم. التبويبان للمالك والمحاسب فقط. -->
-        <button class="nav-tab-btn" data-tab="tab-abaya" data-biz="abaya">
-            <span class="ic-slot" data-icon="fileText"></span> Abaya &mdash; Daily
-        </button>
-        <button class="nav-tab-btn" data-tab="tab-abaya-month" data-biz="abaya">
-            <span class="ic-slot" data-icon="dollar"></span> Abaya &mdash; Monthly
-        </button>
-        <button class="nav-tab-btn" data-tab="tab-abaya-catalog" data-biz="abaya">
-            <span class="ic-slot" data-icon="inbox"></span> Abaya &mdash; Catalogue
-        </button>
-        <button class="nav-tab-btn" data-tab="tab-finance" data-biz="rest">
-            <span class="ic-slot" data-icon="dollar"></span> Monthly Financial
-        </button>
-        <button class="nav-tab-btn" data-tab="tab-former" data-biz="both"><span class="ic-slot" data-icon="users"></span> Former Employees</button>
-        <button class="nav-tab-btn" data-tab="tab-fixed" data-biz="rest"><span class="ic-slot" data-icon="inbox"></span> Fixed Payments</button>
-        <button class="nav-tab-btn" data-tab="tab-variable" data-biz="rest"><span class="ic-slot" data-icon="inbox"></span> Variable Payments</button>
-        <button class="nav-tab-btn" data-tab="tab-settings" data-biz="both"><span class="ic-slot" data-icon="settings"></span> Settings</button>
-    </div>
+    <!-- ===================================================================
+         ⭐⭐⭐⭐⭐ الشريطُ الجانبيّ الأيسر — بطلب المالك
+         -------------------------------------------------------------------
+         ⚠️⚠️ الأزرارُ نفسُها لم تُبنَ من جديد: هي **بعينها** أزرارُ الشريط
+         الأفقيّ القديم، بنفس class وnفس data-tab وdata-biz وبنفس معرّفات
+         شارات التنبيه. وهذا مقصودٌ تمامًا، لأنّ خمسةَ مواضع في الكود تعتمد
+         عليها: حارسُ الدور (يُخفي ما لا يملكه)، وفاصلُ النشاطين (مطاعم/
+         عبايات)، وswitchTab (يُلوّن النشِط)، ومُستمعُ الضغط، وباحثُ «أوّل
+         نافذةٍ مسموحة». فبناءُ شريطٍ جديدٍ بالجافاسكربت كان سيكسر الخمسةَ
+         جميعًا — ومنها حارسُ الصلاحيات، وهو أمنٌ لا شكل.
+         ⚠️ الجديدُ ثلاثةُ أشياء فقط: غلافٌ (aside) يُثبّته على الجنب،
+         وعناوينُ مجموعاتٍ تُخفى تلقائيًّا إن خلت، واسمُ كلّ نافذةٍ صار في
+         عنصرٍ خاصٍّ به (tab-label) ليُمكن إخفاؤه — والنصُّ العاريُ لا يُخفى
+         بالـCSS فكان سيُقصّ نصفَ كلمة في الشريط الضيّق.
+         ⚠️⚠️ وترتيبُ «الرئيسية» أوّلًا مقصودٌ ومحفوظ: الكودُ يبحث عن أوّل
+         نافذةٍ في الترميز تنتمي للنشاط وتملكها الصلاحية عند تبديل النشاط.
+         =================================================================== -->
+    <aside class="side-rail" id="sideRail">
+        <div class="rail-top">
+            <span class="rail-mark">
+                <img src="https://raw.githubusercontent.com/tihou74/alsheikha-attendance-admin/main/al-sheikha-group-logo.png.png" alt="Al Sheikha Group">
+            </span>
+            <span class="rail-titles">
+                <span class="rail-t1">Al Sheikha Group</span>
+                <span class="rail-t2">Management Suite</span>
+            </span>
+            <!-- زرُّ التثبيت: لمن أراد الشريطَ مفتوحًا دائمًا بلا انتظار الفأرة.
+                 يُحفظ اختيارُه على الجهاز فلا يُضبط كلَّ مرّة. -->
+            <button class="rail-pin" id="railPinBtn" onclick="toggleRailPin()"
+                    title="Keep the sidebar open"><span data-icon="check"></span></button>
+        </div>
+
+        <div class="nav-tabs">
+            <div class="rail-group" data-group="overview">Overview</div>
+            <button class="nav-tab-btn active" data-tab="tab-home" data-biz="both" data-group="overview"><span class="ic-slot" data-icon="home"></span><span class="tab-label">Home</span></button>
+
+            <div class="rail-group" data-group="people">People</div>
+            <button class="nav-tab-btn" data-tab="tab-employees" data-biz="both" data-group="people"><span class="ic-slot" data-icon="users"></span><span class="tab-label">Employee Profiles</span></button>
+            <!-- ⭐⭐ الحالة الإدارية — بطلب المالك. موضعُها بعد ملفّات الموظفين مباشرةً
+                 لأنها تقرأ منها: الهوية وتاريخها والأيام المتبقّية.
+                 ⚠️ data-biz="rest": الخيارات الستّة كلها كفالاتُ مطاعم (شاي بو حمد،
+                 قيمر وكاهي، إعارة بينهما، أوت سورس). ولا خيارَ للعبايات — فإن أرادها
+                 المالك لهنّ فسؤالٌ مطروح عليه، ولا تُخمَّن. -->
+            <button class="nav-tab-btn" data-tab="tab-admin-status" data-biz="rest" data-group="people"><span class="ic-slot" data-icon="fileText"></span><span class="tab-label">Administrative Status</span></button>
+            <button class="nav-tab-btn" data-tab="tab-training" data-biz="rest" data-group="people"><span class="ic-slot" data-icon="graduationCap"></span><span class="tab-label">Employee Training</span></button>
+            <button class="nav-tab-btn" data-tab="tab-former" data-biz="both" data-group="people"><span class="ic-slot" data-icon="users"></span><span class="tab-label">Former Employees</span></button>
+
+            <div class="rail-group" data-group="time">Attendance &amp; Time</div>
+            <button class="nav-tab-btn" data-tab="tab-attendance" data-biz="both" data-group="time"><span class="ic-slot" data-icon="calendar"></span><span class="tab-label">Attendance Logs</span></button>
+            <button class="nav-tab-btn" data-tab="tab-shifts" data-biz="both" data-group="time"><span class="ic-slot" data-icon="clock"></span><span class="tab-label">Shifts</span></button>
+            <button class="nav-tab-btn" data-tab="tab-leaves" data-biz="both" data-group="time"><span class="ic-slot" data-icon="plane"></span><span class="tab-label">Annual Leaves</span></button>
+
+            <div class="rail-group" data-group="money">Payroll &amp; Finance</div>
+            <button class="nav-tab-btn" data-tab="tab-payroll" data-biz="both" data-group="money"><span class="ic-slot" data-icon="dollar"></span><span class="tab-label">Payroll</span></button>
+            <button class="nav-tab-btn" data-tab="tab-finance" data-biz="rest" data-group="money"><span class="ic-slot" data-icon="dollar"></span><span class="tab-label">Monthly Financial</span></button>
+            <button class="nav-tab-btn" data-tab="tab-fixed" data-biz="rest" data-group="money"><span class="ic-slot" data-icon="inbox"></span><span class="tab-label">Fixed Payments</span></button>
+            <button class="nav-tab-btn" data-tab="tab-variable" data-biz="rest" data-group="money"><span class="ic-slot" data-icon="inbox"></span><span class="tab-label">Variable Payments</span></button>
+            <button class="nav-tab-btn" data-tab="tab-sales" data-biz="rest" data-group="money"><span class="ic-slot" data-icon="dollar"></span><span class="tab-label">Daily Report</span></button>
+            <button class="nav-tab-btn" data-tab="tab-target" data-biz="rest" data-group="money"><span class="ic-slot" data-icon="check"></span><span class="tab-label">Daily Target</span></button>
+
+            <div class="rail-group" data-group="requests">Requests &amp; Discipline</div>
+            <button class="nav-tab-btn" data-tab="tab-requests" data-biz="rest" data-group="requests">
+                <span class="ic-slot" data-icon="inbox"></span><span class="tab-label">Requests</span>
+                <span id="requestsNavBadge" class="notification-badge">0</span>
+            </button>
+            <button class="nav-tab-btn" data-tab="tab-applications" data-biz="rest" data-group="requests">
+                <span class="ic-slot" data-icon="userPlus"></span><span class="tab-label">Applications</span>
+                <span id="applicationsNavBadge" class="notification-badge">0</span>
+            </button>
+            <button class="nav-tab-btn" data-tab="tab-warnings" data-biz="rest" data-group="requests"><span class="ic-slot" data-icon="alertTriangle"></span><span class="tab-label">Warnings</span></button>
+
+            <!-- العبايات: عملٌ منفصل تمامًا عن المطاعم. التبويبان للمالك والمحاسب فقط.
+                 ⚠️ المجموعةُ كلُّها data-biz="abaya"، فتُخفى في وضع المطاعم — ومعها
+                 عنوانُها، وإلّا بقي عنوانٌ يتصدّر فراغًا. -->
+            <div class="rail-group" data-group="abaya">Al Sheikha Style</div>
+            <button class="nav-tab-btn" data-tab="tab-abaya" data-biz="abaya" data-group="abaya"><span class="ic-slot" data-icon="fileText"></span><span class="tab-label">Abaya &mdash; Daily</span></button>
+            <button class="nav-tab-btn" data-tab="tab-abaya-month" data-biz="abaya" data-group="abaya"><span class="ic-slot" data-icon="dollar"></span><span class="tab-label">Abaya &mdash; Monthly</span></button>
+            <button class="nav-tab-btn" data-tab="tab-abaya-catalog" data-biz="abaya" data-group="abaya"><span class="ic-slot" data-icon="inbox"></span><span class="tab-label">Abaya &mdash; Catalogue</span></button>
+
+            <div class="rail-group" data-group="system">System</div>
+            <button class="nav-tab-btn" data-tab="tab-audit" data-biz="both" data-group="system"><span class="ic-slot" data-icon="listChecks"></span><span class="tab-label">Audit Log</span></button>
+            <button class="nav-tab-btn" data-tab="tab-settings" data-biz="both" data-group="system"><span class="ic-slot" data-icon="settings"></span><span class="tab-label">Settings</span></button>
+        </div>
+
+        <div class="rail-foot">
+            <span class="rf-short">&copy;</span>
+            <span class="rf-long">
+                <span dir="auto">برنامجٌ من إنشاء فريق الشيخة قروب</span><br>
+                Built by the Al Sheikha Group team
+            </span>
+        </div>
+    </aside>
+    <div class="rail-scrim" id="railScrim" onclick="closeRailDrawer()"></div>
 
     <!-- ==================================================================
          لافتة الفشل — **خارج** كل التبويبات عن قصد
@@ -2934,6 +3201,30 @@
         </div>
 
     </div>
+
+    <!-- ===================================================================
+         ⭐⭐⭐ وسمُ الحقوق — بنصّ المالك: «ومن تحت يكون فيه وسم: برنامجٌ من
+         إنشاء فريق الشيخة قروب، كلُّ الحقوق محفوظة».
+         -------------------------------------------------------------------
+         ⚠️ موضعُه هنا، **بعد** كلّ النوافذ وداخل الغلاف، فيظهر أسفلَ أيّ
+         نافذةٍ مفتوحة — لا داخل الرئيسية وحدها.
+         ⚠️⚠️ والسنةُ تُكتب بالجافاسكربت لا بيدٍ في الترميز: سنةٌ مكتوبةٌ
+         بيدٍ تصير كذبًا في أوّل يناير، ووسمُ حقوقٍ يحمل سنةً خاطئة أسوأُ من
+         وسمٍ بلا سنة.
+         ⚠️ والسطرُ العربيُّ بـdir="auto" — الصفحةُ اتجاهُها من اليسار، وبلا
+         هذا يُقرأ العربيُّ مبعثرًا.
+         =================================================================== -->
+    <footer class="app-foot" id="appFooter">
+        <div class="af-brand">
+            <img class="af-mark" src="https://raw.githubusercontent.com/tihou74/alsheikha-attendance-admin/main/al-sheikha-group-logo.png.png" alt="Al Sheikha Group">
+            <div class="af-lines">
+                <div class="af-ar" dir="auto">برنامجٌ من إنشاء فريق الشيخة قروب &mdash; كلُّ الحقوق محفوظة</div>
+                <div class="af-en">Built by the Al Sheikha Group team &mdash; all rights reserved
+                    &middot; <span id="footYear">2026</span></div>
+            </div>
+        </div>
+        <div class="af-rule">HR &amp; Payroll Management Suite &middot; <span id="footVersion">Internal use only</span></div>
+    </footer>
 </div>
 
 <!-- ==================================================================
@@ -4355,6 +4646,112 @@
         return currentRole !== ROLE_ACCOUNTANT; // المحاسب يراجع ولا يُنشئ
     }
 
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ الشريطُ الجانبيّ — سلوكُه
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ الانكشافُ بالفأرة كلُّه في الـCSS (:hover) لا في الجافاسكربت: لا
+    // مستمعَ حركةٍ يعمل مع كلّ بكسل، فالحركةُ ناعمةٌ ولا تُثقل الصفحة. ولا
+    // يعمل إلا على جهازٍ له فأرةٌ حقًّا (hover: hover) — وهذا ما يُنجي الهاتف.
+    //
+    // والجافاسكربت لثلاثة أشياء لا يقدر عليها الـCSS:
+    //   (١) الإغلاقُ **عند الضغط على نافذة** — بنصّ المالك: «وتختفي عندما
+    //       أضغط على نافذة». والفأرةُ ما زالت فوق الشريط بعد الضغط، فـ:hover
+    //       وحدَه يُبقيه مفتوحًا. فيُضاف صنفٌ يقهر الانكشاف حتى تخرج الفأرة.
+    //   (٢) التثبيتُ لمن أراده مفتوحًا دائمًا، ويُحفظ على الجهاز.
+    //   (٣) إخفاءُ عنوانِ مجموعةٍ خَلَت من النوافذ — وإلّا تصدّر عنوانٌ فراغًا.
+    // =====================================================================
+    const RAIL_PIN_KEY = 'alsheikha_admin_rail_pinned';
+
+    /** هل الشاشةُ شاشةَ لمسٍ ضيّقة؟ الدرجُ هناك، والانكشافُ بالفأرة هنا. */
+    function railIsDrawerMode() {
+        try { return window.matchMedia('(max-width: 900px)').matches; }
+        catch (e) { return false; }      // متصفّحٌ قديم: يُفترض سطح المكتب
+    }
+    /**
+     * هل للجهاز فأرةٌ حقًّا؟
+     * ⚠️⚠️ لا يكفي قياسُ عرض الشاشة: لوحٌ كبيرٌ أو شاشةُ لمسٍ عريضة تُطلق
+     * mouseenter عند اللمس في بعض المتصفّحات، فينكشف الشريطُ بلمسةٍ لم يقصدها
+     * أحد. والقياسُ على (hover: hover) و(pointer: fine) هو ما يُفرّق الفأرةَ
+     * من الإصبع. ويُفترض الوجودُ في متصفّحٍ قديمٍ لا يعرف matchMedia — فمنعُ
+     * الانكشاف على سطح مكتبٍ قديم أسوأُ من كشفٍ زائدٍ على لمس.
+     */
+    function railHasMouse() {
+        try { return window.matchMedia('(hover: hover) and (pointer: fine)').matches; }
+        catch (e) { return true; }
+    }
+
+    window.toggleRailPin = function() {
+        const rail = document.getElementById('sideRail');
+        if (!rail) return;
+        const pinned = !rail.classList.contains('rail-pinned');
+        applyRailPin(pinned);
+        try { localStorage.setItem(RAIL_PIN_KEY, pinned ? '1' : '0'); }
+        catch (e) { /* وضعٌ خاصّ — لا يُعطّل الزرّ */ }
+    };
+
+    function applyRailPin(pinned) {
+        const rail = document.getElementById('sideRail');
+        if (!rail) return;
+        rail.classList.toggle('rail-pinned', !!pinned);
+        // ⚠️ is-open هو ما يُظهر الأسماء. والتثبيتُ يعني: مفتوحٌ بلا فأرة.
+        rail.classList.toggle('is-open', !!pinned);
+        if (pinned) rail.classList.remove('rail-dismissed');
+        const btn = document.getElementById('railPinBtn');
+        if (btn) btn.title = pinned ? 'Let the sidebar close again' : 'Keep the sidebar open';
+    }
+
+    function restoreRailPin() {
+        let saved = '0';
+        try { saved = localStorage.getItem(RAIL_PIN_KEY) || '0'; } catch (e) {}
+        applyRailPin(saved === '1');
+    }
+
+    /**
+     * يُغلق الشريطَ بعد اختيار نافذة — بنصّ المالك: «وتختفي عندما أضغط على
+     * نافذة». ⚠️ ولا يُغلق المثبَّت: من ثبّته طلب بقاءه صريحًا، وإغلاقُه رغم
+     * ذلك يُلغي معنى الزرّ.
+     */
+    function railAfterTabClick() {
+        const rail = document.getElementById('sideRail');
+        if (!rail) return;
+        if (railIsDrawerMode()) { window.closeRailDrawer(); return; }
+        if (rail.classList.contains('rail-pinned')) return;
+        rail.classList.add('rail-dismissed');
+        rail.classList.remove('is-open');
+    }
+
+    window.openRailDrawer = function() {
+        const rail = document.getElementById('sideRail');
+        if (!rail) return;
+        rail.classList.add('drawer-open');
+        document.body.classList.add('drawer-open');
+    };
+    window.closeRailDrawer = function() {
+        const rail = document.getElementById('sideRail');
+        if (rail) rail.classList.remove('drawer-open');
+        document.body.classList.remove('drawer-open');
+    };
+
+    /**
+     * ⭐⭐⭐⭐ يُخفي عنوانَ أيّ مجموعةٍ خَلَت من النوافذ الظاهرة.
+     *
+     * ⚠️⚠️ ضروريٌّ لا تجميل: مجموعةُ «Al Sheikha Style» كلُّها نوافذُ عبايات،
+     * فتُخفى بالكامل في وضع المطاعم. وبلا هذه الدالّة يبقى عنوانُها معلّقًا
+     * فوق فراغ، فيظنّ القارئ أنّ نوافذَها ضاعت. وكذلك «Requests & Discipline»
+     * في وضع العبايات، وكذلك ما يُخفيه حارسُ الصلاحيات عن السكرتيرة والمحاسب.
+     *
+     * ⚠️ والقياسُ على style.display لا على قائمةٍ مكتوبةٍ بيدٍ: هو **بعينه** ما
+     * يكتبه حارسُ الدور وفاصلُ النشاطين، فلا تنشأ نسختانِ من الحقيقة تختلفان.
+     */
+    function syncRailGroups() {
+        document.querySelectorAll('.rail-group[data-group]').forEach(head => {
+            const g = head.dataset.group;
+            const any = [...document.querySelectorAll(`.nav-tab-btn[data-group="${g}"]`)]
+                .some(b => b.style.display !== 'none');
+            head.style.display = any ? '' : 'none';
+        });
+    }
+
     /**
      * يُطبّق الدور على الشاشة: يخفي التبويبات غير المسموحة، ويجعل خانة الراتب
      * للقراءة فقط لمن لا يملك تعديلها، ويعرض الدور في الترويسة.
@@ -4367,6 +4764,7 @@
             const ok = allowed === null || allowed.includes(btn.dataset.tab);
             btn.style.display = ok ? '' : 'none';
         });
+        syncRailGroups();
 
         // خانات الراتب: مرئية للجميع بقرار الإدارة، لكن غير قابلة للكتابة إلا
         // للمدير والمحاسب. القواعد ترفض التغيير على الخادم أيضًا، فهذا لمنع
@@ -4509,6 +4907,19 @@
         const showChooser = !activeBiz;
         if (chooser) chooser.style.display = showChooser ? 'grid' : 'none';
         if (nav) nav.style.display = showChooser ? 'none' : 'flex';
+        // ⭐⭐⭐ الشريطُ الجانبيّ كلُّه يُخفى على شاشة اختيار النشاط، لا قائمتُه
+        // وحدها. ⚠️ وبلا هذا السطر يبقى شريطٌ رماديٌّ فارغٌ على الجنب وهو يسأل
+        // «أيّ نشاطٍ تعمل عليه؟» — وهو نفسُ الخطأ البصريّ الذي أُصلح في
+        // الشعارات. والإزاحةُ عن الجسم تُرفع معه فلا يبقى فراغٌ لا شيءَ فيه.
+        const rail = document.getElementById('sideRail');
+        if (rail) {
+            rail.classList.toggle('rail-show', !showChooser);
+            if (showChooser) rail.classList.remove('drawer-open');
+        }
+        document.body.classList.toggle('rail-on', !showChooser);
+        if (showChooser) document.body.classList.remove('drawer-open');
+        const rtog = document.getElementById('railToggleBtn');
+        if (rtog) rtog.style.display = showChooser ? 'none' : '';
         if (sw) {
             sw.style.display = showChooser ? 'none' : 'inline-flex';
             const lbl = document.getElementById('btnSwitchBizLabel');
@@ -4525,11 +4936,24 @@
         if (lr) lr.style.display = (activeBiz === 'rest') ? '' : 'none';
         if (la) la.style.display = (activeBiz === 'abaya') ? '' : 'none';
         // إخفاء أزرار التبويبات التي لا تنتمي إلى النشاط
+        // ⚠️⚠️⚠️ وعطلٌ وجدتُه هنا وأنا أبني الشريط الجانبيّ: هذه الحلقة كانت
+        // تكتب style.display اعتمادًا على **النشاط وحده**، فتمحو ما كتبه حارسُ
+        // الدور قبلها بلحظة (applyRoleToUi يُخفي غير المسموح، ثم ينادي
+        // restoreBiz فتُعيد هذه الحلقة إظهارَه). فكانت السكرتيرةُ ترى زرَّ
+        // «Payroll» و«Monthly Financial» وهي لا تملكهما.
+        // ⚠️ ولم يكن ثغرةً أمنية: switchTab يرفض فتحَ ما لا تملكه، والقواعدُ
+        // ترفض القراءة. لكنّه زرٌّ يُضغط فيُرمى صاحبُه إلى نافذةٍ أخرى بلا
+        // تفسير — وهو إرباكٌ حقيقيّ. والشرطُ المضاف يجمع الحُكمين: الصلاحية
+        // أوّلًا ثم النشاط، وهو نفسُ ترتيب النية في applyRoleToUi.
         document.querySelectorAll('.nav-tab-btn').forEach(btn => {
             const b = btn.dataset.biz || 'both';
-            const visible = !activeBiz || b === 'both' || b === activeBiz;
+            const inBiz = !activeBiz || b === 'both' || b === activeBiz;
+            const visible = inBiz && canSeeTab(btn.dataset.tab);
             btn.style.display = visible ? '' : 'none';
         });
+        // ⭐ ثمّ تُخفى عناوينُ المجموعات التي خَلَت — بعد الحلقة لا قبلها،
+        // فالقياسُ على ما استقرّ عليه display فعلًا.
+        syncRailGroups();
         if (showChooser) {
             // شاشة الاختيار وحدها: تُخفى كل المحتويات فلا يبقى جدولٌ معلّق أسفلها
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -4811,8 +5235,39 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.nav-tab-btn[data-tab]').forEach(btn => {
-            btn.addEventListener('click', () => window.switchTab(btn.dataset.tab));
+            btn.addEventListener('click', () => {
+                window.switchTab(btn.dataset.tab);
+                // ⭐ «وتختفي عندما أضغط على نافذة» — بنصّ المالك.
+                railAfterTabClick();
+            });
+            // ⚠️⚠️ تلميحٌ على كل أيقونة: الشريطُ مغلقٌ في الأغلب، فأيقونةٌ بلا
+            // اسمٍ ولا تلميحٍ لغزٌ. ويُقرأ الاسمُ من الترميز نفسه لا يُكتب
+            // ثانيةً بيدٍ — فنسختانِ من الاسم تختلفان بأوّل تعديل.
+            const lbl = btn.querySelector('.tab-label');
+            if (lbl && !btn.title) btn.title = lbl.textContent.trim();
         });
+        // ⚠️ الشريطُ يُنكشف بالفأرة (CSS)، لكنّ الصنفَ الذي يقهر الانكشاف بعد
+        // الضغط يجب أن يُرفع حين تخرج الفأرة — وإلّا بقي مغلقًا إلى الأبد.
+        const rail = document.getElementById('sideRail');
+        if (rail) {
+            rail.addEventListener('mouseleave', () => rail.classList.remove('rail-dismissed'));
+            // ⚠️ وis-open يُكتب بالجافاسكربت للحالة المثبَّتة وحدها؛ أمّا
+            // الانكشافُ بالفأرة فبالـCSS. فيُزال عند الخروج ما لم يكن مثبَّتًا،
+            // حتى لا يبقى الشريطُ عريضًا بعد أن غادرته الفأرة.
+            rail.addEventListener('mouseleave', () => {
+                if (!rail.classList.contains('rail-pinned')) rail.classList.remove('is-open');
+            });
+            rail.addEventListener('mouseenter', () => {
+                if (railHasMouse() && !railIsDrawerMode() && !rail.classList.contains('rail-dismissed')) {
+                    rail.classList.add('is-open');
+                }
+            });
+        }
+        restoreRailPin();
+        // ⚠️ السنةُ من ساعة الجهاز لا مكتوبةً بيدٍ: وسمُ حقوقٍ يحمل سنةً خاطئة
+        // أسوأُ من وسمٍ بلا سنة، ويصير كذبًا في أوّل يناير.
+        const fy = document.getElementById('footYear');
+        if (fy) fy.textContent = String(new Date().getFullYear());
         const start = firstDayOfCurrentMonthISO();
         const end = lastDayOfCurrentMonthISO();
         ["payrollStartDate", "startDate", "attReportStart", "salesStartDate"].forEach(id => { const el = document.getElementById(id); if (el) el.value = start; });
