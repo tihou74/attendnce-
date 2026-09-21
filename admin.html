@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=137">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=138">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -184,7 +184,100 @@
         .header-btns { width: 100%; }
     }
     .header .role-pill { display: inline-block; margin-top: 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); padding: 3px 10px; border-radius: 20px; }
-    .header-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    /* =====================================================================
+       ⭐⭐⭐⭐⭐ ترويسةُ اللوحة — أُعيد ترتيبُها بطلب المالك
+       ---------------------------------------------------------------------
+       بنصّه: «عدّل على هاته التي من فوق … اجعلها أكثر جمالية وأكثر روعة».
+
+       ⚠️⚠️⚠️ والعيبُ لم يكن في جمال الأزرار بل في أنها **تسعةُ أشياءَ بوزنٍ
+       بصريٍّ واحد** في صفٍّ واحد: بحثٌ وجرسٌ وشارةُ دورٍ ومُبدّلُ نشاطٍ وليلٌ
+       ومزامنةٌ وتحديثٌ وخروج — كلُّها مستطيلاتٌ بحدٍّ رماديٍّ متشابهة. فالعينُ
+       لا تجد شيئًا تقع عليه، ويصير إيجادُ «تحديث» بحثًا لا لمحة. وليست كلُّها
+       من جنسٍ واحدٍ أصلًا:
+         • شارةُ الدور **حالةٌ** لا أمر — ومع ذلك كانت تبدو زرًّا يُضغط.
+         • مُبدّلُ النشاط **اختيارٌ** لا أمر — وكان ذهبيًّا صارخًا كأنه الأهمّ.
+         • «خروج» **أمرٌ لا رجعةَ فيه** — وكان ملتصقًا بـ«تحديث» بلا فاصل، فزلّةُ
+           إصبعٍ واحدةٍ تُخرج المالكَ من اللوحة وهو يريد تحديثَها.
+       فصارت ثلاثَ مجموعاتٍ يفصلها خطٌّ رقيق: **حالةٌ · أوامرُ · خروج**. وهذا
+       ترتيبٌ يُقرأ بلمحةٍ بدل أن يُفتَّش فيه.
+       ===================================================================== */
+    .header-btns { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+    /* (١) مجموعةُ الحالة: ما أنت عليه الآن — لا ما تفعله */
+    .hdr-state { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    /* شارةُ الدور: نقطةٌ ثم نصّ. ⚠️ ليست زرًّا فلا حدَّ لها ولا ظلٌّ ولا مؤشّرَ
+       يدٍ — وشكلٌ يوحي بالضغط وهو لا يُضغط يُفقد الثقةَ بكلّ ما يبدو قابلًا للضغط. */
+    .role-chip {
+        display: none; align-items: center; gap: 7px;
+        font-size: 11.5px; font-weight: 800; letter-spacing: .02em;
+        padding: 6px 12px 6px 10px; border-radius: 999px;
+        background: var(--accent-soft); color: var(--accent);
+        border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+        cursor: default; white-space: nowrap;
+    }
+    .role-chip::before {
+        content: ''; width: 6px; height: 6px; border-radius: 50%;
+        background: currentColor; flex: 0 0 6px; opacity: .85;
+    }
+    /* مُبدّلُ النشاط: شكلُ **اختيارٍ** لا أمر — سهمٌ صغيرٌ في آخره يقول إنه يُفتح
+       على خيارات. وهادئٌ لأنه سياقٌ لا عمل. */
+    .biz-chip {
+        background: var(--surface-2); color: var(--text-dim);
+        border-color: var(--border); font-weight: 700; font-size: 12.5px;
+        padding: 8px 12px; border-radius: 999px;
+    }
+    .biz-chip:hover { background: var(--surface-hover); color: var(--text); border-color: color-mix(in srgb, var(--wine) 40%, var(--border)); }
+    .biz-chip .bc-caret { opacity: .55; font-size: 10px; margin-inline-start: 2px; }
+
+    /* (٢) مجموعةُ الأوامر: قطعةٌ واحدةٌ بحدٍّ واحدٍ تضمّ الأزرار الصغيرة.
+       ⚠️⚠️ خمسةُ أزرارٍ بحدودٍ منفصلةٍ تصنع خمسةَ مستطيلاتٍ تتنافس؛ وقطعةٌ واحدةٌ
+       مقسّمةٌ بخطوطٍ رقيقةٍ تُقرأ **شيئًا واحدًا** فيه خمسةُ أفعال. وهذا هو ما
+       يهدّئ الترويسة أكثرَ من أيّ لونٍ أو ظلّ. */
+    .hdr-actions {
+        display: inline-flex; align-items: center; gap: 0;
+        background: var(--surface-2); border: 1px solid var(--border);
+        border-radius: 12px; overflow: hidden;
+        box-shadow: inset 0 1px 0 color-mix(in srgb, var(--neutral-0, #fff) 60%, transparent);
+    }
+    html.dark-mode .hdr-actions { box-shadow: inset 0 1px 0 color-mix(in srgb, var(--neutral-0, #fff) 7%, transparent); }
+    .hdr-actions > button, .hdr-actions > .hdr-bell > button {
+        background: transparent; border: none; border-radius: 0;
+        box-shadow: none; color: var(--text-dim); height: 38px; padding: 0 13px;
+    }
+    .hdr-actions > button:hover, .hdr-actions > .hdr-bell > button:hover {
+        background: var(--surface-hover); color: var(--wine); transform: none;
+        box-shadow: none;
+    }
+    /* الفاصلُ خطٌّ رقيقٌ لا فراغ: يفصل بلا أن يُبعد */
+    .hdr-actions > button + button,
+    .hdr-actions > .hdr-bell + button,
+    .hdr-actions > button + .hdr-bell > button { border-inline-start: 1px solid var(--border); }
+    .hdr-actions .btn-icon { width: 40px; padding: 0; }
+    .hdr-bell { position: relative; display: inline-flex; }
+    /* ⚠️ الحلقةُ داخلَ القطعة لا حولها: القطعةُ overflow:hidden فحلقةٌ خارجيةٌ
+       تُقصّ. فتُرسم بالظلّ داخلًا وتبقى مرئيةً كاملة. */
+    .hdr-actions > button:focus-visible, .hdr-actions > .hdr-bell > button:focus-visible {
+        outline: none; box-shadow: inset 0 0 0 2px var(--info-600, #0369A1);
+    }
+
+    /* (٣) الخروج: مفصولٌ بخطٍّ عموديّ. ⚠️ الفاصلُ ليس زخرفة — «خروج» أمرٌ لا
+       رجعةَ فيه، وكان ملتصقًا بـ«تحديث» فزلّةُ إصبعٍ تُخرج المالكَ وهو يريد
+       التحديث. والمسافةُ هنا حرسٌ بمقدار عرض إصبع. */
+    .hdr-sep { width: 1px; align-self: stretch; min-height: 26px; background: var(--border); margin: 0 2px; }
+
+    @media (max-width: 680px) {
+        .header-btns { gap: 8px; }
+        .hdr-actions { border-radius: 10px; }
+        .hdr-actions > button, .hdr-actions > .hdr-bell > button { padding: 0 11px; }
+    }
+
+    /* ⭐⭐ شريطُ الشعارات: كان بطاقةً كبيرةً شبهَ فارغةٍ تأكل شريحةً من الشاشة
+       بلا معلومةٍ واحدة — وهو ظاهرٌ في لقطة المالك. فصار شريطًا نحيفًا بخطٍّ
+       عنابيٍّ في أعلاه يُعلن أنه شريطُ هويةٍ لا بطاقةَ محتوًى ناقصة. */
+    .brand-logos { padding: 10px 20px !important; border-top: 2px solid var(--wine); gap: 26px !important; }
+    .brand-logos img { height: 34px !important; }
+    .brand-logos img.main-logo { height: 42px !important; }
 
     /* Notification bell dropdown */
     .notif-dropdown {
@@ -253,22 +346,95 @@
     html.dark-mode #loginOverlay { background: radial-gradient(circle at 30% 20%, var(--ink-800) 0%, var(--ink-900) 70%); }
     html.dark-mode .login-card { background: color-mix(in srgb, var(--ink-800) 95%, transparent); }
 
-    /* Buttons (generic system, refined padding for an "executive" feel) */
-    button { padding: 10px 18px; font-size: 13.5px; border-radius: var(--radius-sm); cursor: pointer; border: 1px solid transparent; font-weight: 600; transition: all 0.15s; display: inline-flex; align-items: center; justify-content: center; gap: 7px; letter-spacing: 0.1px; }
-    button:hover { filter: brightness(1.08); }
-    button:active { transform: translateY(1px); }
-    button:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
+    /* =====================================================================
+       ⭐⭐⭐⭐⭐ نظامُ الأزرار — أُعيد بناؤه بطلب المالك
+       ---------------------------------------------------------------------
+       بنصّه: «والأزرار اجعلها أكثر جمالية وأكثر روعة».
 
-    .btn-ghost { background: var(--surface-2); color: var(--text); border-color: var(--border); }
-    .btn-ghost:hover { background: var(--surface-hover); }
+       ⚠️⚠️⚠️ وأوّلُ ما نُزع هو `filter: brightness(1.08)` على كلّ زرٍّ عند
+       المرور. كان ذلك «تمريرًا» رخيصًا لا يُحسّن شيئًا: brightness يرفع سطوعَ
+       **كلّ** قناةٍ بالنسبة نفسها، فلونٌ مخفَّفٌ هادئ (كأزرار الحالة عندنا)
+       يتحوّل إلى رماديٍّ باهتٍ مغسولٍ لا إلى درجةٍ أعمقَ منه. أي أنّ الزرَّ
+       كان **يفقد** لونَه عند لمسه بالفأرة، وهو عكسُ المطلوب. فصار لكلّ نوعٍ
+       درجةُ مرورٍ خاصّةٌ به، محسوبةً بـcolor-mix على لونه نفسه — فيعمُق ولا
+       يشحب، ويتبع أيَّ تغييرٍ في اللون الأصليّ بلا صيانة.
+
+       ⚠️⚠️ وثانيًا — وهذا عيبٌ حقيقيٌّ لا تجميل: لم تكن هناك **حلقةُ تركيز**
+       (focus) في اللوحة كلِّها تقريبًا. فمن يتنقّل بلوحة المفاتيح (أو من لا
+       يستطيع استعمال الفأرة) كان لا يرى أين هو إطلاقًا — يضغط Tab فيقف على
+       زرٍّ لا يُعلَم أيُّه، وقد يكون «حذف». والآن حلقةٌ واضحةٌ بـ:focus-visible
+       وحدها: تظهر لمستعمل لوحة المفاتيح ولا تظهر عند الضغط بالفأرة، فلا
+       تُشوّش من لا يحتاجها.
+
+       ⚠️ وثالثًا: الرفعةُ عند المرور 1px وظلٌّ خفيف، والضغطُ يعيدها إلى مكانها.
+       حركةٌ تُفهِم أنّ الشيءَ يُضغط، لا استعراض. ومن يطلب تقليلَ الحركة من
+       نظامه يحصل على صفرِ حركةٍ لا حركةٍ أسرع.
+       ===================================================================== */
+    button {
+        padding: 10px 17px; font-size: 13.5px; border-radius: 10px; cursor: pointer;
+        border: 1px solid transparent; font-weight: 600;
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        letter-spacing: .1px; line-height: 1.2;
+        transition: background-color .16s var(--ease), border-color .16s var(--ease),
+                    color .16s var(--ease), box-shadow .16s var(--ease), transform .12s var(--ease);
+    }
+    /* ⚠️ لا filter هنا — انظر الشرح أعلاه. كلُّ نوعٍ له درجةُ مرورٍ خاصّة. */
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); box-shadow: none; }
+    button:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+    /* ⚠️⚠️ حلقةُ التركيز: :focus-visible لا :focus — الثانيةُ تظهر عند الضغط
+       بالفأرة كذلك فتُشوّش، والأولى للوحة المفاتيح وحدها. ولونُها أزرقُ معلوماتٍ
+       لا ذهبٌ ولا عنابيّ: الحلقةُ يجب أن **تُرى** على كلّ الأسطح، والذهبُ على
+       الكريمي تباينُه 3.08:1 فلا يُرى. */
+    button:focus-visible,
+    a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible,
+    summary:focus-visible, [tabindex]:focus-visible {
+        outline: 2px solid var(--info-600, #0369A1);
+        outline-offset: 2px;
+        border-radius: 10px;
+    }
+
+    /* ⭐ الرماديّ: أكثرُ زرٍّ في اللوحة. لمسةُ ضوءٍ داخليةٌ في أعلاه تُعطيه
+       بروزًا خفيفًا كزرٍّ حقيقيٍّ لا كمستطيلٍ مسطّح. */
+    .btn-ghost {
+        background: var(--surface-2); color: var(--text); border-color: var(--border);
+        box-shadow: inset 0 1px 0 color-mix(in srgb, var(--neutral-0, #fff) 60%, transparent);
+    }
+    .btn-ghost:hover {
+        background: var(--surface-hover); border-color: color-mix(in srgb, var(--text-faint) 55%, var(--border));
+        box-shadow: var(--shadow-sm), inset 0 1px 0 color-mix(in srgb, var(--neutral-0, #fff) 60%, transparent);
+    }
+    html.dark-mode .btn-ghost { box-shadow: inset 0 1px 0 color-mix(in srgb, var(--neutral-0, #fff) 7%, transparent); }
+
     .btn-primary { background: var(--primary); color: var(--neutral-0); }
-    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-primary:hover { background: var(--primary-dark); box-shadow: var(--shadow-sm); }
+
+    /* ⚠️ أزرارُ الحالة: الخلفيةُ تعمُق بـcolor-mix على لونها نفسه، والحدُّ يقوى.
+       فيبقى «الأخضرُ أخضرَ» عند المرور بدل أن يشحب. */
     .btn-accent { background: var(--accent-soft); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+    .btn-accent:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); border-color: color-mix(in srgb, var(--accent) 55%, transparent); box-shadow: var(--shadow-sm); }
     .btn-success { background: var(--success-soft); color: var(--success); border-color: color-mix(in srgb, var(--success) 30%, transparent); }
+    .btn-success:hover { background: color-mix(in srgb, var(--success) 20%, transparent); border-color: color-mix(in srgb, var(--success) 55%, transparent); box-shadow: var(--shadow-sm); }
     .btn-warning { background: var(--warning-soft); color: var(--warning); border-color: color-mix(in srgb, var(--warning) 30%, transparent); }
+    .btn-warning:hover { background: color-mix(in srgb, var(--warning) 20%, transparent); border-color: color-mix(in srgb, var(--warning) 55%, transparent); box-shadow: var(--shadow-sm); }
     .btn-danger { background: var(--danger-soft); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 30%, transparent); }
+    /* ⚠️⚠️ زرُّ الحذف وحدَه يشتدّ إلى أحمرَ كاملٍ عند المرور: هذا **تحذيرٌ**
+       مقصودٌ لا جمال — اليدُ فوق زرٍّ يحذف مستندًا يجب أن تتردّد لحظة. والأبيضُ
+       على الأحمر 6.19:1 فيُقرأ. */
+    .btn-danger:hover { background: var(--danger); color: var(--neutral-0); border-color: var(--danger); box-shadow: var(--shadow-sm); }
     .btn-danger-solid { background: var(--danger); color: var(--neutral-0); }
-    .btn-sm { padding: 7px 12px; font-size: 12px; border-radius: 8px; }
+    .btn-danger-solid:hover { background: color-mix(in srgb, var(--danger) 82%, #000); box-shadow: var(--shadow-sm); }
+    .btn-sm { padding: 7px 12px; font-size: 12px; border-radius: 8px; gap: 6px; }
+    .btn-sm:focus-visible { border-radius: 8px; }
+    /* ⭐ زرٌّ مربّعٌ للأيقونة وحدها — مقاسٌ واحدٌ ثابتٌ فتتراصف مع أخواتها */
+    .btn-icon { padding: 0; width: 38px; height: 38px; flex: 0 0 38px; }
+    .btn-icon.btn-sm { width: 30px; height: 30px; flex: 0 0 30px; }
+
+    /* من يطلب تقليل الحركة من نظامه يحصل على صفرِ حركة، لا حركةٍ أسرع */
+    @media (prefers-reduced-motion: reduce) {
+        button { transition: none; }
+        button:hover, button:active { transform: none; }
+    }
 
     /* Nav */
     /* =====================================================================
@@ -759,28 +925,59 @@
                  طريقةٍ للانتقال بين ٢٢ نافذة — وهي تُفتح على الهاتف فعلًا. -->
             <button class="btn-ghost rail-toggle" id="railToggleBtn" onclick="openRailDrawer()"
                     title="Menu" aria-label="Open the menu"><span data-icon="listChecks"></span> Menu</button>
-            <button class="btn-ghost" onclick="openGlobalSearch()" title="Search everything (Ctrl+K)"><span data-icon="search"></span> Search</button>
-            <div style="position: relative;">
-                <button class="btn-ghost" id="btnNotifBell" onclick="toggleNotifDropdown()" title="Notifications">
-                    <span data-icon="bell"></span>
-                    <span id="notifBellBadge" class="notification-badge" style="display:none; position: static; margin-left: 2px;">0</span>
+
+            <!-- ============ (١) الحالة: ما أنت عليه الآن ============
+                 ⚠️ شارةُ الدور ومُبدّلُ النشاط ليسا أوامرَ، فلا يجوز أن يبدوا
+                 كأزرارٍ وسطَ الأوامر. أُخرجا إلى مجموعتهما. -->
+            <span class="hdr-state">
+                <!-- ⚠️⚠️ الأنماطُ الداخليةُ نُقلت إلى صنفٍ (role-chip): كانت مكتوبةً
+                     في السطر فلا يمكن أن تتبع الوضعَ الليليّ ولا أن تُعدَّل في مكانٍ
+                     واحد. والمعرّفُ كما هو — الجافاسكربت يكتب فيه اسمَ الدور. -->
+                <span id="roleBadge" class="role-chip"></span>
+                <!-- مُبدّلُ النشاط: يظهر بعد اختيار النشاط وحده -->
+                <button class="btn-ghost biz-chip" id="btnSwitchBiz" onclick="showBizChooser()"
+                        style="display: none;" title="Switch between Restaurants and Al Sheikha Style">
+                    <span data-icon="sync"></span>
+                    <span id="btnSwitchBizLabel">Switch business</span>
+                    <span class="bc-caret" aria-hidden="true">&#9662;</span>
                 </button>
-                <div id="notifDropdown" class="notif-dropdown"></div>
-            </div>
-            <span id="roleBadge" style="display: none; font-size: 12px; font-weight: 800; padding: 7px 13px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent);"></span>
-            <!-- زرّ التبديل بين النشاطين — يظهر بعد الاختيار وحده -->
-            <button class="btn-accent" id="btnSwitchBiz" onclick="showBizChooser()" style="display: none;">
-                <span data-icon="refresh"></span> <span id="btnSwitchBizLabel">Switch business</span>
-            </button>
-            <button class="btn-ghost" id="btnThemeToggle" onclick="toggleTheme()" title="Toggle dark/light mode"><span id="icTheme"></span></button>
-            <!-- ⚠️⚠️ كان بلونٍ برتقاليّ صارخ فصار **أكثر ما يلفت النظر في الترويسة**،
-                 وهو أخطر زرٍّ في اللوحة: أنشأ نسخةً ثانية لثلاثة مدراء وكلّف أيامًا.
-                 فالتسلسل البصري كان مقلوبًا — واللون يُدعو إلى ما يجب تجنّبه.
-                 والآن هادئٌ ومكتوبٌ عليه أنه للمرّة الأولى وحدها. -->
-            <button class="btn-ghost" id="btnSyncDb" onclick="syncAllSalariesList()"
-                    title="First-time setup only — you do not need this"><span id="icSync"></span> Sync</button>
-            <button class="btn-ghost" onclick="initDashboard()"><span id="icRefresh"></span> Refresh</button>
-            <button class="btn-danger" onclick="handleLogout()"><span id="icLogout"></span> Logout</button>
+            </span>
+
+            <!-- ============ (٢) الأوامر: قطعةٌ واحدةٌ فيها خمسةُ أفعال ============
+                 ⚠️⚠️ خمسةُ أزرارٍ بحدودٍ منفصلةٍ تتنافس على العين؛ وقطعةٌ واحدةٌ
+                 مقسّمةٌ بخطوطٍ رقيقةٍ تُقرأ شيئًا واحدًا. والأسماءُ باقيةٌ على
+                 «بحث» و«تحديث» لأنهما الأكثرُ استعمالًا، والثلاثةُ الباقية
+                 أيقوناتٌ بتلميحٍ — وتلميحُها مكتوبٌ وaria-label لمن يقرأ بالصوت. -->
+            <span class="hdr-actions">
+                <button onclick="openGlobalSearch()" title="Search everything (Ctrl+K)"><span data-icon="search"></span> Search</button>
+                <span class="hdr-bell">
+                    <button class="btn-icon" id="btnNotifBell" onclick="toggleNotifDropdown()"
+                            title="Notifications" aria-label="Notifications">
+                        <span data-icon="bell"></span>
+                        <span id="notifBellBadge" class="notification-badge" style="display:none; position: static; margin-left: 2px;">0</span>
+                    </button>
+                    <div id="notifDropdown" class="notif-dropdown"></div>
+                </span>
+                <button class="btn-icon" id="btnThemeToggle" onclick="toggleTheme()"
+                        title="Switch between light and dark" aria-label="Switch between light and dark"><span id="icTheme"></span></button>
+                <!-- ⚠️⚠️ كان بلونٍ برتقاليّ صارخ فصار **أكثر ما يلفت النظر في الترويسة**،
+                     وهو أخطر زرٍّ في اللوحة: أنشأ نسخةً ثانية لثلاثة مدراء وكلّف أيامًا.
+                     فالتسلسل البصري كان مقلوبًا — واللون يُدعو إلى ما يجب تجنّبه.
+                     والآن أيقونةٌ صامتةٌ داخل القطعة، وتلميحُها يقول إنه للمرّة
+                     الأولى وحدها. وهذا أهدأُ موضعٍ أمكن بلا إخفائه. -->
+                <button class="btn-icon" id="btnSyncDb" onclick="syncAllSalariesList()"
+                        title="First-time setup only — you do not need this"
+                        aria-label="Sync salaries (first-time setup only)"><span id="icSync"></span></button>
+                <button onclick="initDashboard()" title="Reload everything from the database"><span id="icRefresh"></span> Refresh</button>
+            </span>
+
+            <!-- ============ (٣) الخروج: مفصولٌ ============
+                 ⚠️⚠️⚠️ الفاصلُ حرسٌ لا زخرفة: «خروج» كان ملتصقًا بـ«تحديث»، فزلّةُ
+                 إصبعٍ واحدةٍ تُخرج المالكَ من اللوحة وهو يريد تحديثَها — ثم يُعيد
+                 كلمةَ المرور. والزرُّ هادئٌ حتى تقع عليه اليد، فيشتدّ إلى أحمرَ
+                 كاملٍ: تحذيرٌ في اللحظة التي يُفيد فيها. -->
+            <span class="hdr-sep" aria-hidden="true"></span>
+            <button class="btn-danger" onclick="handleLogout()" title="Sign out of the dashboard"><span id="icLogout"></span> Logout</button>
         </div>
     </div>
 
@@ -4934,7 +5131,11 @@
                 [ROLE_SUPERVISOR]: 'Supervisor — profiles, attendance & requests'
             }[currentRole] || currentRole;
             badge.innerText = label;
-            badge.style.display = 'inline-block';
+            // ⚠️⚠️ inline-flex لا inline-block: صارت الشارةُ نقطةً ملوّنةً (::before)
+            // ثم نصًّا، وهذا يحتاج flex لتتراصف النقطةُ مع النصّ رأسيًّا. والأنماطُ
+            // المكتوبةُ في السطر تقهر الصنفَ دائمًا، فلو بقيت inline-block لسقطت
+            // النقطةُ إلى أسفل السطر وبدت الشارةُ مكسورة.
+            badge.style.display = 'inline-flex';
         }
 
         // إن كان التبويب المفتوح غير مسموح، ننتقل لأول تبويب مسموح.
