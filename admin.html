@@ -300,20 +300,22 @@
     .side-rail.rail-show { display: flex; }
     .side-rail.is-open { width: var(--rail-w-open); box-shadow: var(--shadow); }
 
-    /* الترويسة: علامةُ الشيخة ثم زرُّ التثبيت */
+    /* الترويسة: علامةُ الشيخة ثم زرُّ التثبيت
+       ⚠️ الحشوةُ مقتصدةٌ بقصد: كلُّ بكسلٍ هنا يُقتطع من قائمة النوافذ تحتها،
+       وهي ٢٢ نافذةً لا تكاد تسع في شاشةٍ ارتفاعُها ٩٠٠px. */
     .rail-top {
         display: flex; align-items: center; gap: 10px;
-        padding: 16px 14px 14px; min-height: 64px;
+        padding: 12px 13px 11px; min-height: 56px;
         border-bottom: 1px solid var(--border-soft);
         flex: 0 0 auto;
     }
     .rail-mark {
-        width: 46px; height: 46px; flex: 0 0 46px;
+        width: 42px; height: 42px; flex: 0 0 42px;
         display: flex; align-items: center; justify-content: center;
         border-radius: 13px; background: var(--brand-tint-bg);
         border: 1px solid var(--border); overflow: hidden;
     }
-    .rail-mark img { width: 34px; height: 34px; object-fit: contain; }
+    .rail-mark img { width: 31px; height: 31px; object-fit: contain; }
     .rail-titles { min-width: 0; flex: 1 1 auto; }
     .rail-t1 { font-size: 13.5px; font-weight: 800; letter-spacing: -.01em; color: var(--text); white-space: nowrap; }
     .rail-t2 { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); white-space: nowrap; margin-top: 2px; }
@@ -330,34 +332,60 @@
     .side-rail:not(.is-open) .rail-titles,
     .side-rail:not(.is-open) .rail-pin { display: none; }
 
-    /* قائمةُ النوافذ — تُمرَّر رأسيًّا: ٢٢ نافذةً أطولُ من أيّ شاشة */
+    /* =====================================================================
+       قائمةُ النوافذ — تُمرَّر رأسيًّا
+       ---------------------------------------------------------------------
+       ⚠️⚠️⚠️ عطلٌ وقعتُ فيه ورأيتُه بعيني في المتصفّح قبل أن أسلّم العمل:
+       كنتُ أخفيتُ شريطَ التمرير بالكامل (scrollbar-width: none) لأنّ شريطًا
+       رماديًّا داخل ٧٦px يُفسد الشكل. وبقياس الصفحة الحقيقية تبيّن أنّ **خمسَ
+       نوافذ** (Requests و Applications و Warnings و Audit Log و Settings)
+       كانت أسفلَ الحدّ بـ٣٠٠px **بلا أيّ علامةٍ تدلّ على وجودها**. أي أنّ
+       المالك كان سيفتح الشريط فيرى قائمةً تنتهي عند «Daily Target» ويظنّ أنّ
+       الإعداداتَ وسجلَّ التدقيق ضاعا. وهذا أسوأُ من الشريط الأفقيّ الذي شكا
+       منه — إخفاءٌ صامتٌ لا ازدحام.
+       فثلاثُ معالجاتٍ معًا:
+         (١) شريطُ تمريرٍ نحيفٌ **ظاهر** (4px وهادئ) بدل إخفائه.
+         (٢) تدرّجٌ باهتٌ أسفل القائمة يقول «تحت هذا شيءٌ آخر».
+         (٣) وإحكامُ الإيقاع الرأسيّ حتى تسع **كلُّ** الأيقونات في الحالة
+             المغلقة — وهي الحالة الأصلية — فلا تمريرَ إلا وهو مفتوح.
+       ⚠️ ومعها scrollIntoView على النافذة النشِطة في switchTab، فمن انتقل إلى
+       «Settings» من لوحة المفاتيح أو من رابطٍ يجدها أمام عينه لا خارج الحدّ.
+       ===================================================================== */
     .nav-tabs {
-        display: flex; flex-direction: column; gap: 3px;
-        padding: 12px 12px 16px; margin: 0;
+        display: flex; flex-direction: column; gap: 2px;
+        padding: 8px 10px 10px; margin: 0;
         flex: 1 1 auto; min-height: 0;
         overflow-y: auto; overflow-x: hidden;
         background: transparent; border: none; border-radius: 0; box-shadow: none;
-        /* شريطُ التمرير مخفيٌّ بصريًّا ويعمل — شريطٌ رماديٌّ داخل ٧٦px يُفسد الشكل */
-        scrollbar-width: none; -ms-overflow-style: none;
+        scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+        scroll-behavior: smooth;
     }
-    .nav-tabs::-webkit-scrollbar { width: 0; height: 0; }
+    .nav-tabs::-webkit-scrollbar { width: 4px; }
+    .nav-tabs::-webkit-scrollbar-track { background: transparent; }
+    .nav-tabs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .nav-tabs:hover::-webkit-scrollbar-thumb { background: var(--text-faint); }
+    /* التدرّجُ الباهت: علامةٌ أنّ تحت الحدّ شيئًا آخر. ولا يمنع الضغط. */
+    .rail-fade {
+        flex: 0 0 auto; height: 18px; margin-top: -18px; pointer-events: none;
+        background: linear-gradient(to bottom, transparent, var(--surface));
+    }
 
     /* عناوينُ المجموعات: تصير خطًّا رقيقًا وهو مغلق، ونصًّا وهو مفتوح */
     .rail-group {
         font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
-        color: var(--text-faint); padding: 14px 12px 6px; white-space: nowrap;
+        color: var(--text-faint); padding: 10px 12px 4px; line-height: 1.3; white-space: nowrap;
         opacity: 0; transition: opacity .18s var(--rail-ease);
     }
     .side-rail.is-open .rail-group { opacity: 1; }
     .side-rail:not(.is-open) .rail-group {
-        height: 1px; padding: 0; margin: 9px 14px; overflow: hidden;
+        height: 1px; padding: 0; margin: 7px 14px; overflow: hidden;
         background: var(--border); opacity: 1; color: transparent;
     }
     .rail-group:first-child { padding-top: 2px; }
     .side-rail:not(.is-open) .rail-group:first-child { display: none; }
 
     .nav-tab-btn {
-        padding: 11px 13px; font-size: 13.5px; font-weight: 600;
+        padding: 8px 13px; font-size: 13.5px; font-weight: 600;
         border-radius: 11px; border: none; cursor: pointer;
         background: transparent; color: var(--text-dim);
         transition: background .15s ease, color .15s ease;
@@ -400,7 +428,7 @@
 
     /* تذييلُ الشريط: حقوقُ الفريق — انظر التذييل الكبير أسفل الصفحة */
     .rail-foot {
-        flex: 0 0 auto; padding: 12px 14px 16px; border-top: 1px solid var(--border-soft);
+        flex: 0 0 auto; padding: 9px 14px 12px; border-top: 1px solid var(--border-soft);
         font-size: 10.5px; font-weight: 700; line-height: 1.6; color: var(--text-faint);
         white-space: nowrap; overflow: hidden;
     }
@@ -823,6 +851,10 @@
             <button class="nav-tab-btn" data-tab="tab-audit" data-biz="both" data-group="system"><span class="ic-slot" data-icon="listChecks"></span><span class="tab-label">Audit Log</span></button>
             <button class="nav-tab-btn" data-tab="tab-settings" data-biz="both" data-group="system"><span class="ic-slot" data-icon="settings"></span><span class="tab-label">Settings</span></button>
         </div>
+        <!-- ⚠️⚠️ التدرّجُ الباهت أسفل القائمة: علامةٌ أنّ تحت الحدّ نوافذَ أخرى.
+             ورأيتُ بعيني في المتصفّح أنّ خمسَ نوافذ كانت تختفي أسفلَه بلا أيّ
+             علامة، فيظنّ القارئُ أنها ضاعت. -->
+        <div class="rail-fade" aria-hidden="true"></div>
 
         <div class="rail-foot">
             <span class="rf-short">&copy;</span>
@@ -878,7 +910,10 @@
         </div>
         <div class="card">
             <h3><span data-icon="home"></span> Welcome to Al Sheikha Group Management System</h3>
-            <p style="color: var(--text-dim); line-height: 1.7; margin: 0;">Manage your multi-branch enterprise smoothly. Use the navigation bar above to oversee employee records, track precise attendance, process automated payroll, and review requests instantly.</p>
+            <!-- ⚠️⚠️ كان يقول «الشريط أعلاه» (navigation bar above)، وهو الآن على
+                 اليسار. ونصٌّ يُرشد إلى مكانٍ خاطئ أسوأُ من غياب الإرشاد: يبحث
+                 القارئُ فوقَ الشاشة فلا يجد شيئًا فيظنّ البرنامجَ معطوبًا. -->
+            <p style="color: var(--text-dim); line-height: 1.7; margin: 0;">Manage your multi-branch enterprise smoothly. Use the sidebar on the left &mdash; move the mouse onto it and the names appear &mdash; to oversee employee records, track precise attendance, process automated payroll, and review requests instantly.</p>
         </div>
 
         <!-- ==================================================================
@@ -5179,7 +5214,14 @@
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.nav-tab-btn').forEach(el => el.classList.remove('active'));
         document.getElementById(tabId).classList.add('active');
-        document.querySelector(`.nav-tab-btn[data-tab="${tabId}"]`)?.classList.add('active');
+        const navBtn = document.querySelector(`.nav-tab-btn[data-tab="${tabId}"]`);
+        navBtn?.classList.add('active');
+        // ⚠️⚠️ القائمةُ تُمرَّر (٢٢ نافذةً أطولُ من شاشةٍ ارتفاعُها ٩٠٠px)، فمن
+        // انتقل إلى «Settings» من لوحة المفاتيح أو من رابطٍ أو من تنبيهٍ يجد
+        // الزرَّ النشِط **خارج** الحدّ المرئيّ ولا يرى أين هو. فيُجَرّ إلى الرؤية.
+        // ⚠️ محصورٌ داخل القائمة (block: 'nearest') فلا يقفز بالصفحة كلِّها.
+        try { navBtn?.scrollIntoView({ block: 'nearest' }); }
+        catch (e) { /* متصفّحٌ قديم لا يعرف الخيارات — لا أثر */ }
         if (tabId === 'tab-employees') filterEmployeeDirectory();
         // ⭐ الحالة الإدارية تُرسم عند فتحها: تقرأ allEmployees الموجودة أصلًا في
         // الذاكرة، فلا قراءةَ جديدة من القاعدة ولا انتظار.
