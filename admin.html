@@ -654,6 +654,17 @@
                         <option value="firm">Firm &mdash; after a problem was seen</option>
                     </select>
                 </div>
+                <!-- ⚠️⚠️ خيارُ الطول ليس تجميلًا: القائمة الكاملة نحو ٤٤٠٠ حرفٍ بعد
+                     ترميز الرابط، وبعض الهواتف تقصّ رابطًا بهذا الطول فيضيع **آخرُ**
+                     الرسالة — وآخرُها هو الجملة التي تقول إنّ من يُبلّغ عن مشكلة لا
+                     يُلام. فالقصيرة تُرسل بالزرّ، والكاملة تُنسخ وتُلصق (واللصق بلا حدّ). -->
+                <div style="width: 250px;">
+                    <label for="inspLen">Length</label>
+                    <select id="inspLen" onchange="renderInspectionMessage()">
+                        <option value="short">Short &mdash; fits a WhatsApp link</option>
+                        <option value="full">Full checklist &mdash; copy &amp; paste</option>
+                    </select>
+                </div>
                 <a id="inspWaLink" class="btn-accent" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;"><span data-icon="plane"></span> Send on WhatsApp</a>
                 <button class="btn-ghost" onclick="copyInspectionMessage()"><span data-icon="fileText"></span> Copy the text</button>
             </div>
@@ -8090,55 +8101,116 @@
         sel.dataset.built = '1';
     }
 
-    function inspectionMessageText(branch, tone) {
+    // ⚠️⚠️ العلامات الحمراء وكلمة URGENT — بأمر المالك: «اضف علامات حمراء وكلمة
+    // ايرجنت لكي تظهر اهمية الميساج».
+    // ⚠️ وتُكتب رموزًا (emoji) لا وسومَ HTML: الرسالة تذهب إلى واتساب، وهو يعرض
+    // الرمز ملوَّنًا ولا يفهم وسمًا. و🔴 و❗ و🚨 كلُّها تظهر حمراء في كل الهواتف.
+    // ⚠️⚠️⚠️ ولها ثمنٌ في الطول: الرمز الواحد ٤ بايت، أي **١٢ حرفًا** بعد ترميز
+    // الرابط (%F0%9F%94%B4). فإضافتُها تُقرّب الرسالة من حدّ القصّ، ولذلك يُقاس
+    // الطول بعد الترميز ويُدَلّ على النسخ واللصق عند تجاوزه.
+    const INSP_RED = '\u{1F534}';        // 🔴 دائرة حمراء
+    const INSP_BANG = '\u2757';          // ❗ علامة تعجّب حمراء
+    const INSP_SIREN = '\u{1F6A8}';      // 🚨 ضوء إنذار أحمر
+
+    function inspectionMessageText(branch, tone, len) {
         const firm = tone === 'firm';
+        const short = len === 'short';
+        const R = INSP_RED, B = INSP_BANG, S = INSP_SIREN;
         const L = [];
-        L.push('*MUNICIPALITY & HEALTH INSPECTION — READINESS NOTICE*');
+        // ⚠️ صفٌّ من الحمراء فوق العنوان وتحته: في قائمة محادثات واتساب يُرى أوّلُ
+        // سطرٍ وحده، فوجودُ الأحمر وكلمةِ URGENT فيه هو ما يجعلها تُفتح أوّلًا.
+        // ⚠️ صفُّ الحمراء وكلمة URGENT في **أول سطر**: في قائمة محادثات واتساب
+        // يُرى أوّلُ سطرٍ وحده، فهو ما يجعل الرسالة تُفتح أوّلًا.
+        L.push(`${R} *URGENT* ${R}`);
+        L.push(`${B} *MUNICIPALITY & HEALTH INSPECTION* ${B}`);
         L.push('Al Sheikha Group');
         L.push('');
-        L.push(branch ? `To the manager and all staff of *${branch}*`
+        L.push(branch ? `To *${branch}* — manager and all staff`
                       : 'To every branch manager and all restaurant staff');
         L.push('');
         // ⚠️ الجملةُ الأولى هي كلامُ المالك نفسه: «في أي لحظة».
-        L.push(`This is a *routine, periodic reminder* &mdash; not a reaction to any one report.`);
+        // ⚠️ النسخة القصيرة تحمل الفكرة كاملةً بأقصر عبارة؛ والكاملة تشرح.
+        if (short) {
+            L.push(`A *periodic reminder*, marked urgent because the risk is real.`);
+            L.push('');
+            L.push(`${B} A *Municipality* or *Health* inspector can arrive *at any moment, any day, with no `
+                + `warning*. What they see goes in their report.`);
+            L.push('');
+            L.push(`${B} Follow the protocols *every day*, not in ten minutes at the door.`);
+        } else {
+            L.push(`This is a *routine, periodic reminder* — not a reaction to any one report. `
+                + `It is marked urgent because the risk is real and immediate.`);
+            L.push('');
+            L.push(`${B} An inspector from the *Municipality* or from *Health* can arrive *at any moment, on any day, `
+                + `with no warning at all*. They do not telephone first. Whatever the branch looks like when they `
+                + `walk in is what goes into their report.`);
+            L.push('');
+            L.push(`${B} So the protocols are to be followed *every single day*, as normal work — not tidied up in `
+                + `ten minutes when somebody is already at the door.`);
+            L.push('');
+            L.push(`${R} *WHAT MUST BE RIGHT AT ALL TIMES* ${R}`);
+        }
         L.push('');
-        L.push(`An inspector from the *Municipality* or from *Health* can arrive *at any moment, on any day, `
-            + `with no warning at all*. They do not telephone first. Whatever the branch looks like when they `
-            + `walk in is what goes into their report.`);
-        L.push('');
-        L.push(`So the protocols are to be followed *every single day*, as normal work &mdash; not tidied up in ten `
-            + `minutes when somebody is already at the door.`);
-        L.push('');
-        L.push('*WHAT MUST BE RIGHT AT ALL TIMES*');
-        L.push('');
-        L.push('*1. Personal hygiene*');
+        // ⚠️⚠️ النسخة القصيرة: العناوينُ الخمسة وحدها. والسببُ قياسٌ لا ذوق —
+        // القائمة الكاملة نحو ٤٤٠٠ حرفٍ بعد الترميز، وبعض الهواتف تقصّ رابطًا
+        // بهذا الطول فيضيع آخرُ الرسالة. فالقصيرة تحمل الفكرة كاملةً وتُشير إلى
+        // القائمة التفصيلية، ولا تُرسل نصفَ جملةٍ مقطوعة.
+        if (short) {
+            // ⚠️⚠️ مقيسةٌ لتدخل الحدّ الآمن (١٨٠٠ بعد الترميز) **فعلًا**، لا
+            // لتُسمّى قصيرة. والرمز الواحد يُكلّف ١٢ حرفًا مُرمَّزًا، فعددُها
+            // محسوبٌ هنا لا مرشوشٌ بسخاء.
+            L.push(`${R} *1. Hygiene*: uniform clean, hair covered, hands washed. No smoking or eating in food `
+                + `areas. Ill or cut hand? Tell your manager.`);
+            L.push(`${R} *2. Health cards*: valid, and in the branch when asked for.`);
+            L.push(`${R} *3. Storage*: fridge temps logged, raw away from cooked, all covered and dated. `
+                + `Past its date is thrown out.`);
+            L.push(`${R} *4. Cleaning*: schedule signed, equipment cleaned between uses, chemicals never near `
+                + `food or in a water bottle.`);
+            L.push(`${R} *5. Building*: no pests, hand-wash sinks working, toilets clean, fire exits clear.`);
+            L.push('');
+            L.push(`${B} *Full checklist*: ask your manager, read it with the team today.`);
+            L.push('');
+            if (firm) {
+                L.push(`${S} *NOT ONLY A REMINDER*: things seen would not pass. Fix them *today*.`);
+            } else {
+                L.push(`${R} *MANAGERS*: walk the branch before every shift.`);
+            }
+            L.push('');
+            L.push(`${S} *A failed inspection can close a branch.*`);
+            L.push('');
+            L.push('Missing or broken? Tell the manager. Nobody is blamed for reporting a problem.');
+            L.push('');
+            L.push('Thank you.');
+            return L.join('\n');
+        }
+        L.push(`${R} *1. Personal hygiene*`);
         L.push('• Clean uniform, hair covered, nails short and clean.');
         L.push('• Wash hands with soap: before starting, after the toilet, after handling raw food, after waste, '
             + 'after your phone, and between tasks.');
         L.push('• No smoking, no eating and no drinking in any food area.');
-        L.push('• If you are ill &mdash; fever, cough, stomach upset, or a cut on your hand &mdash; tell your manager '
+        L.push('• If you are ill — fever, cough, stomach upset, or a cut on your hand — tell your manager '
             + 'before you start. Do not handle food.');
         L.push('');
-        L.push('*2. Health cards*');
+        L.push(`${R} *2. Health cards*`);
         L.push('• Every member of staff must hold a *valid* health card, and it must be available in the branch '
             + 'when it is asked for.');
         L.push('• If yours has expired or is close to expiring, tell the secretary *today*. An expired card found '
             + 'during an inspection is on the branch, not on the office.');
         L.push('');
-        L.push('*3. Temperatures and storage*');
+        L.push(`${R} *3. Temperatures and storage*`);
         L.push('• Fridges and freezers working and their temperature checked and written down.');
         L.push('• Raw and cooked kept apart, always. Nothing uncovered.');
-        L.push('• Everything labelled with its date. Anything past its date is thrown out &mdash; not "used quickly".');
+        L.push('• Everything labelled with its date. Anything past its date is thrown out — not "used quickly".');
         L.push('• Nothing on the floor. Nothing stored in an opened tin.');
         L.push('');
-        L.push('*4. Cleaning*');
+        L.push(`${R} *4. Cleaning*`);
         L.push('• Follow the cleaning schedule and sign it as you go.');
         L.push('• Surfaces, boards, knives and equipment cleaned between uses.');
-        L.push('• Cleaning chemicals stored *away from food*, in their own labelled containers &mdash; never in a '
+        L.push('• Cleaning chemicals stored *away from food*, in their own labelled containers — never in a '
             + 'water bottle or a food container.');
         L.push('• Waste bins covered and emptied, and the waste area kept clean.');
         L.push('');
-        L.push('*5. The building*');
+        L.push(`${R} *5. The building*`);
         L.push('• No sign of any pest. If you see one, report it the same day.');
         L.push('• Hand-wash sinks with soap and paper, working, and never blocked or used for anything else.');
         L.push('• Toilets clean and stocked.');
@@ -8147,7 +8219,7 @@
         if (firm) {
             // ⚠️⚠️ نغمةُ «بعد مشكلة» أشدّ، لكنها لا تُهدّد بعقوبةٍ ماليّة: العقوبات
             // سياسةُ إدارةٍ لا يجوز أن أختلقها في رسالةٍ رسميّة.
-            L.push('*THIS TIME IT IS NOT ONLY A REMINDER*');
+            L.push(`${S}${S}${S} *THIS TIME IT IS NOT ONLY A REMINDER* ${S}${S}${S}`);
             L.push('Things have been seen that would not pass an inspection. The manager of the branch is '
                 + 'responsible for putting them right *today*, and for checking them himself before every shift '
                 + 'from now on.');
@@ -8155,11 +8227,11 @@
             L.push('Anyone who is asked to correct something and does not do it will be dealt with under the '
                 + 'company\'s normal disciplinary procedure.');
         } else {
-            L.push('*MANAGERS*');
+            L.push(`${R} *MANAGERS*`);
             L.push('Walk the branch yourself before every shift and fix what you find. Do not wait to be told.');
         }
         L.push('');
-        L.push(`A failed inspection can close a branch. That costs every one of us &mdash; not the office alone.`);
+        L.push(`${S} *A failed inspection can close a branch.* That costs every one of us — not the office alone.`);
         L.push('');
         L.push('If anything on this list is missing, broken, or you do not have what you need to do it, '
             + 'tell your manager immediately. Nobody is blamed for reporting a problem.');
@@ -8179,7 +8251,10 @@
         const link = document.getElementById('inspWaLink');
         const st = document.getElementById('inspStatus');
         if (!prev || !link) return;
-        const text = inspectionMessageText(sel ? sel.value : '', tone ? tone.value : 'routine');
+        const lenSel = document.getElementById('inspLen');
+        const len = lenSel ? lenSel.value : 'short';
+        const text = inspectionMessageText(sel ? sel.value : '', tone ? tone.value : 'routine', len);
+        // ⚠️ المعروضُ هو المُرسَلُ نفسُه: معاينةٌ تختلف عمّا يُرسَل معاينةٌ تكذب.
         prev.textContent = text;
 
         const encoded = encodeURIComponent(text);
@@ -8191,16 +8266,20 @@
         else { link.target = '_blank'; link.rel = 'noopener'; }
 
         if (st) {
-            // ⚠️⚠️ حارسُ طولٍ يُحذّر ولا يمنع. والرسالة طويلةٌ بطبيعتها (قائمةُ
-            // بنود)، فإن تجاوزت الحدَّ الآمن يُدَلّ على زرّ النسخ بدل قصٍّ صامت
-            // يأكل آخرَ الرسالة.
+            // ⚠️⚠️⚠️ حارسُ طولٍ يُحذّر ولا يمنع، ويقول **الرقم** لا «طويلة».
+            // والقائمة الكاملة نحو ٤٤٠٠ حرفٍ بعد الترميز — أي أكثر من ضعفَي الحدّ
+            // الآمن. فلا يجوز أن يُقال «جاهزة» ثم يُقصّ آخرُها بلا أن يعلم: وآخرُها
+            // هو جملةُ «لا يُلام من أبلغ عن مشكلة». فيُدَلّ على النسخ صريحًا.
             const tooLong = encoded.length > WA_URL_SAFE_LIMIT;
             st.innerHTML = tooLong
-                ? `<b style="color: var(--warning);">&#9888; This message is long (${encoded.length} encoded characters).</b> `
-                  + `Some phones cut a very long WhatsApp link. If the end is missing, press `
-                  + `<b>Copy the text</b> and paste it into WhatsApp instead &mdash; pasting has no limit.`
-                : `Ready. WhatsApp will ask you which chat or group to send it to &mdash; there is no number in the link, `
-                  + `because a link with a number cannot open a group.`;
+                ? `<b style="color: var(--danger);">&#9888; Too long for a WhatsApp link &mdash; `
+                  + `${encoded.length} characters after encoding, and the safe limit is ${WA_URL_SAFE_LIMIT}.</b>`
+                  + `<br>Press <b>Copy the text</b> and paste it into the branch group instead &mdash; `
+                  + `<b>pasting has no limit</b>. Or switch <b>Length</b> to <b>Short</b>, which carries the same `
+                  + `red marks, the same URGENT and the five headings, and is measured to stay under the limit.`
+                : `<b style="color: var(--success);">Ready &mdash; ${encoded.length} of ${WA_URL_SAFE_LIMIT} characters, `
+                  + `it fits.</b><br>WhatsApp will ask you which chat or group to send it to: `
+                  + `there is no number in the link, because a link with a number can never open a group.`;
             st.style.color = '';
         }
     };
