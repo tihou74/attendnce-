@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=139">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=140">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -281,10 +281,34 @@
        التحديث. والمسافةُ هنا حرسٌ بمقدار عرض إصبع. */
     .hdr-sep { width: 1px; align-self: stretch; min-height: 26px; background: var(--border); margin: 0 2px; }
 
+    /* =====================================================================
+       ⚠️⚠️⚠️ الهاتف — عطلٌ حقيقيٌّ قِستُه ورأيتُه في لقطةٍ من المتصفّح
+       ---------------------------------------------------------------------
+       على شاشةِ ٣٩٠px كانت الترويسةُ تلتفّ **أربعةَ أسطر** وتأكل ٣٢٣px من
+       ٨٤٤ — أي ٣٨٪ من الشاشة قبل أن يظهر رقمٌ واحد. وأسوأُ منه: قطعةُ الأوامر
+       أعرضُ من البطاقة فكان زرُّ «Refresh» **مقطوعًا** عند حافّتها (القطعةُ
+       overflow:hidden فتقصّ ما زاد) — زرٌّ موجودٌ لا يُرى ولا يُضغط.
+       فثلاثةُ إجراءات:
+         (١) أسماءُ «بحث» و«تحديث» تُخفى فتصير القطعةُ خمسَ أيقوناتٍ تسع بيسر.
+             وتلميحُها وaria-label باقيان، فلا يُفقد معناها لمن يقرأ بالصوت.
+         (٢) زرُّ المزامنة يُخفى على الهاتف وحده. وهذا قرارٌ أُصرّح به: هو
+             «للمرّة الأولى وحدها» بنصّ تلميحه، وأخطرُ زرٍّ في اللوحة (كرّر
+             ثلاثةَ مدراء)، ولا أحدَ يُهيّئ نظامًا لأوّل مرّةٍ من هاتفه. وإخفاؤه
+             هناك يُقلّل الازدحامَ ويمنع لمسةً بالخطأ في آنٍ واحد. وإن أراده
+             المالك على الهاتف فسطرٌ واحدٌ يُعيده.
+         (٣) شارةُ الدور أصغرُ قليلًا فتقف بجانب رقاقة النشاط لا تحتها.
+       ⚠️ و«خروج» يبقى باسمه كاملًا: أمرٌ لا رجعةَ فيه لا يُحوَّل إلى أيقونةٍ
+       تُخمَّن — وهو الوحيدُ الذي يستحقّ عرضَه هنا.
+       ===================================================================== */
     @media (max-width: 680px) {
         .header-btns { gap: 8px; }
         .hdr-actions { border-radius: 10px; }
-        .hdr-actions > button, .hdr-actions > .hdr-bell > button { padding: 0 11px; }
+        .hdr-actions > button .hdr-lbl { display: none; }
+        .hdr-actions > button, .hdr-actions > .hdr-bell > button { padding: 0; width: 44px; }
+        .hdr-actions .btn-icon { width: 44px; flex: 0 0 44px; }
+        #btnSyncDb { display: none; }
+        .role-chip { font-size: 10.5px; padding: 0 11px 0 9px; }
+        .biz-chip { font-size: 11.5px; padding: 0 11px; }
     }
 
     /* ⭐⭐ شريطُ الشعارات: كان بطاقةً كبيرةً شبهَ فارغةٍ تأكل شريحةً من الشاشة
@@ -979,7 +1003,9 @@
                  «بحث» و«تحديث» لأنهما الأكثرُ استعمالًا، والثلاثةُ الباقية
                  أيقوناتٌ بتلميحٍ — وتلميحُها مكتوبٌ وaria-label لمن يقرأ بالصوت. -->
             <span class="hdr-actions">
-                <button onclick="openGlobalSearch()" title="Search everything (Ctrl+K)"><span data-icon="search"></span> Search</button>
+                <!-- ⚠️ الاسمُ في عنصرٍ خاصٍّ به ليُمكن إخفاؤه على الهاتف — والنصُّ
+                     العاريُ لا يُخفى بالـCSS. نفسُ سبب tab-label في الشريط الجانبيّ. -->
+                <button onclick="openGlobalSearch()" title="Search everything (Ctrl+K)"><span data-icon="search"></span> <span class="hdr-lbl">Search</span></button>
                 <span class="hdr-bell">
                     <button class="btn-icon" id="btnNotifBell" onclick="toggleNotifDropdown()"
                             title="Notifications" aria-label="Notifications">
@@ -998,7 +1024,7 @@
                 <button class="btn-icon" id="btnSyncDb" onclick="syncAllSalariesList()"
                         title="First-time setup only — you do not need this"
                         aria-label="Sync salaries (first-time setup only)"><span id="icSync"></span></button>
-                <button onclick="initDashboard()" title="Reload everything from the database"><span id="icRefresh"></span> Refresh</button>
+                <button onclick="initDashboard()" title="Reload everything from the database"><span id="icRefresh"></span> <span class="hdr-lbl">Refresh</span></button>
             </span>
 
             <!-- ============ (٣) الخروج: مفصولٌ ============
