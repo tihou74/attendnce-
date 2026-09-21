@@ -39,23 +39,47 @@
            الفاتح: هو هنا --accent-soft (خلفية مخفَّفة) و--accent يحمل درجته
            الغامقة #65563A التي تمرّ 7.13:1. أما --primary فكحلي، لأن
            .btn-primary و.nav-tab-btn.active يكتبان نصًّا أبيض عليه. */
-        --bg: var(--neutral-50);
-        --bg-soft: var(--neutral-100);
-        --surface: var(--neutral-0);
-        --surface-2: var(--neutral-100);
-        --surface-hover: var(--neutral-200);
-        --border: var(--neutral-200);
-        --border-soft: var(--neutral-100);
+        /* ⭐⭐⭐⭐⭐ الكريميُّ والبيجُ والعنابيُّ — بطلب المالك:
+           «أضف شوي ألوان كريمي مع بيج وعنابي، يعطي أكثر جمالًا ورونقًا».
+           القيمُ والنسبُ كلُّها في brand/design-tokens.css، محسوبةً بمعادلة
+           WCAG لا مُقدَّرةً بالنظر. والأرقامُ **تحسّنت** عمّا كانت: الحدُّ صار
+           1.67:1 بعد 1.23:1، والنصُّ الخفيف 5.12:1 بعد 4.34:1 الراسبة. */
+        --bg: var(--cream-100);
+        --bg-soft: var(--cream-200);
+        --surface: var(--cream-50);
+        --surface-2: var(--cream-200);
+        --surface-hover: var(--beige-300);
+        --border: var(--beige-400);
+        --border-soft: var(--beige-300);
         --text: var(--ink-800);
-        --text-dim: var(--ink-500);
-        /* كان #a89b7f وتباينه 2.4:1 — نصٌّ راسب. صار 4.76:1 */
-        --text-faint: var(--ink-400);
+        /* ⚠️ نصوصٌ دافئة: الرماديُّ الأزرقُ على الكريمي يبدو باهتًا وباردًا،
+           كقميصٍ رماديٍّ على ورقٍ عاجيّ. والدرجتان أعلى تباينًا من القديمتين. */
+        --text-dim: var(--warm-650);
+        /* كان #a89b7f وتباينه 2.4:1 — نصٌّ راسب. ثم ink-400 وهو 4.34:1 على
+           السطح الثاني أي راسبٌ كذلك. والآن 5.12:1. */
+        --text-faint: var(--warm-450);
 
+        /* ⚠️⚠️⚠️ الأزرارُ تبقى كحلية، ولا تصير عنابية. الفرقُ بين العنابي
+           #73263A وأحمرِ الخطر #B91C1C هو 1.57:1 فقط، فزرُّ «حفظ» عنابيٌّ
+           بجانب زرِّ «حذف» أحمرَ يصيران أحمرَين متشابهَين على شاشةِ هاتف —
+           وثمنُ الخطأ حذفُ مستند. فالعنابيُّ للحضور البصريّ لا للأوامر. */
         --primary: var(--ink-800);
         --primary-dark: var(--ink-700);
         --primary-soft: color-mix(in srgb, var(--ink-800) 10%, transparent);
         --accent: var(--gold-800);
         --accent-soft: color-mix(in srgb, var(--gold-600) 16%, transparent);
+        /* ⭐ العنابيّ: النافذةُ النشِطة، ورؤوسُ الجداول، وخطُّ الترويسة، والتذييل */
+        --wine: var(--wine-600);
+        --wine-strong: var(--wine-700);
+        --wine-soft: var(--wine-tint-bg);
+        --wine-soft-border: var(--wine-tint-border);
+        /* النافذةُ النشِطة في الشريط الجانبيّ — لها توكنٌ خاصٌّ لأنّ الوضع
+           الليليَّ يحتاج درجةً أفتح لتتميّز عن السطح الكحليّ (3.49:1). */
+        --nav-active-bg: var(--wine-600);
+        --nav-active-fg: var(--neutral-0);
+        /* ⚠️ علامةُ الحافّة ذهبٌ فاتحٌ لا ذهبُ الهوية: ذهبُ الهوية #A89060 على
+           العنابي 3.30:1 وهو راسبٌ كعلامةٍ تُرى، وgold-300 يعطي 5.51:1. */
+        --nav-active-mark: var(--gold-300);
         --success: var(--success-600);
         --success-soft: color-mix(in srgb, var(--success-600) 13%, transparent);
         --warning: var(--warning-600);
@@ -85,8 +109,10 @@
     .ic-sm { width: 14px; height: 14px; }
 
     /* Login Overlay */
-    #loginOverlay { position: fixed; inset: 0; background: radial-gradient(circle at 30% 20%, var(--neutral-0) 0%, var(--brand-tint-bg) 70%); display: flex; justify-content: center; align-items: center; z-index: 9999; }
-    .login-card { background: color-mix(in srgb, var(--neutral-0) 95%, transparent); backdrop-filter: blur(14px); padding: 44px 36px; border-radius: 20px; box-shadow: var(--shadow); width: 100%; max-width: 400px; text-align: center; border: 1px solid var(--border); }
+    /* ⭐ شاشةُ الدخول كريميةٌ كذلك — أوّلُ ما يُرى، فلا تبقى بيضاءَ باردةً
+       والباقي دافئ. */
+    #loginOverlay { position: fixed; inset: 0; background: radial-gradient(circle at 30% 20%, var(--cream-50) 0%, var(--brand-tint-bg) 70%); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+    .login-card { background: color-mix(in srgb, var(--cream-50) 95%, transparent); backdrop-filter: blur(14px); padding: 44px 36px; border-radius: 20px; box-shadow: var(--shadow); width: 100%; max-width: 400px; text-align: center; border: 1px solid var(--border); border-top: 3px solid var(--wine); }
     .login-card .login-icon { width: 52px; height: 52px; border-radius: 16px; background: var(--primary-soft); display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; color: var(--primary); }
     .login-card .login-icon svg { width: 26px; height: 26px; }
     .login-card .login-logo { max-width: 200px; height: auto; margin: 0 auto 18px; display: block; }
@@ -106,7 +132,10 @@
     .role-banner button { background: var(--warning); color: var(--neutral-0); padding: 7px 14px; font-size: 12px; border-radius: 8px; margin-left: auto; }
 
     /* Header */
-    .header { background: linear-gradient(135deg, var(--neutral-0) 0%, var(--brand-tint-bg) 100%); color: var(--text); padding: 26px 32px; border-radius: var(--radius); margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+    /* ⭐⭐ الترويسة: كريميٌّ يتدرّج إلى لمسةِ الذهب، وخطٌّ عنابيٌّ رقيقٌ أسفلها.
+       ⚠️ الخطُّ السفليُّ 2px لا 4px: خطٌّ سميكٌ ملوّنٌ عبر عرض الشاشة يسحب العين
+       إليه قبل الاسم، والترتيبُ البصريُّ يجب أن يبدأ بالاسم. */
+    .header { background: linear-gradient(135deg, var(--cream-50) 0%, var(--brand-tint-bg) 100%); color: var(--text); padding: 26px 32px; border-radius: var(--radius); margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); border-bottom: 2px solid var(--wine); }
     .header .htitle { display: flex; align-items: center; gap: 14px; }
     .header .htitle .logo-badge { width: 42px; height: 42px; border-radius: 12px; background: var(--primary-soft); color: var(--primary); display: flex; align-items: center; justify-content: center; }
     .header .htitle .logo-badge svg { width: 22px; height: 22px; }
@@ -163,11 +192,26 @@
         --primary-soft: color-mix(in srgb, var(--gold-600) 20%, transparent);
         --accent: var(--gold-400);
         --accent-soft: color-mix(in srgb, var(--gold-600) 22%, transparent);
+        /* ⚠️⚠️ الوضعُ الليليُّ لا كريميَّ فيه — الكريميُّ سطحٌ فاتح، ووضعُ الليل
+           أسطحُه كحلية. فالعنابيُّ وحده يعبُر إلى الليل، ودرجةً **أفتح**:
+           wine-600 على سطحٍ كحليّ تمييزُه 2.22:1 فيبدو القرصُ مُلتصقًا
+           بالخلفية، وwine-400 يعطي 3.49:1 ويبقى الأبيضُ عليه 5.11:1. */
+        --wine: var(--wine-300);              /* عنابيٌّ نصًّا على الكحلي — 7.02:1 */
+        --wine-strong: var(--wine-400);
+        --wine-soft: color-mix(in srgb, var(--wine-400) 22%, transparent);
+        --wine-soft-border: color-mix(in srgb, var(--wine-400) 45%, transparent);
+        --nav-active-bg: var(--wine-400);
+        --nav-active-fg: var(--neutral-0);
+        --nav-active-mark: var(--gold-300);
     }
-    /* ⚠️ لازمٌ مع الذهب: الثلاثة أدناه تكتب نصًّا أبيض على --primary، والأبيض
-       على الذهب 3.08:1 أي راسب. النص يصبح كحليًّا فيمرّ 5.80:1. */
+    /* ⚠️ لازمٌ مع الذهب: الاثنان أدناه يكتبان نصًّا أبيض على --primary، والأبيض
+       على الذهب 3.08:1 أي راسب. النص يصبح كحليًّا فيمرّ 5.80:1.
+       ⚠️⚠️⚠️ و.nav-tab-btn.active **أُخرج من هذه القائمة** بقصد: خلفيتُه صارت
+       عنابيةً لا ذهبية، ونصٌّ كحليٌّ على العنابي الغامق لا يُقرأ إطلاقًا
+       (لونان غامقان). نصُّه أبيضٌ عبر --nav-active-fg ويمرّ 5.11:1 في الليل
+       و10.16:1 في النهار. وإبقاؤه هنا كان سيُعمي النافذةَ النشِطة في الوضع
+       الليليّ — وهو الفخُّ الوحيدُ الحقيقيّ في إضافة هذا اللون. */
     html.dark-mode .btn-primary,
-    html.dark-mode .nav-tab-btn.active,
     html.dark-mode .login-card button { color: var(--ink-900); }
     html.dark-mode .header { background: linear-gradient(135deg, var(--ink-800) 0%, var(--ink-700) 100%); }
     html.dark-mode #loginOverlay { background: radial-gradient(circle at 30% 20%, var(--ink-800) 0%, var(--ink-900) 70%); }
@@ -405,12 +449,16 @@
     .side-rail.is-open .tab-label { opacity: 1; transform: none; }
 
     .nav-tab-btn:hover { background: var(--surface-2); color: var(--text); }
-    .nav-tab-btn.active { background: var(--primary); color: white; }
+    /* ⭐⭐⭐ النافذةُ النشِطة عنابية — هذه هي لمسةُ اللون الأبرز في اللوحة.
+       أبيضٌ على العنابي 10.16:1 نهارًا و5.11:1 ليلًا. */
+    .nav-tab-btn.active { background: var(--nav-active-bg); color: var(--nav-active-fg); }
+    .nav-tab-btn.active:hover { background: var(--wine-strong); color: var(--nav-active-fg); }
     /* ⚠️ علامةٌ على حافّة الزرّ النشِط: وهو مغلقٌ لا يُقرأ اسمٌ، فاللونُ وحده هو
-       ما يقول «أنت هنا» — والعلامةُ تجعله واضحًا بلا أيّ نصّ. */
+       ما يقول «أنت هنا» — والعلامةُ تجعله واضحًا بلا أيّ نصّ.
+       ⚠️⚠️ وذهبٌ فاتحٌ على العنابي (5.51:1) لا ذهبُ الهوية (3.30:1 — راسب). */
     .nav-tab-btn.active::before {
-        content: ''; position: absolute; left: -12px; top: 50%; transform: translateY(-50%);
-        width: 3px; height: 22px; border-radius: 0 3px 3px 0; background: var(--accent);
+        content: ''; position: absolute; left: -10px; top: 50%; transform: translateY(-50%);
+        width: 3px; height: 20px; border-radius: 0 3px 3px 0; background: var(--nav-active-mark);
     }
 
     .notification-badge { background-color: var(--danger); color: white; padding: 1px 7px; border-radius: 20px; font-size: 10.5px; font-weight: 700; position: absolute; top: -6px; right: -6px; display: none; border: 2px solid var(--surface); }
@@ -497,14 +545,16 @@
        السطر العربي حتى يُقرأ من اليمين في صفحةٍ اتجاهُها من اليسار. */
     .app-foot {
         margin: 34px 0 10px; padding: 22px 26px 26px;
-        border-top: 1px solid var(--border);
+        border-top: 2px solid var(--wine);
         display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
         gap: 14px;
     }
     .af-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .af-mark { width: 34px; height: 34px; flex: 0 0 34px; object-fit: contain; opacity: .9; }
     .af-lines { min-width: 0; }
-    .af-ar { font-size: 12.5px; font-weight: 700; color: var(--text-dim); line-height: 1.9; }
+    /* ⚠️ العنابي نصًّا على الكريمي 9.18:1 — فاسمُ الفريق يُقرأ بلونِ الهوية
+       بلا أيّ تنازلٍ عن الوضوح. */
+    .af-ar { font-size: 12.5px; font-weight: 700; color: var(--wine); line-height: 1.9; }
     .af-en { font-size: 11.5px; font-weight: 600; color: var(--text-faint); line-height: 1.8; letter-spacing: .01em; }
     .af-rule { font-size: 11px; font-weight: 700; color: var(--text-faint); letter-spacing: .04em; }
     @media (max-width: 680px) {
@@ -519,7 +569,10 @@
     /* Cards */
     .card { background: var(--surface); padding: 28px; border-radius: var(--radius); box-shadow: var(--shadow-sm); margin-bottom: 22px; border: 1px solid var(--border); }
     .card h3 { margin: 0 0 20px; color: var(--text); font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
-    .card h3 svg { color: var(--primary); }
+    /* ⭐ أيقونةُ عنوان البطاقة عنابية — لمسةٌ صغيرةٌ تتكرّر في كلّ بطاقةٍ فتُوحّد
+       الصفحة. ⚠️ والنصُّ يبقى كحليًّا: عنوانٌ ملوّنٌ في كلّ بطاقةٍ يُلغي أثرَ
+       اللون، ولمسةٌ في كلّ مكانٍ ليست لمسة. */
+    .card h3 svg { color: var(--wine); }
     .card .card-sub { color: var(--text-dim); font-size: 13px; margin: -12px 0 20px; line-height: 1.6; }
 
     .controls { display: flex; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; align-items: flex-end; }
@@ -538,6 +591,16 @@
     .table-container { width: 100%; overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-top: 14px; }
     table { width: 100%; border-collapse: collapse; background: var(--surface); text-align: left; }
     th, td { padding: 14px 18px; font-size: 13.5px; border-bottom: 1px solid var(--border-soft); }
+    /* ⭐⭐ رأسُ الجدول: بيجٌ خفيفٌ ونصٌّ عنابيّ — يفصل الترويسةَ من الأرقام بلمحة.
+       ⚠️ العنابي #73263A على البيج #F1E9DA يعطي 8.39:1، وهو نصٌّ صغيرٌ عريضٌ
+       فالحدُّ 4.5 — يمرّ بفارقٍ واسع. وكان الرأسُ بلا لونٍ إطلاقًا فيذوب في الصفوف. */
+    thead th {
+        background: var(--surface-2); color: var(--wine);
+        font-size: 11.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+        border-bottom: 1px solid var(--border);
+        padding-top: 11px; padding-bottom: 11px;
+    }
+    html.dark-mode thead th { color: var(--wine); }
 
     /* Mobile card-view fallback for the Payroll table specifically (the
        widest/most-used table). Below 720px, instead of horizontally
@@ -574,7 +637,12 @@
     /* Stats */
     .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-bottom: 22px; }
     .stat-box { background: var(--surface); padding: 22px 24px; border-radius: var(--radius); box-shadow: var(--shadow-sm); border: 1px solid var(--border); position: relative; overflow: hidden; display: flex; align-items: center; gap: 16px; }
-    .stat-box .stat-icon { width: 42px; height: 42px; border-radius: 12px; background: var(--primary-soft); color: var(--primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    /* ⭐ أيقوناتُ الأرقام عنابيةٌ على قرصٍ عنابيٍّ مخفَّف — لمسةُ لونٍ في صفِّ
+       البطاقات الذي يتصدّر الرئيسية. */
+    .stat-box .stat-icon { width: 42px; height: 42px; border-radius: 12px; background: var(--wine-soft); color: var(--wine); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    /* ⚠️ وخطٌّ عنابيٌّ على حافّة البطاقة: 3px وعلى الحافّة الابتدائية (يسار في
+       صفحةٍ من اليسار) — يُربط صفَّ الأرقام بصريًّا بلا إضافةِ أيّ نصّ. */
+    .stat-box { border-inline-start: 3px solid var(--wine-soft-border); }
     .stat-box .stat-icon svg { width: 20px; height: 20px; }
     .stat-box h3 { margin: 0 0 4px; color: var(--text-dim); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
     .stat-box p { margin: 0; font-size: 26px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
