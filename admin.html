@@ -3035,6 +3035,65 @@
 
         <input type="hidden" id="editEmpOriginalId">
 
+        <!-- ==================================================================
+             ⭐⭐⭐ رسالةُ واتساب إلى الموظف من ملفّه — بطلب المالك:
+             «اريد اضافة في كل بروفايل الخاص بالموظفين زر واتساب يفتح ويرسل
+              ميساج لها، أنا الميساج: عليك الحضور الى المكتب الساعة 2 ظهرا،
+              او امور اخرى تكتبها السكرتيرة».
+             ------------------------------------------------------------------
+             ⚠️ موضعُها أعلى الملفّ عن قصد: السكرتيرة تفتح الملف لتُرسل، فلا
+             تبحث عنها أسفل خمسة أقسامٍ من الصور والحقول.
+
+             ⚠️⚠️ ولا تُحفظ الرسالة في الملف إلا بعد فتح واتساب فعلًا، وبحقلٍ
+             **واحد** (staffNotice): قواعدُ فايرستور تسمح للسكرتيرة بتعديل ملف
+             الموظف بشرط بقاء الراتب كما هو (salaryUnchanged)، فحقلٌ واحدٌ لا
+             يمسّ راتبًا يمرّ، وصورةُ الهوية لا تُلمس.
+
+             ⚠️⚠️⚠️ والرسالة تُعرض كاملةً قبل الإرسال: هذه ورقةٌ تُوجَّه إلى شخص،
+             ورسالةٌ تُرسل بلا أن تُقرأ تُرسل مرّتين — أو تُرسل بتاريخٍ خطأ. -->
+        <div class="card" id="empMsgCard" style="border-left: 4px solid #25D366; margin-bottom: 18px;">
+            <h3><span data-icon="plane"></span> Send this employee a WhatsApp message</h3>
+            <p class="card-sub" id="empMsgWho">&mdash;</p>
+            <div class="date-group">
+                <div style="flex: 1; min-width: 220px;">
+                    <label for="empMsgKind">What is it about</label>
+                    <select id="empMsgKind" onchange="renderEmpMessage()">
+                        <option value="office">Come to the office</option>
+                        <option value="document">Bring a document</option>
+                        <option value="call">Call the office</option>
+                        <option value="free">Something else &mdash; I will write it</option>
+                    </select>
+                </div>
+                <div style="width: 165px;" id="empMsgDateWrap">
+                    <label for="empMsgDate">Day</label>
+                    <input type="date" id="empMsgDate" onchange="renderEmpMessage()">
+                </div>
+                <div style="width: 135px;" id="empMsgTimeWrap">
+                    <label for="empMsgTime">Time</label>
+                    <input type="time" id="empMsgTime" value="14:00" onchange="renderEmpMessage()">
+                </div>
+                <div style="flex: 1; min-width: 200px; display: none;" id="empMsgWhatWrap">
+                    <label for="empMsgWhat">Which document</label>
+                    <input type="text" id="empMsgWhat" placeholder="e.g. your health card" oninput="renderEmpMessage()">
+                </div>
+            </div>
+            <label for="empMsgNote" id="empMsgNoteLabel" style="display: block; margin-top: 10px;">Anything to add (optional)</label>
+            <textarea id="empMsgNote" rows="3" oninput="renderEmpMessage()"
+                placeholder="The secretary writes here — it is added to the message word for word."
+                style="width: 100%; font-family: inherit; font-size: 13px; padding: 10px 12px;
+                       border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+                       color: var(--text); resize: vertical;"></textarea>
+            <div class="controls" style="gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px;">
+                <a id="empMsgWaLink" class="btn-success" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;"><span data-icon="plane"></span> Send on WhatsApp</a>
+                <button class="btn-ghost" onclick="copyEmpMessage()"><span data-icon="fileText"></span> Copy the text</button>
+            </div>
+            <p class="card-sub" style="margin: 10px 0 0;" id="empMsgStatus"></p>
+            <div id="empMsgPreview" style="white-space: pre-wrap; direction: ltr; text-align: left;
+                font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.8;
+                background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+                padding: 12px 14px; margin-top: 10px; max-height: 240px; overflow-y: auto;">&mdash;</div>
+        </div>
+
         <div class="edit-profile-grid">
             <div><label>Employee Full Name</label><input type="text" id="editEmpName"></div>
             <div><label>Job Title</label><input type="text" id="editEmpRole"></div>
@@ -8069,6 +8128,237 @@
         // تدريبٍ أو رقمٍ لا غياب، ورسالةٌ واحدة للحالتين تُضلّل.
         return { days: dates.length, dates, never: worked.size === 0 };
     }
+
+    // =====================================================================
+    // ⭐⭐⭐ رسالةُ واتساب إلى الموظف من ملفّه
+    // ---------------------------------------------------------------------
+    // بطلب المالك: «في كل بروفايل زرّ واتساب يفتح ويرسل ميساج لها: عليك الحضور
+    // إلى المكتب الساعة ٢ ظهرًا، أو أمورٌ أخرى تكتبها السكرتيرة».
+    //
+    // ⚠️⚠️ الوقتُ يُعرض بصيغة ١٢ ساعة (2:00 PM) لا 14:00: الرسالة تذهب إلى عاملٍ
+    // قد لا يقرأ الصيغة العسكرية، و«الساعة ٢ ظهرًا» بنصّ المالك نفسه.
+    //
+    // ⚠️⚠️⚠️ واليومُ يُبنى بأجزائه (y, m-1, d) لا بـnew Date('2026-09-21'):
+    // الثانية تُفسَّر منتصفَ ليلٍ **بتوقيت UTC**، فتصير في قطر (+3) هي نفسها،
+    // لكن في أي متصفّحٍ بمنطقةٍ سالبة تُعرض **اليومَ السابق** — فتُستدعى
+    // الموظفة يوم السبت لرسالةٍ تقول الجمعة. والبناءُ بالأجزاء منتصفُ ليلٍ محليّ
+    // فلا يزحف بحال.
+    // =====================================================================
+    function empMsgTime12(hhmm) {
+        const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || '').trim());
+        if (!m) return '';
+        let h = Number(m[1]);
+        const min = m[2];
+        if (!isFinite(h) || h < 0 || h > 23) return '';
+        const ampm = h < 12 ? 'AM' : 'PM';
+        let h12 = h % 12;
+        if (h12 === 0) h12 = 12;
+        return `${h12}:${min} ${ampm}`;
+    }
+
+    function empMsgDayLabel(iso) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '').trim());
+        if (!m) return '';
+        // ⚠️ منتصفُ ليلٍ **محليّ** — انظر الملاحظة أعلاه.
+        const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+        if (isNaN(d.getTime())) return '';
+        const day = d.toLocaleDateString('en-GB', { weekday: 'long' });
+        return `${day} ${m[3]}/${m[2]}/${m[1]}`;
+    }
+
+    /**
+     * ⭐⭐⭐⭐ يُصفّر البطاقة عند فتح ملفٍّ جديد.
+     * ⚠️ بلا هذا تبقى ملاحظةٌ كُتبت لموظفٍ سابقٍ في الخانة، فتُرسل إلى **الموظف
+     * الخطأ** بضغطةٍ واحدة — أخطرُ ما يمكن أن يحدث في هذه الميزة. والنافذةُ
+     * واحدةٌ تُعاد استعمالُها لكل موظف، فالخانات لا تُفرَّغ من نفسها.
+     */
+    function resetEmpMessage() {
+        const g = (id) => document.getElementById(id);
+        if (g('empMsgKind')) g('empMsgKind').value = 'office';
+        // ⚠️ اليومُ افتراضيًّا اليوم، والساعةُ ٢ ظهرًا — وهي نصُّ مثالِ المالك.
+        if (g('empMsgDate')) g('empMsgDate').value = todayISO();
+        if (g('empMsgTime')) g('empMsgTime').value = '14:00';
+        if (g('empMsgWhat')) g('empMsgWhat').value = '';
+        if (g('empMsgNote')) g('empMsgNote').value = '';
+        if (g('empMsgStatus')) { g('empMsgStatus').innerHTML = ''; g('empMsgStatus').style.color = ''; }
+        renderEmpMessage();
+    }
+
+    /** الموظف المفتوح ملفُّه الآن. */
+    function empMsgEmployee() {
+        const id = (document.getElementById('editEmpOriginalId') || {}).value || '';
+        return (allEmployees || []).find(e => e.id === id) || null;
+    }
+
+    function empMessageText(emp, kind, dayISO, hhmm, what, note) {
+        if (!emp) return { err: 'Open an employee file first.' };
+        const day = empMsgDayLabel(dayISO);
+        const time = empMsgTime12(hhmm);
+        const L = [];
+        L.push('*Al Sheikha Group — message from the office*');
+        L.push('');
+        L.push(`${emp.name || emp.id}`);
+        L.push('');
+
+        if (kind === 'office') {
+            if (!day) return { err: 'Pick the day.' };
+            if (!time) return { err: 'Pick the time.' };
+            L.push(`You are required to come to the office on *${day}* at *${time}*.`);
+        } else if (kind === 'document') {
+            const w = String(what || '').trim();
+            if (!w) return { err: 'Write which document he must bring.' };
+            if (!day) return { err: 'Pick the day.' };
+            if (!time) return { err: 'Pick the time.' };
+            L.push(`You are required to bring *${w}* to the office on *${day}* at *${time}*.`);
+        } else if (kind === 'call') {
+            L.push(`Please *call the office* as soon as you read this message.`);
+        } else if (kind === 'free') {
+            // ⚠️ النصُّ الحرّ إلزامي: رسالةٌ عنوانُها «رسالة من المكتب» وجسمُها
+            // فارغ تُرسل الموظفَ يسأل «ماذا تريدون؟».
+            const n = String(note || '').trim();
+            if (!n) return { err: 'Write the message first.' };
+            L.push(`*${n}*`);
+        } else {
+            return { err: 'Choose what the message is about.' };
+        }
+
+        // ⚠️ الملاحظة تُضاف **كما كتبتها السكرتيرة حرفًا بحرف** — لا تُعاد صياغتها.
+        if (kind !== 'free') {
+            const n = String(note || '').trim();
+            if (n) { L.push(''); L.push(n); }
+        }
+        L.push('');
+        L.push('Please reply to confirm that you have read this message.');
+        L.push('');
+        L.push('Thank you.');
+        return { text: L.join('\n') };
+    }
+
+    /** يُعيد رسم البطاقة كلَّها — يُنادى من فتح الملف ومن كل تغييرٍ في الخانات. */
+    window.renderEmpMessage = function() {
+        const card = document.getElementById('empMsgCard');
+        if (!card) return;
+        const emp = empMsgEmployee();
+        const kind = (document.getElementById('empMsgKind') || {}).value || 'office';
+        const g = (id) => document.getElementById(id);
+
+        // ---- إظهار الخانات التي يحتاجها هذا النوع وحده
+        const needsWhen = kind === 'office' || kind === 'document';
+        if (g('empMsgDateWrap')) g('empMsgDateWrap').style.display = needsWhen ? '' : 'none';
+        if (g('empMsgTimeWrap')) g('empMsgTimeWrap').style.display = needsWhen ? '' : 'none';
+        if (g('empMsgWhatWrap')) g('empMsgWhatWrap').style.display = kind === 'document' ? '' : 'none';
+        if (g('empMsgNoteLabel')) {
+            g('empMsgNoteLabel').textContent = kind === 'free'
+                ? 'Your message (required — written word for word)'
+                : 'Anything to add (optional)';
+        }
+
+        // ---- من هو، وهل له رقم
+        const num = emp ? waNumber(emp.phone) : '';
+        const who = g('empMsgWho');
+        if (who) {
+            who.innerHTML = !emp
+                ? 'Open an employee file first.'
+                : (num
+                    ? `To <b>${escapeHtml(emp.name || emp.id)}</b> on <b dir="ltr">+${escapeHtml(String(num))}</b>`
+                      + `${emp.role ? ` &mdash; ${escapeHtml(emp.role)}` : ''}.`
+                      + ` The message is in English, as all outgoing messages are.`
+                    // ⚠️ ولا رقمَ له → تُفتح قائمة المشاركة، ويُقال ذلك: قد يكون رقمُه
+                    // في هاتف السكرتيرة ولو لم يكن في الملف. ولا يُرسَل إلى رقمٍ آخر.
+                    : `<b style="color: var(--warning);">&#9888; ${escapeHtml(emp.name || emp.id)} has no phone number `
+                      + `in his file.</b> WhatsApp will open with the message ready and <b>no contact chosen</b>, so `
+                      + `you can pick him yourself. Add his number in the field below to fix it for next time.`);
+        }
+
+        const built = empMessageText(emp, kind,
+            (g('empMsgDate') || {}).value, (g('empMsgTime') || {}).value,
+            (g('empMsgWhat') || {}).value, (g('empMsgNote') || {}).value);
+
+        const prev = g('empMsgPreview');
+        // ⚠️ المعروضُ هو المُرسَلُ نفسه، وكنصٍّ لا ترميزًا.
+        if (prev) prev.textContent = built.text || '—';
+
+        const st = g('empMsgStatus');
+        const link = g('empMsgWaLink');
+        if (built.err) {
+            if (link) { link.removeAttribute('href'); link.setAttribute('aria-disabled', 'true'); link.style.opacity = '0.45'; }
+            if (st) { st.innerHTML = escapeHtml(built.err); st.style.color = 'var(--warning)'; }
+            return;
+        }
+        const encoded = encodeURIComponent(built.text);
+        const isPhone = /android|iphone|ipad|ipod|iemobile|blackberry|opera mini|webos/i.test(navigator.userAgent || '');
+        if (link) {
+            link.href = num
+                ? (isPhone ? `whatsapp://send?phone=${num}&text=${encoded}` : `https://wa.me/${num}?text=${encoded}`)
+                : (isPhone ? `whatsapp://send?text=${encoded}` : `https://wa.me/?text=${encoded}`);
+            if (isPhone) { link.removeAttribute('target'); link.removeAttribute('rel'); }
+            else { link.target = '_blank'; link.rel = 'noopener'; }
+            link.removeAttribute('aria-disabled');
+            link.style.opacity = '';
+            // ⚠️ يُسجَّل عند الضغط لا قبله: تسجيلٌ لرسالةٍ لم تُفتح يكذب.
+            link.onclick = () => { recordEmpMessageSent(emp, kind, built.text, num); };
+        }
+        if (st) {
+            const tooLong = encoded.length > WA_URL_SAFE_LIMIT;
+            const last = emp && emp.staffNotice && emp.staffNotice.sentAt
+                ? ` Last message from the office: <b>${escapeHtml(String(emp.staffNotice.sentAt).slice(0, 10))}</b>`
+                  + `${emp.staffNotice.kind ? ` (${escapeHtml(String(emp.staffNotice.kind))})` : ''}.`
+                : '';
+            st.innerHTML = tooLong
+                ? `<b style="color: var(--danger);">&#9888; ${encoded.length} characters after encoding, `
+                  + `over the safe ${WA_URL_SAFE_LIMIT}.</b> Shorten what you wrote, or press <b>Copy the text</b> `
+                  + `and paste it into WhatsApp &mdash; pasting has no limit.${last}`
+                : `Ready &mdash; ${encoded.length} of ${WA_URL_SAFE_LIMIT} characters.${last}`;
+            st.style.color = '';
+        }
+    };
+
+    /**
+     * يُسجّل أنّ رسالةً أُرسلت من المكتب: متى، ونوعها، وإلى أي رقم، ومن أرسلها.
+     * ⚠️ حقلٌ واحدٌ بـupdateDoc: القواعد تسمح للسكرتيرة بالتعديل بشرط بقاء الراتب
+     * كما هو، فحقلٌ لا يمسّ راتبًا يمرّ. ولا تُلمس صورةُ هويةٍ ولا أي حقلٍ آخر.
+     * ⚠️ وفشلُ التسجيل لا يُقال «لم تُرسل»: واتساب فُتح فعلًا.
+     */
+    function recordEmpMessageSent(emp, kind, text, num) {
+        if (!emp || !emp.id) return;
+        logAudit('Office message sent to employee',
+            `${emp.name || emp.id}: ${kind}${num ? `, to +${num}` : ', no number on file'}`);
+        const notice = {
+            sentAt: new Date().toISOString(),
+            kind: String(kind || ''),
+            // ⚠️ يُحفظ **نصُّ** الرسالة: «أرسلنا له» بلا نصٍّ لا تُحلّ به مشكلة،
+            // وقصُّه عند حدٍّ يمنع تضخيم مستند الموظف (وحدُّه 1MB مع خمس صور).
+            text: String(text || '').slice(0, 1500),
+            sentBy: (currentUser && currentUser.email) || 'unknown',
+            toNumber: num || ''
+        };
+        updateDoc(doc(db, "employees", emp.id), { staffNotice: notice })
+            .then(() => { emp.staffNotice = notice; renderEmpMessage(); })
+            .catch(e => {
+                console.error('Could not record the office message:', e);
+                const st = document.getElementById('empMsgStatus');
+                if (st) {
+                    st.innerHTML = `WhatsApp was opened, but recording it on his file failed: `
+                        + `${escapeHtml(e.message)} — the message itself is fine.`;
+                    st.style.color = 'var(--warning)';
+                }
+            });
+    }
+
+    window.copyEmpMessage = async function() {
+        const prev = document.getElementById('empMsgPreview');
+        const st = document.getElementById('empMsgStatus');
+        const say = (t, c) => { if (st) { st.innerHTML = t; st.style.color = c || ''; } };
+        const text = prev ? prev.textContent : '';
+        if (!text || text === '—') { say('There is nothing to copy yet.', 'var(--warning)'); return; }
+        try {
+            await navigator.clipboard.writeText(text);
+            say('<b>Copied.</b> Open his chat in WhatsApp and paste it.', 'var(--success)');
+        } catch (e) {
+            say('This browser would not let the page copy for you. Select the text in the box below and copy it '
+                + 'with Ctrl+C.', 'var(--warning)');
+        }
+    };
 
     // =====================================================================
     // ⭐⭐⭐ تذكيرُ الاستعداد للتفتيش — إلى مجموعة الفرع على واتساب
@@ -17351,6 +17641,11 @@
             brSel.value = curBranch || "HEAD OFFICE";
             document.getElementById("editEmpPhone").value = emp.phone || "";
             document.getElementById("editEmpPin").value = "";
+            // ⭐⭐ بطاقةُ رسالة الواتساب تُصفَّر وتُبنى لهذا الموظف بعينه.
+            // ⚠️⚠️ والتصفيرُ إلزامي: بلا سطر resetEmpMessage تبقى ملاحظةٌ كتبتها
+            // السكرتيرة لموظفٍ سابقٍ في الخانة، فتُرسل إلى **الموظف الخطأ** بضغطةٍ
+            // واحدة. وهذا أسوأُ عطلٍ ممكنٍ في هذه الميزة.
+            resetEmpMessage();
             document.getElementById("editEmpSalary").value = emp.salary || 0;
             document.getElementById("editEmpShift").value = emp.shift || "Morning";
             document.getElementById("editEmpHousingType").value = emp.housingType || "external";
