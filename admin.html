@@ -17,7 +17,29 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- عائلة واحدة تحمل العربية واللاتينية، ومونو لأعمدة المال -->
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./brand/design-tokens.css">
+<!-- =====================================================================
+     ⚠️⚠️⚠️ ?v=136 ليس زخرفةً — هو إصلاحُ عطلٍ رأيتُه بعيني على النسخة المنشورة
+     ---------------------------------------------------------------------
+     كلُّ ألوان هذه الصفحة تأتي من هذا الملفّ. وحين أُضيف إليه الكريميُّ
+     والعنابيُّ، صار **لازمًا** أن يتغيّر مع الصفحة في اللحظة نفسها.
+     وقياسُ النسخة الحيّة أظهر أنّ ذلك لم يحدث: الصفحةُ الجديدة حُمِّلت ومعها
+     النسخةُ **القديمة** من هذا الملفّ (٧ قواعدَ بدل ٨) — لأنّ الخادم يُرسل
+     `cache-control: max-age=600`، والعاملَ الخِدميَّ يقرأ الأصولَ «الكاشُ
+     أوّلًا». فصار `--cream-50` غيرَ مُعرَّف، و`--surface: var(--cream-50)`
+     قيمةً باطلة، فكلُّ الأسطح **شفّافة** وكلُّ الحدود بلا لون: لوحةٌ تبدو
+     مهدومة. وهذا كان سيصل إلى شاشة المالك لا إلى شاشتي وحدي.
+
+     والرقمُ هنا هو نفسُه CACHE_VERSION في sw.js، وعنوانٌ مختلفٌ يعني ملفًّا
+     مختلفًا: فلا الكاشُ في المتصفّح ولا الذي في العامل الخِدميّ يقدر أن
+     يُسلّم البايتات القديمة. ويحرس فحصٌ أنّ الرقمين متساويان دائمًا، فلا
+     يبقى التزامنُ أمرًا أتذكّره.
+
+     ⚠️ ومعه حرسٌ ثانٍ مستقلّ: كلُّ إشارةٍ إلى توكنٍ في كتلة :root أدناه لها
+     قيمةٌ احتياطية، فلو تعذّر هذا الملفُّ كلَّه (أوّلُ تشغيلٍ بلا شبكة، أو
+     404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
+     شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
+     ===================================================================== -->
+<link rel="stylesheet" href="./brand/design-tokens.css?v=137">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -44,54 +66,68 @@
            القيمُ والنسبُ كلُّها في brand/design-tokens.css، محسوبةً بمعادلة
            WCAG لا مُقدَّرةً بالنظر. والأرقامُ **تحسّنت** عمّا كانت: الحدُّ صار
            1.67:1 بعد 1.23:1، والنصُّ الخفيف 5.12:1 بعد 4.34:1 الراسبة. */
-        --bg: var(--cream-100);
-        --bg-soft: var(--cream-200);
-        --surface: var(--cream-50);
-        --surface-2: var(--cream-200);
-        --surface-hover: var(--beige-300);
-        --border: var(--beige-400);
-        --border-soft: var(--beige-300);
-        --text: var(--ink-800);
+        /* ⚠️⚠️⚠️ القيمُ الاحتياطية بعد الفاصلة ليست تكرارًا: لو تعذّر تحميل
+           design-tokens.css (أوّلُ تشغيلٍ بلا شبكة، أو كاشٌ قديم، أو 404)
+           لصارت var() باطلةً، و`background: var(--surface)` الباطلةُ تعني
+           **شفّافًا** لا أبيض — فتُعرض اللوحةُ بلا أسطحَ ولا حدودٍ، وهو ما
+           قِستُه فعلًا على النسخة المنشورة. والاحتياطيُّ يجعل أسوأَ الحالات
+           «ألوانٌ صحيحةٌ بلا ملفّ» بدل «شاشةٌ مهدومة».
+           ⚠️ والقيمُ هي نفسُها الموجودة في ملفّ التوكنز حرفًا بحرف، ويحرس
+           فحصٌ أنها لا تفترق — فنسختانِ تختلفان أسوأُ من نسخةٍ واحدة. */
+        --bg: var(--cream-100, #F8F3E9);
+        --bg-soft: var(--cream-200, #F1E9DA);
+        --surface: var(--cream-50, #FDFBF6);
+        --surface-2: var(--cream-200, #F1E9DA);
+        --surface-hover: var(--beige-300, #E4D8C3);
+        --border: var(--beige-400, #D3C3A8);
+        --border-soft: var(--beige-300, #E4D8C3);
+        --text: var(--ink-800, #0F172A);
         /* ⚠️ نصوصٌ دافئة: الرماديُّ الأزرقُ على الكريمي يبدو باهتًا وباردًا،
            كقميصٍ رماديٍّ على ورقٍ عاجيّ. والدرجتان أعلى تباينًا من القديمتين. */
-        --text-dim: var(--warm-650);
+        --text-dim: var(--warm-650, #544938);
         /* كان #a89b7f وتباينه 2.4:1 — نصٌّ راسب. ثم ink-400 وهو 4.34:1 على
            السطح الثاني أي راسبٌ كذلك. والآن 5.12:1. */
-        --text-faint: var(--warm-450);
+        --text-faint: var(--warm-450, #6E5F4B);
 
         /* ⚠️⚠️⚠️ الأزرارُ تبقى كحلية، ولا تصير عنابية. الفرقُ بين العنابي
            #73263A وأحمرِ الخطر #B91C1C هو 1.57:1 فقط، فزرُّ «حفظ» عنابيٌّ
            بجانب زرِّ «حذف» أحمرَ يصيران أحمرَين متشابهَين على شاشةِ هاتف —
            وثمنُ الخطأ حذفُ مستند. فالعنابيُّ للحضور البصريّ لا للأوامر. */
-        --primary: var(--ink-800);
-        --primary-dark: var(--ink-700);
-        --primary-soft: color-mix(in srgb, var(--ink-800) 10%, transparent);
-        --accent: var(--gold-800);
-        --accent-soft: color-mix(in srgb, var(--gold-600) 16%, transparent);
+        --primary: var(--ink-800, #0F172A);
+        --primary-dark: var(--ink-700, #1E293B);
+        --primary-soft: color-mix(in srgb, var(--ink-800, #0F172A) 10%, transparent);
+        --accent: var(--gold-800, #65563A);
+        --accent-soft: color-mix(in srgb, var(--gold-600, #A89060) 16%, transparent);
         /* ⭐ العنابيّ: النافذةُ النشِطة، ورؤوسُ الجداول، وخطُّ الترويسة، والتذييل */
-        --wine: var(--wine-600);
-        --wine-strong: var(--wine-700);
-        --wine-soft: var(--wine-tint-bg);
-        --wine-soft-border: var(--wine-tint-border);
+        --wine: var(--wine-600, #73263A);
+        --wine-strong: var(--wine-700, #5C1E2E);
+        --wine-soft: var(--wine-tint-bg, rgba(115, 38, 58, .10));
+        --wine-soft-border: var(--wine-tint-border, rgba(115, 38, 58, .32));
         /* النافذةُ النشِطة في الشريط الجانبيّ — لها توكنٌ خاصٌّ لأنّ الوضع
            الليليَّ يحتاج درجةً أفتح لتتميّز عن السطح الكحليّ (3.49:1). */
-        --nav-active-bg: var(--wine-600);
-        --nav-active-fg: var(--neutral-0);
+        --nav-active-bg: var(--wine-600, #73263A);
+        --nav-active-fg: var(--neutral-0, #FFFFFF);
         /* ⚠️ علامةُ الحافّة ذهبٌ فاتحٌ لا ذهبُ الهوية: ذهبُ الهوية #A89060 على
            العنابي 3.30:1 وهو راسبٌ كعلامةٍ تُرى، وgold-300 يعطي 5.51:1. */
-        --nav-active-mark: var(--gold-300);
-        --success: var(--success-600);
-        --success-soft: color-mix(in srgb, var(--success-600) 13%, transparent);
-        --warning: var(--warning-600);
-        --warning-soft: color-mix(in srgb, var(--warning-600) 13%, transparent);
-        --danger: var(--danger-600);
-        --danger-soft: color-mix(in srgb, var(--danger-600) 11%, transparent);
+        --nav-active-mark: var(--gold-300, #DABB7D);
+        /* ⚠️ ألوانُ الحالة لها احتياطيٌّ كذلك: «نجاح» و«خطر» بلا لونٍ أخطرُ من
+           سطحٍ بلا لون — زرُّ حذفٍ رماديٌّ لا يُنذر أحدًا. */
+        --success: var(--success-600, #15803D);
+        --success-soft: color-mix(in srgb, var(--success-600, #15803D) 13%, transparent);
+        --warning: var(--warning-600, #B45309);
+        --warning-soft: color-mix(in srgb, var(--warning-600, #B45309) 13%, transparent);
+        --danger: var(--danger-600, #B91C1C);
+        --danger-soft: color-mix(in srgb, var(--danger-600, #B91C1C) 11%, transparent);
 
-        /* زوايا أصغر وظلال أخفّ: الظل الناعم الكبير سمة تطبيقات ترفيهية */
-        --radius: var(--radius-lg);
-        --radius-sm: var(--radius-md);
-        --shadow: var(--shadow-md);
-        --shadow-sm: var(--shadow-xs);
+        /* زوايا أصغر وظلال أخفّ: الظل الناعم الكبير سمة تطبيقات ترفيهية
+           ⚠️ ولهذه احتياطيٌّ كذلك — لا لأنّ فقدَها يُعمي الشاشة (زاويةٌ حادّةٌ
+           وظلٌّ مفقودٌ يبقيان مقروءَين)، بل لتبقى القاعدةُ مطلقةً بلا استثناء:
+           «كلُّ إشارةٍ إلى توكنٍ لها احتياطيّ». وقاعدةٌ لها استثناءٌ واحدٌ تصير
+           قاعدةً يُحتجّ عليها بالاستثناء في كلّ مرّة. */
+        --radius: var(--radius-lg, 10px);
+        --radius-sm: var(--radius-md, 6px);
+        --shadow: var(--shadow-md, 0 4px 12px rgba(11, 18, 38, .10));
+        --shadow-sm: var(--shadow-xs, 0 1px 2px rgba(11, 18, 38, .06));
     }
 
     * { box-sizing: border-box; }
