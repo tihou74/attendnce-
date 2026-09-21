@@ -614,6 +614,57 @@
             <p style="color: var(--text-dim); line-height: 1.7; margin: 0;">Manage your multi-branch enterprise smoothly. Use the navigation bar above to oversee employee records, track precise attendance, process automated payroll, and review requests instantly.</p>
         </div>
 
+        <!-- ==================================================================
+             ⭐⭐⭐ تذكيرُ الاستعداد للتفتيش — بطلب المالك:
+             «زر واتساب فيه ميساج إلى المسؤولين والموظفين، مفاده أنّ هذا ميساج
+              دوري وتنبيهي: أنه يمكن في أي لحظة تجي البلدية أو الصحة للمراقبة
+              الدورية، لذلك يتوجب الالتزام بالبروتوكولات».
+             ------------------------------------------------------------------
+             ⚠️⚠️ ولا رقمَ هاتفٍ في الرابط عن قصد: هذه رسالةٌ إلى **مجموعة**
+             الفرع، ورابطٌ برقمٍ لا يستطيع فتح مجموعةٍ أبدًا — يفتح محادثةً فرديّة
+             فقط. وحذفُ الرقم يفتح لوحةَ مشاركة واتساب فيختار المالك المجموعة.
+
+             ⚠️⚠️⚠️ ولا تذكر الرسالة رقمَ قانونٍ ولا مادّةً ولا مهلةً رسمية: تلك
+             أرقامٌ لا أستطيع التحقّق منها، وذكرُ نصٍّ قانونيٍّ خطأ في رسالةٍ
+             تُوزَّع على المطاعم أسوأُ من عدم ذكره. فالرسالة **تعليماتُ إدارةٍ
+             عمليّة** وبنودُها كلُّها من داخل النظام أو من الممارسة اليومية.
+
+             ⚠️ والرسالة معروضةٌ على الشاشة قبل الإرسال: رسالةٌ تُرسل بلا أن
+             تُقرأ تُرسل مرّتين. -->
+        <div class="card" id="inspectionCard" style="border-left: 4px solid var(--accent);">
+            <h3><span data-icon="alertTriangle"></span> Inspection readiness &mdash; periodic reminder to the branches</h3>
+            <p class="card-sub">
+                A ready-made WhatsApp message telling the managers and the staff that the <b>Municipality</b> or
+                <b>Health</b> inspector can arrive <b>at any moment, without warning</b>, and that the protocols must be
+                followed every single day &mdash; not tidied up when someone walks in.
+                <br><br>
+                Pick a branch to address it to that branch by name, or leave it on <b>All branches</b>. There is
+                <b>no phone number</b> in the link on purpose: a link with a number can only ever open a one-to-one
+                chat and can never open a group, so WhatsApp will ask you to pick the branch group yourself.
+            </p>
+            <div class="date-group">
+                <div style="flex: 1; min-width: 230px;">
+                    <label for="inspBranch">Address it to</label>
+                    <select id="inspBranch" onchange="renderInspectionMessage()"></select>
+                </div>
+                <div style="width: 210px;">
+                    <label for="inspTone">How firm</label>
+                    <select id="inspTone" onchange="renderInspectionMessage()">
+                        <option value="routine">Routine reminder</option>
+                        <option value="firm">Firm &mdash; after a problem was seen</option>
+                    </select>
+                </div>
+                <a id="inspWaLink" class="btn-accent" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;"><span data-icon="plane"></span> Send on WhatsApp</a>
+                <button class="btn-ghost" onclick="copyInspectionMessage()"><span data-icon="fileText"></span> Copy the text</button>
+            </div>
+            <p class="card-sub" style="margin: 10px 0 0;" id="inspStatus"></p>
+            <!-- معاينةٌ كاملة: تُقرأ قبل أن تُرسل -->
+            <div id="inspPreview" style="white-space: pre-wrap; direction: ltr; text-align: left;
+                font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.8;
+                background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+                padding: 12px 14px; margin-top: 12px; max-height: 340px; overflow-y: auto;">&mdash;</div>
+        </div>
+
         <!-- Recent Activity feed: a lightweight, chronological view of the
              latest actions across the system (new hires, warnings, leaves,
              approved applications) so admins get a quick pulse of what's
@@ -4847,6 +4898,9 @@
         renderLeaveEligibilityAlerts();
         renderHomeExtraStats();
         renderRecentActivity();
+        // ⚠️ تذكيرُ التفتيش لا يقرأ شيئًا من القاعدة: نصٌّ يُبنى من قائمة الفروع
+        // وحدها. فيُرسم مع الرئيسية، ولا يُضيف قراءةً واحدة.
+        renderInspectionMessage();
         renderNotifDropdown();
         // دورةٌ تمّت بلا فشل: يُصفَّر عدّاد المحاولات فيبدأ من جديد لو تعثّر لاحقًا.
         loadCycleSucceeded();
@@ -8004,6 +8058,172 @@
         // تدريبٍ أو رقمٍ لا غياب، ورسالةٌ واحدة للحالتين تُضلّل.
         return { days: dates.length, dates, never: worked.size === 0 };
     }
+
+    // =====================================================================
+    // ⭐⭐⭐ تذكيرُ الاستعداد للتفتيش — إلى مجموعة الفرع على واتساب
+    // ---------------------------------------------------------------------
+    // بطلب المالك: «ميساج إلى المسؤولين والموظفين، مفاده أنّ هذا ميساج دوري
+    // وتنبيهي: يمكن في أي لحظة تجي البلدية أو الصحة للمراقبة الدورية، لذلك
+    // يتوجب الالتزام بالبروتوكولات».
+    //
+    // ⚠️⚠️⚠️ ولا رقمَ قانونٍ ولا مادّةً ولا غرامةً ولا مهلةً رسميّة في الرسالة.
+    // تلك أرقامٌ لا أستطيع التحقّق منها، ورسالةٌ تُوزَّع على المطاعم وتحمل نصًّا
+    // قانونيًّا خطأ أسوأُ من رسالةٍ بلا نصٍّ قانونيٍّ إطلاقًا — يحتجّ بها موظفٌ
+    // أو تُقرأ على مفتّشٍ فتُحرج الشركة. فبنودُها كلُّها **عمليّة**، ومنها ما هو
+    // في النظام فعلًا (البطاقة الصحية حقلٌ على ملف الموظف).
+    //
+    // ⚠️ والفكرة الأساسية التي تُحمل في الرسالة: التفتيش **لا يُنبّه قبل مجيئه**،
+    // فالاستعداد يكون كل يوم لا عند الباب. وهذا نصُّ المالك: «في أي لحظة».
+    // =====================================================================
+    /** ⚠️ HEAD OFFICE ليس مطعمًا: لا مطبخ فيه ولا ثلاجات، فيُستثنى من القائمة. */
+    function inspectionBranches() {
+        return REST_BRANCHES
+            .map(([value]) => value)
+            .filter(v => v !== 'HEAD OFFICE');
+    }
+
+    function buildInspectionBranchPicker() {
+        const sel = document.getElementById('inspBranch');
+        if (!sel || sel.dataset.built) return;
+        sel.innerHTML = `<option value="">All branches (one message for everyone)</option>`
+            + inspectionBranches().map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+        sel.dataset.built = '1';
+    }
+
+    function inspectionMessageText(branch, tone) {
+        const firm = tone === 'firm';
+        const L = [];
+        L.push('*MUNICIPALITY & HEALTH INSPECTION — READINESS NOTICE*');
+        L.push('Al Sheikha Group');
+        L.push('');
+        L.push(branch ? `To the manager and all staff of *${branch}*`
+                      : 'To every branch manager and all restaurant staff');
+        L.push('');
+        // ⚠️ الجملةُ الأولى هي كلامُ المالك نفسه: «في أي لحظة».
+        L.push(`This is a *routine, periodic reminder* &mdash; not a reaction to any one report.`);
+        L.push('');
+        L.push(`An inspector from the *Municipality* or from *Health* can arrive *at any moment, on any day, `
+            + `with no warning at all*. They do not telephone first. Whatever the branch looks like when they `
+            + `walk in is what goes into their report.`);
+        L.push('');
+        L.push(`So the protocols are to be followed *every single day*, as normal work &mdash; not tidied up in ten `
+            + `minutes when somebody is already at the door.`);
+        L.push('');
+        L.push('*WHAT MUST BE RIGHT AT ALL TIMES*');
+        L.push('');
+        L.push('*1. Personal hygiene*');
+        L.push('• Clean uniform, hair covered, nails short and clean.');
+        L.push('• Wash hands with soap: before starting, after the toilet, after handling raw food, after waste, '
+            + 'after your phone, and between tasks.');
+        L.push('• No smoking, no eating and no drinking in any food area.');
+        L.push('• If you are ill &mdash; fever, cough, stomach upset, or a cut on your hand &mdash; tell your manager '
+            + 'before you start. Do not handle food.');
+        L.push('');
+        L.push('*2. Health cards*');
+        L.push('• Every member of staff must hold a *valid* health card, and it must be available in the branch '
+            + 'when it is asked for.');
+        L.push('• If yours has expired or is close to expiring, tell the secretary *today*. An expired card found '
+            + 'during an inspection is on the branch, not on the office.');
+        L.push('');
+        L.push('*3. Temperatures and storage*');
+        L.push('• Fridges and freezers working and their temperature checked and written down.');
+        L.push('• Raw and cooked kept apart, always. Nothing uncovered.');
+        L.push('• Everything labelled with its date. Anything past its date is thrown out &mdash; not "used quickly".');
+        L.push('• Nothing on the floor. Nothing stored in an opened tin.');
+        L.push('');
+        L.push('*4. Cleaning*');
+        L.push('• Follow the cleaning schedule and sign it as you go.');
+        L.push('• Surfaces, boards, knives and equipment cleaned between uses.');
+        L.push('• Cleaning chemicals stored *away from food*, in their own labelled containers &mdash; never in a '
+            + 'water bottle or a food container.');
+        L.push('• Waste bins covered and emptied, and the waste area kept clean.');
+        L.push('');
+        L.push('*5. The building*');
+        L.push('• No sign of any pest. If you see one, report it the same day.');
+        L.push('• Hand-wash sinks with soap and paper, working, and never blocked or used for anything else.');
+        L.push('• Toilets clean and stocked.');
+        L.push('• Fire extinguishers and exits clear and reachable.');
+        L.push('');
+        if (firm) {
+            // ⚠️⚠️ نغمةُ «بعد مشكلة» أشدّ، لكنها لا تُهدّد بعقوبةٍ ماليّة: العقوبات
+            // سياسةُ إدارةٍ لا يجوز أن أختلقها في رسالةٍ رسميّة.
+            L.push('*THIS TIME IT IS NOT ONLY A REMINDER*');
+            L.push('Things have been seen that would not pass an inspection. The manager of the branch is '
+                + 'responsible for putting them right *today*, and for checking them himself before every shift '
+                + 'from now on.');
+            L.push('');
+            L.push('Anyone who is asked to correct something and does not do it will be dealt with under the '
+                + 'company\'s normal disciplinary procedure.');
+        } else {
+            L.push('*MANAGERS*');
+            L.push('Walk the branch yourself before every shift and fix what you find. Do not wait to be told.');
+        }
+        L.push('');
+        L.push(`A failed inspection can close a branch. That costs every one of us &mdash; not the office alone.`);
+        L.push('');
+        L.push('If anything on this list is missing, broken, or you do not have what you need to do it, '
+            + 'tell your manager immediately. Nobody is blamed for reporting a problem.');
+        L.push('');
+        L.push('Thank you for your care.');
+        L.push('');
+        L.push(`_Sent ${new Date().toLocaleString('en-GB')}_`);
+        return L.join('\n');
+    }
+
+    /** يُعيد رسم المعاينة والرابط. ⚠️ ولا رقم: الرسالة إلى **مجموعة**. */
+    window.renderInspectionMessage = function() {
+        buildInspectionBranchPicker();
+        const sel = document.getElementById('inspBranch');
+        const tone = document.getElementById('inspTone');
+        const prev = document.getElementById('inspPreview');
+        const link = document.getElementById('inspWaLink');
+        const st = document.getElementById('inspStatus');
+        if (!prev || !link) return;
+        const text = inspectionMessageText(sel ? sel.value : '', tone ? tone.value : 'routine');
+        prev.textContent = text;
+
+        const encoded = encodeURIComponent(text);
+        const isPhone = /android|iphone|ipad|ipod|iemobile|blackberry|opera mini|webos/i.test(navigator.userAgent || '');
+        // ⚠️ النظام الأصلي على الهاتف: رابط wa.me على الهاتف يمرّ بصفحة تحويلٍ
+        // كثيرًا ما تفشل فينتهي في المتصفّح بدل التطبيق.
+        link.href = isPhone ? `whatsapp://send?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+        if (isPhone) { link.removeAttribute('target'); link.removeAttribute('rel'); }
+        else { link.target = '_blank'; link.rel = 'noopener'; }
+
+        if (st) {
+            // ⚠️⚠️ حارسُ طولٍ يُحذّر ولا يمنع. والرسالة طويلةٌ بطبيعتها (قائمةُ
+            // بنود)، فإن تجاوزت الحدَّ الآمن يُدَلّ على زرّ النسخ بدل قصٍّ صامت
+            // يأكل آخرَ الرسالة.
+            const tooLong = encoded.length > WA_URL_SAFE_LIMIT;
+            st.innerHTML = tooLong
+                ? `<b style="color: var(--warning);">&#9888; This message is long (${encoded.length} encoded characters).</b> `
+                  + `Some phones cut a very long WhatsApp link. If the end is missing, press `
+                  + `<b>Copy the text</b> and paste it into WhatsApp instead &mdash; pasting has no limit.`
+                : `Ready. WhatsApp will ask you which chat or group to send it to &mdash; there is no number in the link, `
+                  + `because a link with a number cannot open a group.`;
+            st.style.color = '';
+        }
+    };
+
+    window.copyInspectionMessage = async function() {
+        const prev = document.getElementById('inspPreview');
+        const st = document.getElementById('inspStatus');
+        const say = (t, c) => { if (st) { st.innerHTML = t; st.style.color = c || ''; } };
+        const text = prev ? prev.textContent : '';
+        if (!text) return;
+        try {
+            await navigator.clipboard.writeText(text);
+            say('<b>Copied.</b> Open the branch group in WhatsApp and paste it.', 'var(--success)');
+            logAudit('Inspection reminder copied',
+                `${document.getElementById('inspBranch')?.value || 'all branches'} — `
+                + `${document.getElementById('inspTone')?.value || 'routine'}`);
+        } catch (e) {
+            // ⚠️ الحافظة تُرفض في بعض السياقات. ويُدَلّ على بديلٍ يدويٍّ يعمل دائمًا
+            // بدل «فشل النسخ» التي تترك القارئ واقفًا.
+            say('This browser would not let the page copy for you. Select the text in the box below and copy it '
+                + 'with Ctrl+C.', 'var(--warning)');
+        }
+    };
 
     /**
      * ⭐⭐⭐ نصُّ تنبيه الحضور الأخير — يُرسل إلى الموظف نفسه على واتساب.
