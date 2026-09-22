@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=149">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=150">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -20362,10 +20362,63 @@
             repEn: 'Represented by: Mrs. Fatima Issa Saqr Al-Rumaihi &ndash; Qatari ID No. 27463401322',
             repAr: 'ويمثلها: السيدة فاطمة عيسى صقر الرميحي - بطاقة قطرية رقم 27463401322',
             signEn: 'The First Party &ndash; GAIMER W KAHI RESTAURANT',
-            signAr: 'الطرف الأول - مطعم قيمر وكاهي'
+            signAr: 'الطرف الأول - مطعم قيمر وكاهي',
+            // ⚠️ تعريفُ «المنافس» في البند ٤ — يختلف بين العلامتين، فصار من
+            //   بيانات الطرف لا نصًّا ثابتًا في الدالّة.
+            competitorEn: 'here referring to any Iraqi restaurant, caf&eacute;, or any business related to Iraqi '
+                + 'cuisine, food preparation, or Iraqi desserts',
+            competitorAr: 'والمقصود هنا اي مطعم عراقي أو كافيه او أي عمل يختص بالمطبخ العراقي أو إعداد الطعام '
+                + 'أو الحلويات العراقية'
         },
-        // ⚠️ تُترك null بقصد — انظر الشرح أعلاه. ولا تُخمَّن.
-        SBH: null
+        /**
+         * ⭐⭐⭐⭐⭐ شاي بو حمد — وصلت بياناتُها من المالك، فرُفع الحجزُ عنها.
+         *
+         * ⚠️⚠️⚠️⚠️ وفيها **تعارضٌ لم أُصلحه ولن أُصلحه بنفسي**: في البند ٤ نصُّه
+         * الإنجليزيُّ يقول المنافسُ هو المطعمُ **العراقيّ** (Iraqi) — منقولًا كما
+         * هو من نسخة قيمر وكاهي — ونصُّه العربيُّ يقول المطعمُ **القطريّ**. أي أنّ
+         * عمودَي الورقة الواحدة يُعرّفان «المنافس» تعريفَين مختلفين، وهي الورقةُ
+         * التي تُقيّد الموظفَ سنتين. وشاي بو حمد بيتُ شايٍ قطريٌّ فالأرجحُ أنّ
+         * «قطري» هو المقصود وأنّ الإنجليزيَّ لم يُحدَّث — **لكنّ الأرجحَ ليس
+         * قرارًا**، وهذا بندٌ يُحتجّ به في محكمة.
+         * فيُطبع نصُّه كما أرسله **حرفيًّا**، ويُعرض تنبيهٌ ظاهرٌ فوق الورقة في كل
+         * مرّة يُختار فيها هذا المستند حتى يُحدّد المالك. انظر renderDocument.
+         *
+         * ⚠️⚠️ وسطرُ التوقيع عنده «شاي بوحمد» موصولةً، واسمُ الشركة أعلاه «شاي بو
+         * حمد» مفصولةً. نُقل كلٌّ منهما كما كُتب ولم أُوحّدهما — تغييرُ هجاء اسمِ
+         * كيانٍ قانونيٍّ ليس تنسيقًا. وأُبلغتُه.
+         * ⚠️ وقيدُ المنشأة هنا بلا أقواس (17-2840-73) وفي قيمر وكاهي بأقواس
+         * ((17-2231-43)) — كما أرسل كلًّا منهما.
+         */
+        SBH: {
+            match: 'SHAI BU HAMAD',
+            en: [
+                'Sirs / SHAI BU HAMAD Company W.L.L',
+                'P.O. Box 36138, Doha &ndash; Qatar',
+                'Commercial Registration No. 217388',
+                'Establishment Record No. 17-2840-73'
+            ],
+            ar: [
+                'السادة / شركة شاي بو حمد ذ.م.م &nbsp; ص.ب 36138 الدوحة &ndash; قطر',
+                'سجل تجاري رقم <b>217388</b> قيد منشأة رقم 17-2840-73'
+            ],
+            // ⚠️ ورقمُ هويتها **مكتوبٌ في الإنجليزيِّ هنا** بنصّ المالك — وهذا
+            //   يُثبت أنّ إغفالَه في نسخة قيمر وكاهي كان سهوَ نسخٍ لا قصدًا،
+            //   فإضافتي له هناك كانت صحيحة.
+            repEn: 'Represented by: Mrs. Fatima Issa Saqr Al-Rumaihi &ndash; Qatari ID No. 27463401322',
+            repAr: 'ويمثلها: السيدة فاطمة عيسى صقر الرميحي - بطاقة قطرية رقم 27463401322',
+            signEn: 'The First Party &ndash; SHAI BU HAMAD',
+            signAr: 'الطرف الأول - شاي بوحمد',
+            // ⚠️⚠️⚠️ هنا التعارض: الإنجليزيُّ «Iraqi» والعربيُّ «قطري» — بنصّه.
+            competitorEn: 'here referring to any Iraqi restaurant, caf&eacute;, or any business related to Iraqi '
+                + 'cuisine, food preparation, or Iraqi desserts',
+            competitorAr: 'والمقصود هنا اي مطعم قطري أو كافيه او أي عمل يختص بالمطبخ القطري أو إعداد الطعام '
+                + 'أو الحلويات القطرية',
+            // ⚠️ عَلَمٌ صريحٌ لا فحصٌ لغويٌّ ذكيّ: الفحصُ الذكيُّ يُخطئ صامتًا،
+            //   والعلَمُ المكتوبُ بيدٍ يُراجَع ويُحذف بسطرٍ عند حلّ التعارض.
+            competitorMismatch: {
+                en: 'Iraqi', ar: 'قطري / Qatari'
+            }
+        }
     };
 
     /** أيُّ كيانٍ يخصّ هذا الموظف؟ يُستنتج من فرعه. */
@@ -20494,16 +20547,14 @@
             '<span class="doc-b">4. Non-Compete Clause:</span><br>'
             + 'Unless the First Party agrees otherwise in writing, the Second Party commits to working for the '
             + 'First Party for no less than two years and shall not, during the contract period or thereafter, work '
-            + 'directly or indirectly for any entity considered a competitor (here referring to any Iraqi restaurant, '
-            + 'caf&eacute;, or any business related to Iraqi cuisine, food preparation, or Iraqi desserts). The First '
+            + `directly or indirectly for any entity considered a competitor (${party.competitorEn}). The First `
             + 'Party has the right to refuse releasing a no-objection certificate for transfer to competing companies '
             + 'in the same field after the contract period.',
             '<span class="doc-b">4. شرط عدم المنافسة :</span><br>'
             + 'ما لم يوافق الطرف الأول على خلاف ذلك كتابيًا، يلتزم الطرف الثاني بالعمل لدى الطرف الأول لفترة لا تقل '
             + 'عن سنتين ، ولا يسمح للطرف الثاني خلال فترة التعاقد أو بعدها بالعمل بشكل مباشر أو غير مباشر لدى أي جهة '
             + 'يمكن اعتبارها منافسًا للشركة ويحق للطرف الأول بعد فترة التعاقد الامتناع عن إصدار خطاب عدم الممانعة '
-            + 'للنقل للشركات المنافسة في نفس المجال (والمقصود هنا اي مطعم عراقي أو كافيه او أي عمل يختص بالمطبخ '
-            + 'العراقي أو إعداد الطعام أو الحلويات العراقية) .'
+            + `للنقل للشركات المنافسة في نفس المجال (${party.competitorAr}) .`
         );
         row(
             '<span class="doc-b">5. Consequences of Breach:</span><br>'
@@ -20916,6 +20967,29 @@
          * ⚠️ ولا يُعرض إلا للمستندِ الذي يطبع المسمّى فعلًا (needs فيها role):
          *   اتفاقيةُ السرّية لا تذكر الوظيفةَ، فتنبيهٌ عليها فيها ضجيجٌ بلا معنى.
          */
+        /**
+         * ⭐⭐⭐⭐⭐ تعارضُ تعريف «المنافس» بين العمودين — تنبيهٌ لا يُمكن تفويتُه.
+         *
+         * ⚠️⚠️⚠️ نصُّ شاي بو حمد الذي أرسله المالك يقول في البند ٤ إنجليزيًّا إنّ
+         * المنافسَ هو المطعمُ **العراقيّ**، وعربيًّا إنه المطعمُ **القطريّ**. أي أنّ
+         * عمودَي ورقةٍ واحدةٍ يُقيّدان الموظفَ بشيئين مختلفين — وهذا بندٌ يُحتجّ به
+         * في محكمةٍ ويمنع الرجلَ من العمل سنتين.
+         * ⚠️ ولا يُصلَح من عندي ولا يُخمَّن: شاي بو حمد بيتُ شايٍ قطريٌّ فالأرجحُ
+         * «قطري»، لكنّ الأرجحَ ليس قرارًا. فيُطبع نصُّه حرفيًّا **ويُصاح** به.
+         * ⚠️⚠️ ولا يُمنع الإصدار: هو أرسل النصَّ ليُصدره، ومنعُه بعد انتظارٍ طويل
+         * يُعطّل عملَه. فالتنبيهُ ظاهرٌ ومستمرٌّ حتى يُحدّد، ثم يُحذف بسطر.
+         */
+        const clash = (party && party.competitorMismatch && (type.needs || []).includes('qidNumber'))
+            ? `<b>&#9888;&#9888; The two columns of this agreement define &ldquo;competitor&rdquo; differently.</b><br>`
+              + `In clause 4, the <b>English</b> column says the competitor is any `
+              + `<b>${escapeHtml(party.competitorMismatch.en)}</b> restaurant, while the <b>Arabic</b> column says `
+              + `<b>${escapeHtml(party.competitorMismatch.ar)}</b>. Both are printed exactly as you sent them &mdash; `
+              + `nothing was changed.<br>`
+              + `This clause stops the employee working for a competitor for two years, so the two columns must agree `
+              + `before anyone signs. Tell me which wording is correct and it is a one-line change; this notice then `
+              + `disappears.`
+            : '';
+
         const needsRole = (type.needs || []).includes('role');
         const arJob = (needsRole && emp.role && jobTitleAr(emp.role) === emp.role)
             ? `<b>&#9888; No Arabic job title for &ldquo;${escapeHtml(String(emp.role))}&rdquo;.</b> `
@@ -20923,7 +20997,7 @@
               + `freely before the official list existed. Open <b>Employee Profiles</b> &rarr; this employee &rarr; `
               + `<b>Job Title</b> and pick one from the suggestion list, then press Save.`
             : '';
-        if (gaps.length || arName || arJob) {
+        if (gaps.length || arName || arJob || clash) {
             miss.style.display = 'block';
             miss.innerHTML =
                 (gaps.length
@@ -20934,7 +21008,12 @@
                 + (gaps.length && arName ? '<br><br>' : '')
                 + arName
                 + ((gaps.length || arName) && arJob ? '<br><br>' : '')
-                + arJob;
+                + arJob
+                // ⚠️ التعارضُ **أوّلًا في القراءة** لو وُجد؟ لا — يُجعل آخرًا بقصد:
+                //   هو الأطولُ والأثقل، ووضعُه أوّلًا يدفع بقيّةَ النقص (اسمٌ، جوازٌ)
+                //   أسفلَ الشاشة فلا تُقرأ. وهو بخطٍّ عريضٍ وعلامتَي تحذيرٍ فلا يُفوَّت.
+                + ((gaps.length || arName || arJob) && clash ? '<br><br>' : '')
+                + clash;
         }
     };
 
