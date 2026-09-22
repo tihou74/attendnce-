@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=143">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=144">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -794,6 +794,92 @@
         .side-rail .nav-tab-btn { padding: 13px 14px; }
     }
 
+    /* =====================================================================
+       ⭐⭐⭐⭐⭐ ورقةُ المستند — الإنجليزيةُ مقابل العربية
+       ---------------------------------------------------------------------
+       بلقطة المالك: عمودان، الإنجليزيُّ يسارًا والعربيُّ يمينًا، بينهما خطٌّ
+       فاصل، والعنوانان في الوسط تحتهما خطّ.
+
+       ⚠️⚠️⚠️ جدولٌ حقيقيٌّ صفٌّ لكلّ بند — لا عمودان طويلان. والسببُ أنّ
+       عمودَين طويلَين ينقسمان على الصفحات **بلا تزامن**، فيصير البندُ الثالث
+       إنجليزيًّا أمام البند الخامس عربيًّا. وصفٌّ لكلّ بندٍ يُبقي كلَّ فقرةٍ
+       أمام مقابلتها صفحةً بعد صفحة — وهذا ما يفعله جدولُ Word في لقطته.
+
+       ⚠️ وbreak-inside: avoid على الصفّ: بندٌ يُقطع نصفُه في أسفل صفحةٍ ونصفُه
+       في أعلى التالية يُقرأ على أنه بندانِ ناقصان.
+       ===================================================================== */
+    .doc-paper {
+        background: var(--neutral-0, #fff);
+        color: #000;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 22px;
+        margin-bottom: 22px;
+        /* ⚠️ مقاسُ A4 على الشاشة كي يرى المالكُ الورقةَ كما ستُطبع لا أعرضَ منها */
+        max-width: 210mm;
+        box-shadow: var(--shadow-sm);
+    }
+    .doc-tbl { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .doc-tbl td {
+        width: 50%; vertical-align: top;
+        padding: 7px 11px;
+        border: 1px solid #000;
+        font-size: 11.5px; line-height: 1.75;
+        /* ⚠️ بندٌ لا يُقطع بين صفحتين */
+        break-inside: avoid; page-break-inside: avoid;
+    }
+    /* الإنجليزيُّ يسارًا من اليسار، والعربيُّ يمينًا من اليمين — كلٌّ باتجاهه */
+    .doc-en { direction: ltr; text-align: left; }
+    .doc-ar { direction: rtl; text-align: right; font-size: 12.5px; line-height: 1.95; }
+    .doc-tbl tr.doc-head td {
+        text-align: center; font-weight: 800; font-size: 15px;
+        text-decoration: underline; padding: 12px 11px;
+    }
+    .doc-tbl tr.doc-head td.doc-ar { font-size: 16px; }
+    .doc-b { font-weight: 800; }
+    /* سطرُ التوقيع: فراغٌ تحت الاسم ليُوقَّع بالقلم */
+    .doc-sign td { height: 78px; }
+
+    /* =====================================================================
+       ⭐⭐⭐⭐ الطباعة — @page يحجز فراغَ الورق الرسميّ بالمليمتر
+       ---------------------------------------------------------------------
+       ⚠️⚠️ الهامشان العلويُّ والسفليُّ يُكتبان من الجافاسكربت في متغيّرَين، لأنّ
+       @page لا يقبل var() في كل المتصفّحات — فتُكتب القاعدةُ كاملةً في عنصر
+       style مستقلّ (docPageStyle). وقياسُ المالك يُحفظ فلا يُضبط كلَّ مرّة.
+       ⚠️ و.no-print يُخفي كلَّ ما ليس مستندًا: الشريطَ الجانبيَّ والترويسةَ
+       وبطاقةَ الاختيار والتذييل — فلا تُطبع لوحةُ تحكّمٍ على ورقٍ رسميّ.
+       ===================================================================== */
+    @media print {
+        /* ⚠️⚠️⚠️⚠️ المستندُ يبقى في **التخطيط الطبيعيّ**، ويُخفى أشقّاؤه على كلِّ
+           مستوًى من مستويات التعشيش الثلاثة (body > #dashboard > #tab-docs >
+           #docPaper).
+           ولا تُستعمل طريقةُ «body * { visibility: hidden }» مع
+           position: absolute على المستند: العنصرُ المطلقُ الموضعِ يُقصّ في عدّة
+           متصفّحات على **الصفحة الأولى وحدَها**، والاتفاقيةُ أكثرُ من صفحة —
+           فتُطبع ورقةٌ واحدةٌ ناقصةٌ ويُوقَّع عليها. والإخفاءُ بـ:not() يُبقي
+           المستندَ متدفّقًا فيتقسّم على الصفحات كما يجب، ويُخفي في الوقت نفسه
+           أيَّ عنصرٍ لا أعرفه (نافذةٌ منبثقة، تنبيهٌ عائم، طبقةُ تحميل) بلا أن
+           أُسمّيه واحدًا واحدًا. */
+        body > *:not(#dashboard) { display: none !important; }
+        #dashboard > *:not(#tab-docs) { display: none !important; }
+        #tab-docs > *:not(#docPaper) { display: none !important; }
+        .no-print { display: none !important; }
+        #dashboard, #tab-docs {
+            display: block !important;
+            margin: 0 !important; padding: 0 !important;
+            max-width: none !important; width: auto !important;
+        }
+        #docPaper {
+            width: auto; max-width: none;
+            margin: 0; padding: 0; border: none; box-shadow: none; border-radius: 0;
+            background: #fff !important; color: #000 !important;
+        }
+        body, body.rail-on { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+        .doc-tbl td { border-color: #000 !important; }
+        /* ⚠️ الجدولُ يُعيد ترويسته على كل صفحة إن وُجدت — ولا ترويسةَ هنا بقصد:
+           عنوانُ الاتفاقية يُطبع مرّةً واحدةً في أعلى الورقة الأولى فقط. */
+    }
+
     /* ⭐⭐⭐ تذييلُ الصفحة — «ومن تحت يكون فيه وسم: برنامجٌ من إنشاء فريق
        الشيخة قروب، كلُّ الحقوق محفوظة» بنصّ المالك.
        ⚠️ بالعربية والإنجليزية: اللوحةُ كلُّها بالإنجليزية ويقرؤها المحاسبُ
@@ -1169,6 +1255,9 @@
                  قيمر وكاهي، إعارة بينهما، أوت سورس). ولا خيارَ للعبايات — فإن أرادها
                  المالك لهنّ فسؤالٌ مطروح عليه، ولا تُخمَّن. -->
             <button class="nav-tab-btn" data-tab="tab-admin-status" data-biz="rest" data-group="people"><span class="ic-slot" data-icon="fileText"></span><span class="tab-label">Administrative Status</span></button>
+            <!-- ⭐⭐⭐ مستنداتُ الموظفين — بطلب المالك: عرضُ العمل واتفاقيةُ السرّية
+                 والمهامُ الوظيفية، نصوصٌ جاهزةٌ تُعبّأ من الملفّ وتُطبع على ورقه. -->
+            <button class="nav-tab-btn" data-tab="tab-docs" data-biz="rest" data-group="people"><span class="ic-slot" data-icon="fileText"></span><span class="tab-label">Employee Documents</span></button>
             <button class="nav-tab-btn" data-tab="tab-training" data-biz="rest" data-group="people"><span class="ic-slot" data-icon="graduationCap"></span><span class="tab-label">Employee Training</span></button>
             <button class="nav-tab-btn" data-tab="tab-former" data-biz="both" data-group="people"><span class="ic-slot" data-icon="users"></span><span class="tab-label">Former Employees</span></button>
 
@@ -1874,6 +1963,113 @@
                 </table>
             </div>
         </div>
+    </div>
+
+    <!-- ===================================================================
+         ⭐⭐⭐⭐⭐ مستنداتُ الموظفين — بطلب المالك
+         -------------------------------------------------------------------
+         «عرض العمل واتفاقية السرية والحصرية والمهام الوظيفية … ستكون النصوص
+          إنجليزية وعربية، النصوص جاهزة فقط معلومات الموظف هي التي تُحمَّل
+          أوتوماتيكيًّا من البروفايل ونعبّئ في مكانها المخصص، بعدها أنا أحمّلها
+          بي دي إف وأطبعها في ليتر هيد مالي».
+         وبلقطته الثانية: «سوّيها بهذا الشكل — الإنجليزية مقابل العربية».
+
+         ⚠️⚠️⚠️ الطباعةُ بمحرّك المتصفّح لا بمكتبة PDF، وهذا قياسٌ لا رأي:
+           • jsPDF لا يكتب عربيةً في هذا المشروع — تُنادى pdf.text تسعَ مرّاتٍ
+             ولا واحدةٌ فيها حرفٌ عربيّ، ولم يُضَف خطٌّ عربيٌّ إليها قطّ
+             (addFont = صفر). فالعربيُّ يخرج مقطّعًا أو فراغًا.
+           • html2canvas يُقصّ: الكودُ القائم فيه Math.min(imgHeight, pageHeight-20)
+             فما زاد عن صفحةٍ يُرمى — واتفاقيةٌ من ثلاث صفحاتٍ تخرج صفحةً ناقصة.
+             ويُنتج **صورةً** لا نصًّا.
+           • طباعةُ المتصفّح تستعمل محرّكَ الخطوط نفسَه الذي يعرض العربيَّ على
+             الشاشة، فيخرج موصولًا صحيحًا، نصًّا حقيقيًّا، بصفحاتٍ تنقسم وحدَها،
+             و@page تحجز فراغَ الترويسة بالمليمتر.
+
+         ⚠️⚠️ وتعليقٌ في هذا الملفّ يقول إنّ الطباعةَ جُرِّبت وأُلغيت لأنها تُخرج
+         صفحةً بيضاء. والسببُ المكتوبُ هناك: «print stylesheets don't reliably
+         apply to elements inside a display:none overlay/modal» — أي أنهم طبعوا
+         شيئًا داخل **نافذةٍ مخفيّة**. ومستندُنا في **تبويبٍ ظاهرٍ عاديّ**، يُرى
+         على الشاشة كما سيُطبع. فالسببُ غيرُ موجودٍ هنا.
+
+         ⚠️ والجدولُ صفٌّ لكلّ بند (لا عمودان طويلان): فالفقرةُ الإنجليزية تبقى
+         بمحاذاة مقابلتها العربية صفحةً بعد صفحة. وعمودان طويلان ينقسمان على
+         الصفحات بلا تزامن، فيصير البندُ الثالث إنجليزيًّا أمام البند الخامس
+         عربيًّا — وهو عيبٌ قاتلٌ في مستندٍ يُوقَّع.
+         =================================================================== -->
+    <div id="tab-docs" class="tab-content">
+        <div class="card no-print">
+            <h3><span data-icon="fileText"></span> Employee Documents</h3>
+            <p class="card-sub">
+                The wording is fixed. Only the employee's own details are filled in from their profile.
+                Choose the employee, check the details below are right, then press <b>Print / Save as PDF</b> &mdash;
+                in that dialog choose <b>Save as PDF</b> to keep a copy, or your printer to print it on your letterhead.
+            </p>
+
+            <div class="controls" style="align-items: flex-end; gap: 12px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 220px;">
+                    <label for="docEmpSelect">Employee</label>
+                    <select id="docEmpSelect" onchange="renderDocument()"></select>
+                </div>
+                <div style="flex: 1; min-width: 200px;">
+                    <label for="docTypeSelect">Document</label>
+                    <select id="docTypeSelect" onchange="renderDocument()">
+                        <option value="nda">Confidentiality Agreement &mdash; اتفاقية السرية</option>
+                    </select>
+                </div>
+                <!-- ⚠️⚠️ اللقبُ يُختار ولا يُخمَّن: نصُّ المالك فيه «Mrs.» في
+                     الإنجليزي و«السيد» في العربي — أي لقبانِ متناقضان في مستندٍ
+                     واحد. وليس في النظام حقلُ جنس. ولقبٌ خاطئٌ على اتفاقيةٍ
+                     موقَّعةٍ عيبٌ يُلاحظه صاحبُها أوّلَ ما يقرأ. -->
+                <div style="width: 150px;">
+                    <label for="docHonorific">Title</label>
+                    <select id="docHonorific" onchange="renderDocument()">
+                        <option value="mr">Mr. &mdash; السيد</option>
+                        <option value="mrs">Mrs. &mdash; السيدة</option>
+                    </select>
+                </div>
+                <div style="width: 170px;">
+                    <label for="docDate">Document date</label>
+                    <input type="date" id="docDate" onchange="renderDocument()">
+                </div>
+            </div>
+
+            <!-- ⚠️⚠️⚠️ لوحةُ النقص: مستندٌ يُطبع بفراغٍ في موضع رقم الجواز أو
+                 الهوية يُوقَّع ثم يُكتشف. فيُقال **قبل** الطباعة ما ينقص وأين
+                 يُكتب، لا بعدها. -->
+            <div id="docMissingBox" style="display: none; background: var(--warning-soft); border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent); border-left: 4px solid var(--warning); border-radius: var(--radius-sm); padding: 12px 14px; margin-top: 14px; font-size: 13px; line-height: 1.8;"></div>
+            <div id="docBlockedBox" style="display: none; background: var(--danger-soft); border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); border-left: 4px solid var(--danger); border-radius: var(--radius-sm); padding: 12px 14px; margin-top: 14px; font-size: 13px; line-height: 1.8;"></div>
+
+            <details style="margin-top: 16px;">
+                <summary style="cursor: pointer; font-weight: 700; font-size: 13px;">Letterhead spacing &mdash; set this once</summary>
+                <p class="card-sub" style="margin: 10px 0;">
+                    Measure your printed letterhead with a ruler: how many millimetres from the <b>top</b> of the
+                    sheet down to below the printed header, and from the <b>bottom</b> of the sheet up to above the
+                    printed footer. The document leaves that space empty so nothing prints over your letterhead.
+                </p>
+                <div class="controls" style="align-items: flex-end; gap: 12px;">
+                    <div style="width: 160px;">
+                        <label for="docTopMm">Top space (mm)</label>
+                        <input type="number" id="docTopMm" min="0" max="120" step="1" oninput="applyDocPageSetup()">
+                    </div>
+                    <div style="width: 160px;">
+                        <label for="docBottomMm">Bottom space (mm)</label>
+                        <input type="number" id="docBottomMm" min="0" max="120" step="1" oninput="applyDocPageSetup()">
+                    </div>
+                    <button class="btn-accent" id="btnSaveDocSetup" onclick="saveDocPageSetup()"><span data-icon="save"></span> Save spacing</button>
+                </div>
+                <p class="card-sub" id="docSetupNote" style="margin: 10px 0 0;"></p>
+            </details>
+
+            <div class="controls" style="margin-top: 18px;">
+                <button class="btn-primary" onclick="printDocument()"><span data-icon="fileText"></span> Print / Save as PDF</button>
+                <span id="docStatus" style="font-weight: 700; font-size: 13px;"></span>
+            </div>
+        </div>
+
+        <!-- ⚠️ الورقةُ نفسُها: تُعرض على الشاشة كما ستُطبع بالضبط، وهي **ظاهرةٌ**
+             لا داخل نافذةٍ مخفيّة — وهذا بعينه ما أوقع الطباعةَ القديمة في صفحةٍ
+             بيضاء. وid=docPaper هو ما يُطبع وحدَه. -->
+        <div id="docPaper" class="doc-paper"></div>
     </div>
 
     <!-- Warning Letters (with optional automatic salary deduction) -->
@@ -4857,7 +5053,17 @@
         //
         // ⚠️⚠️ والأرقامُ المالية مخفيّةٌ عنها داخل التبويب أصلًا: renderAdminStatus
         // تشترط canSeeMoney() قبل عرض راتب الموظف، وهي false للسكرتيرة.
-        [ROLE_SECRETARY]: ['tab-home', 'tab-employees', 'tab-admin-status', 'tab-requests',
+        //
+        // ⭐⭐⭐ و«مستندات الموظفين» أُضيفت لها: هي من يُجلس الموظفَ الجديد
+        // ويُوقّعه، فمنعُها من طبع اتفاقية السرّية يعني أن يُطبعها المالكُ بنفسه
+        // لكلّ موظف.
+        // ⚠️⚠️ والتبويبُ اليومَ فيه **اتفاقيةُ السرّية وحدَها**، ولا رقمَ ماليًّا
+        // فيها بحال. أمّا «عرضُ العمل» فسيحمل راتبًا، والسكرتيرةُ لا ترى المال —
+        // فحين يُضاف نصُّه يجب أن يُحجب عنها ذلك المستندُ وحدَه (لا التبويب)، أو
+        // يُستثنى سطرُ الراتب. وهذا سؤالٌ مطروحٌ على المالك ولم أُخمّن جوابَه.
+        // ⚠️ وحفظُ فراغ الورق الرسميّ يشترط hasFinanceAccess() (settings write)،
+        // فالحقلانِ عندها للقراءة والضبطُ يُعمل مرّةً واحدةً من حساب المالك.
+        [ROLE_SECRETARY]: ['tab-home', 'tab-employees', 'tab-admin-status', 'tab-docs', 'tab-requests',
                            'tab-applications', 'tab-warnings', 'tab-former'],
         // البروفايل + الحضور + الطلبات + طلبات التسجيل الجديدة.
         // tab-sales أُضيف بقرار الإدارة: المديرون الثلاثة هم من يُرسل التقرير
@@ -5229,6 +5435,23 @@
             el.title = canEditOutsource ? '' : 'Only the owner and the accountant can change this number.';
             el.style.opacity = canEditOutsource ? '' : '0.75';
         });
+        // ⭐⭐⭐ ونفسُ الحرس على فراغِ الورق الرسميّ في «مستندات الموظفين»:
+        // يُحفظ في settings، فالقاعدةُ تُتيحه للمالك والمحاسب وحدهما.
+        // ⚠️ والحقلانِ يبقيان **ظاهرَين للقراءة**: السكرتيرةُ تحتاج أن ترى القياسَ
+        // المضبوطَ لتعرف أنّ الورقةَ ستُطبع في مكانها، والممنوعُ تغييرُه.
+        // ⚠️⚠️ وهذا حرسُ شاشةٍ فوق حرسِ الدالّة لا بدلًا منه: saveDocPageSetup
+        // تفحص hasFinanceAccess() بنفسها، فلو أُظهر الزرُّ بخطأٍ في المستقبل
+        // لَرُفض الحفظُ برسالةٍ مفهومة لا بـ«صلاحية مرفوضة» من الخادم.
+        const docSetupBtn = document.getElementById('btnSaveDocSetup');
+        if (docSetupBtn) docSetupBtn.style.display = canEditOutsource ? '' : 'none';
+        ['docTopMm', 'docBottomMm'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.readOnly = !canEditOutsource;
+            el.title = canEditOutsource ? '' : 'Only the owner and the accountant can change the letterhead spacing.';
+            el.style.opacity = canEditOutsource ? '' : '0.75';
+        });
+
         // ⚠️ والسببُ يُقال في سطر البطاقة نفسه — ويُكتب داخل renderOutsourceNote
         // لا هنا: تلك الدالّةُ تُعيد بناء السطر في كل فتحةٍ للتبويب، فنصٌّ يُكتب
         // هنا يُمحى عند أوّل فتحة. جرّبتُه هكذا أوّلًا فوجدتُه يُمحى.
@@ -5664,6 +5887,13 @@
             loadOutsourceContact();
             refreshAdminStatusData();
         }
+        // ⭐⭐⭐ مستنداتُ الموظفين.
+        // ⚠️ renderDocPickers أوّلًا فتُرسم القائمةُ من allEmployees في الذاكرة
+        // فورًا، ثم loadDocPageSetup تقرأ القياسَ من settings — وهي غيرُ متزامنة.
+        // ولو عُكس الترتيبُ لبقيت الشاشةُ فارغةً إلى أن ترجع القراءة.
+        // ⚠️⚠️ ولا يُنتظر loadDocPageSetup هنا بـawait: switchTab ليست async،
+        // فـawait داخلها خطأُ بناء. والقياسُ يُطبَّق داخلها على @page عند وصوله.
+        if (tabId === 'tab-docs') { renderDocPickers(); loadDocPageSetup(); }
         if (tabId === 'tab-payroll') { renderPayrollMonthLabel(); filterEmployeesList(); }
         if (tabId === 'tab-shifts') renderShiftsTable();
         if (tabId === 'tab-warnings') { renderWarningsTable(); loadManagerRequests(); }
@@ -19934,6 +20164,331 @@
         } catch (error) {
             alert("Error deleting warning letter: " + error.message);
         }
+    };
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ مستنداتُ الموظفين — المحرّك
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️⚠️ النصُّ القانونيُّ **حرفيٌّ كما أرسله المالك**، ولم أُغيّر منه كلمةً
+    // ولا علامةَ ترقيم. وهذه اتفاقيةٌ تُلزم موظفيه أمام محكمةٍ قطرية، وكلمةٌ
+    // أخترعها فيها قد تُكلّفه. فما كان ناقصًا في نصّه تُرك ناقصًا ويُقال له،
+    // ولم يُكمَّل من عندي.
+    // =====================================================================
+
+    /**
+     * بياناتُ الطرف الأول — لكلّ علامةٍ كيانُها القانونيّ.
+     *
+     * ⚠️⚠️⚠️ وهذا أخطرُ ما في هذه الميزة: نصُّ المالك يُسمّي **شركة مطعم قيمر
+     * وكاهي ذ.م.م** بسجلٍّ تجاريٍّ 149053 وقيدِ منشأةٍ 17-2231-43. وله فروعُ
+     * **شاي بو حمد** كذلك. فإصدارُ هذه الاتفاقية لموظفٍ في شاي بو حمد باسم
+     * قيمر وكاهي يُسمّي **الكيانَ القانونيَّ الخطأ** — وهو عيبٌ يُبطل الاتفاقيةَ
+     * أمام المحكمة، ولا يُكتشف إلا عند الحاجة إليها.
+     *
+     * ولن أُخمّن سجلًّا تجاريًّا بحال. فبيانات شاي بو حمد **null** حتى يُرسلها
+     * المالك، والإصدارُ **يُرفض** لموظفيها بدل أن يُطبع كيانًا خاطئًا. ورفضٌ
+     * صريحٌ مع بيان السبب أصدقُ من ورقةٍ تبدو صحيحةً وهي باطلة.
+     */
+    const DOC_PARTIES = {
+        GWK: {
+            match: 'GAIMER W KAHI',
+            en: [
+                'Sirs / Gaimer w Kahi Restaurant Company W.L.L',
+                'P.O. Box 36138, Doha &ndash; Qatar',
+                'Commercial Registration No. 149053',
+                'Establishment Record No. (17-2231-43)'
+            ],
+            ar: [
+                'السادة / شركة مطعم قيمر وكاهي ذ.م.م &nbsp; ص.ب 36138 الدوحة &ndash; قطر',
+                'سجل تجاري رقم <b>149053</b> قيد منشأة رقم',
+                '(17-2231-43)'
+            ],
+            repEn: 'Represented by: Mrs. Fatima Issa Saqr Al-Rumaihi &ndash; Qatari ID No. 27463401322',
+            repAr: 'ويمثلها: السيدة فاطمة عيسى صقر الرميحي - بطاقة قطرية رقم 27463401322',
+            signEn: 'The First Party &ndash; GAIMER W KAHI RESTAURANT',
+            signAr: 'الطرف الأول - مطعم قيمر وكاهي'
+        },
+        // ⚠️ تُترك null بقصد — انظر الشرح أعلاه. ولا تُخمَّن.
+        SBH: null
+    };
+
+    /** أيُّ كيانٍ يخصّ هذا الموظف؟ يُستنتج من فرعه. */
+    function docPartyFor(emp) {
+        const br = String((emp && emp.branch) || '').toUpperCase();
+        if (br.includes('GAIMER W KAHI')) return { key: 'GWK', party: DOC_PARTIES.GWK };
+        if (br.includes('SHAI BU HAMAD')) return { key: 'SBH', party: DOC_PARTIES.SBH };
+        // ⚠️ المكتبُ الرئيسيُّ وما لا يُعرف: لا يُخمَّن له كيان
+        return { key: br || 'UNKNOWN', party: null };
+    }
+
+    /** اسمُ اليوم بالعربية والإنجليزية من تاريخٍ ISO. */
+    const DOC_DAY_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    const DOC_DAY_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    /**
+     * ⚠️⚠️ التاريخُ يُبنى بأجزائه (y, m-1, d) لا بـnew Date('2026-09-22'):
+     * الثانيةُ تُفسَّر منتصفَ ليلٍ **بتوقيت UTC**، فتُعرض في أيّ متصفّحٍ بمنطقةٍ
+     * سالبة **اليومَ السابق** — فيُطبع «الأحد» على اتفاقيةٍ تاريخُها الاثنين.
+     * والبناءُ بالأجزاء منتصفُ ليلٍ محليّ فلا يزحف بحال.
+     */
+    function docDateParts(iso) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '').trim());
+        if (!m) return null;
+        const y = Number(m[1]), mo = Number(m[2]), da = Number(m[3]);
+        const d = new Date(y, mo - 1, da);
+        if (isNaN(d.getTime())) return null;
+        /**
+         * ⚠️⚠️⚠️ ويُتحقّق أنّ التاريخَ لم **يَفِض**: منشئُ التاريخ يقبل
+         * (2026, 12, 45) صامتًا ويُرجع فبراير 2027 — فيُطبع على الاتفاقية اسمُ
+         * يومٍ لا علاقةَ له بالتاريخ المكتوب بجانبه، وهو أسوأُ من رفضٍ صريح.
+         * وكشفَ هذا فحصٌ، لا قراءةٌ للكود.
+         */
+        if (d.getFullYear() !== y || d.getMonth() !== mo - 1 || d.getDate() !== da) return null;
+        return {
+            iso, y: m[1], m: m[2], d: m[3],
+            dayAr: DOC_DAY_AR[d.getDay()], dayEn: DOC_DAY_EN[d.getDay()]
+        };
+    }
+
+    /**
+     * ⭐ اتفاقيةُ السرّية — نصُّ المالك حرفيًّا، صفٌّ لكلّ بند.
+     *
+     * ⚠️⚠️ سطرُ التاريخ: نصُّه الإنجليزيُّ فيه **قوسان** («On the day of {}
+     * corresponding to {}») ونصُّه العربيُّ فيه **أربعة** («في يوم {} الموافق ل
+     * {} {} {}»). فالإنجليزيُّ: اسمُ اليوم ثم التاريخُ كاملًا. والعربيُّ: اسمُ
+     * اليوم ثم اليومُ والشهرُ والسنةُ منفصلةً — وهي القراءةُ الوحيدة التي تُطابق
+     * عددَ الأقواس في نصّه. وسألتُه لتأكيدها.
+     */
+    function docNdaBlocks(emp, party, dt, hon) {
+        const nm = escapeHtml(String((emp && emp.name) || ''));
+        const qid = emp && emp.qidNumber ? escapeHtml(String(emp.qidNumber)) : '';
+        const pp = emp && emp.passportNumber ? escapeHtml(String(emp.passportNumber)) : '';
+        const honEn = hon === 'mrs' ? 'Mrs.' : 'Mr.';
+        const honAr = hon === 'mrs' ? 'السيدة' : 'السيد';
+        // ⚠️ الفراغُ يُعرض خطًّا منقّطًا لا فراغًا أبيض: فراغٌ أبيضُ في مستندٍ
+        // مطبوعٍ لا يُلاحظ، وخطٌّ منقّطٌ يقول «هنا شيءٌ ناقص» ويُكتب عليه بالقلم.
+        const slot = (v) => v || '<span style="border-bottom: 1px dotted #000; display: inline-block; min-width: 90px;">&nbsp;</span>';
+
+        const B = [];
+        const row = (en, ar, cls) => B.push({ en, ar, cls: cls || '' });
+
+        row('Confidentiality Agreement', 'اتفاقية السرية', 'doc-head');
+        row('Doha, Qatar', 'الدوحة، قطر');
+        row(
+            `On the day of ${slot(dt && dt.dayEn)} corresponding to ${slot(dt && `${dt.d}/${dt.m}/${dt.y}`)}, `
+            + 'an agreement was made between:',
+            `إنه في يوم ${slot(dt && dt.dayAr)} الموافق ل ${slot(dt && dt.d)} ${slot(dt && dt.m)} ${slot(dt && dt.y)} `
+            + 'تم الاتفاق بين كل من:'
+        );
+        row(party.en.join('<br>'), party.ar.join('<br>'));
+        row('<span class="doc-b">(the First Party)</span>', '<span class="doc-b">الطرف الأول</span>');
+        row(party.repEn, party.repAr);
+        row('<span class="doc-b">(the Second Party)</span>', '<span class="doc-b">والطرف الثاني</span>');
+        row(`And ${honEn} / ${slot(nm)}`, `${honAr} / ${slot(nm)}`);
+        row(`Passport No ${slot(pp)}`, `جواز سفر رقم: ${slot(pp)}`);
+        row(`QID No. ${slot(qid)}`, `بطاقة شخصية رقم : ${slot(qid)}`);
+        row(
+            'It was agreed that the Second Party will commence work with the First Party according to the '
+            + 'employment contract signed between the two parties, and this agreement shall be considered a '
+            + 'comprehensive and irrevocable consent from the Second Party. The two parties agreed as follows:',
+            'تم الاتفاق على أن يبدأ الطرف الثاني عمله مع الطرف الأول وفقًا لعقد العمل المبرم بين الطرفين وتعد هذه '
+            + 'الاتفاقية بمثابة موافقه شاملة وغير قابلة للتغيير من قبل الطرف الثاني حيث إتفق الطرفان على ما يلي:'
+        );
+        row(
+            '<span class="doc-b">1. Commitment to Non-Disclosure:</span><br>'
+            + 'It is understood and agreed that the information, secrets, and details the Second Party is exposed '
+            + 'to by virtue of the work with the First Party (such as methods of preparing food, desserts, salads, '
+            + 'mixes, drinks of all kinds, ingredients, proportions, costs, anything related to the restaurant&rsquo;s '
+            + 'menu, purchases, storage, salaries, customers, suppliers, etc.) must remain strictly confidential at '
+            + 'all times. The Second Party undertakes not to disclose or permit any confidential information to any '
+            + 'third party without written consent from the employer both during and after employment.',
+            '<span class="doc-b">1. الالتزام بعدم الافشاء :</span><br>'
+            + 'من المفهوم والمتفق عليه أن المعلومات والأسرار والتفاصيل التي يتطلع عليها الطرف الثاني بحكم عمله لدى '
+            + 'الطرف الأول (مثل طرق تحضير الطعام والحلويات والسلطات والخلطات والمشروبات بأنواعها والمحتويات والنسب '
+            + 'التكاليف وأي شي يتعلق بالمنيو الخاص بالمطعم والمشتريات والتخزين والرواتب و العملاء و الموردين ... إلخ) '
+            + 'يجب أن تظل في سرية تامة في جميع الأوقات الآن ويتعهد الطرف الثاني بعدم نقل أو تصريح أي معلومة سرية لأي '
+            + 'طرف ثالث دون إذن كتابي من صاحب العمل أثناء الخدمة وبعد انتهائها .'
+        );
+        row(
+            '<span class="doc-b">2. Handling of Documents and Records:</span><br>'
+            + 'The Second Party is obliged to return or destroy all documents or media containing confidential '
+            + 'information upon termination of employment or at the request of the employer. Ownership rights of '
+            + 'confidential information do not transfer to the employee. Communication with company clients is '
+            + 'prohibited for two years after contract termination.',
+            '<span class="doc-b">2. التعامل مع الوثائق والمستندات :</span><br>'
+            + 'يجب على الطرف الثاني إعادة أو إتلاف جميع المستندات أو الوسائط التي تحتوي معلومات سرية عند انتهاء '
+            + 'العمل أو بناءً على طلب صاحب العمل .<br>'
+            + 'لا تنتقل حقوق ملكية المعلومات السرية للموظف ويمنع التواصل مع عملاء الشركة لمدة سنتين بعد انتهاء العقد .'
+        );
+        row(
+            '<span class="doc-b">3. Duration of Confidentiality:</span><br>'
+            + 'The Second Party is bound to maintain confidentiality for a period of five years after contract '
+            + 'termination, whether by end of contract or resignation.',
+            '<span class="doc-b">3. المدة الزمنية للسرية :</span><br>'
+            + 'ويعتبر الطرف الثاني ملزم بعدم الافشاء لفتره 5 سنوات بعد انتهاء العقد سواء انتهاء العقد او الاستقالة .'
+        );
+        row(
+            '<span class="doc-b">4. Non-Compete Clause:</span><br>'
+            + 'Unless the First Party agrees otherwise in writing, the Second Party commits to working for the '
+            + 'First Party for no less than two years and shall not, during the contract period or thereafter, work '
+            + 'directly or indirectly for any entity considered a competitor (here referring to any Iraqi restaurant, '
+            + 'caf&eacute;, or any business related to Iraqi cuisine, food preparation, or Iraqi desserts). The First '
+            + 'Party has the right to refuse releasing a no-objection certificate for transfer to competing companies '
+            + 'in the same field after the contract period.',
+            '<span class="doc-b">4. شرط عدم المنافسة :</span><br>'
+            + 'ما لم يوافق الطرف الأول على خلاف ذلك كتابيًا، يلتزم الطرف الثاني بالعمل لدى الطرف الأول لفترة لا تقل '
+            + 'عن سنتين ، ولا يسمح للطرف الثاني خلال فترة التعاقد أو بعدها بالعمل بشكل مباشر أو غير مباشر لدى أي جهة '
+            + 'يمكن اعتبارها منافسًا للشركة ويحق للطرف الأول بعد فترة التعاقد الامتناع عن إصدار خطاب عدم الممانعة '
+            + 'للنقل للشركات المنافسة في نفس المجال (والمقصود هنا اي مطعم عراقي أو كافيه او أي عمل يختص بالمطبخ '
+            + 'العراقي أو إعداد الطعام أو الحلويات العراقية) .'
+        );
+        row(
+            '<span class="doc-b">5. Consequences of Breach:</span><br>'
+            + 'Any breach of the preceding terms will result in legal actions and compensation, with Qatari courts '
+            + 'having exclusive jurisdiction to resolve any disputes arising during the term of this agreement.',
+            '<span class="doc-b">5. العواقب في حال الاخلال :</span><br>'
+            + 'يترتب أي اخلال بالبنود السابقة إجراءات قانونية وتعويضات و تكون المحاكم القطرية هي صاحبة الاختصاص في '
+            + 'فض أي منازعات في حال نشوء أي خلافات أو نزاعات خلال مدة هذه الاتفاقية.'
+        );
+        row(`<span class="doc-b">${party.signEn}</span>`, `<span class="doc-b">${party.signAr}</span>`, 'doc-sign');
+        row('<span class="doc-b">The Second Party -</span>', '<span class="doc-b">الطرف الثاني -</span>', 'doc-sign');
+        return B;
+    }
+
+    const DOC_TYPES = {
+        nda: { label: 'Confidentiality Agreement', build: docNdaBlocks, needs: ['name', 'qidNumber', 'passportNumber'] }
+    };
+
+    /** يملأ قائمةَ الموظفين في تبويب المستندات. */
+    window.renderDocPickers = function() {
+        const sel = document.getElementById('docEmpSelect');
+        if (!sel) return;
+        const keep = sel.value;
+        sel.innerHTML = '<option value="">-- Select Employee --</option>' +
+            activeEmployees().slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+                .map(e => `<option value="${escapeJsAttr(e.id)}">${escapeHtml(e.name)} &mdash; ${escapeHtml(e.branch || '')}</option>`).join('');
+        if (keep) sel.value = keep;
+        const d = document.getElementById('docDate');
+        if (d && !d.value) d.value = todayISO();
+        renderDocument();
+    };
+
+    window.renderDocument = function() {
+        const paper = document.getElementById('docPaper');
+        const miss = document.getElementById('docMissingBox');
+        const blocked = document.getElementById('docBlockedBox');
+        if (!paper) return;
+        const hide = (el) => { if (el) { el.style.display = 'none'; el.innerHTML = ''; } };
+        hide(miss); hide(blocked);
+
+        const empId = document.getElementById('docEmpSelect').value;
+        const emp = allEmployees.find(e => e.id === empId);
+        if (!emp) { paper.innerHTML = '<p style="color: #666; margin: 0;">Choose an employee above and the document appears here, exactly as it will print.</p>'; return; }
+
+        const { key, party } = docPartyFor(emp);
+        // ⚠️⚠️⚠️ الرفضُ الصريح: كيانٌ قانونيٌّ خاطئٌ على اتفاقيةٍ موقَّعة يُبطلها.
+        if (!party) {
+            paper.innerHTML = '';
+            blocked.style.display = 'block';
+            blocked.innerHTML = `<b>&#9888; This document cannot be issued for ${escapeHtml(emp.name || empId)} yet.</b><br>`
+                + `Their branch is <b>${escapeHtml(emp.branch || 'not set')}</b>, and the agreement text names only `
+                + `<b>Gaimer w Kahi Restaurant Company W.L.L</b> with Commercial Registration <b>149053</b>.<br>`
+                + `Printing that company on an agreement for a different company would name the wrong legal entity, `
+                + `which can make the signed agreement worthless. Send me the company name, P.O. Box, commercial `
+                + `registration and establishment record for <b>${escapeHtml(key === 'SBH' ? 'Shai Bu Hamad' : (emp.branch || 'this branch'))}</b> `
+                + `and it will be added.`;
+            return;
+        }
+
+        const dt = docDateParts(document.getElementById('docDate').value);
+        const hon = document.getElementById('docHonorific').value;
+        const type = DOC_TYPES[document.getElementById('docTypeSelect').value] || DOC_TYPES.nda;
+        const blocks = type.build(emp, party, dt, hon);
+
+        paper.innerHTML = '<table class="doc-tbl"><tbody>' + blocks.map(b =>
+            `<tr class="${b.cls}"><td class="doc-en">${b.en}</td><td class="doc-ar" dir="rtl">${b.ar}</td></tr>`
+        ).join('') + '</tbody></table>';
+
+        // ⚠️⚠️ ما ينقص يُقال **قبل** الطباعة: مستندٌ يُطبع بفراغٍ في موضع الجواز
+        // يُوقَّع ثم يُكتشف، وإصلاحُه بعد التوقيع يعني إعادةَ التوقيع.
+        const gaps = [];
+        if (!emp.name) gaps.push('the name');
+        if (!emp.qidNumber) gaps.push('the Qatar ID number');
+        if (!emp.passportNumber) gaps.push('the passport number');
+        if (!dt) gaps.push('the document date');
+        if (gaps.length) {
+            miss.style.display = 'block';
+            miss.innerHTML = `<b>&#9888; ${gaps.length} item(s) are missing and print as a dotted line:</b> ${gaps.join(', ')}.<br>`
+                + `Open <b>Employee Profiles</b> &rarr; this employee and fill them in, then come back &mdash; `
+                + `or print as it is and write them by hand.`;
+        }
+    };
+
+    // ---- إعدادُ فراغ الورق الرسميّ --------------------------------------
+    // ⚠️ يُحفظ في settings — مجموعةٌ قائمة، فلا قواعدَ تُنشر.
+    const DOC_SETUP_DOC = 'doc_print_setup';
+    let docPageSetup = { topMm: 45, bottomMm: 25 };
+
+    /** يكتب قاعدةَ @page الحقيقية — لا تقبل var() في كل المتصفّحات. */
+    window.applyDocPageSetup = function() {
+        const t = Number(document.getElementById('docTopMm').value);
+        const b = Number(document.getElementById('docBottomMm').value);
+        const top = isFinite(t) && t >= 0 && t <= 120 ? t : docPageSetup.topMm;
+        const bot = isFinite(b) && b >= 0 && b <= 120 ? b : docPageSetup.bottomMm;
+        let el = document.getElementById('docPageStyle');
+        if (!el) { el = document.createElement('style'); el.id = 'docPageStyle'; document.head.appendChild(el); }
+        el.textContent = `@page { size: A4; margin: ${top}mm 14mm ${bot}mm 14mm; }`;
+        const note = document.getElementById('docSetupNote');
+        if (note) note.innerText = `Now leaving ${top}mm empty at the top and ${bot}mm at the bottom of every page.`;
+    };
+
+    window.saveDocPageSetup = async function() {
+        const t = Number(document.getElementById('docTopMm').value);
+        const b = Number(document.getElementById('docBottomMm').value);
+        const st = document.getElementById('docStatus');
+        const say = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        if (!isFinite(t) || t < 0 || t > 120 || !isFinite(b) || b < 0 || b > 120) {
+            say('Spacing must be between 0 and 120 mm.', 'var(--danger)'); return;
+        }
+        if (!hasFinanceAccess()) { say('Only the owner and the accountant can change the spacing.', 'var(--danger)'); return; }
+        try {
+            await setDoc(doc(db, "settings", DOC_SETUP_DOC), { topMm: t, bottomMm: b, updatedAt: serverTimestamp() }, { merge: true });
+            docPageSetup = { topMm: t, bottomMm: b };
+            applyDocPageSetup();
+            say('Spacing saved.', 'var(--success)');
+            logAudit('Document print spacing saved', `top ${t}mm, bottom ${b}mm`);
+        } catch (e) { say('Could not save: ' + e.message, 'var(--danger)'); }
+    };
+
+    window.loadDocPageSetup = async function() {
+        try {
+            const snap = await getDoc(doc(db, "settings", DOC_SETUP_DOC));
+            if (snap.exists()) {
+                const d = snap.data();
+                if (isFinite(Number(d.topMm))) docPageSetup.topMm = Number(d.topMm);
+                if (isFinite(Number(d.bottomMm))) docPageSetup.bottomMm = Number(d.bottomMm);
+            }
+        } catch (e) { console.error('Could not read the print spacing:', e); }
+        const t = document.getElementById('docTopMm');
+        const b = document.getElementById('docBottomMm');
+        if (t) t.value = docPageSetup.topMm;
+        if (b) b.value = docPageSetup.bottomMm;
+        applyDocPageSetup();
+    };
+
+    window.printDocument = function() {
+        const paper = document.getElementById('docPaper');
+        const st = document.getElementById('docStatus');
+        const say = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        if (!paper || !paper.querySelector('.doc-tbl')) {
+            say('Choose an employee first — there is nothing to print yet.', 'var(--danger)');
+            return;
+        }
+        applyDocPageSetup();
+        const empId = document.getElementById('docEmpSelect').value;
+        const emp = allEmployees.find(e => e.id === empId) || {};
+        logAudit('Employee document printed',
+            `${DOC_TYPES[document.getElementById('docTypeSelect').value] ? DOC_TYPES[document.getElementById('docTypeSelect').value].label : 'document'} for ${emp.name || empId}`);
+        say('The print dialog is open — choose "Save as PDF" to keep a copy.', 'var(--text-dim)');
+        window.print();
     };
 
     // ---- Annual Leaves (21 days/year + 750 QAR leave allowance + 750 QAR
