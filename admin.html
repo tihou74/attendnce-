@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=142">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=143">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -3846,6 +3846,17 @@
             <div><label for="editEmpQidExpiry" title="Qatar ID expiry date — an alert appears 10 days before">QID Expiry Date</label>
                 <input type="date" id="editEmpQidExpiry">
                 <small id="editEmpQidInfo" style="display: block; margin-top: 5px; font-size: 11.5px;"></small>
+            </div>
+            <!-- ⭐⭐⭐⭐ رقمُ جواز السفر — أُضيف لأنّ **اتفاقيةَ السرّية تطلبه**
+                 بنصّ المالك: «Passport No {}» و«جواز سفر رقم: {}».
+                 ⚠️⚠️ ولم يكن في النظام حقلٌ للجواز إطلاقًا — لا في ملفّ الموظف
+                 ولا في نموذج التقديم. فبلا هذا الحقل تُطبع الاتفاقيةُ بفراغٍ في
+                 موضع الجواز، أو تُكتب بالقلم على ورقةٍ رسميةٍ موقَّعة.
+                 ⚠️ ولا تدقيقَ على صيغته: أرقامُ الجوازات تختلف بين الدول —
+                 حروفٌ وأرقامٌ وأطوالٌ مختلفة — فقاعدةٌ مخترعةٌ ترفض جوازًا صحيحًا
+                 لعاملٍ من بلدٍ لم أفكّر فيه. والحدُّ الأقصى وحدَه حمايةٌ من اللصق. -->
+            <div><label for="editEmpPassport" title="Passport number — required by the Confidentiality Agreement">Passport Number</label>
+                <input type="text" id="editEmpPassport" maxlength="20" autocomplete="off" placeholder="as written in the passport">
             </div>
             <div class="money-field money-only"><label>Total Monthly Salary (QAR)</label><input type="number" id="editEmpSalary"></div>
             <div class="money-field money-only"><label>Basic Salary (fixed, QAR)</label><input type="number" id="editEmpBasicDisplay" value="1000" disabled style="opacity:0.7;"></div>
@@ -18840,6 +18851,7 @@
             document.getElementById("editEmpJoinDate").value = emp.joinDate || "";
             renderJoinDateInfo(emp);
             document.getElementById("editEmpQidNumber").value = emp.qidNumber || "";
+            document.getElementById("editEmpPassport").value = emp.passportNumber || "";
             document.getElementById("editEmpQidExpiry").value = emp.qidExpiry || "";
             renderQidInfo(emp);
             // الحقل غائب عن الموظفين المنشَئين قبل هذه الميزة، فالغياب = غير مفعّل.
@@ -19074,6 +19086,8 @@
         const joinDate = document.getElementById("editEmpJoinDate").value;
         const qidNumber = document.getElementById("editEmpQidNumber").value.trim();
         const qidExpiry = document.getElementById("editEmpQidExpiry").value;
+        // ⭐ رقمُ الجواز — تطلبه اتفاقيةُ السرّية بنصّ المالك
+        const passportNumber = document.getElementById("editEmpPassport").value.trim();
         const canSubmitSalesReport = document.getElementById("editEmpCanSubmitSalesReport").checked;
         const isSupervisor = document.getElementById("editEmpIsSupervisor").checked;
         const business = document.getElementById("editEmpBusiness").value === BIZ_ABAYA
@@ -19149,7 +19163,10 @@
             let healthCert = await readFileIfPresent(document.getElementById("editHealthCertInput"), emp.healthCert || "");
 
             // Base fields any signed-in admin (Accountant OR Secretary) may edit.
-            const payload = { name, role, branch, phone, shift, housingType, joinDate, qidNumber, qidExpiry, canSubmitSalesReport, isSupervisor, business, qidFront, qidBack, healthCard, contract, healthCert };
+            // ⭐ passportNumber في الحمولة الأساسية لا في حمولة المال: اتفاقيةُ
+            // السرّية تطلبه، والسكرتيرةُ هي من تُصدرها — فلو كان في حمولة المال
+            // لَما استطاعت حفظَه، وقاعدةُ salaryUnchanged تسمح به لأنه ليس راتبًا.
+            const payload = { name, role, branch, phone, shift, housingType, joinDate, qidNumber, qidExpiry, passportNumber, canSubmitSalesReport, isSupervisor, business, qidFront, qidBack, healthCard, contract, healthCert };
             // Salary / OT rate are only ever sent for Accountants — Secretaries
             // never include these fields in the update at all, and
             // firestore.rules independently rejects them server-side too if a
