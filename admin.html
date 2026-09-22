@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=145">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=146">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -4023,6 +4023,44 @@
                  اتجاهُها إنجليزيّ، فتبدو الفاصلةُ والنقطةُ في أوّل السطر. -->
             <div><label for="editEmpNameAr" title="The name in Arabic exactly as written on the Qatar ID — used on the printed documents">Full Name in Arabic &mdash; الاسم بالعربية</label>
                 <input type="text" id="editEmpNameAr" dir="auto" autocomplete="off" placeholder="كما هو مكتوب في البطاقة القطرية"></div>
+            <!-- ⭐⭐⭐⭐ الجنسية — بطلب المالك مع الاسم العربيّ.
+                 ⚠️⚠️ خانةُ كتابةٍ حرّةٌ مع **قائمةِ اقتراحات** (datalist) لا قائمةً
+                 مُغلقة (select): جنسياتُ العاملين في قطر أكثرُ من أن تُحصى في
+                 قائمةٍ مكتوبةٍ في الكود، وقائمةٌ مُغلقةٌ تنقصُها جنسيةُ موظفٍ واحد
+                 تمنع تسجيلَه أصلًا. فالاقتراحاتُ تُسرّع الكتابةَ وتُوحّد الهجاء،
+                 والكتابةُ الحرّةُ تبقى مفتوحةً لما ليس فيها.
+                 ⚠️ وقائمةُ الاقتراحات مرتَّبةٌ بالأكثر شيوعًا في مطاعم قطر أوّلًا.
+                 ⚠️ وdir="auto" كذلك: بعضُ الأسماء تُكتب بالعربية. -->
+            <div><label for="editEmpNationality" title="Nationality as written on the Qatar ID — used on the printed documents">Nationality &mdash; الجنسية</label>
+                <input type="text" id="editEmpNationality" list="nationalitySuggestions" dir="auto" autocomplete="off" placeholder="as written on the Qatar ID">
+                <datalist id="nationalitySuggestions">
+                    <option value="Indian"></option>
+                    <option value="Nepali"></option>
+                    <option value="Bangladeshi"></option>
+                    <option value="Filipino"></option>
+                    <option value="Sri Lankan"></option>
+                    <option value="Pakistani"></option>
+                    <option value="Egyptian"></option>
+                    <option value="Iraqi"></option>
+                    <option value="Syrian"></option>
+                    <option value="Jordanian"></option>
+                    <option value="Lebanese"></option>
+                    <option value="Palestinian"></option>
+                    <option value="Sudanese"></option>
+                    <option value="Yemeni"></option>
+                    <option value="Tunisian"></option>
+                    <option value="Moroccan"></option>
+                    <option value="Algerian"></option>
+                    <option value="Kenyan"></option>
+                    <option value="Ugandan"></option>
+                    <option value="Ethiopian"></option>
+                    <option value="Ghanaian"></option>
+                    <option value="Nigerian"></option>
+                    <option value="Indonesian"></option>
+                    <option value="Myanmarese"></option>
+                    <option value="Qatari"></option>
+                </datalist>
+            </div>
             <div><label>Job Title</label><input type="text" id="editEmpRole"></div>
             <!-- ⚠️⚠️ خانة النشاط كانت **غائبة تمامًا** عن ملف الموظف، وموجودة في
                  نموذج الإضافة وحده. فمن أُضيف مرّةً بقي في نشاطه إلى الأبد ولا
@@ -19096,6 +19134,7 @@
             //   (ولا يُملأ بالاسم الإنجليزيّ: لو مُلئ به لظنّت السكرتيرةُ أنه
             //   مكتوبٌ بالعربية وهو لاتينيّ، فبقي المستندُ كما كان بلا أن يُنبَّه).
             document.getElementById("editEmpNameAr").value = emp.nameAr || "";
+            document.getElementById("editEmpNationality").value = emp.nationality || "";
             document.getElementById("editEmpQidNumber").value = emp.qidNumber || "";
             document.getElementById("editEmpPassport").value = emp.passportNumber || "";
             document.getElementById("editEmpQidExpiry").value = emp.qidExpiry || "";
@@ -19330,6 +19369,13 @@
         // ⚠️ ولا يُتحقّق أنه عربيٌّ بالقوّة: بعضُ الأسماء تُكتب في البطاقة القطرية
         //   بحروفٍ لاتينية، ورفضُ ما في البطاقةِ الرسميةِ نفسِها خطأ.
         const nameAr = document.getElementById("editEmpNameAr").value.trim();
+        // ⭐⭐⭐⭐ الجنسية — بطلب المالك.
+        // ⚠️ لا toUpperCase() كذلك: «Sri Lankan» تصير «SRI LANKAN» فتُطبع على
+        //   مستندٍ رسميٍّ بحروفٍ كبيرةٍ كلِّها، وهجاءُ الجنسية في البطاقة القطرية
+        //   ليس كذلك. والاسمُ الإنجليزيُّ وحدَه يُكبَّر لأنّ النظامَ كلَّه بُني عليه.
+        // ⚠️⚠️ ولا يُتحقّق أنها من قائمة الاقتراحات: القائمةُ اقتراحٌ لا قيد،
+        //   ورفضُ جنسيةٍ ليست فيها يمنع تسجيلَ موظفٍ حقيقيّ.
+        const nationality = document.getElementById("editEmpNationality").value.trim();
         const role = document.getElementById("editEmpRole").value.trim();
         const branch = document.getElementById("editEmpBranch").value;
         const phone = document.getElementById("editEmpPhone").value.trim();
@@ -19419,7 +19465,7 @@
             // ⭐ passportNumber في الحمولة الأساسية لا في حمولة المال: اتفاقيةُ
             // السرّية تطلبه، والسكرتيرةُ هي من تُصدرها — فلو كان في حمولة المال
             // لَما استطاعت حفظَه، وقاعدةُ salaryUnchanged تسمح به لأنه ليس راتبًا.
-            const payload = { name, nameAr, role, branch, phone, shift, housingType, joinDate, qidNumber, qidExpiry, passportNumber, canSubmitSalesReport, isSupervisor, business, qidFront, qidBack, healthCard, contract, healthCert };
+            const payload = { name, nameAr, nationality, role, branch, phone, shift, housingType, joinDate, qidNumber, qidExpiry, passportNumber, canSubmitSalesReport, isSupervisor, business, qidFront, qidBack, healthCard, contract, healthCert };
             // Salary / OT rate are only ever sent for Accountants — Secretaries
             // never include these fields in the update at all, and
             // firestore.rules independently rejects them server-side too if a
