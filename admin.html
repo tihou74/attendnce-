@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=152">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=153">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -21050,6 +21050,101 @@
                         'Train new assistants on recipes and standard kitchen procedures.',
                         'Attend periodic training sessions to improve skills and learn about new menu items.',
                         'Quickly adopt new standards and implement updates issued by the Executive Chef.'
+                    ]
+                }
+            ]
+        },
+        cleaner: {
+            // ⭐ وهذه أوّلُ ورقةٍ مسمّاها العربيُّ **يُطابق** قائمةَ المسمّيات
+            //   («عامل نظافة» في الاثنين) — بخلاف كاشير/أمين صندوق وشيف/طاهٍ.
+            titleAr: (brand) => `عامل نظافة – سلسلة مطاعم ${brand}`,
+            titleEn: (brand) => `Cleaner &ndash; ${brand} Restaurant Chain`,
+            deptAr: 'النظافة والصيانة',
+            deptEn: 'Cleaning and Maintenance',
+            supAr: 'مسؤول عمال النظافة / مدير الصالة',
+            supEn: 'Cleaning Supervisor / Dining Hall Manager',
+            purposeAr: 'تنفيذ مهام التنظيف اليومية في الفرع، وضمان نظافة الصالة والمطبخ والحمامات والمناطق '
+                + 'الخارجية، وتوفير بيئة نظيفة وآمنة للعملاء والموظفين، مع الالتزام بمعايير الصحة والسلامة.',
+            purposeEn: 'To perform daily cleaning tasks throughout the branch, ensure the cleanliness of the dining '
+                + 'hall, kitchen, restrooms, and exterior areas, and provide a clean and safe environment for '
+                + 'customers and staff while complying with health and safety standards.',
+            sections: [
+                {
+                    hAr: 'أولًا: تنظيف الصالة والمناطق العامة', hEn: '1. Dining Hall and Public Areas Cleaning',
+                    ar: [
+                        'مسح وتلميع الطاولات والكراسي والأرضيات بعد كل خدمة أو حسب الحاجة.',
+                        'تنظيف النوافذ والمرايا والإضاءة للحفاظ على مظهر نظيف وجذاب.',
+                        'إعادة ترتيب الصالة وتجهيزها بسرعة لاستقبال العملاء الجدد.'
+                    ],
+                    en: [
+                        'Wipe and polish tables, chairs, and floors after each service or as needed.',
+                        'Clean windows, mirrors, and lighting fixtures to maintain a clean and attractive appearance.',
+                        'Rearrange and reset the dining hall quickly for new customers.'
+                    ]
+                },
+                {
+                    hAr: 'ثانيًا: تنظيف الحمامات', hEn: '2. Restroom Cleaning',
+                    ar: [
+                        'تنظيف الحمامات العامة كل ساعة، ويشمل ذلك غسل الأرضيات والمراحيض والمغاسل وتعقيم الأسطح.',
+                        'إعادة تعبئة مستلزمات الحمامات، مثل الصابون والمناديل ومعقم اليدين.',
+                        'التأكد من عدم وجود روائح أو بقع قبل الاستخدام وبعده.'
+                    ],
+                    en: [
+                        'Clean public restrooms every hour, including washing floors, toilets, and sinks, and sanitizing surfaces.',
+                        'Refill restroom supplies, including soap, paper towels, and hand sanitizer.',
+                        'Ensure that there are no unpleasant odors or stains before and after use.'
+                    ]
+                },
+                {
+                    hAr: 'ثالثًا: تنظيف المطبخ والمناطق الخلفية', hEn: '3. Kitchen and Back-of-House Cleaning',
+                    ar: [
+                        'غسل الأواني والأدوات والصحون بكفاءة وسرعة في منطقة غسيل الصحون.',
+                        'تنظيف أرضيات المطبخ والثلاجات الخارجية ومناطق التحضير بعد الإغلاق.',
+                        'إزالة الدهون والبقع من الأسطح والمعدات تحت إشراف الشيف.'
+                    ],
+                    en: [
+                        'Wash dishes, utensils, and plates efficiently and quickly in the dishwashing area.',
+                        'Clean kitchen floors, external refrigerators, and food preparation areas after closing.',
+                        'Remove grease and stains from surfaces and equipment under the supervision of the Chef.'
+                    ]
+                },
+                {
+                    hAr: 'رابعًا: النظافة الخارجية', hEn: '4. Exterior Cleaning',
+                    ar: [
+                        'كنس وغسل الواجهة الخارجية والممرات ومناطق وقوف السيارات.',
+                        'إفراغ صناديق القمامة وفصل النفايات إلى عضوية وبلاستيك وورق، وترتيبها للجمع.',
+                        'تنظيف الممرات والسلالم الخارجية من الأتربة والأوراق والمخلفات.'
+                    ],
+                    en: [
+                        'Sweep and wash the exterior facade, walkways, and parking areas.',
+                        'Empty waste bins, segregate waste into organic, plastic, and paper materials, and prepare it for collection.',
+                        'Clean outdoor pathways and stairs from dust, leaves, and debris.'
+                    ]
+                },
+                {
+                    hAr: 'خامسًا: إدارة المعدات والمواد', hEn: '5. Equipment and Supplies Management',
+                    ar: [
+                        'استخدام معدات التنظيف، مثل المكانس ومعدات تنظيف الأرضيات والمماسح، بطريقة آمنة وإعادتها إلى مكانها بعد الاستخدام.',
+                        'الإبلاغ عن نقص مواد التنظيف أو تلف المعدات إلى المسؤول.',
+                        'استخدام مواد التنظيف بكفاءة لتقليل الهدر.'
+                    ],
+                    en: [
+                        'Use cleaning equipment, including brooms, floor-cleaning equipment, and mops, safely and store it properly after use.',
+                        'Report shortages of cleaning materials or damaged equipment to the supervisor.',
+                        'Use cleaning materials efficiently to minimize waste.'
+                    ]
+                },
+                {
+                    hAr: 'سادسًا: السلامة والامتثال', hEn: '6. Safety and Compliance',
+                    ar: [
+                        'ارتداء معدات الحماية، مثل القفازات والكمامات، واتباع إجراءات السلامة.',
+                        'تنفيذ عمليات التعقيم في المناطق الغذائية وفقًا لمعايير نظام HACCP.',
+                        'المساعدة في الاستعداد لزيارات التفتيش البلدية.'
+                    ],
+                    en: [
+                        'Wear protective equipment, including gloves and masks, and follow safety procedures.',
+                        'Perform sanitization in food areas in accordance with HACCP standards.',
+                        'Assist in preparing the branch for municipality inspections.'
                     ]
                 }
             ]
