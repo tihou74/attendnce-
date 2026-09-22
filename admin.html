@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=151">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=152">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -20952,6 +20952,104 @@
                         'Coordinate with the kitchen and bar to expedite order delivery to customers.',
                         'Handle returns or exchanges in accordance with the company&rsquo;s approved policy.',
                         'Participate in end-of-day inventory checks or cash register checks during closing.'
+                    ]
+                }
+            ]
+        },
+        chef: {
+            // ⚠️⚠️ «شيف» بنصّ المالك في هذه الورقة — وقائمةُ المسمّيات التي أرسلها
+            //   تقول «طاهٍ / شيف» واخترتُ أنا «طاهٍ» منها. فصار المسمّى يُطبع
+            //   «طاهٍ» في عرض العمل و«شيف» في ورقة المهامّ لنفس الموظف. وهذه
+            //   ثانيةُ مرّةٍ يحدث فيها ذلك (الأولى: كاشير / أمين صندوق).
+            //   نُقل نصُّه كما كتبه هنا، وأُبلغ بالفرق ولم يُوحَّد من عندي.
+            titleAr: (brand) => `شيف – سلسلة مطاعم ${brand}`,
+            titleEn: (brand) => `Chef &ndash; ${brand} Restaurant Chain`,
+            deptAr: 'المطبخ والإنتاج الغذائي',
+            deptEn: 'Kitchen and Food Production',
+            supAr: 'كبير الطهاة (الشيف التنفيذي) / مدير الفرع',
+            supEn: 'Executive Chef (Head Chef) / Branch Manager',
+            purposeAr: 'تنفيذ عمليات الطهي اليومية في المطبخ، وضمان جودة الطعام العالية والمتسقة وفقًا للوصفات '
+                + 'المعتمدة، والمساهمة في كفاءة الإنتاج لتلبية طلبات الصالة والتوصيل بسرعة وجودة.',
+            purposeEn: 'To execute daily cooking operations in the kitchen, ensure high and consistent food quality '
+                + 'in accordance with approved recipes, and contribute to efficient production in order to fulfill '
+                + 'dining hall and delivery orders with speed and quality.',
+            sections: [
+                {
+                    hAr: 'أولًا: إعداد وطهي الأطباق', hEn: '1. Food Preparation and Cooking',
+                    ar: [
+                        'طهي الأطباق حسب الوصفات المعتمدة، مع الالتزام الدقيق بأحجام الحصص ودرجات الطهي ومعايير التقديم.',
+                        'إدارة محطة الطهي المخصصة، مثل الشواء أو المقليات أو المعجنات، بكفاءة خلال أوقات الذروة.',
+                        'ضمان سرعة التحضير وتسليم الطلبات دون تأخير، بما يحافظ على رضا العملاء.'
+                    ],
+                    en: [
+                        'Cook dishes according to approved recipes, strictly adhering to portion sizes, cooking temperatures, and presentation standards.',
+                        'Efficiently manage the assigned cooking station, such as grilling, frying, or pastry preparation, during peak hours.',
+                        'Ensure fast preparation and delivery of orders without delays while maintaining customer satisfaction.'
+                    ]
+                },
+                {
+                    hAr: 'ثانيًا: إدارة المكونات والمحطة', hEn: '2. Ingredient and Station Management',
+                    ar: [
+                        'التحقق من جودة المكونات قبل الاستخدام، ورفض أي مواد تالفة أو غير صالحة.',
+                        'تنظيم محطة العمل لضمان تدفق الإنتاج بسلاسة وسهولة التنظيف.',
+                        'متابعة استهلاك المواد وحساب الهدر اليومي لتقليل الفاقد.'
+                    ],
+                    en: [
+                        'Check the quality of ingredients before use and reject any spoiled or unsuitable materials.',
+                        'Organize the workstation to ensure a smooth production flow and easy cleaning.',
+                        'Monitor material consumption and track daily waste to minimize loss.'
+                    ]
+                },
+                {
+                    hAr: 'ثالثًا: الجودة وسلامة الغذاء', hEn: '3. Quality and Food Safety',
+                    ar: [
+                        'تطبيق إجراءات النظافة والسلامة، مثل غسل اليدين وتنظيف الأسطح والالتزام بإجراءات نظام HACCP، في جميع مراحل العمل.',
+                        'مراقبة درجات حرارة الأطعمة المطبوخة والمبردة وتسجيل القراءات اليومية.',
+                        'الإبلاغ الفوري عن أي مشكلات في الجودة أو حالات تلوث إلى كبير الطهاة.'
+                    ],
+                    en: [
+                        'Apply hygiene and safety procedures, including handwashing, surface cleaning, and HACCP requirements, at every stage of the work.',
+                        'Monitor the temperatures of cooked and chilled food and record daily readings.',
+                        'Immediately report any quality issues or contamination to the Executive Chef.'
+                    ]
+                },
+                {
+                    hAr: 'رابعًا: التعاون مع الفريق', hEn: '4. Team Collaboration',
+                    ar: [
+                        'التنسيق مع الشيف التنفيذي وشيف الصالة والفريق لتلبية الطلبات الخاصة أو التعديلات.',
+                        'مساعدة زملاء الفريق خلال أوقات الضغط وتغطية المحطات حسب الحاجة.',
+                        'نقل الملاحظات والاقتراحات المتعلقة بتحسين الوصفات أو العمليات إلى كبير الطهاة.'
+                    ],
+                    en: [
+                        'Coordinate with the Executive Chef, Dining Hall Chef, and team members to handle special orders or modifications.',
+                        'Assist team members during peak periods and cover stations as needed.',
+                        'Share feedback and suggestions for improving recipes or processes with the Executive Chef.'
+                    ]
+                },
+                {
+                    hAr: 'خامسًا: الصيانة والتنظيف', hEn: '5. Maintenance and Cleaning',
+                    ar: [
+                        'تنظيف وتعقيم محطة الطهي ومعداتها في نهاية الوردية وفقًا للجدول اليومي.',
+                        'الإبلاغ عن أعطال المعدات أو الحاجة إلى الصيانة لفريق الدعم اللوجستي.',
+                        'المساهمة في الجرد اليومي والأسبوعي للمواد الغذائية.'
+                    ],
+                    en: [
+                        'Clean and sanitize the cooking station and equipment at the end of each shift according to the daily schedule.',
+                        'Report equipment malfunctions or maintenance requirements to the Logistics Support Team.',
+                        'Participate in daily and weekly food inventory counts.'
+                    ]
+                },
+                {
+                    hAr: 'سادسًا: التدريب والتطوير', hEn: '6. Training and Development',
+                    ar: [
+                        'تدريب المساعدين الجدد على الوصفات والإجراءات القياسية في المطبخ.',
+                        'المشاركة في جلسات التدريب الدورية لتحسين المهارات والتعرف على أصناف القائمة الجديدة.',
+                        'الالتزام بالمعايير الجديدة وتطبيق التحديثات الصادرة عن كبير الطهاة بسرعة.'
+                    ],
+                    en: [
+                        'Train new assistants on recipes and standard kitchen procedures.',
+                        'Attend periodic training sessions to improve skills and learn about new menu items.',
+                        'Quickly adopt new standards and implement updates issued by the Executive Chef.'
                     ]
                 }
             ]
