@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=140">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=141">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1534,7 +1534,11 @@
                         <label for="outsourcePhone">Its WhatsApp number</label>
                         <input type="tel" id="outsourcePhone" inputmode="tel" placeholder="+974 5xxx xxxx" autocomplete="off">
                     </div>
-                    <button class="btn-accent" onclick="saveOutsourceContact()"><span data-icon="save"></span> Save</button>
+                    <!-- ⚠️⚠️ يُخفى عن السكرتيرة والمشرفين: قاعدةُ settings تُتيح
+                         الكتابةَ للمالك والمحاسب وحدهما، فزرٌّ يُضغط ويُرجع
+                         «صلاحية مرفوضة» يجعل المستخدمَ يظنّ البرنامجَ معطوبًا.
+                         والقراءةُ متاحةٌ لها فتستعمل الرقمَ ولا تُغيّره. -->
+                    <button class="btn-accent" id="btnSaveOutsource" onclick="saveOutsourceContact()"><span data-icon="save"></span> Save</button>
                 </div>
                 <p class="card-sub" style="margin: 10px 0 0;" id="outsourceNote"></p>
             </div>
@@ -4814,7 +4818,30 @@
         // السكرتيرة: ملفات الموظفين (رؤية وتعديل وإضافة) + الإنذارات + طلبات
         // التسجيل + الطلبات. **بلا رواتب** بقرار الإدارة — وهذا ما أتاحه فصل
         // النافذتين، فقبله كان جدول الرواتب داخل نافذة الملفات فلا سبيل لمنعه.
-        [ROLE_SECRETARY]: ['tab-home', 'tab-employees', 'tab-requests',
+        //
+        // ⭐⭐⭐ و«الحالة الإدارية» أُضيفت بطلب المالك: «يجب أن تصل السكرتيرة
+        // للحالة الإدارية للموظفين لأنها هي من تتابع أوضاع الموظفين».
+        //
+        // ⚠️⚠️ وفحصتُ صلاحياتها في القواعد قبل الإضافة، لأنّ نافذةً تُفتح ولا
+        // تقدر على عملها أسوأُ من نافذةٍ مُغلقة — تُعرض فارغةً أو تُرمى برسالة
+        // «صلاحية مرفوضة» فتظنّ البرنامجَ معطوبًا. والنتيجة:
+        //   • قراءةُ ملفات الموظفين — employees: isStaff() ✓ (والتبويبُ كلُّه
+        //     يُرسم من allEmployees في الذاكرة، فلا قراءةَ جديدة أصلًا)
+        //   • زرُّ «إعادة القراءة» → loadEmployees — نفسُ القاعدة ✓
+        //   • حفظُ «إجراءٍ جارٍ» على الموظف — employees update بشرط
+        //     isProfileEditor() && salaryUnchanged()، والدالّةُ تكتب حقلًا واحدًا
+        //     (adminProcedure) ولا تمسّ الراتب ✓
+        //   • قراءةُ رقم شركة الأوت سورس — settings read: isStaff() ✓
+        //   • **حفظُ** ذلك الرقم — settings write: isAdmin() || isAccountant()
+        //     وحدهما ✗ — فالبطاقةُ تصير للقراءة عندها، انظر applyRoleToUi.
+        // ⚠️ ولم أُوسّع قاعدةَ settings لها: في تلك المجموعة `financial_rates`
+        // و`cash_account` و`salary_payouts` و`abaya_rates` و`daily_targets` —
+        // فإعطاؤها الكتابةَ عليها كلِّها لأجل رقمِ هاتفٍ واحد يفتح لها أسعارَ
+        // الصرف وحساباتِ النقد وصرفَ الرواتب. وهذا ثمنٌ لا يُدفع لأجل حقل.
+        //
+        // ⚠️⚠️ والأرقامُ المالية مخفيّةٌ عنها داخل التبويب أصلًا: renderAdminStatus
+        // تشترط canSeeMoney() قبل عرض راتب الموظف، وهي false للسكرتيرة.
+        [ROLE_SECRETARY]: ['tab-home', 'tab-employees', 'tab-admin-status', 'tab-requests',
                            'tab-applications', 'tab-warnings', 'tab-former'],
         // البروفايل + الحضور + الطلبات + طلبات التسجيل الجديدة.
         // tab-sales أُضيف بقرار الإدارة: المديرون الثلاثة هم من يُرسل التقرير
@@ -5167,6 +5194,28 @@
         document.querySelectorAll('.money-only').forEach(el => {
             el.style.display = showMoney ? '' : 'none';
         });
+
+        // ⭐⭐⭐ بطاقةُ شركة الأوت سورس في «الحالة الإدارية»: للقراءة عند من لا
+        // يملك الكتابةَ على settings.
+        // ⚠️⚠️ صارت السكرتيرةُ تدخل هذا التبويب بطلب المالك، وقاعدةُ settings
+        // تُتيح الكتابةَ للمالك والمحاسب وحدهما. فبلا هذا الحرس تضغط «Save»
+        // فتُرجع القاعدةُ «صلاحية مرفوضة» — وهي لا تعرف ما القواعد، فتظنّ
+        // البرنامجَ معطوبًا وتُبلّغ عن عطلٍ لا وجودَ له.
+        // ⚠️ والحقولُ تبقى **ظاهرةً** لا مخفيّة: هي تحتاج أن تقرأ الرقم لتتواصل
+        // مع الشركة؛ الممنوعُ تغييرُه لا رؤيتُه. وإخفاؤه كان سيمنعها من عملها.
+        const canEditOutsource = hasFinanceAccess();   // = isAdmin() || isAccountant() في القواعد
+        const outBtn = document.getElementById('btnSaveOutsource');
+        if (outBtn) outBtn.style.display = canEditOutsource ? '' : 'none';
+        ['outsourceName', 'outsourcePhone'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.readOnly = !canEditOutsource;
+            el.title = canEditOutsource ? '' : 'Only the owner and the accountant can change this number.';
+            el.style.opacity = canEditOutsource ? '' : '0.75';
+        });
+        // ⚠️ والسببُ يُقال في سطر البطاقة نفسه — ويُكتب داخل renderOutsourceNote
+        // لا هنا: تلك الدالّةُ تُعيد بناء السطر في كل فتحةٍ للتبويب، فنصٌّ يُكتب
+        // هنا يُمحى عند أوّل فتحة. جرّبتُه هكذا أوّلًا فوجدتُه يُمحى.
 
         const salaryEditable = hasFinanceAccess();
         ['editEmpSalary', 'newEmpSalary'].forEach(id => {
@@ -7668,6 +7717,15 @@
         bits.push(`${outCount} employee(s) are currently on an outsource company. `
             + `For everyone else the button opens WhatsApp with the message ready and <b>no contact chosen</b>, `
             + `so you pick the mandoob or the office &mdash; no number is invented here.`);
+        // ⚠️⚠️ سطرُ الصلاحية يُكتب **هنا** لا في applyRoleToUi: هذه الدالّةُ هي
+        // المصدرُ الوحيد لنصّ هذا السطر، وتُنادى في كل مرّةٍ يُفتح فيها التبويب.
+        // فلو كُتب في مكانٍ آخر لمُحي عند أوّل فتحةٍ للتبويب — وقد جرّبتُه أوّلًا
+        // هكذا فوجدتُه يُمحى.
+        // ⚠️ والقياسُ على hasFinanceAccess() لا canEditProfiles(): تلك تُطابق
+        // قاعدةَ settings حرفيًّا (isAdmin || isAccountant).
+        if (!hasFinanceAccess()) {
+            bits.push(`<b>You can see and use this number.</b> Only the owner and the accountant can change it.`);
+        }
         note.innerHTML = bits.join('<br>');
     }
 
@@ -7675,7 +7733,14 @@
     window.saveOutsourceContact = async function() {
         const rawPhone = (document.getElementById('outsourcePhone').value || '').trim();
         const name = (document.getElementById('outsourceName').value || '').trim();
-        if (!canEditProfiles()) { renderOutsourceNote('You do not have permission to change this.', 'var(--danger)'); return; }
+        // ⚠️⚠️⚠️ كان الحرسُ هنا canEditProfiles() وهو **خطأٌ حقيقيٌّ وجدتُه** وأنا
+        // أُدخل السكرتيرةَ إلى هذا التبويب: تلك الدالّةُ تُرجع true للسكرتيرة
+        // والمشرفين والمحاسب، أمّا قاعدةُ settings في firestore.rules فتُتيح
+        // الكتابةَ لـisAdmin() || isAccountant() وحدهما. فكان المشرفُ (وستكون
+        // السكرتيرةُ) يضغط «Save» فتقبله الشاشةُ وترفضه القاعدة برسالةِ
+        // «صلاحية مرفوضة» — وهو لا يعرف ما القواعد، فيُبلّغ عن عطلٍ في البرنامج.
+        // والحرسُ الآن يُطابق القاعدةَ حرفًا بحرف.
+        if (!hasFinanceAccess()) { renderOutsourceNote('Only the owner and the accountant can change this number.', 'var(--danger)'); return; }
         // ⚠️ رقمٌ لا يفتحه واتساب يعني زرًّا يُخرج رسالة خطأ، فيُظنّ أن اللوحة
         // معطوبة. والرفض مع بيان الصيغة أصدق. والتفريغ مسموح صراحةً.
         if (rawPhone && !waNumber(rawPhone)) {
@@ -7735,17 +7800,25 @@
         // المنتهيةَ أولًا — ويُضيف فوق ذلك الكفالةَ والإجراءات وأزرارَ الواتساب
         // وتتبُّعَ التجديد. فهذه البطاقة **مجموعةٌ فرعيّة** منه لا تُضيف حرفًا.
         //
-        // ⚠️⚠️⚠️ لكنها لا تُحذف لكل الأدوار: تبويبُ الحالة الإدارية للمالك
-        // **وحده** (TABS_BY_ROLE لا يُعطيه للمحاسب ولا السكرتيرة ولا المشرف).
-        // فحذفُها كليًّا يُعمي السكرتيرةَ عن انتهاء الهويات — وهي بعينها من
-        // تُلاحق التجديد، وكلُّ رسائل النظام تقول «أبلغ السكرتيرية». فتُخفى عن
-        // **من يملك البديل** وتبقى لمن لا يملكه.
+        // ⚠️⚠️⚠️ لكنها لا تُحذف لكل الأدوار: حذفُها كليًّا يُعمي السكرتيرةَ عن
+        // انتهاء الهويات — وهي بعينها من تُلاحق التجديد، وكلُّ رسائل النظام تقول
+        // «أبلغ السكرتيرية».
         //
-        // ⚠️ والشرطُ على **وجود التبويب** لا على اسم الدور: فلو أعطى المالك
-        // السكرتيرةَ تبويبَ الحالة الإدارية غدًا اختفت البطاقة عنها وحدَها بلا
-        // تعديل سطرٍ واحد.
+        // ⚠️⚠️⚠️⚠️ وهنا **صحّحتُ حكمًا لي**: كان الشرطُ «من يملك تبويبَ الحالة
+        // الإدارية» لا «من هو المالك»، وكتبتُ حينها أنّ ميزتَه أنّ البطاقةَ
+        // تختفي تلقائيًّا لو أُعطيت السكرتيرةُ التبويبَ غدًا. وقد وقع ذلك فعلًا
+        // اليوم: أمر المالك «يجب أن تصل السكرتيرة للحالة الإدارية لأنها هي من
+        // تتابع أوضاع الموظفين». فعمل الشرطُ كما صُمّم — **وكان خطأً**:
+        //   • سببُ الطلب أن تحصل على معلوماتٍ **أكثر**، فإخفاءُ تنبيهٍ كانت
+        //     تراه في رئيسيتها يُناقض سببَ الطلب نفسَه.
+        //   • والبطاقةُ والتبويبُ ليسا الشيءَ نفسَه: البطاقةُ **تنبيهٌ سالب**
+        //     يأتيها بلا أن تذهب إليه وعليه عدّاد، والتبويبُ **أداةُ عملٍ** تُقصد.
+        //     ومن يُلاحق التجديد يحتاج أن يُنبَّه لا أن يتذكّر أن يفتح نافذة.
+        //   • وشكوى المالك كانت عن ازدحام **شاشته هو** («حتى لا تزحم الشاشة»)،
+        //     وهو يملك الاثنين ولا يحتاج التنبيه. فالحكمُ يخصّه.
+        // فالشرطُ صار على المالك وحدَه. وهو سطرٌ واحدٌ يُعكس إن أراد غيرَ ذلك.
         // ==============================================================
-        if (roleHasTab('tab-admin-status')) {
+        if (currentRole === ROLE_ADMIN) {
             card.style.display = 'none';
             const b = document.getElementById('qidAlertCount');
             if (b) b.style.display = 'none';
