@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=156">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=157">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -21782,11 +21782,16 @@
         L.push(nmEn);
         L.push('');
         L.push('*Your documents are ready.*');
-        L.push('Please come to the secretary&rsquo;s office to review and sign them as soon as possible.');
+        // ⚠️⚠️⚠️ الفاصلةُ العليا **حرفٌ حقيقيّ** (’) لا &rsquo;: هذا نصُّ واتساب لا
+        // HTML، والكيانُ يُطبع حرفيًّا في المحادثة «secretary&rsquo;s». وقاعدةُ
+        // المشروع صريحةٌ في هذا ويحرسها فحصٌ قائم — كتبتُ &rsquo; ثم أزلتُه
+        // بـreplace بعد البناء، فأمسكَني الفحصُ لأنّ القاعدةَ على **السطر** نفسِه:
+        // وأيُّ رسالةٍ تُضاف لاحقًا بنفس الطريقة قد تُنسى فيها الإزالة.
+        L.push('Please come to the secretary\u2019s office to review and sign them as soon as possible.');
         L.push('');
         L.push(`*Office hours:* every day except ${OFFICE_HOURS.closedEn}, from ${OFFICE_HOURS.fromEn} `
             + `to ${OFFICE_HOURS.toEn}.`);
-        return L.join('\n').replace(/&rsquo;/g, '\u2019');
+        return L.join('\n');
     }
 
     /** يُحدّث زرَّ الواتساب: يُفعَّل برقمٍ صالحٍ ويُعطَّل بسببٍ مكتوبٍ بلاه. */
