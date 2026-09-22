@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=154">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=155">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -21250,6 +21250,110 @@
                         'Suggest add-ons, extra shots, or alternative drinks.',
                         'Meet daily sales targets for beverages through friendly recommendations.',
                         'Track personal performance on upsell metrics.'
+                    ]
+                }
+            ]
+        },
+        runner: {
+            // ⚠️ «مساعد نادل» يُطابق قائمةَ المسمّيات.
+            titleAr: (brand) => `مساعد نادل – سلسلة مطاعم ${brand}`,
+            // ⚠️⚠️ نصُّه الإنجليزيُّ كتب «RUNNER - Restaurant {}»: بحروفٍ كبيرةٍ
+            //   كلِّها، و«Restaurant» بلا «Chain»، واسمُ العلامة بعدها. وعربيُّه
+            //   يقول «سلسلة مطاعم» = Restaurant Chain. ووُحّدت على صيغة أوراقه
+            //   الأربع السابقة وأُبلغ بذلك.
+            titleEn: (brand) => `Runner &ndash; ${brand} Restaurant Chain`,
+            deptAr: 'الصالة / الخدمة',
+            deptEn: 'Dining Hall / Service',
+            supAr: 'كابتن وايتر / نادل / مدير الصالة',
+            // ⚠️⚠️⚠️ «Direct Reports» **ثانيةَ مرّة** في نصّه (الأولى: الباريستا).
+            //   وهي تعني المرؤوسين، أي تقول إنّ كابتن الوايتر يتبع مساعدَ النادل.
+            //   والتسميةُ الصحيحةُ تُكتب في القالب (Direct Supervisor) لا هنا.
+            supEn: 'Captain Waiter / Waiter / Dining Hall Manager',
+            purposeAr: 'دعم فريق النوادل في الصالة من خلال تجهيز الطاولات وتنظيفها بسرعة، والمساعدة في نقل الطعام '
+                + 'والمشروبات، لضمان تدفق خدمة سلس وتجربة عملاء ممتازة مع الحفاظ على النظافة والكفاءة.',
+            purposeEn: 'Support the waiter team in the dining hall by setting up and quickly clearing tables, '
+                + 'assisting with food and beverage transport, ensuring smooth service flow and excellent customer '
+                + 'experience while maintaining cleanliness and efficiency.',
+            sections: [
+                {
+                    hAr: '1. تجهيز وتنظيف الطاولات', hEn: '1. Table Setup and Clearing',
+                    ar: [
+                        'تجهيز الطاولات قبل الخدمة (ترتيب الأدوات، المناديل، الماء، الملح، الفلفل).',
+                        'تنظيف الطاولات فور مغادرة العملاء وإعادة تهيئتها للضيوف الجدد بسرعة.',
+                        'مسح الانسكابات، وإزالة البقع، وصيانة مظهر الصالة النظيف طوال اليوم.'
+                    ],
+                    en: [
+                        'Set tables before service (arrange cutlery, napkins, water, salt/pepper).',
+                        'Clear and reset tables immediately after guests leave for new arrivals.',
+                        'Wipe spills, remove stains, and maintain a clean dining hall appearance throughout the day.'
+                    ]
+                },
+                {
+                    hAr: '2. دعم نقل الطعام والمشروبات', hEn: '2. Food and Beverage Transport Support',
+                    ar: [
+                        'مساعدة النوادل في حمل الصواني والأطباق الثقيلة أو الكبيرة إلى الطاولات.',
+                        'نقل المشروبات، والخبز، أو السلطات الجانبية تحت إشراف النادل.',
+                        'جمع الأطباق الفارغة والأدوات المتسخة ونقلها إلى منطقة الغسيل بكفاءة.'
+                    ],
+                    en: [
+                        'Assist waiters carrying heavy or large trays and dishes to tables.',
+                        'Transport drinks, bread, or side salads under waiter supervision.',
+                        'Collect empty plates and dirty utensils, delivering them to the dishwashing area efficiently.'
+                    ]
+                },
+                {
+                    hAr: '3. خدمة العملاء الأساسية', hEn: '3. Basic Customer Service',
+                    ar: [
+                        'مساعدة في إعادة ملء المياه أو المشروبات البسيطة للطاولات.',
+                        'توفير مستلزمات إضافية (مناديل، قوائم أطفال) عند طلبها.',
+                        'مراقبة الصالة والتدخل السريع للحفاظ على راحة الضيوف.'
+                    ],
+                    en: [
+                        'Help refill water or simple drinks for tables.',
+                        'Provide additional supplies (napkins, kids&rsquo; menus) upon request.',
+                        'Monitor the dining hall and respond quickly to maintain guest comfort.'
+                    ]
+                },
+                {
+                    hAr: '4. النظافة والتنظيم', hEn: '4. Cleanliness and Organization',
+                    ar: [
+                        'تنظيف الأرضيات، والممرات، والمناطق الجانبية من الانسكابات أو القمامة.',
+                        'ترتيب عربات الخدمة، والطاولات الجانبية، ومنطقة الغسيل.',
+                        'المساعدة في الجرد السريع للمستلزمات (مناديل، أدوات) قبل أوقات الذروة.'
+                    ],
+                    en: [
+                        'Clean floors, aisles, and side areas from spills or trash.',
+                        'Organize service carts, side stands, and the dishwashing area.',
+                        'Assist with quick inventory of supplies (napkins, cutlery) before peak times.'
+                    ]
+                },
+                {
+                    hAr: '5. تنسيق الفريق', hEn: '5. Team Coordination',
+                    ar: [
+                        'العمل تحت توجيه النادل/الكابتن لدعم تدفق الخدمة خلال ساعات الذروة.',
+                        'التواصل مع فريق التنظيف لإبقاء الصالة جاهزة دائمًا.',
+                        'المساعدة في مهام الإغلاق مثل ترتيب الكراسي وتنظيف المنطقة الخارجية.'
+                    ],
+                    en: [
+                        'Work under waiter/captain direction to support service flow during peak hours.',
+                        'Communicate with the cleaning team to keep the hall always ready.',
+                        'Help with closing duties like chair arrangement and exterior area cleanup.'
+                    ]
+                },
+                {
+                    hAr: '6. السلامة والجودة', hEn: '6. Safety and Quality',
+                    ar: [
+                        'اتباع إجراءات السلامة عند حمل الصواني (تجنب الانسكابات، الحركة الآمنة).',
+                        'الحفاظ على النظافة الشخصية ومعايير الزي الرسمي، وتطبيق مبادئ الـ HACCP الأساسية.',
+                        'الإبلاغ الفوري عن المشكلات (أطباق مكسورة، انسكابات خطيرة).'
+                    ],
+                    en: [
+                        'Follow safety procedures when carrying trays (avoid spills, safe movement).',
+                        'Maintain personal hygiene and uniform standards, and apply basic HACCP principles.',
+                        // ⚠️⚠️ نصُّه الإنجليزيُّ **مقطوعٌ** هنا: «(broken dishes, dangerous
+                        //   spills» بلا قوسِ إغلاقٍ ولا نقطة. أُكمل من عربيِّه المكتملِ
+                        //   «(أطباق مكسورة، انسكابات خطيرة).» — إكمالُ ترقيمٍ لا إضافةُ معنى.
+                        'Immediately report issues (broken dishes, dangerous spills).'
                     ]
                 }
             ]
