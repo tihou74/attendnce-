@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=153">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=154">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -21145,6 +21145,111 @@
                         'Wear protective equipment, including gloves and masks, and follow safety procedures.',
                         'Perform sanitization in food areas in accordance with HACCP standards.',
                         'Assist in preparing the branch for municipality inspections.'
+                    ]
+                }
+            ]
+        },
+        barista: {
+            // ⚠️ المسمّى «باريستا» يُطابق قائمةَ المسمّيات — كعامل النظافة.
+            titleAr: (brand) => `باريستا – سلسلة مطاعم ${brand}`,
+            // ⚠️⚠️ نصُّه الإنجليزيُّ كتبها «Barista - Restaurant Chain {}» أي اسمُ
+            //   العلامة **بعد** «Restaurant Chain»، بخلاف أوراقه الثلاث السابقة
+            //   («{} Restaurant Chain») وبخلاف عربيِّ هذه الورقة نفسِها. ووُحّدت
+            //   على صيغته الغالبة وأُبلغ بذلك.
+            titleEn: (brand) => `Barista &ndash; ${brand} Restaurant Chain`,
+            deptAr: 'البار / المشروبات والقهوة',
+            deptEn: 'Bar / Beverages and Coffee',
+            supAr: 'كبير الباريستا / مدير الصالة',
+            // ⚠️⚠️⚠️ نصُّه الإنجليزيُّ كتب «Direct Reports» — وهي في الإنجليزية
+            //   تعني **المرؤوسين** الذين يرفعون تقاريرهم إليه، أي عكسُ المقصود
+            //   تمامًا: تقول إنّ كبيرَ الباريستا يتبع الباريستا. وعربيُّه يقول
+            //   «المسؤول المباشر»، وأوراقُه الثلاثُ السابقةُ كلُّها «Direct
+            //   Supervisor». فاستُعملت الصيغةُ الصحيحةُ وأُبلغ صريحًا.
+            supEn: 'Head Barista / Dining Hall Manager',
+            purposeAr: 'إعداد القهوة والمشروبات عالية الجودة حسب الوصفات المعتمدة، وتقديم خدمة عملاء ممتازة في '
+                + 'البار، والحفاظ على النظافة والكفاءة لدعم العمليات السلسة ورضا العملاء.',
+            purposeEn: 'Prepare high-quality coffee and beverages according to approved recipes, provide excellent '
+                + 'customer service at the bar, and maintain cleanliness and efficiency to support smooth operations '
+                + 'and customer satisfaction.',
+            sections: [
+                {
+                    // ⚠️ ترقيمُه العربيُّ في هذه الورقة بالأرقام (1.) لا بـ«أولًا:»
+                    //   كأوراقه الثلاث السابقة. نُقل كما كتبه وأُبلغ بالفرق.
+                    hAr: '1. إعداد المشروبات', hEn: '1. Beverage Preparation',
+                    ar: [
+                        'إعداد الإسبريسو، الكابتشينو، اللاتيه، المشروبات الباردة، والعصائر حسب الوصفات الدقيقة والمعايير.',
+                        'قياس كميات دقيقة من القهوة، الحليب، الشراب، والإضافات لضمان الطعم والتقديم المتسق.',
+                        'تنفيذ "لاتيه آرت" وعروض مشروبات خاصة أثناء أوقات الذروة.'
+                    ],
+                    en: [
+                        'Prepare espresso, cappuccino, lattes, cold drinks, and juices following exact recipes and standards.',
+                        'Measure precise amounts of coffee, milk, syrups, and toppings for consistency in taste and presentation.',
+                        'Execute latte art and special drink presentations during peak service times.'
+                    ]
+                },
+                {
+                    hAr: '2. خدمة العملاء', hEn: '2. Customer Service',
+                    ar: [
+                        'استقبال العملاء بحرارة، تسجيل الطلبات بدقة، وتقديم توصيات للمشروبات أو الإضافات.',
+                        'إدارة المعاملات عبر نظام نقاط البيع وتأكيد الصحة في الفكة والإيصالات.',
+                        'حل المشكلات البسيطة للعملاء بلباقة وتصعيد الشكاوى المعقدة للمشرف.'
+                    ],
+                    en: [
+                        'Greet customers warmly, take orders accurately, and recommend drinks or pairings.',
+                        'Handle transactions using the POS system and ensure correct change and receipts.',
+                        'Resolve minor customer issues politely and escalate complex complaints to the supervisor.'
+                    ]
+                },
+                {
+                    hAr: '3. عمليات البار والنظافة', hEn: '3. Bar Operations and Cleanliness',
+                    ar: [
+                        'الحفاظ على نظافة منطقة البار، ومسح الأسطح، وتنظيم المستلزمات بشكل مستمر.',
+                        'تنظيف ماكينة الإسبريسو، والمطحنة، والخلاطات بين الخدمات وفي نهاية الوردية.',
+                        'إعادة تعبئة مستلزمات البار (كؤوس، أغطية، حليب، شراب) والإبلاغ عن النقص لكبير الباريستا.'
+                    ],
+                    en: [
+                        'Maintain bar area cleanliness, wiping surfaces and organizing supplies continuously.',
+                        'Clean the espresso machine, grinder, and blenders between services and at shift end.',
+                        'Restock bar supplies (cups, lids, milk, syrups) and report low stock to the Head Barista.'
+                    ]
+                },
+                {
+                    hAr: '4. مراقبة الجودة (Quality Control)', hEn: '4. Quality Control',
+                    ar: [
+                        'تذوق المشروبات للتحقق من الجودة والتوافق قبل التسليم.',
+                        'مراقبة سلامة الحليب والقهوة، واستبعاد المواد المنتهية الصلاحية فورًا.',
+                        'اتباع معايير سلامة الغذاء (فحص درجات الحرارة، بروتوكولات النظافة).'
+                    ],
+                    en: [
+                        'Taste-test drinks for quality and consistency before serving.',
+                        'Monitor milk and coffee freshness, discarding expired items immediately.',
+                        'Follow food safety standards (temperature checks, hygiene protocols).'
+                    ]
+                },
+                {
+                    hAr: '5. دعم الفريق (Team Support)', hEn: '5. Team Support',
+                    ar: [
+                        'مساعدة الزملاء أثناء الفترات المزدحمة وتغطية المحطات حسب الحاجة.',
+                        'المشاركة في قوائم فتح/إغلاق البار وعمليات الجرد.',
+                        'التواصل مع المطبخ حول أولويات الطلبات لتزاوج الطعام والشراب.'
+                    ],
+                    en: [
+                        'Assist teammates during busy periods and cover stations as needed.',
+                        'Participate in opening/closing bar checklists and inventory counts.',
+                        'Communicate order priorities to the kitchen for food-drink pairings.'
+                    ]
+                },
+                {
+                    hAr: '6. البيع الإضافي والمبيعات (Upselling and Sales)', hEn: '6. Upselling and Sales',
+                    ar: [
+                        'اقتراح إضافات مثل شوت إضافي، أو مشروبات بديلة.',
+                        'تحقيق أهداف المبيعات اليومية للمشروبات من خلال التوصيات الودية.',
+                        'تتبع الأداء الشخصي في معايير البيع الإضافي.'
+                    ],
+                    en: [
+                        'Suggest add-ons, extra shots, or alternative drinks.',
+                        'Meet daily sales targets for beverages through friendly recommendations.',
+                        'Track personal performance on upsell metrics.'
                     ]
                 }
             ]
