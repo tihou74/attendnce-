@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=155">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=156">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -2068,10 +2068,20 @@
                 <p class="card-sub" id="docSetupNote" style="margin: 10px 0 0;"></p>
             </details>
 
-            <div class="controls" style="margin-top: 18px;">
+            <div class="controls" style="margin-top: 18px; flex-wrap: wrap; gap: 10px;">
                 <button class="btn-primary" onclick="printDocument()"><span data-icon="fileText"></span> Print / Save as PDF</button>
+                <!-- ⭐⭐⭐⭐ زرُّ «أوراقك جاهزة» — بطلب المالك.
+                     ⚠️ زرٌّ واحدٌ يخدم المستنداتِ كلَّها: نصُّ المالك «أوراقه جاهزة»
+                        بالجمع، والرسالةُ تُستدعيه إلى المكتب لا تُسمّي ورقةً بعينها.
+                     ⚠️⚠️ ويُعطَّل بلا رقمٍ صالحٍ في ملفّه — انظر renderDocWaButton. -->
+                <button class="btn-accent" id="btnDocWa" onclick="sendDocReadyWhatsApp()">
+                    <!-- ⚠️ bell موجودةٌ في مكتبة الأيقونات؛ كتبتُ messageCircle أوّلًا
+                         وهي غيرُ موجودةٍ فيها فكان الزرُّ سيظهر بلا أيقونة. -->
+                    <span data-icon="bell"></span> WhatsApp: documents ready
+                </button>
                 <span id="docStatus" style="font-weight: 700; font-size: 13px;"></span>
             </div>
+            <p id="docWaNote" style="margin: 8px 0 0; font-size: 12.5px;"></p>
         </div>
 
         <!-- ⚠️ الورقةُ نفسُها: تُعرض على الشاشة كما ستُطبع بالضبط، وهي **ظاهرةٌ**
@@ -21464,10 +21474,26 @@
 
         const empId = document.getElementById('docEmpSelect').value;
         const emp = allEmployees.find(e => e.id === empId);
-        if (!emp) { paper.innerHTML = '<p style="color: #666; margin: 0;">Choose an employee above and the document appears here, exactly as it will print.</p>'; return; }
+        if (!emp) {
+            paper.innerHTML = '<p style="color: #666; margin: 0;">Choose an employee above and the document appears here, exactly as it will print.</p>';
+            // ⚠️ وبلا موظفٍ مختارٍ يُعطَّل زرُّ الواتساب كذلك — وإلّا بقي مفعَّلًا
+            //   على موظفٍ سابقٍ بعد أن أفرغت السكرتيرةُ الاختيار.
+            renderDocWaButton(null, null);
+            return;
+        }
 
         const { key, party } = docPartyFor(emp);
         const type = DOC_TYPES[document.getElementById('docTypeSelect').value] || DOC_TYPES.nda;
+
+        /**
+         * ⭐⭐⭐⭐ زرُّ الواتساب يُحدَّث **هنا**، قبل كلِّ حرّاس الرفض.
+         * ⚠️⚠️⚠️ ولو وُضع بعدها لبقي على حالته السابقة كلَّما رُفض المستند (كيانٌ
+         * مجهول، راتبٌ ناقص، وصفٌ غيرُ مُرسَل) — أي يبقى مفعَّلًا لموظفٍ **سابقٍ**
+         * فتُرسل رسالةُ «أوراقك جاهزة» إلى رقم رجلٍ آخر. وهذا خطأٌ لا يُستعاد.
+         * ⚠️ والرسالةُ تستدعيه إلى المكتب ولا تُسمّي مستندًا، فلا علاقةَ لها بأيِّ
+         * مستندٍ مختارٍ الآن — لذلك لا تتأثّر بالرفض أصلًا.
+         */
+        renderDocWaButton(emp, party);
         // ⚠️⚠️⚠️ الرفضُ الصريح: كيانٌ قانونيٌّ خاطئٌ على اتفاقيةٍ موقَّعة يُبطلها.
         // ⚠️⚠️⚠️⚠️ والشرطُ needsParty لا «كلُّ مستندٍ»: قرأتُ نصَّ عرض العمل فلم
         // أجد فيه اسمَ شركةٍ ولا سجلًّا تجاريًّا ولا ص.ب إطلاقًا — والكيانُ فيه
@@ -21715,6 +21741,114 @@
         if (t) t.value = docPageSetup.topMm;
         if (b) b.value = docPageSetup.bottomMm;
         applyDocPageSetup();
+    };
+
+    /**
+     * ⭐⭐⭐⭐⭐ رسالةُ «أوراقك جاهزة» — بطلب المالك ونصِّه:
+     * «أوراقه جاهزة فليتفضل إلى مكتب السكرتيرة لمراجعتها والإمضاء عليها في أقرب
+     *  وقت ممكن، ومن تحت أوقات عمل المكتب يوميًا عدا الجمعة من الساعة 10 صباحًا
+     *  إلى الساعة 6 مساءً».
+     *
+     * ⚠️ أوقاتُ المكتب ثوابتُ لا نصٌّ مكتوبٌ في الرسالة: لو تغيّرت يومًا تُغيَّر
+     * في موضعٍ واحدٍ ولا تبقى نسخةٌ قديمةٌ في رسالةٍ تُرسل لمئة موظف.
+     * ⚠️⚠️ والرسالةُ **بلغتين**: العاملون هنود ونيباليون وفلبينيون وغيرُهم، ورسالةٌ
+     * عربيةٌ وحدَها لا يفهمها كثيرٌ منهم فلا يحضر — والغرضُ أن يحضر.
+     *   والعربيُّ أوّلًا لأنه نصُّ المالك، والإنجليزيُّ تحته.
+     */
+    const OFFICE_HOURS = { fromAr: '10:00 صباحًا', toAr: '6:00 مساءً', fromEn: '10:00 AM', toEn: '6:00 PM',
+                           closedAr: 'الجمعة', closedEn: 'Friday' };
+
+    function docReadyMessage(emp, party) {
+        const nm = String((emp && emp.nameAr) || (emp && emp.name) || '');
+        const nmEn = String((emp && emp.name) || '');
+        const brandAr = String((party && party.brandAr) || 'مجموعة الشيخة');
+        const brandEn = String((party && party.brandEn) || 'Al Sheikha Group');
+        const L = [];
+        // ⚠️ النجمتانِ تُظهران النصَّ عريضًا في واتساب — لا وسومَ HTML هنا بحال
+        L.push(`*${brandAr}*`);
+        L.push('');
+        L.push(nm);
+        L.push('');
+        L.push('*أوراقك جاهزة.*');
+        L.push('نرجو التفضّل إلى مكتب السكرتيرة لمراجعتها والإمضاء عليها في أقرب وقت ممكن.');
+        L.push('');
+        L.push(`*أوقات عمل المكتب:* يوميًا عدا ${OFFICE_HOURS.closedAr}، من ${OFFICE_HOURS.fromAr} `
+            + `إلى ${OFFICE_HOURS.toAr}.`);
+        L.push('');
+        L.push('———————————————');
+        L.push('');
+        L.push(`*${brandEn}*`);
+        L.push('');
+        L.push(nmEn);
+        L.push('');
+        L.push('*Your documents are ready.*');
+        L.push('Please come to the secretary&rsquo;s office to review and sign them as soon as possible.');
+        L.push('');
+        L.push(`*Office hours:* every day except ${OFFICE_HOURS.closedEn}, from ${OFFICE_HOURS.fromEn} `
+            + `to ${OFFICE_HOURS.toEn}.`);
+        return L.join('\n').replace(/&rsquo;/g, '\u2019');
+    }
+
+    /** يُحدّث زرَّ الواتساب: يُفعَّل برقمٍ صالحٍ ويُعطَّل بسببٍ مكتوبٍ بلاه. */
+    function renderDocWaButton(emp, party) {
+        const btn = document.getElementById('btnDocWa');
+        const note = document.getElementById('docWaNote');
+        if (!btn) return;
+        const num = emp ? waNumber(emp.phone) : '';
+        // ⚠️⚠️ لا رقمَ ⇒ **يُعطَّل الزرُّ ويُقال السبب**، ولا يُفتح واتساب بلا مرسَلٍ
+        //   إليه: بلا رقمٍ يفتح واتساب على قائمة المشاركة فتُرسل السكرتيرةُ
+        //   «أوراقك جاهزة» إلى **آخر محادثةٍ فتحتها** بضغطةٍ واحدةٍ بالخطأ.
+        if (!num) {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.title = 'No usable phone number in this employee file.';
+            if (note) note.innerHTML = emp
+                ? `<span style="color: var(--warning);">&#9888; No usable WhatsApp number in `
+                  + `<b>${escapeHtml(emp.name || '')}</b>&rsquo;s file &mdash; open <b>Employee Profiles</b> and add `
+                  + `the phone, then come back.</span>`
+                : '';
+            return;
+        }
+        btn.disabled = false;
+        btn.style.opacity = '';
+        btn.title = `Send to +${num}`;
+        if (note) note.innerHTML = `<span style="color: var(--text-dim);">Will be sent to <b>+${escapeHtml(num)}</b> `
+            + `in Arabic and English, with the office hours.</span>`;
+    }
+
+    window.sendDocReadyWhatsApp = function() {
+        const empId = document.getElementById('docEmpSelect').value;
+        const emp = allEmployees.find(e => e.id === empId);
+        const st = document.getElementById('docStatus');
+        const say = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        if (!emp) { say('Choose an employee first.', 'var(--danger)'); return; }
+        const num = waNumber(emp.phone);
+        if (!num) { say('No usable phone number in his file.', 'var(--danger)'); return; }
+
+        const { party } = docPartyFor(emp);
+        const text = docReadyMessage(emp, party);
+        const encoded = encodeURIComponent(text);
+        // ⚠️ حارسُ طولٍ يُحذّر ولا يمنع — بنفس سياسة بقيّة مُرسلات الواتساب هنا
+        if (encoded.length > WA_URL_SAFE_LIMIT) {
+            console.warn('Documents-ready message is long:', encoded.length, 'encoded characters.');
+        }
+        // ⚠️⚠️ النظامُ الأصليُّ whatsapp:// على الهاتف: رابطُ wa.me يمرّ بصفحة تحويلٍ
+        //   قد تنتهي في واتساب الويب داخلَ المتصفّح بدل التطبيق.
+        const isPhone = /android|iphone|ipad|ipod|iemobile|blackberry|opera mini|webos/i.test(navigator.userAgent || '');
+        const href = isPhone ? `whatsapp://send?phone=${num}&text=${encoded}`
+                             : `https://wa.me/${num}?text=${encoded}`;
+        // ⚠️ وسمُ رابطٍ لا window.open: المتصفّحاتُ تحجب النوافذَ المبرمَجة ولا
+        //   تحجب تنقّلَ الرابط. ولا target="_blank" مع whatsapp:// — يُبقي تبويبًا فارغًا.
+        const a = document.createElement('a');
+        a.href = href;
+        if (!isPhone) { a.target = '_blank'; a.rel = 'noopener'; }
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => a.remove(), 0);
+
+        logAudit('Documents-ready WhatsApp sent', `${emp.name || empId} → +${num}`);
+        say(`WhatsApp opened for +${num}.`, 'var(--success)');
     };
 
     window.printDocument = function() {
