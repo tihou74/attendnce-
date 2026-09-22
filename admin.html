@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=148">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=149">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1471,7 +1471,9 @@
             <h3><span data-icon="plus"></span> Add / Register New Employee &amp; Documents</h3>
             <div class="controls">
                 <div style="flex: 1; min-width: 180px;"><label>Full Name</label><input type="text" id="newEmpNameInput" placeholder="Employee Full Name"></div>
-                <div style="flex: 1; min-width: 140px;"><label>Job Title</label><input type="text" id="newEmpRoleInput" placeholder="Job Title"></div>
+                <!-- ⚠️ ونفسُ الاقتراحات في نموذج الإضافة — datalist واحدٌ يخدم
+                     الخانتين، فلا قائمتان تتفرّقان بمرور الوقت. -->
+                <div style="flex: 1; min-width: 140px;"><label for="newEmpRoleInput">Job Title</label><input type="text" id="newEmpRoleInput" list="jobTitleSuggestions" placeholder="Job Title" autocomplete="off"></div>
                 <div style="flex: 1; min-width: 130px;"><label>WhatsApp Phone</label><input type="text" id="newEmpPhoneInput" placeholder="+974..."></div>
                 <div style="width: 90px;"><label>PIN Code</label><input type="text" id="newEmpPinInput" placeholder="1234"></div>
                 <!-- تاريخ الالتحاق بالعمل: مطلوب. كل حساب الموظف يبدأ منه. -->
@@ -4065,7 +4067,46 @@
                     <option value="Qatari"></option>
                 </datalist>
             </div>
-            <div><label>Job Title</label><input type="text" id="editEmpRole"></div>
+            <!-- ⚠️⚠️ اقتراحاتٌ لا قائمةٌ مُغلقةٌ **هنا** بخلاف الكشك، وهذا مقصود:
+                 الكشكُ للمتقدّم الجديد فيُقيَّد بقائمة المالك، أمّا هذه الخانةُ
+                 فيستعملها المالكُ لموظفين قدامى مسمّياتُهم مكتوبةٌ من قبل، أو
+                 لحالةٍ خاصّةٍ لم تُدرَج بعد. وقائمةٌ مُغلقةٌ هنا كانت ستمنعه من
+                 حفظ ملفٍّ قائمٍ حتى يُغيّر مسمّى الموظف — أي عطلٌ اخترعتُه.
+                 ⚠️ والاقتراحاتُ **هي نفسُها** خياراتُ الكشك حرفًا بحرف، فالهجاءُ
+                 واحدٌ في المكانين ولا يصير المسمّى الواحدُ قيمتين. -->
+            <div><label for="editEmpRole">Job Title</label>
+                <input type="text" id="editEmpRole" list="jobTitleSuggestions" autocomplete="off"
+                       placeholder="type or pick — اكتب أو اختر">
+                <!-- ⭐⭐⭐⭐⭐ العربيُّ يظهر **في نفس الخانة** بطلب المالك:
+                     «في نفس الخانة تبع الجوب تيتل اكتبهم عربي انجليزي، لا داعي
+                      لاضافة خانه عربي».
+                     ⚠️⚠️⚠️ والعربيُّ في **نصِّ** الخيار لا في قيمتِه، وهذا هو لبُّ
+                     الأمر: قائمةُ الاقتراحات تُظهر النصَّ للقارئ وتُدخل **القيمةَ**
+                     في الخانة. فيرى المالكُ «Waiter · نادل» ويُحفظ «Waiter».
+                     ⚠️⚠️ ولو وُضع العربيُّ في القيمةِ لحُفظ «Waiter — نادل» في حقل
+                     role، وهو مستعملٌ في ٣٥ موضعًا: جداولُ الملفّات وكشفُ الرواتب
+                     وتصديرُ Excel والبحثُ ورسائلُ الواتساب. وأسوأُ من ذلك أنّ
+                     عرضَ العمل كان سيطبع «position of Waiter — نادل» في العمود
+                     **الإنجليزيِّ** — أي العربيةُ تتسرّب إلى عمودٍ إنجليزيٍّ بعد
+                     أن أصلحنا العكس بالضبط.
+                     ⚠️ فالنتيجةُ واحدةٌ لك: خانةٌ واحدةٌ فيها اللغتان، بلا خانةٍ
+                     عربيةٍ ثانيةٍ، وبلا كسرِ شيءٍ يعمل اليوم. -->
+                <datalist id="jobTitleSuggestions">
+                    <option value="Waiter">نادل</option>
+                    <option value="Runner">مساعد نادل</option>
+                    <option value="Barista">باريستا</option>
+                    <option value="Cleaner">عامل نظافة</option>
+                    <option value="Cashier">أمين صندوق</option>
+                    <option value="Chef">طاهٍ</option>
+                    <option value="Assistant Chef">مساعد طاهٍ</option>
+                    <option value="Pastry Chef">شيف حلويات</option>
+                    <option value="Kitchen Worker">عامل مطبخ</option>
+                    <option value="Driver">سائق</option>
+                    <option value="Purchasing Officer">مسؤول مشتريات</option>
+                    <option value="Accountant">محاسب</option>
+                    <option value="Secretary">سكرتير</option>
+                </datalist>
+            </div>
             <!-- ⚠️⚠️ خانة النشاط كانت **غائبة تمامًا** عن ملف الموظف، وموجودة في
                  نموذج الإضافة وحده. فمن أُضيف مرّةً بقي في نشاطه إلى الأبد ولا
                  سبيل لنقله. والمالك وقف على هذا بعينه: أنشأ ملفات البياعات ثم
@@ -20489,6 +20530,46 @@
      * وترجمةٌ مخترعةٌ على مستندٍ يُوقَّع أسوأُ من كلمةٍ إنجليزيةٍ في عمودٍ عربيّ.
      * ⚠️ والمقارنةُ غيرُ حسّاسةٍ لحالة الأحرف ولا للفراغات الزائدة.
      */
+    /**
+     * ⭐⭐⭐⭐⭐ المسمّياتُ الوظيفية بالعربية — قائمةُ المالك بنصّها.
+     *
+     * ⚠️⚠️⚠️ ثلاثةٌ منها أرسلها المالكُ **بخيارَين** («أمين صندوق / صرّاف» و
+     * «طاهٍ / شيف» و«شيف حلويات / حلواني»)، والمستندُ يطبع واحدًا لا اثنين.
+     * فاستعملتُ **الأوّلَ** في كلٍّ منها وأخبرتُ المالكَ صريحًا ليُصحّح إن أراد
+     * الثاني — ولم أخلط بينهما ولم أطبعهما معًا على عقد.
+     * ⚠️ وفي «طاهٍ» حجّةٌ إضافية: أرسل «Assistant Chef» بمقابلٍ واحدٍ هو «مساعد
+     * طاهٍ» بلا خيارٍ ثانٍ، فـ«طاهٍ» هو اختيارُه في هذه العائلة.
+     * ⚠️⚠️ و«باريستا /» و«سكرتير /» جاءتا بشرطةٍ مائلةٍ **لا شيءَ بعدها** — أي
+     * أنه بدأ يكتب بديلًا ولم يُكمله. فأخذتُ المكتوبَ ونزعتُ الشرطةَ المعلَّقة،
+     * ولم أخترع البديلَ الناقص. (وبقاءُ الشرطةِ كان سيُطبع «باريستا /» على عقد.)
+     *
+     * ⚠️ والمفاتيحُ إنجليزيةٌ لأنّ حقلَ role يُحفظ إنجليزيًّا: هو مستعملٌ في ٣٥
+     * موضعًا في اللوحة (الجداول، كشفُ الرواتب، التصدير، البحث، الواتساب)، فلا
+     * يُمسّ معناه. والعربيُّ للمستندات وحدَها.
+     * ⚠️⚠️ وما لا يُطابق مفتاحًا يُطبع **كما هو مكتوبٌ** في الملفّ: عندك موظفون
+     * قدامى مسمّياتُهم مكتوبةٌ بكتابةٍ حرّةٍ قديمةٍ قد لا تُطابق القائمة. ولوحةُ
+     * النقص تُنبّه على ذلك قبل الطباعة بدل أن يُرفض إصدارُ عرضٍ لموظفٍ قائم.
+     */
+    const JOB_TITLE_AR = {
+        'waiter': 'نادل',
+        'runner': 'مساعد نادل',
+        'barista': 'باريستا',
+        'cleaner': 'عامل نظافة',
+        'cashier': 'أمين صندوق',
+        'chef': 'طاهٍ',
+        'assistant chef': 'مساعد طاهٍ',
+        'pastry chef': 'شيف حلويات',
+        'kitchen worker': 'عامل مطبخ',
+        'driver': 'سائق',
+        'purchasing officer': 'مسؤول مشتريات',
+        'accountant': 'محاسب',
+        'secretary': 'سكرتير'
+    };
+    function jobTitleAr(v) {
+        const k = String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        return JOB_TITLE_AR[k] || String(v || '');
+    }
+
     const NATIONALITY_AR = {
         'indian': 'هندي', 'nepali': 'نيبالي', 'bangladeshi': 'بنغلاديشي',
         'filipino': 'فلبيني', 'sri lankan': 'سريلانكي', 'pakistani': 'باكستاني',
@@ -20524,7 +20605,11 @@
         const natRaw = String((emp && emp.nationality) || '');
         const nat = escapeHtml(natRaw);
         const natA = escapeHtml(nationalityAr(natRaw));
-        const job = escapeHtml(String((emp && emp.role) || ''));
+        const jobRaw = String((emp && emp.role) || '');
+        const job = escapeHtml(jobRaw);
+        // ⭐⭐⭐⭐ المسمّى بالعربية للعمود العربيّ — قائمةُ المالك، ورجوعٌ إلى
+        // المكتوبِ كما هو لمسمًّى قديمٍ لا مقابلَ له (ولوحةُ النقص تُنبّه عليه).
+        const jobA = escapeHtml(jobTitleAr(jobRaw));
         const honEn = hon === 'mrs' ? 'Mrs.' : 'Mr.';
         const honAr = hon === 'mrs' ? 'السيدة' : 'السيد';
         const slot = (v) => v || '<span style="border-bottom: 1px dotted #000; display: inline-block; min-width: 90px;">&nbsp;</span>';
@@ -20546,7 +20631,7 @@
             + 'terms and conditions. Your employment is subject to visa availability within the next three months '
             + 'and/or transfer of sponsorship, satisfactory reference checks, and successful completion of legal '
             + 'employment procedures.',
-            `يسرنا ان نعرض عليكم وظيفة ${slot(job)} لدى شركتنا بناء على الأحكام والشروط التالية ويكون توظيفكم خاضعا `
+            `يسرنا ان نعرض عليكم وظيفة ${slot(jobA)} لدى شركتنا بناء على الأحكام والشروط التالية ويكون توظيفكم خاضعا `
             + 'لتوفر التأشيرة خلال الأشهر الثلاثة المقبلة و / أو نقل الكفالة والتحقق المقبول من المراجع , والاتمام '
             + 'الناجح للإجراءات القانونية للالتحاق بالعمل .'
         );
@@ -20823,7 +20908,22 @@
             + `<b>${escapeHtml(String(emp.name || ''))}</b> in English letters. To fix it, open `
             + `<b>Employee Profiles</b> &rarr; this employee &rarr; <b>Full Name in Arabic</b> and type the `
             + `name exactly as it is written on the Qatar ID, then press Save and come back.`;
-        if (gaps.length || arName) {
+        /**
+         * ⭐⭐⭐⭐ والمسمّى الوظيفيُّ بلا مقابلٍ عربيّ — تنبيهٌ منفصلٌ كالاسم.
+         * ⚠️⚠️ وأثرُه نفسُ أثرِ الاسم: يُطبع بالإنجليزية في العمود العربيّ، ولا
+         * يُلاحظ في ورقةٍ نصفُها إنجليزيٌّ أصلًا. ويحدث لموظفٍ قديمٍ مسمّاه
+         * مكتوبٌ بكتابةٍ حرّةٍ لا تُطابق قائمةَ المالك («Waitress» مثلًا).
+         * ⚠️ ولا يُعرض إلا للمستندِ الذي يطبع المسمّى فعلًا (needs فيها role):
+         *   اتفاقيةُ السرّية لا تذكر الوظيفةَ، فتنبيهٌ عليها فيها ضجيجٌ بلا معنى.
+         */
+        const needsRole = (type.needs || []).includes('role');
+        const arJob = (needsRole && emp.role && jobTitleAr(emp.role) === emp.role)
+            ? `<b>&#9888; No Arabic job title for &ldquo;${escapeHtml(String(emp.role))}&rdquo;.</b> `
+              + `The Arabic column will show it in English letters. This happens when the job title was typed `
+              + `freely before the official list existed. Open <b>Employee Profiles</b> &rarr; this employee &rarr; `
+              + `<b>Job Title</b> and pick one from the suggestion list, then press Save.`
+            : '';
+        if (gaps.length || arName || arJob) {
             miss.style.display = 'block';
             miss.innerHTML =
                 (gaps.length
@@ -20832,7 +20932,9 @@
                       + `or print as it is and write them by hand.`
                     : '')
                 + (gaps.length && arName ? '<br><br>' : '')
-                + arName;
+                + arName
+                + ((gaps.length || arName) && arJob ? '<br><br>' : '')
+                + arJob;
         }
     };
 

@@ -542,7 +542,40 @@
 
         <div class="form-group">
             <label for="applyRole">Position Applying For (الوظيفة المطلوبة):</label>
-            <input type="text" id="applyRole" placeholder="e.g. Waiter, Chef, Cashier...">
+            <!-- ===================================================================
+                 ⭐⭐⭐⭐⭐ المسمّياتُ الوظيفية — قائمةُ المالك بنصّها، وبطلبه:
+                 «ساعطيك انا المسميات الوظيفية التي عندي بالانجليزية والعربية وانت
+                  ضعها كخيار في كشك الموظفين».
+                 ⚠️⚠️⚠️ وهي قائمةٌ **مُغلقةٌ** (select) لا كتابةً حرّةً كالجنسية،
+                 والسببُ مختلفٌ عن الجنسية تمامًا: المسمّياتُ **قرارُ المالك** وهو
+                 من حدّدها، فكلُّ مسمًّى فيها له مقابلٌ عربيٌّ مضمون. أمّا الكتابةُ
+                 الحرّةُ فكانت تُنتج مسمًّى بلا عربيٍّ فيُطبع بالإنجليزية في العمود
+                 العربيِّ من عرض العمل — وهو بعينه العطلُ الذي نبّه عليه المالك.
+                 ⚠️⚠️ والخيارُ يُظهر المسمّى بالعربية بجانب الإنجليزية ليختار
+                 المتقدّمُ بلغته، لكنّ **القيمةَ المحفوظةَ إنجليزيةٌ فقط** — حقلُ
+                 role مستعملٌ في ٣٥ موضعًا في اللوحة (الجداول، كشفُ الرواتب،
+                 التصدير، البحث، رسائلُ الواتساب)، فتغييرُ معناه يكسرها كلَّها.
+                 ⚠️ وقائمةُ العبايات ليست فيها: فروعُ هذا النموذج مطاعمُ والمكتبُ
+                 الرئيسيُّ فقط، ولم يُرسل المالكُ مسمّياتِ «الشيخة ستايل».
+                 ⚠️ وهي **مطابقةٌ حرفًا بحرفٍ** لقائمة الاقتراحات في ملفّ الموظف
+                 ولخريطة العربية — وفحصٌ يُثبّت تطابقَ الثلاثة.
+                 =================================================================== -->
+            <select id="applyRole">
+                <option value="">-- Choose the position — اختر الوظيفة --</option>
+                <option value="Waiter">Waiter &mdash; نادل</option>
+                <option value="Runner">Runner &mdash; مساعد نادل</option>
+                <option value="Barista">Barista &mdash; باريستا</option>
+                <option value="Cleaner">Cleaner &mdash; عامل نظافة</option>
+                <option value="Cashier">Cashier &mdash; أمين صندوق</option>
+                <option value="Chef">Chef &mdash; طاهٍ</option>
+                <option value="Assistant Chef">Assistant Chef &mdash; مساعد طاهٍ</option>
+                <option value="Pastry Chef">Pastry Chef &mdash; شيف حلويات</option>
+                <option value="Kitchen Worker">Kitchen Worker &mdash; عامل مطبخ</option>
+                <option value="Driver">Driver &mdash; سائق</option>
+                <option value="Purchasing Officer">Purchasing Officer &mdash; مسؤول مشتريات</option>
+                <option value="Accountant">Accountant &mdash; محاسب</option>
+                <option value="Secretary">Secretary &mdash; سكرتير</option>
+            </select>
         </div>
 
         <div class="form-group">
@@ -2151,6 +2184,14 @@
         }
         if (!passportNumber) {
             showStatus("Please enter your passport number (يرجى كتابة رقم جواز السفر).", "error");
+            return;
+        }
+        // ⚠️⚠️⚠️ والوظيفةُ صارت **مطلوبة**، وهذا تغييرٌ أُصرّح به: كانت خانةَ كتابةٍ
+        // حرّةً وتُحفظ «-» إن تُركت فارغة. وصارت قائمةً، فأوّلُ خيارٍ فيها فارغٌ —
+        // فبلا هذا الشرط يُرسَل طلبٌ بوظيفةٍ فارغةٍ صامتًا، ولا يُعرف على أيّ
+        // وظيفةٍ تقدّم صاحبُه. وطلبٌ لا يُعرف مقصدُه لا يُراجَع.
+        if (!role) {
+            showStatus("Please choose the position you are applying for (يرجى اختيار الوظيفة المطلوبة).", "error");
             return;
         }
         // Hard gate: even if someone bypasses the disabled-button UI (e.g.
