@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=146">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=147">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -19693,8 +19693,27 @@
                 }
             }
 
+            // ⭐⭐⭐⭐ الاسمُ العربيُّ والجنسيةُ ورقمُ الجواز — يكتبُها المتقدّمُ الآن.
+            // ⚠️⚠️ وتُعرض **قبل** القبول كالهوية: القبولُ يُنشئ ملفَّ الموظف بها،
+            // ومنها تُطبع اتفاقيةُ السرّية. فلو لم تُرَ هنا لصار الاسمُ العربيُّ
+            // يُعتمد بلا أن يقرأه أحدٌ ثم يُطبع على ورقةٍ تُوقَّع.
+            // ⚠️⚠️⚠️ وتُضاف إلى خليّة الاسم لا كثلاثةِ أعمدةٍ جديدة: الجدولُ فيه
+            // تسعةُ أعمدةٍ أصلًا، وجعلُها اثني عشر يخرج بالجدول عن الشاشة فتُقرأ
+            // بالتمرير الأفقيّ — أو لا تُقرأ. والعربيُّ تحت اللاتينيِّ أوضحُ أصلًا.
+            // ⚠️ وdir="auto" على سطر الاسم العربيّ: الصفحةُ اتجاهُها إنجليزيّ.
+            let extraCell = '';
+            if (app.nameAr) extraCell += `<br><small dir="auto" style="color: var(--text-dim); font-weight: 700;">${escapeHtml(String(app.nameAr))}</small>`;
+            const natPass = [];
+            if (app.nationality) natPass.push(escapeHtml(String(app.nationality)));
+            if (app.passportNumber) natPass.push(`Passport ${escapeHtml(String(app.passportNumber))}`);
+            if (natPass.length) extraCell += `<br><small style="color: var(--text-faint);">${natPass.join(' &middot; ')}</small>`;
+            // ⚠️ وطلبٌ قديمٌ لم يُسأل عنها — يُقال ذلك ولا تُترك الخليّةُ صامتة
+            if (!app.nameAr && !app.nationality && !app.passportNumber) {
+                extraCell += `<br><small style="color: var(--text-faint);">Arabic name / nationality / passport: not asked &mdash; older application</small>`;
+            }
+
             html += `<tr>
-                <td><b>${escapeHtml(app.fullName || '-')}</b>${dupWarn}</td>
+                <td><b>${escapeHtml(app.fullName || '-')}</b>${dupWarn}${extraCell}</td>
                 <td>${escapeHtml(app.phone || '-')}</td>
                 <td>${escapeHtml(app.branch || '-')}</td>
                 <td>${escapeHtml(app.role || '-')}</td>
@@ -19751,6 +19770,17 @@
                 // الحقلين، وundefined يُرفض من فايرستور فيسقط القبولُ كلُّه.
                 qidNumber: app.qidNumber || "",
                 qidExpiry: app.qidExpiry || "",
+                // ⭐⭐⭐⭐⭐ والاسمُ العربيُّ والجنسيةُ ورقمُ الجواز كذلك — بنصّ
+                // المالك: «الجنسية ورقم الجواز و الاسم بالعربي يكتبهم الموظف».
+                // ⚠️⚠️⚠️ وهذا هو الموضعُ الذي كان يُفقد رقمَ الهوية قبل v142،
+                // فكلُّ موظفٍ يُقبل من النموذج يُنشأ بلا هوية. فالسلسلةُ لا تكتمل
+                // بجمع الحقلِ في الكشك وحدَه: النموذجُ يجمع، **وهذه الدالّةُ
+                // تحمل**. ولو نُسي سطرٌ منها لكتبها المتقدّمُ وضاعت صامتةً.
+                // ⚠️ و|| "" لطلباتٍ قُدّمت قبل هذا التغيير: لا تحمل الحقول،
+                // وundefined يُرفض من فايرستور فيسقط القبولُ كلُّه.
+                nameAr: app.nameAr || "",
+                nationality: app.nationality || "",
+                passportNumber: app.passportNumber || "",
                 qidBack: "", healthCard: "", contract: "", healthCert: "",
                 // Carried over verbatim from the self-registration form in
                 // index.html, where agreeing to the Internal Regulations is
