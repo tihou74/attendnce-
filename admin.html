@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=147">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=148">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -2014,6 +2014,10 @@
                     <label for="docTypeSelect">Document</label>
                     <select id="docTypeSelect" onchange="renderDocument()">
                         <option value="nda">Confidentiality Agreement &mdash; اتفاقية السرية</option>
+                        <!-- ⚠️ عرضُ العمل يحمل رقمَ الراتب، فيُخفى هذا الخيارُ عن
+                             من لا يرى المال — انظر applyRoleToUi. وrenderDocument
+                             تمنعه كذلك، فلا يُكتفى بإخفاء خيارٍ في قائمة. -->
+                        <option value="offer" id="docTypeOffer">Job Offer &mdash; عرض العمل</option>
                     </select>
                 </div>
                 <!-- ⚠️⚠️ اللقبُ يُختار ولا يُخمَّن: نصُّ المالك فيه «Mrs.» في
@@ -5492,6 +5496,19 @@
         // ⚠️⚠️ وهذا حرسُ شاشةٍ فوق حرسِ الدالّة لا بدلًا منه: saveDocPageSetup
         // تفحص hasFinanceAccess() بنفسها، فلو أُظهر الزرُّ بخطأٍ في المستقبل
         // لَرُفض الحفظُ برسالةٍ مفهومة لا بـ«صلاحية مرفوضة» من الخادم.
+        // ⭐⭐⭐⭐⭐ خيارُ «عرض العمل» في قائمة المستندات: فيه رقمُ الراتب.
+        // ⚠️⚠️ ويُخفى الخيارُ **ويُعاد الاختيارُ** إلى اتفاقية السرّية: لو أُخفي
+        // الخيارُ وحدَه وكانت القيمةُ المحفوظةُ عليه لبقيت القائمةُ **فارغةَ
+        // المنظر** وهي تُشير إلى مستندٍ ممنوع، فتُعرض لوحةُ منعٍ بلا سببٍ ظاهر.
+        const offerOpt = document.getElementById('docTypeOffer');
+        if (offerOpt) {
+            const showOffer = canSeeMoney();
+            offerOpt.style.display = showOffer ? '' : 'none';
+            offerOpt.disabled = !showOffer;
+            const sel = document.getElementById('docTypeSelect');
+            if (!showOffer && sel && sel.value === 'offer') sel.value = 'nda';
+        }
+
         const docSetupBtn = document.getElementById('btnSaveDocSetup');
         if (docSetupBtn) docSetupBtn.style.display = canEditOutsource ? '' : 'none';
         ['docTopMm', 'docBottomMm'].forEach(id => {
@@ -20460,8 +20477,220 @@
         return B;
     }
 
+    /**
+     * ⭐⭐⭐⭐ الجنسيةُ بالعربية — للعمود العربيّ في عرض العمل.
+     *
+     * ⚠️⚠️ النظامُ يحفظ الجنسيةَ **نصًّا واحدًا** (يكتبه المتقدّمُ في الكشك،
+     * وقائمةُ الاقتراحات إنجليزية). فبلا هذه الخريطة يُطبع «Indian» في العمود
+     * العربيّ — وهو نفسُ العطل الذي سأل عنه المالك في الاسم.
+     * ⚠️⚠️⚠️ والمفاتيحُ هي **الخمسُ والعشرون** المقترحةُ في الكشك وملفّ الموظف
+     * بالحرف، لا أكثر. وما لا يُطابق مفتاحًا يُطبع **كما كتبه صاحبُه** بلا تغيير:
+     * فجنسيةٌ لم أتوقّعها تُطبع بالإنجليزية (صحيحةٌ وتُقرأ) ولا تُترجَم بالتخمين.
+     * وترجمةٌ مخترعةٌ على مستندٍ يُوقَّع أسوأُ من كلمةٍ إنجليزيةٍ في عمودٍ عربيّ.
+     * ⚠️ والمقارنةُ غيرُ حسّاسةٍ لحالة الأحرف ولا للفراغات الزائدة.
+     */
+    const NATIONALITY_AR = {
+        'indian': 'هندي', 'nepali': 'نيبالي', 'bangladeshi': 'بنغلاديشي',
+        'filipino': 'فلبيني', 'sri lankan': 'سريلانكي', 'pakistani': 'باكستاني',
+        'egyptian': 'مصري', 'iraqi': 'عراقي', 'syrian': 'سوري',
+        'jordanian': 'أردني', 'lebanese': 'لبناني', 'palestinian': 'فلسطيني',
+        'sudanese': 'سوداني', 'yemeni': 'يمني', 'tunisian': 'تونسي',
+        'moroccan': 'مغربي', 'algerian': 'جزائري', 'kenyan': 'كيني',
+        'ugandan': 'أوغندي', 'ethiopian': 'إثيوبي', 'ghanaian': 'غاني',
+        'nigerian': 'نيجيري', 'indonesian': 'إندونيسي', 'myanmarese': 'ميانماري',
+        'qatari': 'قطري'
+    };
+    function nationalityAr(v) {
+        const k = String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        return NATIONALITY_AR[k] || String(v || '');
+    }
+
+    /**
+     * ⭐⭐⭐⭐⭐ عرضُ العمل — نصُّ المالك حرفيًّا، صفٌّ لكلّ بند.
+     *
+     * ⚠️⚠️⚠️ الأرقامُ الثلاثةُ (الأساسيُّ · أخرى · الإجمالي) تُشتقّ بـ**نفس**
+     * ثوابت محرّك الرواتب: basicSalary = BASIC_SALARY_QAR و
+     * otherAllowances = max(0, total - basic). ولا يُكتب الرقمُ 1000 بيدي هنا:
+     * لو غيّرت الإدارةُ الأساسيَّ يومًا لتغيّر الراتبُ في الكشف وبقي العرضُ
+     * الموقَّعُ يقول رقمًا آخر — وعقدٌ يخالف الكشفَ يُقرأ في المحكمة لا عندنا.
+     *
+     * ⚠️⚠️ ولا يُذكر في نصّه اسمُ شركةٍ ولا سجلٌّ تجاريّ — قِستُ ذلك في نصّه ولم
+     * أفترضه. ولهذا **يُصدر لكل الفروع** بخلاف اتفاقية السرّية، والكيانُ يأتي من
+     * الورق الرسميِّ الذي يُطبع عليه. فيجب أن يُطبع على ورق العلامة الصحيحة.
+     */
+    function docOfferBlocks(emp, party, dt, hon) {
+        const nm = escapeHtml(String((emp && emp.name) || ''));
+        const nmAr = escapeHtml(String((emp && emp.nameAr) || (emp && emp.name) || ''));
+        const natRaw = String((emp && emp.nationality) || '');
+        const nat = escapeHtml(natRaw);
+        const natA = escapeHtml(nationalityAr(natRaw));
+        const job = escapeHtml(String((emp && emp.role) || ''));
+        const honEn = hon === 'mrs' ? 'Mrs.' : 'Mr.';
+        const honAr = hon === 'mrs' ? 'السيدة' : 'السيد';
+        const slot = (v) => v || '<span style="border-bottom: 1px dotted #000; display: inline-block; min-width: 90px;">&nbsp;</span>';
+
+        // ⚠️ نفسُ حساب الكشف بالحرف — لا رقمَ مكتوبٌ بيدي
+        const total = Number(emp && emp.salary) || 0;
+        const basic = BASIC_SALARY_QAR;
+        const others = Math.max(0, total - basic);
+
+        const B = [];
+        const row = (en, ar, cls) => B.push({ en, ar, cls: cls || '' });
+
+        row(`Date: ${slot(dt && `${dt.d}/${dt.m}/${dt.y}`)}`, `التاريخ : ${slot(dt && `${dt.d}/${dt.m}/${dt.y}`)}`);
+        row(`Name: ${slot(nm)}`, `الاسم : ${slot(nmAr)}`);
+        row(`Nationality: ${slot(nat)}`, `الجنسية : ${slot(natA)}`);
+        row(`${honEn} / ${slot(nm)}`, `${honAr}/ ${slot(nmAr)}`);
+        row(
+            `We are pleased to offer you the position of ${slot(job)} with our company based on the following `
+            + 'terms and conditions. Your employment is subject to visa availability within the next three months '
+            + 'and/or transfer of sponsorship, satisfactory reference checks, and successful completion of legal '
+            + 'employment procedures.',
+            `يسرنا ان نعرض عليكم وظيفة ${slot(job)} لدى شركتنا بناء على الأحكام والشروط التالية ويكون توظيفكم خاضعا `
+            + 'لتوفر التأشيرة خلال الأشهر الثلاثة المقبلة و / أو نقل الكفالة والتحقق المقبول من المراجع , والاتمام '
+            + 'الناجح للإجراءات القانونية للالتحاق بالعمل .'
+        );
+        row(
+            '<span class="doc-b">1. Duration of the Employment Agreement</span><br>'
+            + 'The employment agreement shall be for an indefinite period.',
+            '<span class="doc-b">1. مدة اتفاقية العمل</span><br>'
+            + 'تكون اتفاقية العمل لمدة غير محدودة .'
+        );
+        // ⚠️⚠️⚠️ بندُ الأجر — الأرقامُ الثلاثةُ من الكشف لا من الكتابة اليدوية
+        row(
+            '<span class="doc-b">2. Salary</span><br>'
+            + 'Your salary details are as follows:<br>'
+            + `&bull; Basic salary: <b>${basic}</b> QAR per month<br>`
+            + `&bull; others: <b>${others}</b> QAR per month<br>`
+            + `&bull; Total salary: <b>${total}</b> QAR per month`,
+            '<span class="doc-b">2. الأجر</span><br>'
+            + 'يكون تفاصيل راتبكم على النحو التالي :<br>'
+            + `&bull; الراتب الأساسي : <b>${basic}</b> ر.ق شهريا<br>`
+            + `&bull; اخرى : <b>${others}</b> ر.ق شهريا<br>`
+            + `&bull; اجمالي الراتب : <b>${total}</b> ر.ق شهريا`
+        );
+        row(
+            '<span class="doc-b">3. Benefits and Compensation</span><br>'
+            + '&bull; Air ticket entitlement: You shall be entitled to one round-trip air ticket to your home '
+            + 'country every two years.<br>'
+            + '&bull; Annual leave: You shall be entitled to 21 days of paid annual leave for every 12 completed '
+            + 'months of service, to be taken according to prior agreement with management, and without '
+            + 'conflicting with work interests.<br>'
+            + '&bull; End of service benefits: You shall be entitled to an end-of-service gratuity according to '
+            + 'Article (54) of the Qatar Labor Law.',
+            '<span class="doc-b">3. المستحقات والتعويض</span><br>'
+            + '&bull; مستحقات التذكرة : سيكون من حقكم الحصول على تذكرة طيران الى بلد المنشأ مرة كل سنتين .<br>'
+            + '&bull; الاجازة السنوية : سيكون من حقكم الحصول على 21 يوم كإجازة مكتسبة مدفوعة الاجر على كل مدة 12 '
+            + 'عشر شهر تكملونها في العمل , ويتعين الاستفادة منها وفقا لما يتم الاتفاق عليه مسبقا مع الإدارة على ان '
+            + 'لا تكون تتضارب مع مصالح العمل .<br>'
+            + '&bull; نهاية الخدمة : سيكون من حقكم الحصول على مكافأة نهاية الخدمة وفقا لأحكام المادة (54) من قانون '
+            + 'العمل القطري .'
+        );
+        row(
+            '<span class="doc-b">4. Probation Period</span><br>'
+            + 'You shall undergo a probation period of six months from the date of joining the company. During '
+            + 'this period, either party may terminate the employment with one month&rsquo;s notice.<br>'
+            + '(In addition to compensation equivalent to two months&rsquo; basic salary in case of sponsorship '
+            + 'transfer request.) The employer has the right to terminate the employment with one month&rsquo;s '
+            + 'notice in accordance with Article (39) of the Qatar Labor Law.<br>'
+            + 'If the employee wishes to terminate the contract and leave the country, they must serve a two-month '
+            + 'notice period.',
+            '<span class="doc-b">4. فترة الاختبار</span><br>'
+            + 'ستخضعون لفترة اختبار لمدة 6 أشهر من تاريخ الالتحاق بالشركة وخلال الفترة المذكورة يكون لدى العامل '
+            + 'الحق في انهاء علاقة العمل مع إعطاء فترة اخطار مدتها شهر واحد<br>'
+            + '( بالإضافة الى تعويض يعادل شهرين من الراتب الأساسي في حالة طلب نقل كفالة ). يحق لصاحب العمل انهاء '
+            + 'علاقة العمل مع إعطاء فترة اخطار مدتها شهر واحد الى العامل وفقا للمادة (39) من قانون العمل القطري .<br>'
+            + 'في حالة رغبة العامل في انهاء العقد ومغادرة البلد وجب عليه خدمة فترة الاخطار مدتها شهرين .'
+        );
+        row(
+            '<span class="doc-b">5. Duties and Responsibilities</span><br>'
+            + 'You shall be responsible for performing all duties within your job description.',
+            '<span class="doc-b">5. الواجبات والمسؤوليات</span><br>'
+            + 'سيقع على عاتقكم مسؤولية القيام بجميع الواجبات التي تقع ضمن نطاق الوصف الوظيفي الخاص بكم .'
+        );
+        row(
+            '<span class="doc-b">6. Conflict of Interest</span><br>'
+            + 'During the employment agreement, you must not engage in any private business dealings, '
+            + 'negotiations, or activities that conflict, directly or indirectly, with the company&rsquo;s interests.',
+            '<span class="doc-b">6. تضارب المصالح</span><br>'
+            + 'خلال مدة اتفاقية العمل , يتعين عليكم ان لا تشاركوا في أي تعاملات تجارية خاصة أو مفاوضات أو نشاطات '
+            + 'تتضارب مع مصالح الشركة اما بشكل مباشر أو غير مباشر .'
+        );
+        row(
+            '<span class="doc-b">7. Confidentiality</span><br>'
+            + 'During and after your employment period with us, you must not disclose any company information '
+            + 'directly or indirectly to any person.',
+            '<span class="doc-b">7. السرية</span><br>'
+            + 'خلال وبعد فترة عملكم لدينا , يتعين عليكم ان لا تفصحوا بشكل مباشر او غير مباشر عن أي معلومات حول '
+            + 'الشركة لاي شخص.'
+        );
+        row(
+            '<span class="doc-b">8. Non-Compete</span><br>'
+            + 'Upon termination or resignation, you must not seek or accept any job in the State of Qatar with any '
+            + 'competitor of the company for one year from the contract termination date without prior written '
+            + 'consent from the company, in accordance with Article (43) of the Qatar Labor Law.',
+            '<span class="doc-b">8. عدم المنافسة</span><br>'
+            + 'عند انهاء خدماتكم او عند استقالتكم , يتعين عليكم ان لا تطلبوا او تقبلوا , من دون موافقة الشركة '
+            + 'الخطية المسبقة , أي وظيفة في دولة قطر, مع أي منافس للشركة لمدة سنة من تاريخ انتهاء العقد سواء '
+            + 'بالإنهاء او الاستقالة وفقا للمادة (43) من قانون العمل القطري .'
+        );
+        row(
+            '<span class="doc-b">9. Validity of This Offer</span><br>'
+            + 'This offer is valid for 7 days from the date of issuance. If you agree to the terms and conditions, '
+            + 'please sign this offer letter and the enclosed confidentiality agreement in the designated space and '
+            + 'return copies of both documents alongside a copy of your passport (valid for at least six months) '
+            + 'and a passport-size photo in JPEG format.',
+            '<span class="doc-b">9. صلاحية عرض العمل هذا</span><br>'
+            + 'هذا العرض صالح لمدة 7 أيام من تاريخ صدوره , اذا كنتم موافقين على أحكام و شروط هذا العرض , فيرجى '
+            + 'توقيع كل من خطاب العرض و اتفاقية السرية ( المرفقة ) في المساحة المخصصة و إعادة صورة من كلا الوثيقتين '
+            + 'الى جانب صورة عن جواز سفركم ( يتعين ان لا تقل صلاحية الجواز عن ستة اشهر ) و صورة شخصية بحجم صورة '
+            + 'جواز السفر بصيغة JPEG .'
+        );
+        row(
+            'We are pleased to welcome you to our company and look forward to you joining our team.<br>'
+            + 'Respectfully,',
+            'يسرنا الترحيب بكم في شركتنا ونتطلع الى انضمامكم الى فريق عملنا .<br>'
+            + 'وتفضلوا بقبول فائق الاحترام والتقدير,,,'
+        );
+        // ⚠️ المُوقِّعُ ثابتٌ في نصّه ولا يتغيّر بالفرع — ولا يُشتقّ من الدور
+        row(
+            '<span class="doc-b">ANES HOUTI</span><br>Chief Financial Officer and Brand Development Manager',
+            '<span class="doc-b">أنس حوتي</span><br>المدير المالي ومدير تطوير العلامة',
+            'doc-sign'
+        );
+        row(
+            'I agree with the terms of this job offer and acknowledge receiving a copy of it. No oral commitments '
+            + 'have been made concerning my employment.',
+            'أوافق على أحكام عرض الوظيفة هذا وأقر باستلام نسخة منه .<br>'
+            + 'ولم يتم تقديم أي التزامات شفهية بشأن توظيفي .'
+        );
+        row('Signature: <br><br>Date:', 'التوقيع : <br><br>التاريخ :', 'doc-sign');
+        return B;
+    }
+
+    /**
+     * ⚠️ needs = ما يُطبع فراغًا إن غاب، ويُقال قبل الطباعة.
+     * ⚠️⚠️ money: true لعرض العمل — فيه رقمُ الراتب، والسكرتيرةُ لا ترى المال.
+     *   وحتى يُقرّر المالكُ صريحًا أتُصدره هي أم لا، الافتراضُ **المنع** لا
+     *   الإظهار: صلاحيةٌ تُمنح بالخطأ لا تُستعاد، ورقمُ راتبٍ قُرئ لا يُنسى.
+     * ⚠️ والجوازُ مطلوبٌ لاتفاقية السرّية وحدَها: عرضُ العمل يطلب صورتَه مُرفقةً
+     *   ولا يطبع رقمَه، فاشتراطُه هنا يمنع إصدارَ عرضٍ بلا سبب.
+     */
     const DOC_TYPES = {
-        nda: { label: 'Confidentiality Agreement', build: docNdaBlocks, needs: ['name', 'qidNumber', 'passportNumber'] }
+        // needsParty: نصُّ المستند يُسمّي الكيانَ القانونيَّ بنفسه ⇒ يُرفض حيث لا يُعرف
+        nda: { label: 'Confidentiality Agreement', build: docNdaBlocks, needsParty: true, needs: ['name', 'qidNumber', 'passportNumber'] },
+        offer: { label: 'Job Offer', build: docOfferBlocks, money: true, minSalary: true, needs: ['name', 'nationality', 'role', 'salary'] }
+    };
+
+    /** أسماءُ الحقول الناقصة كما تُقال للمستخدم، وأينَ يجدها. */
+    const DOC_NEED_LABELS = {
+        name: 'the name',
+        nameAr: 'the Arabic name',
+        nationality: 'the nationality',
+        role: 'the job title',
+        qidNumber: 'the Qatar ID number',
+        passportNumber: 'the passport number',
+        salary: 'the total salary'
     };
 
     /** يملأ قائمةَ الموظفين في تبويب المستندات. */
@@ -20491,8 +20720,15 @@
         if (!emp) { paper.innerHTML = '<p style="color: #666; margin: 0;">Choose an employee above and the document appears here, exactly as it will print.</p>'; return; }
 
         const { key, party } = docPartyFor(emp);
+        const type = DOC_TYPES[document.getElementById('docTypeSelect').value] || DOC_TYPES.nda;
         // ⚠️⚠️⚠️ الرفضُ الصريح: كيانٌ قانونيٌّ خاطئٌ على اتفاقيةٍ موقَّعة يُبطلها.
-        if (!party) {
+        // ⚠️⚠️⚠️⚠️ والشرطُ needsParty لا «كلُّ مستندٍ»: قرأتُ نصَّ عرض العمل فلم
+        // أجد فيه اسمَ شركةٍ ولا سجلًّا تجاريًّا ولا ص.ب إطلاقًا — والكيانُ فيه
+        // يأتي من الورق الرسميِّ المطبوع، ومُوقّعُه (أنس حوتي) واحدٌ للعلامتين.
+        // فهو ينطبق على كلّ الفروع بنصّ المالك، ورفضُه لشاي بو حمد كالاتفاقية
+        // كان سيمنع عرضًا لا مانعَ منه — أي عطلٌ اخترعتُه بنسخِ حرسٍ في غير محلّه.
+        // ⚠️ واتفاقيةُ السرّية تبقى مرفوضةً لها: نصُّها **هو** الذي يُسمّي الكيان.
+        if (type.needsParty && !party) {
             paper.innerHTML = '';
             blocked.style.display = 'block';
             blocked.innerHTML = `<b>&#9888; This document cannot be issued for ${escapeHtml(emp.name || empId)} yet.</b><br>`
@@ -20507,7 +20743,56 @@
 
         const dt = docDateParts(document.getElementById('docDate').value);
         const hon = document.getElementById('docHonorific').value;
-        const type = DOC_TYPES[document.getElementById('docTypeSelect').value] || DOC_TYPES.nda;
+
+        // ⚠️⚠️⚠️ حرسُ المال: عرضُ العمل يحمل رقمَ الراتب، والسكرتيرةُ لا ترى
+        // المال في هذا النظام كلِّه بقرار الإدارة. فيُمنع المستندُ **وحدَه** لا
+        // التبويبُ كلُّه — فتبقى لها اتفاقيةُ السرّية، وهي التي تُجلس الموظفَ
+        // الجديدَ وتُوقّعه.
+        // ⚠️⚠️ والمنعُ هو الافتراضُ حتى يُقرّر المالكُ صريحًا: سألتُه أتُصدره هي
+        // بالراتب أم يبقى له وللمحاسب، ولم يأتِ الجواب. وصلاحيةٌ تُمنح بالخطأ
+        // لا تُستعاد — رقمُ راتبٍ قُرئ مرّةً لا يُنسى. وتغييرُها سطرٌ واحد.
+        // ⚠️ وحرسُ الشاشةِ هذا فوق حرسِ القائمة (انظر applyRoleToUi) لا بدلًا
+        // منه: القائمةُ تُخفى، وهذا يمنع حتى من وصل بالقيمة المحفوظة.
+        if (type.money && !canSeeMoney()) {
+            paper.innerHTML = '';
+            blocked.style.display = 'block';
+            blocked.innerHTML = `<b>&#9888; ${escapeHtml(type.label)} cannot be issued with your access.</b><br>`
+                + `This document states the employee&rsquo;s basic salary, allowances and total salary, and salary `
+                + `figures are not shown to your role anywhere in this system.<br>`
+                + `The <b>Confidentiality Agreement</b> is available to you as normal &mdash; choose it above. `
+                + `If management decides this letter should be issued by you as well, it can be enabled.`;
+            return;
+        }
+
+        /**
+         * ⚠️⚠️⚠️⚠️ حرسُ الراتب — ورفضٌ لا خطٌّ منقّط.
+         *
+         * كلُّ موظفٍ يُقبل من نموذج التقديم يُنشأ بـ salary: 0 حتى يفتح المالكُ
+         * ملفَّه ويكتب الراتب. وعرضُ العمل يُشتقّ أرقامَه الثلاثةَ من الإجمالي،
+         * فبإجماليٍّ صفر يُطبع: «الأساسي 1000 · أخرى 0 · **الإجمالي 0**» — وهو
+         * حسابٌ يناقض نفسَه على ورقةٍ يُوقّعها موظفٌ ويحتجّ بها.
+         * ⚠️ ولا يُكتفى بخطٍّ منقّطٍ كبقيّة النقص: الخطُّ المنقّطُ يُكتب بالقلم،
+         * أمّا هذه فأرقامٌ **مطبوعةٌ خاطئة** لا فراغٌ — والخطأُ المطبوعُ يُقرأ
+         * على أنه صحيح. والرفضُ هنا لا يُخفي مشكلةً بل يُظهرها في موضعها.
+         * ⚠️ والحدُّ BASIC_SALARY_QAR لا رقمٌ مكتوبٌ بيدي، فيتبع سياسةَ الإدارة.
+         */
+        if (type.minSalary) {
+            const tot = Number(emp.salary) || 0;
+            if (tot < BASIC_SALARY_QAR) {
+                paper.innerHTML = '';
+                blocked.style.display = 'block';
+                blocked.innerHTML = `<b>&#9888; ${escapeHtml(type.label)} cannot be issued for `
+                    + `${escapeHtml(emp.name || empId)} yet &mdash; their total salary is `
+                    + `<b>${tot} QAR</b>.</b><br>`
+                    + `This letter prints the basic salary (<b>${BASIC_SALARY_QAR} QAR</b>, fixed by management), `
+                    + `the allowances, and the total. With a total of ${tot} the three figures would contradict `
+                    + `each other on a letter the employee signs and can rely on.<br>`
+                    + `Open <b>Employee Profiles</b> &rarr; ${escapeHtml(emp.name || empId)} &rarr; `
+                    + `<b>Total Salary</b>, set the agreed monthly package, press Save, then come back.`;
+                return;
+            }
+        }
+
         const blocks = type.build(emp, party, dt, hon);
 
         paper.innerHTML = '<table class="doc-tbl"><tbody>' + blocks.map(b =>
@@ -20516,10 +20801,15 @@
 
         // ⚠️⚠️ ما ينقص يُقال **قبل** الطباعة: مستندٌ يُطبع بفراغٍ في موضع الجواز
         // يُوقَّع ثم يُكتشف، وإصلاحُه بعد التوقيع يعني إعادةَ التوقيع.
+        // ⚠️⚠️ تُشتقّ من needs الخاصّةِ بالمستند لا مكتوبةً لواحدٍ منها: كانت
+        // مكتوبةً لاتفاقية السرّية، فلو بقيت لطالبت بـ**رقم الجواز** في عرض
+        // العمل — وهو لا يطبعه أصلًا (يطلب صورتَه مُرفقة) — ولسكتت عن الجنسية
+        // والمسمّى الوظيفيِّ والراتب، وهي التي يُطبع فراغُها فيه.
         const gaps = [];
-        if (!emp.name) gaps.push('the name');
-        if (!emp.qidNumber) gaps.push('the Qatar ID number');
-        if (!emp.passportNumber) gaps.push('the passport number');
+        (type.needs || []).forEach(k => {
+            const v = k === 'salary' ? Number(emp.salary) || 0 : emp[k];
+            if (!v) gaps.push(DOC_NEED_LABELS[k] || k);
+        });
         if (!dt) gaps.push('the document date');
         /**
          * ⭐⭐⭐⭐ والاسمُ العربيُّ يُنبَّه عليه **منفصلًا** عن بقيّة النقص.
