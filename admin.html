@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=150">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=151">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -2020,6 +2020,8 @@
                              من لا يرى المال — انظر applyRoleToUi. وrenderDocument
                              تمنعه كذلك، فلا يُكتفى بإخفاء خيارٍ في قائمة. -->
                         <option value="offer" id="docTypeOffer">Job Offer &mdash; عرض العمل</option>
+                        <!-- ⚠️ ورقةُ المهامّ بلا مالٍ، فلا تُخفى عن أحد -->
+                        <option value="duties">Job Duties &mdash; المهام الوظيفية</option>
                     </select>
                 </div>
                 <!-- ⚠️⚠️ اللقبُ يُختار ولا يُخمَّن: نصُّ المالك فيه «Mrs.» في
@@ -20345,6 +20347,42 @@
      * المالك، والإصدارُ **يُرفض** لموظفيها بدل أن يُطبع كيانًا خاطئًا. ورفضٌ
      * صريحٌ مع بيان السبب أصدقُ من ورقةٍ تبدو صحيحةً وهي باطلة.
      */
+    /**
+     * ⭐⭐⭐⭐⭐ تعريفُ «المنافس» في البند ٤ — **يختلف بين العلامتين**.
+     *
+     * ⚠️⚠️⚠️⚠️ قصّةُ هذا الموضع تُروى كاملةً لأنها تُفسّر شكلَه:
+     *   1) أرسل المالك نصَّ شاي بو حمد وفيه العربيُّ يقول «مطعم قطري» والإنجليزيُّ
+     *      يقول «Iraqi restaurant» — تعريفانِ مختلفانِ في ورقةٍ واحدةٍ تُوقَّع.
+     *   2) لم أُصلحه من عندي، بل عرضتُه عليه وطبعتُ نصَّه كما أرسله مع تنبيه.
+     *   3) أجاب: «معك حق قطري خطاء مني وقع» — فقرأتُها أنا خطأً على أنّ «قطري»
+     *      هي الخطأُ، فوحّدتُ الاثنين على «عراقي».
+     *   4) فصحّحني: «لا اقصد، انا شاي بوحمد قطري المطعم، لقد اخطاء بكتابة مطعم
+     *      عراقي» — أي أنّ **«قطري» هي الصحيحةُ لشاي بو حمد**، والخطأُ كلمةُ
+     *      «Iraqi» في عمودها الإنجليزيّ.
+     * فالصوابُ: قيمر وكاهي **عراقيّ** (مطبخٌ عراقيّ)، وشاي بو حمد **قطريّ**.
+     *
+     * ⚠️⚠️⚠️ ويُبنى التعريفُ بدالّةٍ تأخذ الصفةَ مرّةً واحدةً وتكتبها في اللغتين،
+     * ولا يُكتب النصّانِ بيدٍ منفصلَين. والسببُ هو العطلُ الذي حدث بعينه: نصّانِ
+     * مكتوبانِ بيدٍ يُعدَّل أحدُهما ويُنسى الآخرُ، فيقول عمودٌ «قطري» وعمودٌ
+     * «Iraqi» على ورقةٍ تمنع الرجلَ من العمل سنتين. وبالدالّةِ **يستحيل** ذلك
+     * بنيويًّا: نداءٌ واحدٌ لكلّ علامةٍ يُنتج العمودين معًا من صفةٍ واحدة.
+     * ⚠️ والعربيةُ تحتاج ثلاثَ صيغٍ للصفة (مطعم عراقي · المطبخ العراقي · الحلويات
+     * العراقية) — نكرةٌ ومعرّفةٌ ومؤنّثةٌ جمعًا. فتُمرَّر الثلاثةُ صريحةً ولا
+     * تُشتقّ بإضافة حروفٍ: اشتقاقُ العربية بالبرمجة يُنتج «القطريية» وأمثالَها.
+     */
+    function ndaCompetitor(enAdj, arAdj, arAdjDef, arAdjFemPl) {
+        return {
+            en: `here referring to any ${enAdj} restaurant, caf&eacute;, or any business related to ${enAdj} `
+                + `cuisine, food preparation, or ${enAdj} desserts`,
+            ar: `والمقصود هنا اي مطعم ${arAdj} أو كافيه او أي عمل يختص بالمطبخ ${arAdjDef} أو إعداد الطعام `
+                + `أو الحلويات ${arAdjFemPl}`
+        };
+    }
+    // قيمر وكاهي: مطبخٌ عراقيّ — بنصّ المالك الأصليّ، ولم يتغيّر
+    const NDA_COMPETITOR_GWK = ndaCompetitor('Iraqi', 'عراقي', 'العراقي', 'العراقية');
+    // شاي بو حمد: مطعمٌ قطريّ — بتصحيح المالك الصريح
+    const NDA_COMPETITOR_SBH = ndaCompetitor('Qatari', 'قطري', 'القطري', 'القطرية');
+
     const DOC_PARTIES = {
         GWK: {
             match: 'GAIMER W KAHI',
@@ -20363,12 +20401,12 @@
             repAr: 'ويمثلها: السيدة فاطمة عيسى صقر الرميحي - بطاقة قطرية رقم 27463401322',
             signEn: 'The First Party &ndash; GAIMER W KAHI RESTAURANT',
             signAr: 'الطرف الأول - مطعم قيمر وكاهي',
-            // ⚠️ تعريفُ «المنافس» في البند ٤ — يختلف بين العلامتين، فصار من
-            //   بيانات الطرف لا نصًّا ثابتًا في الدالّة.
-            competitorEn: 'here referring to any Iraqi restaurant, caf&eacute;, or any business related to Iraqi '
-                + 'cuisine, food preparation, or Iraqi desserts',
-            competitorAr: 'والمقصود هنا اي مطعم عراقي أو كافيه او أي عمل يختص بالمطبخ العراقي أو إعداد الطعام '
-                + 'أو الحلويات العراقية'
+            // ⚠️ اسمُ العلامة وحدَه (بلا «شركة» ولا «ذ.م.م») — تحتاجه ورقةُ المهامّ
+            //   في سطر «كاشير – سلسلة مطاعم {}»، وهو ليس الكيانَ القانونيَّ.
+            brandEn: 'Gaimer w Kahi', brandAr: 'قيمر وكاهي',
+            // مطبخٌ عراقيّ — بنصّ المالك الأصليّ، لم يُمسّ
+            competitorEn: NDA_COMPETITOR_GWK.en,
+            competitorAr: NDA_COMPETITOR_GWK.ar
         },
         /**
          * ⭐⭐⭐⭐⭐ شاي بو حمد — وصلت بياناتُها من المالك، فرُفع الحجزُ عنها.
@@ -20408,16 +20446,15 @@
             repAr: 'ويمثلها: السيدة فاطمة عيسى صقر الرميحي - بطاقة قطرية رقم 27463401322',
             signEn: 'The First Party &ndash; SHAI BU HAMAD',
             signAr: 'الطرف الأول - شاي بوحمد',
-            // ⚠️⚠️⚠️ هنا التعارض: الإنجليزيُّ «Iraqi» والعربيُّ «قطري» — بنصّه.
-            competitorEn: 'here referring to any Iraqi restaurant, caf&eacute;, or any business related to Iraqi '
-                + 'cuisine, food preparation, or Iraqi desserts',
-            competitorAr: 'والمقصود هنا اي مطعم قطري أو كافيه او أي عمل يختص بالمطبخ القطري أو إعداد الطعام '
-                + 'أو الحلويات القطرية',
-            // ⚠️ عَلَمٌ صريحٌ لا فحصٌ لغويٌّ ذكيّ: الفحصُ الذكيُّ يُخطئ صامتًا،
-            //   والعلَمُ المكتوبُ بيدٍ يُراجَع ويُحذف بسطرٍ عند حلّ التعارض.
-            competitorMismatch: {
-                en: 'Iraqi', ar: 'قطري / Qatari'
-            }
+            brandEn: 'Shai Bu Hamad', brandAr: 'شاي بو حمد',
+            // ⭐⭐⭐⭐⭐ مطعمٌ **قطريّ** — بتصحيح المالك الصريح مرّتين:
+            //   «انا شاي بوحمد قطري المطعم، لقد اخطاء بكتابة مطعم عراقي»
+            //   ثم: «الصحيح هو مطعم قطري».
+            // ⚠️⚠️ فالمُصحَّحُ هو **العمودُ الإنجليزيُّ** (كان Iraqi ← صار Qatari)،
+            //   والعربيُّ «قطري» كان صحيحًا كما أرسله من أوّل مرّة.
+            // ⚠️ وهذا تغييرٌ على نصّه الإنجليزيِّ بأمرِه الصريح لا باستنباطي.
+            competitorEn: NDA_COMPETITOR_SBH.en,
+            competitorAr: NDA_COMPETITOR_SBH.ar
         }
     };
 
@@ -20812,10 +20849,182 @@
      * ⚠️ والجوازُ مطلوبٌ لاتفاقية السرّية وحدَها: عرضُ العمل يطلب صورتَه مُرفقةً
      *   ولا يطبع رقمَه، فاشتراطُه هنا يمنع إصدارَ عرضٍ بلا سبب.
      */
+    /**
+     * ⭐⭐⭐⭐⭐ المهامُّ الوظيفية — نصُّ المالك حرفيًّا، **لكلّ وظيفةٍ نصُّها**.
+     *
+     * ⚠️⚠️⚠️ وهذا يختلف بنيويًّا عن المستندَين السابقين: اتفاقيةُ السرّية وعرضُ
+     * العمل نصٌّ واحدٌ لكلّ الموظفين، أمّا المهامُّ فورقةٌ مختلفةٌ لكلّ مسمًّى.
+     * فتُخزَّن مفتاحًا بمفتاحٍ بنفس مفاتيح JOB_TITLE_AR (اسمُ الوظيفة الإنجليزيُّ
+     * بحروفٍ صغيرة)، والمُرسَلُ حتى الآن **الكاشيرُ وحدَه** من ثلاثةَ عشرَ مسمًّى.
+     * ⚠️ وما لا نصَّ له يُرفض إصدارُه بصراحةٍ ويُقال أيُّ المسمّيات جاهزٌ — ولا
+     * يُطبع لموظفٍ وصفٌ وظيفيٌّ لوظيفةٍ أخرى بحال.
+     * ⚠️⚠️ وإضافةُ وظيفةٍ جديدةٍ **بياناتٌ لا كود**: مدخلٌ جديدٌ في هذا الكائن.
+     */
+    const DOC_DUTIES = {
+        cashier: {
+            // ⚠️ «كاشير» بنصّ المالك في هذه الورقة — وهو يخالف «أمين صندوق» في
+            //   قائمة المسمّيات التي أرسلها. نُقل كما كتبه هنا وأُبلغ بالفرق.
+            titleAr: (brand) => `كاشير – سلسلة مطاعم ${brand}`,
+            titleEn: (brand) => `Cashier &ndash; ${brand} Restaurant Chain`,
+            deptAr: 'الصالة / نقاط البيع',
+            deptEn: 'Dining Hall / Point of Sale',
+            supAr: 'مدير الصالة / مدير العمليات',
+            supEn: 'Dining Hall Manager / Operations Manager',
+            purposeAr: 'إدارة المعاملات المالية في نقاط البيع، وضمان دقة الفواتير والمدفوعات، وتقديم خدمة عملاء '
+                + 'سريعة وودية، ودعم عمليات الصالة والبار بكفاءة؛ بما يساهم في تعزيز المبيعات ورضا العملاء.',
+            purposeEn: 'To manage financial transactions at point-of-sale terminals, ensure billing and payment '
+                + 'accuracy, provide fast and friendly customer service, and efficiently support dining hall and bar '
+                + 'operations in order to enhance sales and customer satisfaction.',
+            sections: [
+                {
+                    hAr: 'أولًا: إدارة نقاط البيع', hEn: '1. Point-of-Sale Management',
+                    ar: [
+                        'تسجيل الطلبات في نظام نقاط البيع (POS) بدقة، بما في ذلك الطعام والمشروبات والإضافات.',
+                        'حساب إجمالي الفاتورة، وتطبيق الخصومات أو العروض الترويجية، وإصدار الإيصالات.',
+                        'استقبال المدفوعات النقدية، وبطاقات الائتمان، وApple Pay، أو التطبيقات الرقمية بسرعة وأمان.'
+                    ],
+                    en: [
+                        'Enter orders accurately into the POS system, including food, beverages, and add-ons.',
+                        'Calculate bill totals, apply discounts or promotional offers, and issue receipts.',
+                        'Accept cash, credit cards, Apple Pay, and digital application payments quickly and securely.'
+                    ]
+                },
+                {
+                    hAr: 'ثانيًا: خدمة العملاء', hEn: '2. Customer Service',
+                    ar: [
+                        'استقبال العملاء بابتسامة وترحيب، وتوجيههم إلى الطاولات أو قسم المنيو السريع.',
+                        'الرد على استفسارات العملاء حول القائمة والأسعار وتوافر الأصناف.',
+                        'تشجيع البيع الإضافي، مثل المشروبات والحلويات والوجبات العائلية، بلطف ومهنية.'
+                    ],
+                    en: [
+                        'Greet and welcome customers with a smile and guide them to tables or the quick-service menu.',
+                        'Answer customer inquiries regarding the menu, prices, and item availability.',
+                        'Encourage upselling, including beverages, desserts, and family meals, politely and professionally.'
+                    ]
+                },
+                {
+                    hAr: 'ثالثًا: إدارة النقد والحسابات', hEn: '3. Cash and Accounts Management',
+                    ar: [
+                        'التحقق من صحة المدفوعات، وصرف الفكة الصحيحة، وإغلاق الصندوق في نهاية الوردية.',
+                        'الإبلاغ فورًا للمدير عن أي اختلالات أو مشكلات في الصندوق.',
+                        'تسجيل معاملات التوصيل والحجوزات المدفوعة مسبقًا.'
+                    ],
+                    en: [
+                        'Verify payment accuracy, provide the correct change, and close the cash drawer at the end of the shift.',
+                        'Immediately report any discrepancies or cash drawer issues to the manager.',
+                        'Record delivery transactions and prepaid reservations.'
+                    ]
+                },
+                {
+                    hAr: 'رابعًا: النظافة والتنظيم', hEn: '4. Cleanliness and Organization',
+                    ar: [
+                        'الحفاظ على نظافة منطقة الكاشير، ومسح الشاشات، وترتيب المستلزمات.',
+                        'تنظيف جهاز نقاط البيع (POS) والطابعة بانتظام لضمان سير العمل بسلاسة.',
+                        'المساعدة في ترتيب الصالة أو البار عند انخفاض ضغط العمل.'
+                    ],
+                    en: [
+                        'Maintain the cleanliness of the cashier area, wipe screens, and organize supplies.',
+                        'Clean the POS terminal and printer regularly to ensure smooth operation.',
+                        'Assist with setting up the dining hall or bar during low-volume periods.'
+                    ]
+                },
+                {
+                    hAr: 'خامسًا: الجودة والامتثال', hEn: '5. Quality and Compliance',
+                    ar: [
+                        'الالتزام بإجراءات التعامل مع النقد وحماية خصوصية بيانات البطاقات وفقًا لمعيار PCI DSS.',
+                        'تسجيل المعاملات الضريبية والفواتير الإلكترونية حسب القوانين المعمول بها في دولة قطر.',
+                        'المساعدة في إعداد التقارير اليومية للمبيعات والإيرادات.'
+                    ],
+                    en: [
+                        'Follow cash-handling procedures and protect cardholder privacy in accordance with PCI DSS requirements.',
+                        'Record tax transactions and electronic invoices in accordance with the applicable laws and regulations of Qatar.',
+                        'Assist in preparing daily sales and revenue reports.'
+                    ]
+                },
+                {
+                    hAr: 'سادسًا: دعم العمليات', hEn: '6. Operations Support',
+                    ar: [
+                        'التنسيق مع المطبخ والبار لتسريع تسليم الطلبات للعملاء.',
+                        'التعامل مع عمليات الإرجاع أو الاستبدال وفقًا لسياسة الشركة المعتمدة.',
+                        'المشاركة في الجرد الليلي أو فحص الصناديق عند الإغلاق.'
+                    ],
+                    en: [
+                        'Coordinate with the kitchen and bar to expedite order delivery to customers.',
+                        'Handle returns or exchanges in accordance with the company&rsquo;s approved policy.',
+                        'Participate in end-of-day inventory checks or cash register checks during closing.'
+                    ]
+                }
+            ]
+        }
+    };
+
+    /** أيُّ وصفٍ وظيفيٍّ يخصّ هذا المسمّى؟ بنفس مفاتيح JOB_TITLE_AR. */
+    function dutiesFor(role) {
+        const k = String(role || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        return DOC_DUTIES[k] || null;
+    }
+
+    /**
+     * ⭐⭐⭐⭐⭐ ورقةُ المهامّ الوظيفية — صفٌّ لكلّ قسم.
+     * ⚠️ وتحتاج اسمَ العلامة (سلسلة مطاعم …) فتشترط الطرفَ — لكنها لا تُسمّي كيانًا
+     *   قانونيًّا ولا سجلًّا تجاريًّا، إنما اسمَ العلامة وحدَه.
+     * ⚠️⚠️ ولا رقمَ مالٍ فيها إطلاقًا، فالسكرتيرةُ تُصدرها — وهي من تُجلس الموظفَ
+     *   الجديدَ وتشرح له مهامَّه وتُوقّعه عليها.
+     */
+    function docDutiesBlocks(emp, party, dt, hon) {
+        const d = dutiesFor(emp && emp.role);
+        const nm = escapeHtml(String((emp && emp.name) || ''));
+        const nmAr = escapeHtml(String((emp && emp.nameAr) || (emp && emp.name) || ''));
+        const qid = emp && emp.qidNumber ? escapeHtml(String(emp.qidNumber)) : '';
+        const slot = (v) => v || '<span style="border-bottom: 1px dotted #000; display: inline-block; min-width: 90px;">&nbsp;</span>';
+        const B = [];
+        const row = (en, ar, cls) => B.push({ en, ar, cls: cls || '' });
+        // ⚠️ حرسٌ داخليّ: renderDocument ترفض قبل الوصول إلى هنا، لكن لو نوديت
+        //   الدالّةُ من موضعٍ آخرَ يومًا فلا تنهار بـTypeError على null.
+        if (!d) { row('No job description on file for this position.', 'لا يوجد وصفٌ وظيفيٌّ محفوظٌ لهذه الوظيفة.'); return B; }
+        const brandEn = escapeHtml(String((party && party.brandEn) || ''));
+        const brandAr = escapeHtml(String((party && party.brandAr) || ''));
+        // ⚠️ قائمةٌ نقطيةٌ بـ&bull; لا <ul>: الخليّةُ تُطبع في جدولٍ بعمودين، و<ul>
+        //   يُضيف هوامشَ المتصفّح الافتراضية فتختلف بدايةُ العمودين رأسيًّا.
+        const bullets = (arr) => arr.map(x => `&bull; ${x}`).join('<br>');
+
+        row(`<span class="doc-b">Job Title</span><br>${d.titleEn(slot(brandEn))}`,
+            `<span class="doc-b">المسمى الوظيفي</span><br>${d.titleAr(slot(brandAr))}`, 'doc-head');
+        row(`<span class="doc-b">Department</span><br>${d.deptEn}`,
+            `<span class="doc-b">القسم</span><br>${d.deptAr}`);
+        row(`<span class="doc-b">Direct Supervisor</span><br>${d.supEn}`,
+            `<span class="doc-b">المسؤول المباشر</span><br>${d.supAr}`);
+        row(`<span class="doc-b">Job Purpose</span><br>${d.purposeEn}`,
+            `<span class="doc-b">الهدف من الوظيفة</span><br>${d.purposeAr}`);
+        row('<span class="doc-b">Key Responsibilities and Duties</span>',
+            '<span class="doc-b">المهام والمسؤوليات الرئيسية</span>');
+        d.sections.forEach(s => {
+            row(`<span class="doc-b">${s.hEn}</span><br>${bullets(s.en)}`,
+                `<span class="doc-b">${s.hAr}</span><br>${bullets(s.ar)}`);
+        });
+        row(
+            `<span class="doc-b">Employee Details</span><br>`
+            + `Name: ${slot(nm)}<br>QID Number: ${slot(qid)}<br>`
+            + `Signature: ...........................................................<br>`
+            + `Date: ${slot(dt && `${dt.d}/${dt.m}/${dt.y}`)}`,
+            `<span class="doc-b">بيانات الموظف</span><br>`
+            + `الاسم: ${slot(nmAr)}<br>رقم البطاقة الشخصية: ${slot(qid)}<br>`
+            + `التوقيع: ..............................................................<br>`
+            + `التاريخ: ${slot(dt && `${dt.d}/${dt.m}/${dt.y}`)}`,
+            'doc-sign'
+        );
+        return B;
+    }
+
     const DOC_TYPES = {
         // needsParty: نصُّ المستند يُسمّي الكيانَ القانونيَّ بنفسه ⇒ يُرفض حيث لا يُعرف
         nda: { label: 'Confidentiality Agreement', build: docNdaBlocks, needsParty: true, needs: ['name', 'qidNumber', 'passportNumber'] },
-        offer: { label: 'Job Offer', build: docOfferBlocks, money: true, minSalary: true, needs: ['name', 'nationality', 'role', 'salary'] }
+        offer: { label: 'Job Offer', build: docOfferBlocks, money: true, minSalary: true, needs: ['name', 'nationality', 'role', 'salary'] },
+        // ⚠️ needsParty لاسم العلامة («سلسلة مطاعم …») لا لكيانٍ قانونيّ.
+        // ⚠️⚠️ ولا money: لا رقمَ مالٍ في هذه الورقة، فالسكرتيرةُ تُصدرها — وهي من
+        //   تُجلس الموظفَ الجديدَ وتشرح له مهامَّه وتُوقّعه عليها.
+        // ⚠️ needsDuties: يجب أن يكون لمسمّاه وصفٌ وظيفيٌّ محفوظٌ وإلّا رُفض.
+        duties: { label: 'Job Duties', build: docDutiesBlocks, needsParty: true, needsDuties: true, needs: ['name', 'qidNumber', 'role'] }
     };
 
     /** أسماءُ الحقول الناقصة كما تُقال للمستخدم، وأينَ يجدها. */
@@ -20901,6 +21110,33 @@
         }
 
         /**
+         * ⚠️⚠️⚠️⚠️ حرسُ الوصف الوظيفيّ — ورفضٌ صريحٌ لا ورقةٌ فارغة.
+         *
+         * لكلّ وظيفةٍ ورقةُ مهامٍّ خاصّةٌ بها، والمُرسَلُ حتى الآن الكاشيرُ وحدَه من
+         * ثلاثةَ عشرَ مسمًّى. فموظفٌ مسمّاه «Waiter» لا وصفَ وظيفيًّا له بعد.
+         * ⚠️⚠️ ولا يُطبع له وصفُ الكاشير بحال: ورقةٌ تُوقَّع تقول إنّ مهامَّه إدارةُ
+         * نقاط البيع وإغلاقُ الصندوق، وهو نادلٌ — وهذا يُحتجّ به عليه وعلى الشركة.
+         * ⚠️ ويُقال له أيُّ المسمّيات جاهزٌ وأيُّها ينتظر نصَّه، فيعرف ما يُرسل.
+         */
+        if (type.needsDuties) {
+            const dd = dutiesFor(emp.role);
+            if (!dd) {
+                const ready = Object.keys(DOC_DUTIES).map(k => (jobTitleAr(k) !== k ? k : k));
+                paper.innerHTML = '';
+                blocked.style.display = 'block';
+                blocked.innerHTML = `<b>&#9888; ${escapeHtml(type.label)} cannot be issued for `
+                    + `${escapeHtml(emp.name || empId)} yet.</b><br>`
+                    + `Their job title is <b>${escapeHtml(emp.role || 'not set')}</b>, and every position has its `
+                    + `own duties sheet. The wording for this one has not been supplied yet.<br>`
+                    + `Ready so far: <b>${ready.length ? ready.map(r => escapeHtml(r)).join(', ') : 'none'}</b>. `
+                    + `Send me the duties text for <b>${escapeHtml(emp.role || 'this position')}</b> in Arabic and `
+                    + `English and it will be added &mdash; printing another position&rsquo;s duties on a sheet the `
+                    + `employee signs would state the wrong duties.`;
+                return;
+            }
+        }
+
+        /**
          * ⚠️⚠️⚠️⚠️ حرسُ الراتب — ورفضٌ لا خطٌّ منقّط.
          *
          * كلُّ موظفٍ يُقبل من نموذج التقديم يُنشأ بـ salary: 0 حتى يفتح المالكُ
@@ -20978,6 +21214,16 @@
          * «قطري»، لكنّ الأرجحَ ليس قرارًا. فيُطبع نصُّه حرفيًّا **ويُصاح** به.
          * ⚠️⚠️ ولا يُمنع الإصدار: هو أرسل النصَّ ليُصدره، ومنعُه بعد انتظارٍ طويل
          * يُعطّل عملَه. فالتنبيهُ ظاهرٌ ومستمرٌّ حتى يُحدّد، ثم يُحذف بسطر.
+         *
+         * ⭐ وقد حُدّد: شاي بو حمد مطعمٌ **قطريّ**، والخطأُ كان كلمةَ «Iraqi» في
+         * عمودها الإنجليزيّ. فصُحّح الإنجليزيُّ إلى Qatari، واتّفق العمودان،
+         * وحُذف عَلَمُ التعارض — فلا تنبيهَ يظهر اليومَ لأحد.
+         * ⚠️ وقيمر وكاهي تبقى «عراقي/Iraqi» كما أرسلها أوّلَ مرّة.
+         * ⚠️ والآليةُ تبقى مكتوبةً بقصد، ولا تُحذف: سيأتي نصُّ «المهام الوظيفية»،
+         * وقد تُضاف علامةٌ ثالثة، وقد يُرسل نصٌّ آخرُ بعمودَين لا يتّفقان. فإضافةُ
+         * competitorMismatch إلى طرفٍ تُشعل التنبيهَ فورًا بلا كتابة كودٍ جديد.
+         * ⚠️⚠️ وهي **مفحوصةٌ بطرفٍ صناعيٍّ** في docs.test.mjs لا متروكةً بلا فحص،
+         * فلا تتعطّل صامتةً بمرور الوقت ثم يُكتشف عطلُها في اللحظة التي تُحتاج فيها.
          */
         const clash = (party && party.competitorMismatch && (type.needs || []).includes('qidNumber'))
             ? `<b>&#9888;&#9888; The two columns of this agreement define &ldquo;competitor&rdquo; differently.</b><br>`
