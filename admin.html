@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=144">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=145">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -4010,7 +4010,19 @@
         </details>
 
         <div class="edit-profile-grid">
-            <div><label>Employee Full Name</label><input type="text" id="editEmpName"></div>
+            <div><label for="editEmpName">Employee Full Name</label><input type="text" id="editEmpName"></div>
+            <!-- ⭐⭐⭐⭐ الاسمُ بالعربية — سأل المالك: «الاسم لم يظهر بالعربي، ما
+                 المشكل؟» والسببُ أنّ النظامَ كان يحفظ **اسمًا واحدًا فقط**
+                 بالإنجليزية (وaddNewEmployee تُحوّله إلى حروفٍ كبيرة)، فالعمودُ
+                 العربيُّ في المستند لم يكن عندَه اسمٌ عربيٌّ يكتبه أصلًا.
+                 ⚠️⚠️ ولم أُغيّر خانةَ الاسم الأصلية بحال: منها يُشتقّ **رقمُ ملفّ
+                 الموظف** (generateEmployeeId) الذي تتعلّق به سجلاتُ الحضور
+                 والرواتبُ ورقمُ الدخول. فكتابةُ العربيّ فيها تكسر ذلك كلَّه.
+                 فهذه خانةٌ **منفصلةٌ جديدة**، لا تُستعمل إلا في المستندات.
+                 ⚠️ وdir="auto" ضروريّ: بلاه تُكتب العربيةُ من اليسار في صفحةٍ
+                 اتجاهُها إنجليزيّ، فتبدو الفاصلةُ والنقطةُ في أوّل السطر. -->
+            <div><label for="editEmpNameAr" title="The name in Arabic exactly as written on the Qatar ID — used on the printed documents">Full Name in Arabic &mdash; الاسم بالعربية</label>
+                <input type="text" id="editEmpNameAr" dir="auto" autocomplete="off" placeholder="كما هو مكتوب في البطاقة القطرية"></div>
             <div><label>Job Title</label><input type="text" id="editEmpRole"></div>
             <!-- ⚠️⚠️ خانة النشاط كانت **غائبة تمامًا** عن ملف الموظف، وموجودة في
                  نموذج الإضافة وحده. فمن أُضيف مرّةً بقي في نشاطه إلى الأبد ولا
@@ -19080,6 +19092,10 @@
             // الملف الاحتياطي، وإلا حوّلَ مجرّد فتح الملف تخمينًا إلى رقم مثبَّت.
             document.getElementById("editEmpJoinDate").value = emp.joinDate || "";
             renderJoinDateInfo(emp);
+            // ⚠️ الحقلُ غائبٌ عن كلّ من أُنشئ قبل هذه الميزة، والغيابُ = فراغ
+            //   (ولا يُملأ بالاسم الإنجليزيّ: لو مُلئ به لظنّت السكرتيرةُ أنه
+            //   مكتوبٌ بالعربية وهو لاتينيّ، فبقي المستندُ كما كان بلا أن يُنبَّه).
+            document.getElementById("editEmpNameAr").value = emp.nameAr || "";
             document.getElementById("editEmpQidNumber").value = emp.qidNumber || "";
             document.getElementById("editEmpPassport").value = emp.passportNumber || "";
             document.getElementById("editEmpQidExpiry").value = emp.qidExpiry || "";
@@ -19307,6 +19323,13 @@
     window.saveProfileChanges = async function() {
         const originalId = document.getElementById("editEmpOriginalId").value;
         const name = document.getElementById("editEmpName").value.trim().toUpperCase();
+        // ⭐⭐⭐⭐ الاسمُ بالعربية — للمستندات وحدَها.
+        // ⚠️⚠️ لا toUpperCase() عليه: العربيةُ لا حروفَ كبيرةَ فيها، والدالّةُ
+        //   لا تُفيد شيئًا — لكنّ الاسمَ قد يحمل حرفًا لاتينيًّا واحدًا (اسمٌ
+        //   مركّبٌ أو حرفٌ أُدخل بالخطأ) فتُكبّره وحدَه فيبدو الاسمُ مكسورًا.
+        // ⚠️ ولا يُتحقّق أنه عربيٌّ بالقوّة: بعضُ الأسماء تُكتب في البطاقة القطرية
+        //   بحروفٍ لاتينية، ورفضُ ما في البطاقةِ الرسميةِ نفسِها خطأ.
+        const nameAr = document.getElementById("editEmpNameAr").value.trim();
         const role = document.getElementById("editEmpRole").value.trim();
         const branch = document.getElementById("editEmpBranch").value;
         const phone = document.getElementById("editEmpPhone").value.trim();
@@ -19396,7 +19419,7 @@
             // ⭐ passportNumber في الحمولة الأساسية لا في حمولة المال: اتفاقيةُ
             // السرّية تطلبه، والسكرتيرةُ هي من تُصدرها — فلو كان في حمولة المال
             // لَما استطاعت حفظَه، وقاعدةُ salaryUnchanged تسمح به لأنه ليس راتبًا.
-            const payload = { name, role, branch, phone, shift, housingType, joinDate, qidNumber, qidExpiry, passportNumber, canSubmitSalesReport, isSupervisor, business, qidFront, qidBack, healthCard, contract, healthCert };
+            const payload = { name, nameAr, role, branch, phone, shift, housingType, joinDate, qidNumber, qidExpiry, passportNumber, canSubmitSalesReport, isSupervisor, business, qidFront, qidBack, healthCard, contract, healthCert };
             // Salary / OT rate are only ever sent for Accountants — Secretaries
             // never include these fields in the update at all, and
             // firestore.rules independently rejects them server-side too if a
@@ -20259,6 +20282,14 @@
      */
     function docNdaBlocks(emp, party, dt, hon) {
         const nm = escapeHtml(String((emp && emp.name) || ''));
+        /**
+         * ⭐⭐⭐⭐ الاسمُ في العمود العربيّ.
+         * ⚠️⚠️ ويرجعُ إلى الإنجليزيِّ عند غياب العربيّ ولا يُترك فراغًا: مستندٌ
+         * فيه اسمٌ لاتينيٌّ في العمود العربيّ **صحيحٌ قانونًا** ويُوقَّع ويعمل،
+         * أمّا فراغٌ في موضع اسم الطرف الثاني فاتفاقيةٌ بلا طرفٍ ثانٍ — باطلة.
+         * ⚠️ ولوحةُ النقص تُنبّه على ذلك قبل الطباعة (انظر renderDocument).
+         */
+        const nmAr = escapeHtml(String((emp && emp.nameAr) || (emp && emp.name) || ''));
         const qid = emp && emp.qidNumber ? escapeHtml(String(emp.qidNumber)) : '';
         const pp = emp && emp.passportNumber ? escapeHtml(String(emp.passportNumber)) : '';
         const honEn = hon === 'mrs' ? 'Mrs.' : 'Mr.';
@@ -20282,7 +20313,7 @@
         row('<span class="doc-b">(the First Party)</span>', '<span class="doc-b">الطرف الأول</span>');
         row(party.repEn, party.repAr);
         row('<span class="doc-b">(the Second Party)</span>', '<span class="doc-b">والطرف الثاني</span>');
-        row(`And ${honEn} / ${slot(nm)}`, `${honAr} / ${slot(nm)}`);
+        row(`And ${honEn} / ${slot(nm)}`, `${honAr} / ${slot(nmAr)}`);
         row(`Passport No ${slot(pp)}`, `جواز سفر رقم: ${slot(pp)}`);
         row(`QID No. ${slot(qid)}`, `بطاقة شخصية رقم : ${slot(qid)}`);
         row(
@@ -20414,11 +20445,28 @@
         if (!emp.qidNumber) gaps.push('the Qatar ID number');
         if (!emp.passportNumber) gaps.push('the passport number');
         if (!dt) gaps.push('the document date');
-        if (gaps.length) {
+        /**
+         * ⭐⭐⭐⭐ والاسمُ العربيُّ يُنبَّه عليه **منفصلًا** عن بقيّة النقص.
+         * ⚠️⚠️ والسببُ أنّ أثرَه مختلف: بقيّةُ النقص تُطبع خطًّا منقّطًا يُرى
+         * فورًا، أمّا هذا فيُطبع الاسمَ الإنجليزيَّ في العمود العربيّ — وذلك
+         * **لا يُلاحظ** في ورقةٍ نصفُها إنجليزيٌّ أصلًا، فتُوقَّع مئةُ اتفاقيةٍ
+         * قبل أن يُكتشف. فيُقال صريحًا وبنصٍّ مختلفٍ عن نصّ الخطوط المنقّطة.
+         */
+        const arName = emp.nameAr ? '' :
+            `<b>&#9888; No Arabic name saved for this employee.</b> The Arabic column will show `
+            + `<b>${escapeHtml(String(emp.name || ''))}</b> in English letters. To fix it, open `
+            + `<b>Employee Profiles</b> &rarr; this employee &rarr; <b>Full Name in Arabic</b> and type the `
+            + `name exactly as it is written on the Qatar ID, then press Save and come back.`;
+        if (gaps.length || arName) {
             miss.style.display = 'block';
-            miss.innerHTML = `<b>&#9888; ${gaps.length} item(s) are missing and print as a dotted line:</b> ${gaps.join(', ')}.<br>`
-                + `Open <b>Employee Profiles</b> &rarr; this employee and fill them in, then come back &mdash; `
-                + `or print as it is and write them by hand.`;
+            miss.innerHTML =
+                (gaps.length
+                    ? `<b>&#9888; ${gaps.length} item(s) are missing and print as a dotted line:</b> ${gaps.join(', ')}.<br>`
+                      + `Open <b>Employee Profiles</b> &rarr; this employee and fill them in, then come back &mdash; `
+                      + `or print as it is and write them by hand.`
+                    : '')
+                + (gaps.length && arName ? '<br><br>' : '')
+                + arName;
         }
     };
 
