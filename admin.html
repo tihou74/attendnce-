@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=141">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=142">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1858,13 +1858,18 @@
                             <th>Phone</th>
                             <th>Branch</th>
                             <th>Position</th>
-                            <th>QID</th>
+                            <!-- ⭐⭐⭐ عمودان جديدان: المتقدّمُ يكتب رقمَ بطاقته
+                                 وتاريخَها في الكشك بطلب المالك، فيُرَيان قبل
+                                 القبول — والقبولُ يحملهما إلى ملفّ الموظف. -->
+                            <th>Qatar ID No.</th>
+                            <th>ID Expiry</th>
+                            <th>ID Photo</th>
                             <th>Submitted</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="applicationsTableBody">
-                        <tr><td colspan="7" style="text-align: center;">Loading applications...</td></tr>
+                        <tr><td colspan="9" style="text-align: center;">Loading applications...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -19338,11 +19343,47 @@
                 ? `<img src="${app.qidFront}" style="width:48px; height:32px; object-fit:cover; border-radius:6px; border:1px solid var(--border);"><br><button class="btn-ghost btn-sm" style="margin-top:4px;" onclick="downloadApplicationDocument('${safeId}')">${iconSvg('download','ic-sm')} Download</button>`
                 : '<span class="restricted-cell">No photo</span>';
 
+            // ⭐⭐⭐ رقمُ البطاقة وتاريخُها — يكتبهما المتقدّمُ الآن في الكشك.
+            // ⚠️ ويُعرضان **قبل** القبول: القبولُ يُنشئ ملفَّ الموظف بهما، فلو لم
+            // يُرَيا هنا لصار المالك يقبل رقمًا لم ينظر إليه.
+            const appQid = app.qidNumber ? escapeHtml(String(app.qidNumber)) : '';
+            // ⚠️⚠️ وطلباتٌ قديمةٌ قُدّمت قبل هذا التغيير لا تحمل الحقلين. فيُقال
+            // ذلك صريحًا بدل شرطةٍ صامتة، وإلّا ظُنّ أنّ المتقدّمَ تركهما فارغين
+            // وهو لم يُسأل عنهما أصلًا.
+            const qidNumCell = appQid
+                ? `<b>${appQid}</b>`
+                : `<small style="color: var(--text-faint);">not asked &mdash; older application</small>`;
+            // ⚠️⚠️⚠️ وتُقاس صلاحيةُ التاريخ هنا بنفس محرّك اللوحة (qidStatus) لا
+            // بحسابٍ ثانٍ: حدّان مختلفان لـ«قربت تنتهي» يجعلان الشاشتين تتناقضان.
+            let qidExpCell = `<small style="color: var(--text-faint);">&mdash;</small>`;
+            if (app.qidExpiry) {
+                const st = qidStatus({ qidExpiry: app.qidExpiry, qidNumber: app.qidNumber || '' });
+                const col = st.state === 'expired' ? 'var(--danger)'
+                    : st.state === 'soon' ? 'var(--warning)' : 'var(--text-dim)';
+                qidExpCell = `<b style="color: ${col};">${escapeHtml(String(app.qidExpiry))}</b>`
+                    + `<br><small style="color: ${col}; font-weight: 700;">${escapeHtml(qidLabel(st))}</small>`;
+            }
+            // ⚠️⚠️⚠️ وحارسٌ لا يُستهان به: رقمُ هويةٍ يملكه موظفٌ **قائم** يعني أنّ
+            // هذا المتقدّمَ موظفٌ عندنا أصلًا (أعاد التقديم، أو انتهت خدمتُه وعاد).
+            // وقبولُه بلا نظرٍ يُنشئ ملفًّا ثانيًا لنفس الرجل — وملفٌّ مكرّرٌ يعني
+            // راتبَين وسجلَّ حضورٍ مشقوقًا. والفحصُ هنا لا في الكشك بقصد: الكشكُ
+            // مفتوحٌ لأيّ زائر، وبحثٌ فيه عن رقم هويةٍ يكشف من هو مسجَّلٌ عندنا.
+            let dupWarn = '';
+            if (app.qidNumber) {
+                const twin = (allEmployees || []).find(e => String(e.qidNumber || '') === String(app.qidNumber));
+                if (twin) {
+                    dupWarn = `<br><small style="color: var(--danger); font-weight: 800;">&#9888; same Qatar ID as `
+                        + `${escapeHtml(twin.name || twin.id)} &mdash; check before approving</small>`;
+                }
+            }
+
             html += `<tr>
-                <td><b>${escapeHtml(app.fullName || '-')}</b></td>
+                <td><b>${escapeHtml(app.fullName || '-')}</b>${dupWarn}</td>
                 <td>${escapeHtml(app.phone || '-')}</td>
                 <td>${escapeHtml(app.branch || '-')}</td>
                 <td>${escapeHtml(app.role || '-')}</td>
+                <td>${qidNumCell}</td>
+                <td>${qidExpCell}</td>
                 <td>${qidThumb}</td>
                 <td>${escapeHtml(submittedDate)}</td>
                 <td>
@@ -19352,7 +19393,9 @@
             </tr>`;
         });
 
-        document.getElementById("applicationsTableBody").innerHTML = html || `<tr><td colspan="7" style="text-align: center;">No pending applications</td></tr>`;
+        // ⚠️ colspan تسعةٌ لا سبعة: أُضيف عمودان (رقمُ الهوية وتاريخُها). وسطرُ
+        // «لا يوجد» بعددٍ خاطئ يُزيح الجدولَ كلَّه فيبدو مكسورًا.
+        document.getElementById("applicationsTableBody").innerHTML = html || `<tr><td colspan="9" style="text-align: center;">No pending applications</td></tr>`;
 
         const badge = document.getElementById("applicationsNavBadge");
         if (pendingCount > 0) { badge.innerText = pendingCount; badge.style.display = "inline-block"; }
@@ -19382,6 +19425,16 @@
                 shift: "Morning",
                 salary: 0,
                 qidFront: app.qidFront || "",
+                // ⭐⭐⭐⭐⭐ رقمُ البطاقة وتاريخُها يُنقلان إلى ملفّ الموظف — وهذا
+                // هو الموضعُ الذي كان يُفقدهما، وبه تُغلق الثغرةُ كلُّها.
+                // ⚠️⚠️ قبل هذا السطر كان كلُّ موظفٍ يُقبل من نموذج التقديم يُنشأ
+                // بلا رقم هويةٍ ولا تاريخ، فيظهر في «الحالة الإدارية» تحت
+                // «No Qatar ID recorded» — وتفتح السكرتيرةُ الصورةَ وتقرأ الرقمَ
+                // بعينها وتكتبه يدويًّا لكلّ موظفٍ جديد.
+                // ⚠️ و|| "" لطلباتٍ قديمةٍ قُدّمت قبل هذا التغيير: هي لا تحمل
+                // الحقلين، وundefined يُرفض من فايرستور فيسقط القبولُ كلُّه.
+                qidNumber: app.qidNumber || "",
+                qidExpiry: app.qidExpiry || "",
                 qidBack: "", healthCard: "", contract: "", healthCert: "",
                 // Carried over verbatim from the self-registration form in
                 // index.html, where agreeing to the Internal Regulations is

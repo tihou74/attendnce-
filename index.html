@@ -550,6 +550,38 @@
             <input type="file" id="applyQidFront" accept="image/*">
         </div>
 
+        <!-- ===================================================================
+             ⭐⭐⭐⭐⭐ رقمُ البطاقة الشخصية وتاريخُ صلاحيتها — بطلب المالك:
+             «أريد إضافة في البانل الخاصة بموظفي المطاعم، لمّا يكون موظفٌ جديد
+              يُقدّم: خانتين إضافيتين، واحدة يكتب فيها رقم البطاقة الشخصية
+              والأخرى رقم تاريخ صلاحيتها».
+             -------------------------------------------------------------------
+             ⚠️⚠️⚠️ وهذا يُغلق ثغرةً حقيقيةً في النظام كلِّه، لا مجرّد حقلَين:
+             نموذجُ التقديم كان يطلب **صورة** البطاقة ولا يطلب رقمَها ولا
+             تاريخَها، وapproveApplication في اللوحة تُنشئ ملفَّ الموظف بلا
+             qidNumber ولا qidExpiry. فكلُّ موظفٍ يُقبل من هذا النموذج يظهر في
+             تبويب «الحالة الإدارية» تحت «No Qatar ID recorded»، وتضطرّ
+             السكرتيرةُ أن تفتح الصورةَ وتقرأ الرقمَ بعينها وتكتبه يدويًّا —
+             لكلّ موظفٍ جديد. والآن يأتي الرقمُ مع الطلب نفسِه.
+             ⚠️⚠️ والحقلان **مطلوبان**، وهذا ليس تشديدًا جديدًا: النموذجُ يطلب
+             صورةَ البطاقة **إلزاميًّا** أصلًا، فمن يُقدّم يحمل بطاقتَه في يده
+             وهو يكتب. ورقمُ الهوية القطرية لا يتغيّر مدى الحياة، فلا حجّةَ
+             لتركه فارغًا.
+             ⚠️ ولا يُمنع تاريخٌ **منتهٍ**: موظفٌ بطاقتُه منتهيةٌ هو بعينه من
+             صُمّم تبويبُ الحالة الإدارية ليكشفه. فمنعُه هنا يُخفي المشكلةَ بدل
+             أن يُظهرها.
+             =================================================================== -->
+        <div class="form-group">
+            <label for="applyQidNumber">Qatar ID Number (رقم البطاقة الشخصية):</label>
+            <input type="text" id="applyQidNumber" inputmode="numeric" maxlength="11"
+                   autocomplete="off" placeholder="11 digits — 11 رقمًا">
+        </div>
+
+        <div class="form-group">
+            <label for="applyQidExpiry">Qatar ID Expiry Date (تاريخ انتهاء صلاحية البطاقة):</label>
+            <input type="date" id="applyQidExpiry">
+        </div>
+
         <button class="action-btn btn-submit" id="btnSubmitApplication" onclick="submitApplication()">Apply Now 📤</button>
     </div>
 
@@ -1904,6 +1936,22 @@
     const REGULATIONS_VERSION = "2026-09-v1";
     let regulationsAccepted = null; // { name, acceptedAt } once agreed, else null
 
+    // =====================================================================
+    // ⭐⭐⭐ تدقيقُ رقم البطاقة الشخصية وتاريخها في نموذج التقديم
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ الرقمُ ١١ خانةً — وهو **نفسُ** QID_DIGITS في admin.html. ولا يمكن
+    // مشاركةُ ثابتٍ بين الملفّين (لا بناءَ ولا وحدات في هذا المشروع)، فالاسمُ
+    // مختلفٌ عن قصدٍ (APPLY_ prefix) ليُعلَم أنه نسخةٌ لا أصل، والقيمةُ يجب أن
+    // تبقى مطابقةً — وفحصٌ في .verify يشترط تساويَهما فلا يفترقان بلا أن يُعلَم.
+    // ولو اختلفا لقَبِل الكشكُ رقمًا ترفضه اللوحةُ عند التعديل، فتقف السكرتيرةُ
+    // أمام ملفٍّ لا تستطيع حفظَه ولا تعرف السبب.
+    // ⚠️ وحدُّ السنة يمنع خطأَ الكتابة لا التاريخَ المنتهي: ٢٠٦٥ بدل ٢٠٢٦ تُسقط
+    // الموظفَ من تنبيهات الانتهاء إلى الأبد بلا أن يعلم أحد.
+    // =====================================================================
+    const APPLY_QID_DIGITS = 11;
+    const APPLY_QID_MIN_YEAR = 2000;
+    const APPLY_QID_MAX_YEARS = 20;   // أبعدُ انتهاءٍ معقول من هذه السنة
+
     window.openRegulationsModal = function() {
         document.getElementById('regulationsModal').classList.add('open');
         document.getElementById('regScrollHint').classList.remove('show');
@@ -1967,6 +2015,8 @@
         const branch = document.getElementById('applyBranch').value;
         const role = document.getElementById('applyRole').value.trim();
         const qidInput = document.getElementById('applyQidFront');
+        const qidNumber = document.getElementById('applyQidNumber').value.trim();
+        const qidExpiry = document.getElementById('applyQidExpiry').value;
         const btn = document.getElementById('btnSubmitApplication');
 
         if (!fullName) {
@@ -1979,6 +2029,40 @@
         }
         if (!qidInput.files[0]) {
             showStatus("Please upload a photo of your QID (front side).", "error");
+            return;
+        }
+        // ⚠️⚠️⚠️ رقمُ الهوية وتاريخُها — بطلب المالك. والتدقيقُ **بنفس** قاعدة
+        // لوحة الإدارة حرفًا بحرف (١١ رقمًا، أرقامٌ فقط): لو اختلفت القاعدتان
+        // لقَبِل الكشكُ رقمًا ترفضه اللوحةُ عند التعديل، فتقف السكرتيرةُ أمام
+        // ملفٍّ لا تستطيع حفظَه ولا تعرف السبب.
+        // ⚠️ والرسائلُ بلغتين: من يُقدّم عاملٌ قد لا يقرأ الإنجليزية، ورسالةُ
+        // خطأٍ لا يفهمها تجعله يضغط الزرَّ مرّاتٍ بلا فهم.
+        if (!qidNumber) {
+            showStatus("Please enter your Qatar ID number (يرجى كتابة رقم البطاقة الشخصية).", "error");
+            return;
+        }
+        if (!/^\d+$/.test(qidNumber)) {
+            showStatus("The Qatar ID number must contain digits only (رقم البطاقة أرقامٌ فقط).", "error");
+            return;
+        }
+        if (qidNumber.length !== APPLY_QID_DIGITS) {
+            showStatus(`The Qatar ID number must be exactly ${APPLY_QID_DIGITS} digits — you entered ${qidNumber.length} `
+                + `(رقم البطاقة ${APPLY_QID_DIGITS} رقمًا، وقد كتبتَ ${qidNumber.length}).`, "error");
+            return;
+        }
+        if (!qidExpiry) {
+            showStatus("Please enter the expiry date on your Qatar ID (يرجى كتابة تاريخ انتهاء صلاحية البطاقة).", "error");
+            return;
+        }
+        // ⚠️⚠️ تاريخٌ منتهٍ **مقبول** ولا يُرفض: موظفٌ بطاقتُه منتهيةٌ هو بعينه
+        // من صُمّم تبويبُ «الحالة الإدارية» ليكشفه، فرفضُه هنا يُخفي المشكلة.
+        // لكن يُرفض تاريخٌ **مستحيل**: بطاقةٌ تنتهي بعد أربعين سنة خطأُ كتابةٍ
+        // في السنة (2065 بدل 2026)، وتاريخٌ قبل ٢٠٠٠ كذلك — وكلاهما يُسقط
+        // الموظفَ من تنبيهات الانتهاء إلى الأبد بلا أن يعلم أحد.
+        const expYear = Number(String(qidExpiry).slice(0, 4));
+        if (!(expYear >= APPLY_QID_MIN_YEAR && expYear <= new Date().getFullYear() + APPLY_QID_MAX_YEARS)) {
+            showStatus(`Please check the expiry year you wrote (${expYear || '—'}) — it does not look like a real `
+                + `Qatar ID date (يرجى مراجعة سنة انتهاء البطاقة).`, "error");
             return;
         }
         // Hard gate: even if someone bypasses the disabled-button UI (e.g.
@@ -2002,6 +2086,12 @@
                 branch,
                 role: role || "-",
                 qidFront,
+                // ⭐⭐⭐ الرقمُ والتاريخُ بطلب المالك — وتحملهما approveApplication
+                // في اللوحة إلى ملفّ الموظف، فيظهر في «الحالة الإدارية» جاهزًا.
+                // ⚠️ بنفس اسمَي الحقلين على مستند الموظف (qidNumber / qidExpiry)
+                // فلا تحويلَ ولا التباسَ في النقل.
+                qidNumber,
+                qidExpiry,
                 status: 'Pending',
                 // Permanent, auditable record of the mandatory Internal
                 // Regulations acknowledgment — carried through unchanged by
@@ -2019,6 +2109,12 @@
             document.getElementById('applyPhone').value = "";
             document.getElementById('applyRole').value = "";
             qidInput.value = "";
+            // ⚠️⚠️⚠️ تفريغُ الحقلين الجديدين **إلزاميّ** لا تجميل: هذا جهازٌ
+            // مشتركٌ يقف عليه المتقدّمون واحدًا بعد واحد. فرقمُ هويةٍ يبقى في
+            // الخانة يُنسَب إلى **الشخص التالي** إن لم ينظر — فيُقبل موظفٌ
+            // برقم هوية غيره. وهذا خطأٌ لا يُكتشف إلا بعد شهور.
+            document.getElementById('applyQidNumber').value = "";
+            document.getElementById('applyQidExpiry').value = "";
 
             // This is a shared kiosk device — reset the regulations
             // acceptance so the NEXT applicant is forced to read and agree
