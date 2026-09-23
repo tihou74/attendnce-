@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=157">
+<link rel="stylesheet" href="./brand/design-tokens.css?v=158">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -21364,6 +21364,105 @@
                         //   spills» بلا قوسِ إغلاقٍ ولا نقطة. أُكمل من عربيِّه المكتملِ
                         //   «(أطباق مكسورة، انسكابات خطيرة).» — إكمالُ ترقيمٍ لا إضافةُ معنى.
                         'Immediately report issues (broken dishes, dangerous spills).'
+                    ]
+                }
+            ]
+        },
+        'kitchen worker': {
+            titleAr: (brand) => `عامل مطبخ – سلسلة مطاعم ${brand}`,
+            // ⚠️⚠️⚠️ نصُّه الإنجليزيُّ يسمّيها «Kitchen Helper»، وقائمةُ المسمّيات
+            //   التي أرسلها تسمّيها «Kitchen Worker» — والعربيُّ «عامل مطبخ» في
+            //   الاثنين. فعرضُ العمل سيقول «Kitchen Worker» وورقةُ المهامّ
+            //   «Kitchen Helper» لنفس الموظف. نُقل نصُّه كما كتبه وأُبلغ بالفرق،
+            //   ولم يُوحَّد من عندي — وهي ثالثةُ حالةٍ من هذا النوع (كاشير، شيف).
+            titleEn: (brand) => `Kitchen Helper &ndash; ${brand} Restaurant Chain`,
+            deptAr: 'المطبخ والإنتاج الغذائي',
+            deptEn: 'Kitchen and Food Production',
+            supAr: 'شيف مطبخ / كبير الطهاة',
+            supEn: 'Kitchen Chef / Executive Chef',
+            purposeAr: 'المساعدة في عمليات التحضير والإنتاج اليومي في المطبخ، وضمان نظافة المنطقة والمعدات، '
+                + 'والعمل الجماعي لدعم كفاءة الطهي وتلبية الطلبات بسرعة وجودة عالية.',
+            purposeEn: 'Assist in daily preparation and production operations in the kitchen, ensuring area and '
+                + 'equipment cleanliness, and working collaboratively to support cooking efficiency and meet orders '
+                + 'with speed and high quality.',
+            sections: [
+                {
+                    hAr: '1. تحضير المكونات الأساسية', hEn: '1. Basic Ingredients Preparation',
+                    ar: [
+                        'تقطيع الخضروات، واللحوم، والأسماك، وتحضير المكونات الأولية حسب تعليمات الشيف.',
+                        'غسل وتنظيف المواد الغذائية، وترتيبها للاستخدام السريع في محطات الطهي.',
+                        'المساعدة في خلط العجائن، والصلصات، والتوابل حسب الوصفات المحددة.'
+                    ],
+                    en: [
+                        'Chop vegetables, meats, and fish, and prepare initial ingredients according to chef instructions.',
+                        'Wash and clean food materials, organizing them for quick use at cooking stations.',
+                        'Assist in mixing doughs, sauces, and spices according to specified recipes.'
+                    ]
+                },
+                {
+                    hAr: '2. دعم عمليات الطهي', hEn: '2. Cooking Operations Support',
+                    ar: [
+                        'نقل المكونات المحضرة إلى محطات الشيف وضمان توافرها دون نقص.',
+                        'مراقبة الشواية، أو الفرن، أو المقلى تحت إشراف الشيف وتسجيل درجات الحرارة.',
+                        'تنظيم تدفق الطلبات داخل المطبخ لضمان السرعة في التسليم للصالة.'
+                    ],
+                    en: [
+                        'Transport prepared ingredients to chef stations, ensuring constant availability without shortages.',
+                        'Monitor grills, ovens, or fryers under chef supervision and record temperatures.',
+                        'Organize order flow within the kitchen to ensure fast delivery to the dining hall.'
+                    ]
+                },
+                {
+                    hAr: '3. النظافة والسلامة', hEn: '3. Cleanliness and Safety',
+                    ar: [
+                        'تنظيف وتعقيم الأسطح، والأدوات، والمعدات بعد كل استخدام وفق جدول التنظيف.',
+                        'غسل الأواني والأدوات يدويًا أو باستخدام غرفة الغسيل بكفاءة.',
+                        'تطبيق إجراءات السلامة (ارتداء القفازات، نظافة اليدين، HACCP) في كل الوقت.'
+                    ],
+                    en: [
+                        'Clean and sanitize surfaces, tools, and equipment after each use according to the cleaning schedule.',
+                        'Wash dishes and utensils manually or using the dishwashing area efficiently.',
+                        'Apply safety procedures (wearing gloves, hand hygiene, HACCP) at all times.'
+                    ]
+                },
+                {
+                    hAr: '4. إدارة المخزون والجرد', hEn: '4. Inventory and Stocktaking',
+                    ar: [
+                        'المساعدة في استقبال الشحنات الجديدة وفحصها للتأكد من الجودة والكميات.',
+                        'المشاركة في الجرد اليومي والأسبوعي للمواد الغذائية والمستلزمات.',
+                        'الإبلاغ عن أي نقص في المواد أو تلف للشيف أو مسؤول المخزون.'
+                    ],
+                    en: [
+                        'Assist in receiving new shipments and inspecting them for quality and quantities.',
+                        'Participate in daily and weekly food and supplies inventory counts.',
+                        'Report any material shortages or spoilage to the chef or the inventory responsible.'
+                    ]
+                },
+                {
+                    hAr: '5. الصيانة والتنظيم', hEn: '5. Maintenance and Organization',
+                    ar: [
+                        'الإبلاغ الفوري عن أعطال المعدات أو الحاجة للصيانة.',
+                        'تنظيم المخزن والثلاجات لسهولة الوصول وتجنب التلف (FIFO).',
+                        'المساعدة في تجهيز المطبخ قبل بدء الوردية وإغلاقه في النهاية.'
+                    ],
+                    en: [
+                        'Immediately report equipment malfunctions or maintenance needs.',
+                        'Organize storage and refrigerators for easy access and to prevent spoilage (FIFO).',
+                        'Help set up the kitchen before shift start and close it at the end.'
+                    ]
+                },
+                {
+                    hAr: '6. التعاون والتدريب', hEn: '6. Collaboration and Training',
+                    ar: [
+                        'العمل الجماعي مع الشيف والعاملين الآخرين لضمان سير العمليات بسلاسة.',
+                        'تلقي التدريب على المهام الجديدة والالتزام بالمعايير من الشيف.',
+                        'مساعدة الموظفين الجدد في فهم إجراءات المطبخ الأساسية.'
+                    ],
+                    en: [
+                        'Work as a team with chefs and other staff to ensure smooth operations.',
+                        'Receive training on new tasks and adhere to standards from the chef.',
+                        // ⚠️ نصُّه انتهى بلا نقطةٍ — أُضيفت كبقيّة البنود
+                        'Assist new employees in understanding basic kitchen procedures.'
                     ]
                 }
             ]
