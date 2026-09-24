@@ -4235,11 +4235,21 @@
 
         <h3 style="font-size: 15px; margin: 24px 0 14px;"><span data-icon="fileText"></span> Employee Official Documents</h3>
         <div class="qid-container">
-            <div class="qid-box"><strong>QID Front</strong><div id="qidFrontContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="qidFrontDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('qidFront', 'QID_Front')"><span data-icon="download"></span> Download</button><input type="file" id="editQidFrontInput" accept="image/*" style="font-size: 10px;"></div>
-            <div class="qid-box"><strong>QID Back</strong><div id="qidBackContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="qidBackDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('qidBack', 'QID_Back')"><span data-icon="download"></span> Download</button><input type="file" id="editQidBackInput" accept="image/*" style="font-size: 10px;"></div>
-            <div class="qid-box"><strong>Health Card</strong><div id="healthCardContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="healthCardDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('healthCard', 'Health_Card')"><span data-icon="download"></span> Download</button><input type="file" id="editHealthCardInput" accept="image/*" style="font-size: 10px;"></div>
-            <div class="qid-box"><strong>Work Contract</strong><div id="contractContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="contractDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('contract', 'Work_Contract')"><span data-icon="download"></span> Download</button><input type="file" id="editContractInput" accept="image/*" style="font-size: 10px;"></div>
-            <div class="qid-box"><strong>Health Cert</strong><div id="healthCertContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="healthCertDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('healthCert', 'Health_Cert')"><span data-icon="download"></span> Download</button><input type="file" id="editHealthCertInput" accept="image/*" style="font-size: 10px;"></div>
+            <!-- ⭐⭐⭐⭐⭐ خانات رفع المستندات — أُصلح فيها عطلٌ حقيقيٌّ شكا منه المالك:
+                 «لما السكرتيرة تحمّل البطاقة الشخصية، تصير لخبطة: صورةُ بطاقةِ
+                  موظفٍ تتغيّر وتنزل مكانها صورةٌ أخرى».
+                 ⚠️⚠️⚠️ السببُ أنّ خانةَ الملفّ **لم تكن تُفرَّغ** عند فتح ملفٍّ آخر،
+                 فيبقى ملفُّ زيدٍ مُعلّقًا في الخانة، فإذا حُفظ ملفُّ عمروٍ رُفعت
+                 بطاقةُ زيدٍ على عمرو. (ونموذجُ الإضافة كان يُفرّغها ويُصيب — هذا
+                 وحدَه كان الفرق.) الآن: تُفرَّغ عند كلّ فتح، وتُوسَم باسم صاحبها،
+                 ويُرفض الحفظُ إن اختلف الوسمُ عن الملفّ المفتوح.
+                 ⚠️ و`onchange` يُظهر اسمَ الملفّ المختار تحت الخانة، فترى السكرتيرةُ
+                 بعينها ما هو مُعلَّقٌ قبل أن تحفظ. -->
+            <div class="qid-box"><strong>QID Front</strong><div id="qidFrontContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="qidFrontDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('qidFront', 'QID_Front')"><span data-icon="download"></span> Download</button><input type="file" id="editQidFrontInput" accept="image/*" style="font-size: 10px;" onchange="onProfileFilePicked('editQidFrontInput')"><small id="editQidFrontInputNote" style="display:none; margin-top:4px; font-size:10.5px; line-height:1.35; color: var(--warning);"></small></div>
+            <div class="qid-box"><strong>QID Back</strong><div id="qidBackContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="qidBackDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('qidBack', 'QID_Back')"><span data-icon="download"></span> Download</button><input type="file" id="editQidBackInput" accept="image/*" style="font-size: 10px;" onchange="onProfileFilePicked('editQidBackInput')"><small id="editQidBackInputNote" style="display:none; margin-top:4px; font-size:10.5px; line-height:1.35; color: var(--warning);"></small></div>
+            <div class="qid-box"><strong>Health Card</strong><div id="healthCardContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="healthCardDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('healthCard', 'Health_Card')"><span data-icon="download"></span> Download</button><input type="file" id="editHealthCardInput" accept="image/*" style="font-size: 10px;" onchange="onProfileFilePicked('editHealthCardInput')"><small id="editHealthCardInputNote" style="display:none; margin-top:4px; font-size:10.5px; line-height:1.35; color: var(--warning);"></small></div>
+            <div class="qid-box"><strong>Work Contract</strong><div id="contractContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="contractDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('contract', 'Work_Contract')"><span data-icon="download"></span> Download</button><input type="file" id="editContractInput" accept="image/*" style="font-size: 10px;" onchange="onProfileFilePicked('editContractInput')"><small id="editContractInputNote" style="display:none; margin-top:4px; font-size:10.5px; line-height:1.35; color: var(--warning);"></small></div>
+            <div class="qid-box"><strong>Health Cert</strong><div id="healthCertContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="healthCertDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('healthCert', 'Health_Cert')"><span data-icon="download"></span> Download</button><input type="file" id="editHealthCertInput" accept="image/*" style="font-size: 10px;" onchange="onProfileFilePicked('editHealthCertInput')"><small id="editHealthCertInputNote" style="display:none; margin-top:4px; font-size:10.5px; line-height:1.35; color: var(--warning);"></small></div>
         </div>
 
         <!-- Read-only record of the mandatory Internal Regulations
@@ -19196,6 +19206,73 @@
     };
 
     /**
+     * ⭐⭐⭐⭐⭐ المستنداتُ الخمسةُ المرفوعةُ في ملفّ الموظف — سِجلٌّ واحدٌ لا
+     * خمسُ نسخٍ متفرّقة.
+     *
+     * ⚠️⚠️⚠️ كان اسمُ كلِّ خانةٍ مكتوبًا بيده في **ثلاثة** مواضع (الترميز،
+     *   والقراءةُ عند الحفظ، والحمولة)، فنسيانُ موضعٍ واحدٍ لا يُكتشف. وهذا
+     *   بالضبط ما وقع: نموذجُ **إضافة** موظفٍ يُفرّغ خاناتِه الخمسَ بعد الحفظ،
+     *   وملفُّ **تعديل** الموظف لا يُفرّغها إطلاقًا — فبقي ملفُّ زيدٍ معلّقًا
+     *   في الخانة ورُفع على عمرو. السِجلُّ الواحدُ يجعل النسيانَ مستحيلًا.
+     */
+    const PROFILE_FILE_FIELDS = [
+        { input: 'editQidFrontInput',   field: 'qidFront',   label: 'QID Front' },
+        { input: 'editQidBackInput',    field: 'qidBack',    label: 'QID Back' },
+        { input: 'editHealthCardInput', field: 'healthCard', label: 'Health Card' },
+        { input: 'editContractInput',   field: 'contract',   label: 'Work Contract' },
+        { input: 'editHealthCertInput', field: 'healthCert', label: 'Health Cert' }
+    ];
+
+    /**
+     * ⭐⭐⭐⭐⭐ يُفرّغ خاناتَ الملفّات الخمسَ ويوسمُها بصاحبها — إصلاحُ العطل.
+     *
+     * ⚠️⚠️⚠️ التفريغُ (`el.value = ''`) هو الإصلاحُ الجوهريُّ: خانةُ الملفّ في
+     *   المتصفّح **لا تُفرَّغ** بإعادة رسم بقيّة الحقول، ولا بإغلاق النافذة،
+     *   ولا بالحفظ. فتبقى `files[0]` ممسكةً بالملفّ الذي اختارته السكرتيرةُ
+     *   لموظفٍ سابق، وأيُّ حفظٍ تالٍ يرفعه على الموظف المفتوح الآن.
+     *
+     * ⚠️⚠️ والوسمُ (`dataset.forEmp`) حرسٌ ثانٍ مقصودٌ فوق التفريغ: المتصفّحاتُ
+     *   قد تُعيد حالةَ النموذج عند الرجوع للخلف أو استعادةِ التبويب، وقد يوجد
+     *   مسارٌ يُظهر النافذةَ بلا المرور على openProfileModal. فإن وُجد ملفٌّ
+     *   موسومٌ لموظفٍ آخر يُرفض الحفظُ بصراحةٍ ويُقال السببُ — ولا يُرفع بحال.
+     */
+    function resetProfileFileInputs(empId) {
+        PROFILE_FILE_FIELDS.forEach(f => {
+            const el = document.getElementById(f.input);
+            if (el) {
+                el.value = '';
+                el.dataset.forEmp = String(empId || '');
+            }
+            const note = document.getElementById(f.input + 'Note');
+            if (note) { note.style.display = 'none'; note.textContent = ''; }
+        });
+    }
+
+    /**
+     * يُظهر اسمَ الملفّ المختار تحت الخانة، فترى السكرتيرةُ ما هو معلَّقٌ قبل
+     * أن تحفظ — العطلُ كان صامتًا تمامًا، ولا شيءَ على الشاشة يدلّ عليه.
+     * ⚠️ ويُتحقّق من الحجم هنا فورًا لا عند الحفظ وحدَه: ملفٌّ ضخمٌ يُرفض بعد
+     *   ملء عشرةِ حقولٍ يُفقدها عملَها، والرفضُ عند الاختيار أرحم.
+     */
+    window.onProfileFilePicked = function(inputId) {
+        const el = document.getElementById(inputId);
+        const note = document.getElementById(inputId + 'Note');
+        if (!el || !note) return;
+        const file = el.files && el.files[0];
+        if (!file) { note.style.display = 'none'; note.textContent = ''; return; }
+        const kb = file.size / 1024;
+        if (file.size > MAX_DOC_FILE_BYTES) {
+            note.style.color = 'var(--danger)';
+            note.textContent = `${file.name} — ${kb.toFixed(0)}KB is too large `
+                + `(limit ${(MAX_DOC_FILE_BYTES / 1024).toFixed(0)}KB). Pick a smaller file.`;
+        } else {
+            note.style.color = 'var(--warning)';
+            note.textContent = `New file ready: ${file.name} (${kb.toFixed(0)}KB) — press Save to upload.`;
+        }
+        note.style.display = 'block';
+    };
+
+    /**
      * ⭐⭐⭐⭐ ذاكرةُ الـPIN المعروض — تُستعمل في مكانين ولا يجوز افتراقُهما:
      *   (١) سطرُ العرض فوق الخانة عند فتح الملف.
      *   (٢) رسالةُ التأكيد قبل الكتابة (من X إلى Y) — بحيث لا يُعاد جلبُه
@@ -19251,6 +19328,10 @@
         document.getElementById("profileModal").style.display = "flex";
         document.getElementById("editEmpOriginalId").value = empId;
         document.getElementById("editProfileStatus").innerText = "";
+        // ⭐⭐⭐⭐⭐ إصلاحُ العطل: تُفرَّغ خاناتُ الملفّات الخمسُ وتُوسَم بصاحبها
+        //   **أوّلَ** ما يُفتح الملفّ، قبل أيّ شيءٍ آخر. بلا هذا السطر يبقى
+        //   ملفُّ الموظف السابق معلّقًا في الخانة فيُرفع على هذا الموظف.
+        resetProfileFileInputs(empId);
 
         let emp = allEmployees.find(e => e.id === empId);
         document.getElementById("modalEmpTitle").innerHTML = `${iconSvg('edit')} Edit Profile & Documents: ${escapeHtml(emp ? emp.name : empId)}`;
@@ -19519,6 +19600,9 @@
 
     window.closeProfileModal = function() {
         document.getElementById("profileModal").style.display = "none";
+        // ⭐⭐ تُفرَّغ خاناتُ الملفّات عند الإغلاق كذلك: نافذةٌ أُغلقت بملفٍّ مختارٍ
+        //   لم يُحفظ تعني أنّ السكرتيرةَ عدلت عن رفعه — فلا يُلاحق الموظفَ التالي.
+        resetProfileFileInputs('');
     };
 
     window.saveProfileChanges = async function() {
@@ -19585,6 +19669,38 @@
                       + `with the restaurants' overtime rates and the housing rule.`)
                 + `\n\nAttendance records already recorded are not touched.`
             )) { statusEl.innerText = "Cancelled — nothing was saved."; statusEl.style.color = "var(--warning)"; return; }
+        }
+
+        /**
+         * ⭐⭐⭐⭐⭐ حرسُ صاحبِ الملفّ — يرفض رفعَ مستندٍ اختير لموظفٍ آخر.
+         *
+         * ⚠️⚠️⚠️ هذا هو الحرسُ الثاني فوق التفريغ في openProfileModal. التفريغُ
+         *   يمنع الحالةَ من الوقوع أصلًا، وهذا يمنعها من **المرور** لو وقعت
+         *   بطريقٍ لم أره: استعادةُ المتصفّح لحالة النموذج عند الرجوع للخلف،
+         *   أو مسارٌ يُظهر النافذةَ بلا openProfileModal.
+         * ⚠️⚠️ ويُرفض الحفظُ **كلُّه** لا المستندُ وحدَه: لو رُفض المستندُ وحفظ
+         *   الباقي لظنّت السكرتيرةُ أنّ البطاقةَ رُفعت (الحفظُ نجح!) وهي لم
+         *   تُرفع. الرفضُ الصريحُ يُوقفها ويُخبرها بما تفعل.
+         * ⚠️ والرفضُ قبل «Saving…» لا بعده: لا كتابةَ نصفيّةً على قاعدة البيانات.
+         */
+        const strayFiles = PROFILE_FILE_FIELDS.filter(f => {
+            const el = document.getElementById(f.input);
+            if (!el || !el.files || !el.files[0]) return false;
+            const pickedFor = String(el.dataset.forEmp || '');
+            return pickedFor !== '' && pickedFor !== originalId;
+        });
+        if (strayFiles.length) {
+            const whose = strayFiles.map(f => {
+                const el = document.getElementById(f.input);
+                const other = allEmployees.find(e => e.id === String(el.dataset.forEmp || ''));
+                return `${f.label} (chosen while ${other ? other.name : 'another employee'} was open)`;
+            }).join(', ');
+            statusEl.innerHTML = `<b>Nothing was saved.</b> ${escapeHtml(whose)}.<br>`
+                + `Uploading it here would put another employee&rsquo;s document on `
+                + `${escapeHtml(empBefore.name || originalId)}. Close this profile, open it again, `
+                + `and choose the file while <b>${escapeHtml(empBefore.name || originalId)}</b> is on screen.`;
+            statusEl.style.color = "var(--danger)";
+            return;
         }
 
         // ⭐⭐⭐⭐⭐ تأكيدُ تغيير الـPIN — قرار المالك الصريح: «إذا أردتَ تغييرَه
@@ -19661,18 +19777,37 @@
         statusEl.style.color = "var(--warning)";
 
         try {
-            let emp = allEmployees.find(e => e.id === originalId) || {};
-            let qidFront = await readFileIfPresent(document.getElementById("editQidFrontInput"), emp.qidFront || "");
-            let qidBack = await readFileIfPresent(document.getElementById("editQidBackInput"), emp.qidBack || "");
-            let healthCard = await readFileIfPresent(document.getElementById("editHealthCardInput"), emp.healthCard || "");
-            let contract = await readFileIfPresent(document.getElementById("editContractInput"), emp.contract || "");
-            let healthCert = await readFileIfPresent(document.getElementById("editHealthCertInput"), emp.healthCert || "");
-
-            // Base fields any signed-in admin (Accountant OR Secretary) may edit.
-            // ⭐ passportNumber في الحمولة الأساسية لا في حمولة المال: اتفاقيةُ
-            // السرّية تطلبه، والسكرتيرةُ هي من تُصدرها — فلو كان في حمولة المال
-            // لَما استطاعت حفظَه، وقاعدةُ salaryUnchanged تسمح به لأنه ليس راتبًا.
-            const payload = { name, nameAr, nationality, role, branch, phone, shift, housingType, joinDate, qidNumber, qidExpiry, passportNumber, canSubmitSalesReport, isSupervisor, business, qidFront, qidBack, healthCard, contract, healthCert };
+            /**
+             * ⭐⭐⭐⭐⭐ المستنداتُ تُكتب **فقط** إن اختيرت ملفاتٌ جديدةٌ لها —
+             * وهذا الإصلاحُ الثاني، وهو إصلاحُ عطلٍ ثانٍ مختلفٍ عن اللخبطة.
+             *
+             * ⚠️⚠️⚠️ الكودُ القديمُ كان يكتب الخمسةَ **في كلّ حفظٍ** ويُعيد بناءها
+             *   من قائمة الموظفين الحيّة في الذاكرة:
+             *       readFileIfPresent(el, emp.qidFront || "")
+             *   فإن لم يكن للموظف نسخةٌ في القائمة (`|| {}`) أو كانت نسخةُ
+             *   المتصفّح قديمةً لا تحمل الصورة، فالبديلُ `""` — فتُكتب سلسلةٌ
+             *   فارغةٌ فوق البطاقةِ المحفوظة و**تُمحى الصورةُ بصمت**. وهذا هو
+             *   عينُ ما شكا منه المالك: «تبقى فارغة».
+             *
+             * ⚠️⚠️ الحلُّ ليس تحسينَ البديل بل **إسقاطَ الحقلِ من الحمولة**:
+             *   `updateDoc` لا يمسّ حقلًا غائبًا عن الحمولة إطلاقًا. فما لم
+             *   تُختَر صورةٌ جديدة، تبقى المحفوظةُ كما هي — لا مِن ذاكرةٍ قد
+             *   تكون قديمةً، بل لأنّها **لم تُمَسّ**. ومحوُ صورةٍ صار مستحيلًا
+             *   بنيويًّا لا محروسًا بشرط.
+             *
+             * ⚠️ وقواعدُ Firestore تسمح بالتحديث الجزئيّ:
+             *   `allow update: isAdmin() || isAccountant() || (isProfileEditor() && salaryUnchanged())`
+             *   — لا شرطَ فيها على وجود حقلٍ بعينه.
+             */
+            const payload = { name, nameAr, nationality, role, branch, phone, shift, housingType, joinDate, qidNumber, qidExpiry, passportNumber, canSubmitSalesReport, isSupervisor, business };
+            const uploadedLabels = [];
+            for (const f of PROFILE_FILE_FIELDS) {
+                const el = document.getElementById(f.input);
+                // لا ملفَّ جديدًا ⇒ لا يُضاف الحقلُ للحمولة ⇒ المحفوظُ لا يُمَسّ.
+                if (!el || !el.files || !el.files[0]) continue;
+                payload[f.field] = await readFileIfPresent(el, "");
+                uploadedLabels.push(f.label);
+            }
             // Salary / OT rate are only ever sent for Accountants — Secretaries
             // never include these fields in the update at all, and
             // firestore.rules independently rejects them server-side too if a
@@ -19700,15 +19835,28 @@
                 logAudit("Joining Date Changed",
                     `${name}: ${joinBefore || '(none)'} -> ${joinDate || '(none)'}`);
             }
-            statusEl.innerText = pinCancelled
+            // ⭐⭐ رفعُ مستندٍ يُسجَّل في سجلّ التدقيق: صورةُ بطاقةٍ استُبدلت
+            //   بالخطأ يجب أن يُعرف متى ومَن، وهذا العطلُ بعينه وقع فعلًا.
+            if (uploadedLabels.length) {
+                logAudit("Employee Document Uploaded",
+                    `${name} (${originalId}): ${uploadedLabels.join(', ')}`);
+            }
+            statusEl.innerText = (pinCancelled
                 ? "Changes saved. The PIN change was cancelled — the current PIN was kept."
-                : "Changes saved successfully!";
+                : "Changes saved successfully!")
+                + (uploadedLabels.length ? ` Uploaded: ${uploadedLabels.join(', ')}.` : "");
             statusEl.style.color = "var(--success)";
             // ⭐ إن كنّا نعرضُ الـPIN لهذا الدور، أعِد تحميلَ سطر «Current» بعد
             //   الحفظ حتى يظهرَ الرقمُ الجديدُ (لا يبقى القديمُ على الشاشة).
             if (pin && !pinCancelled) {
                 loadCurrentPinDisplay(originalId);
             }
+            // ⭐⭐⭐⭐⭐ تُفرَّغ خاناتُ الملفّات بعد الحفظ الناجح — الحرسُ الثالث.
+            // ⚠️⚠️ بلا هذا: تحفظ السكرتيرةُ البطاقةَ، ثمّ تُعدّل الهاتفَ وتحفظ
+            //   مرّةً ثانية، فتُرفع نفسُ الصورةِ ثانيةً (نصفُ ميغابايت بلا داعٍ).
+            //   والأخطرُ أنّها لو أغلقت النافذةَ وفتحت موظفًا آخرَ بطريقٍ لا يمرّ
+            //   على openProfileModal لبقي الملفُّ معلّقًا — فالتفريغُ هنا وهناك.
+            resetProfileFileInputs(originalId);
             await loadEmployees();
         } catch (error) {
             statusEl.innerText = "Error: " + error.message;
