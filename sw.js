@@ -23,11 +23,12 @@
 
 'use strict';
 
+// v159: عرضُ الـPIN المسجَّل للمالك والسكرتيرة، ورسالةُ تأكيدٍ قبل تغييره.
 // v4: أُلزم جلب HTML بالتحقق من الخادم (no-cache) لأن كاش المتصفح كان يُخفي
 // تبويبًا جديدًا بعد نشره. v3: أُزيل التحويل التلقائي من report.html (كان يُبطل تثبيت تطبيق المديرين على
 // iOS)، ويجب إبطال
 // الكاش القديم حتى لا يبقى من ثبّت التطبيق سابقًا على النسخة القديمة.
-const CACHE_VERSION = 'v158';
+const CACHE_VERSION = 'v159';
 const SHELL_CACHE = `alsheikha-shell-${CACHE_VERSION}`;
 const ASSET_CACHE = `alsheikha-assets-${CACHE_VERSION}`;
 

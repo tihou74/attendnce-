@@ -4136,7 +4136,21 @@
                 <select id="editEmpBranch"></select>
             </div>
             <div><label>WhatsApp Phone</label><input type="text" id="editEmpPhone" placeholder="+974..."></div>
-            <div><label>PIN Code</label><input type="text" id="editEmpPin" placeholder="Leave blank to keep current PIN"></div>
+            <!-- ⭐⭐⭐⭐ عرضُ الـPIN المسجَّل — قرار المالك الصريح: تراه السكرتيرةُ
+                 والمالكُ فقط، لا المحاسبُ ولا المشرف. سطر «Current: 1234» يظهر
+                 فوق خانة الإدخال، والخانةُ نفسُها تبقى فارغةً بمعنى «اترك بلا
+                 تغيير». المصدرُ الحقيقيُّ لل PIN هو `employee_pins/{empId}` لا
+                 قائمةُ الموظفين الحيّة، فيُقرأ من هناك عند فتح الملف.
+                 ⚠️⚠️⚠️ حرسُ عرضٍ لا حرسُ قاعدة: قواعدُ Firestore ما زالت تسمح
+                 لأي دورٍ من isStaff أن يقرأ الرقم لو ناداه من الطرفية. هذا
+                 يُخفي ما هو معروضٌ للعين وحدَه، لا أكثر. -->
+            <div><label>PIN Code</label>
+                <div id="editEmpCurrentPinRow" style="display: none; margin: 3px 0 6px 0; color: var(--text-dim); font-size: 11.5px;">
+                    Current PIN:
+                    <code id="editEmpCurrentPin" style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; font-weight: 600; color: var(--primary); background: var(--surface-2); padding: 1px 8px; border-radius: 4px; letter-spacing: 1.5px; margin-inline-start: 4px;">&mdash;</code>
+                </div>
+                <input type="text" id="editEmpPin" placeholder="Leave blank to keep current PIN">
+            </div>
             <!-- تاريخ الالتحاق — تغييره يُعيد حساب الرواتب والغياب والإجازة -->
             <div><label for="editEmpJoinDate" title="First working day — payroll, absence and annual-leave eligibility all start from this date">Joining Date</label>
                 <input type="date" id="editEmpJoinDate">
@@ -5388,6 +5402,29 @@
     function canEditProfiles() {
         return currentRole === ROLE_ADMIN || currentRole === ROLE_SECRETARY
             || currentRole === ROLE_SUPERVISOR || currentRole === ROLE_ACCOUNTANT;
+    }
+    /**
+     * ⭐⭐⭐⭐ من يرى الـPIN المسجَّل في ملفّ الموظف؟ المالكُ والسكرتيرةُ فقط.
+     *
+     * ⚠️⚠️⚠️ قرار المالك الصريح: «دع السكرتيرة ترى، والمحاسب لا شغلهم».
+     *   والمشرف لم يُذكر في القرار، فيُعامَل هنا مثل المحاسب (لا يرى) — إن
+     *   قرّر المالكُ لاحقًا فتحَ الرؤية للمشرف فإضافةُ ROLE_SUPERVISOR هنا
+     *   سطرٌ واحد. الافتراضُ عند الغموض هو **الإخفاءُ** لا الإظهارُ، لأن
+     *   صلاحيةَ الرؤية تُمنح بالخطأ ولا تُستعاد.
+     *
+     * ⚠️⚠️ هذا حرسُ عرضٍ لا حرسُ قاعدة: قواعدُ Firestore الحالية تُتيح لأي
+     *   دورٍ من isStaff (المحاسب، المشرف، والقارئ) قراءةَ `employee_pins`
+     *   لو ناداها من الطرفية. لتشديدِ الحرس في قاعدة البيانات نفسها، يجب
+     *   تعديلُ `firestore.rules` ورفعُ RULES REVISION ونشرُها من Firebase
+     *   Console — طلبٌ منفصلٌ لم يُطلَب هنا. الملاحظةُ مسجَّلةٌ في
+     *   `.kiro/steering/security-model.md`: «إخفاء تبويب لا يحمي شيئًا».
+     *
+     * ⚠️ ولا علاقةَ لهذا بمن يستطيع **تغييرَ** الـPIN — كلُّ من يستطيع تعديل
+     *   الملفّ (canEditProfiles) يستطيع الكتابةَ فوقه كما كان. القرارُ عن
+     *   الرؤية فقط.
+     */
+    function canSeeEmployeePin() {
+        return currentRole === ROLE_ADMIN || currentRole === ROLE_SECRETARY;
     }
     /** إنشاء موظف جديد — تحتاجه السكرتيرة والمشرفون لقبول طلب تسجيل. */
     function canCreateEmployees() {
@@ -19158,6 +19195,58 @@
         }
     };
 
+    /**
+     * ⭐⭐⭐⭐ ذاكرةُ الـPIN المعروض — تُستعمل في مكانين ولا يجوز افتراقُهما:
+     *   (١) سطرُ العرض فوق الخانة عند فتح الملف.
+     *   (٢) رسالةُ التأكيد قبل الكتابة (من X إلى Y) — بحيث لا يُعاد جلبُه
+     *       بقراءةٍ ثانيةٍ من الشبكة في اللحظة الحرجة.
+     *
+     * ⚠️⚠️ الـempId مخزّنٌ صراحةً لا اسمُ الموظف: المستخدمُ قد يفتح ملفَ زيدٍ
+     *   ثم عمروٍ ثم زيدٍ في ثوانٍ، فيرجع طلبُ زيدٍ الأولُ **بعد** فتحِ ملفّ
+     *   عمروٍ. الفحصُ الصارمُ هو ما يمنع إظهارَ رقمِ زيدٍ في ملفّ عمرو
+     *   (كارثةٌ صامتةٌ تسبّبُ الوقوع على الموظف الخطأ).
+     * ⚠️ فارغٌ افتراضًا، ويُصفَّر عمدًا عند كلّ فتحِ ملفٍّ لتجنّب بقاءِ قيمةٍ
+     *   من ملفٍّ سابق.
+     */
+    let _pinDisplayedForId = null;
+    let _pinDisplayedValue = null;
+
+    async function loadCurrentPinDisplay(empId) {
+        const row = document.getElementById("editEmpCurrentPinRow");
+        const cell = document.getElementById("editEmpCurrentPin");
+        if (!row || !cell) return;
+        // إخفاءٌ فوريّ + تصفيرُ الذاكرة قبل أيّ قراءةٍ من الشبكة، حتى لا يظهر
+        // رقمٌ قديمٌ حتى للحظة.
+        row.style.display = "none";
+        cell.innerHTML = "&mdash;";
+        _pinDisplayedForId = null;
+        _pinDisplayedValue = null;
+        // الدورُ لا يرى → لا نجلبُ ولا نعرض، انتهى.
+        if (!canSeeEmployeePin()) return;
+        try {
+            const ps = await getDoc(doc(db, "employee_pins", empId));
+            // ⚠️⚠️⚠️ الحمايةُ من السباق: لو فتح المستخدمُ ملفًّا آخرَ في هذه
+            //   الأثناء، فمعرّفُ الملفّ الحيّ لم يعد empId، فلا نُظهر رقمَه.
+            const liveId = (document.getElementById("editEmpOriginalId") || {}).value || "";
+            if (liveId !== empId) return;
+            const val = ps.exists() ? String(ps.data().pin || "") : "";
+            if (val) {
+                cell.textContent = val;
+                _pinDisplayedForId = empId;
+                _pinDisplayedValue = val;
+            } else {
+                cell.innerHTML = "<em style=\"font-style: italic; letter-spacing: 0; color: var(--warning);\">not set</em>";
+                _pinDisplayedForId = empId;
+                _pinDisplayedValue = "";
+            }
+            row.style.display = "block";
+        } catch (e) {
+            // فشلُ القراءة (شبكةٌ ساقطةٌ أو صلاحيةٌ منقوصةٌ لم تُنشر بعد)
+            // لا يُخرّبُ فتحَ الملفّ — يخفي السطرَ فقط.
+            row.style.display = "none";
+        }
+    }
+
     window.openProfileModal = async function(empId) {
         document.getElementById("profileModal").style.display = "flex";
         document.getElementById("editEmpOriginalId").value = empId;
@@ -19188,6 +19277,9 @@
             brSel.value = curBranch || "HEAD OFFICE";
             document.getElementById("editEmpPhone").value = emp.phone || "";
             document.getElementById("editEmpPin").value = "";
+            // ⭐ عرضُ الـPIN الحاليّ فوق خانة الإدخال (للمالك والسكرتيرة فقط).
+            // يُصفَّر أوّلًا ثم يُملأ بعد قراءةٍ آمنةٍ من `employee_pins`.
+            loadCurrentPinDisplay(empId);
             // ⭐⭐ بطاقةُ رسالة الواتساب تُصفَّر وتُبنى لهذا الموظف بعينه.
             // ⚠️⚠️ والتصفيرُ إلزامي: بلا سطر resetEmpMessage تبقى ملاحظةٌ كتبتها
             // السكرتيرة لموظفٍ سابقٍ في الخانة، فتُرسل إلى **الموظف الخطأ** بضغطةٍ
@@ -19495,6 +19587,51 @@
             )) { statusEl.innerText = "Cancelled — nothing was saved."; statusEl.style.color = "var(--warning)"; return; }
         }
 
+        // ⭐⭐⭐⭐⭐ تأكيدُ تغيير الـPIN — قرار المالك الصريح: «إذا أردتَ تغييرَه
+        // يجب أن تأتي رسالةٌ: هل أنت متأكد؟». والسببُ: خطأٌ في رقمٍ واحدٍ (1234
+        // بدل 1324) يمنع الموظفَ من الحضور حتى يُصلَح، وقفلَ المحاولاتِ الخمسِ
+        // يبدأ من أوّل ضغطة.
+        //
+        // ⚠️⚠️ منطقُ الرسالة:
+        //   • الخانةُ فارغةٌ  → لا رسالة، لا تغيير.
+        //   • للمالك/السكرتيرة الذين رأوا الرقمَ الحاليَّ في السطر أعلاه: نُظهر
+        //     «من X إلى Y» صراحةً — والقيمةُ من ذاكرةِ الفتح لا قراءةٌ ثانيةٌ
+        //     من الشبكة (الشبكةُ قد تتأخر، وسؤالٌ يعرض «...» تحته أسوأُ من لا شيء).
+        //   • للمشرف والمحاسب (لا يرى الحاليَّ): نسأل عن الجديد فقط بلا كشفِ
+        //     القديم — إخفاءُ العرض لا يُنتقض في رسالة التأكيد.
+        //   • القيمةُ الجديدةُ تطابق الحاليةَ (وقد رأيناها): لا رسالة، ولا كتابة.
+        //
+        // ⚠️⚠️⚠️ سلوكُ الإلغاء: إلغاءُ تغيير الـPIN **لا** يُلغي بقيّة التعديلات.
+        //   المستخدمُ ضغط «حفظ» بقصدٍ صريح، وأدخل PIN بالخطأ (أو بدّل رأيَه)
+        //   — يجب أن يحتفظَ براتبِه الجديدِ وهاتفِه الجديد. تُصفَّر خانةُ الـPIN
+        //   فيَعمل مسارُ «اترك فارغًا للإبقاء» تلقائيًّا، ويُقال ذلك في الحالة.
+        let pinCancelled = false;
+        if (pin) {
+            const nm = empBefore.name || originalId;
+            const oldKnown = canSeeEmployeePin()
+                && _pinDisplayedForId === originalId
+                && _pinDisplayedValue !== null;
+            if (oldKnown && _pinDisplayedValue === pin) {
+                // نفسُ الرقم — لا تغيير حقيقيّ، نُصفّر الخانةَ ونصمُت.
+                document.getElementById("editEmpPin").value = "";
+                // لا نضبط pinCancelled: pin سيبقى قيمتَه الحاليةَ فيتفرّع الكتابةُ
+                // إلى الفرع الآخر بلا رسالة. للوضوح نُنقل إلى المسار «اتركه فارغًا»:
+                // نستبدل قيمة pin عبر إعادة القراءة من الحقل.
+                // JavaScript let لا يُعاد إسنادُه هنا لأنه const — نستعمل علامةً بدلًا.
+                pinCancelled = true; // الفرعُ الكتابيُّ يُعامله كأنه لم يُدخل شيئًا
+            } else {
+                const msg = oldKnown
+                    ? `Change ${nm}'s PIN from ${_pinDisplayedValue || '(not set)'} to ${pin}?\n\n`
+                      + `The old PIN stops working the moment you press OK. Cancel keeps the current PIN.`
+                    : `Change ${nm}'s PIN to ${pin}?\n\n`
+                      + `The old PIN stops working the moment you press OK. Cancel keeps the current PIN.`;
+                if (!confirm(msg)) {
+                    pinCancelled = true;
+                    document.getElementById("editEmpPin").value = "";
+                }
+            }
+        }
+
         // تغيير تاريخ الالتحاق يُعيد حساب كل شهر — لا يُمرَّر بصمت.
         const joinBefore = empBefore.joinDate ? String(empBefore.joinDate) : '';
         const joinChanged = joinDate !== joinBefore;
@@ -19545,8 +19682,15 @@
             }
 
             await updateDoc(doc(db, "employees", originalId), payload);
-            if (pin) {
+            // ⚠️⚠️ pinCancelled = المستخدمُ اختار «إلغاء» في رسالة تأكيد الـPIN
+            //   أو أدخل نفسَ الرقم الحاليّ. المسارُ يُطابق «اتركه فارغًا للإبقاء»:
+            //   نكتب فقط تحديثَ الاسم (لأن `merge:true`) ولا نمسّ الرقمَ نفسَه.
+            if (pin && !pinCancelled) {
                 await setDoc(doc(db, "employee_pins", originalId), { pin, employeeName: name }, { merge: true });
+                // ⭐ تغييرُ الـPIN حدثٌ أمنيٌّ حقيقيّ — يُسجَّل بلا القيمِ نفسِها
+                //   (لا القديمُ ولا الجديد) لأنّ سجلَّ التدقيق يقرؤه دورٌ لا يرى
+                //   الـPIN. تسجيلُ الحقيقة، لا كشفُ السرّ.
+                logAudit("Employee PIN Changed", `${name} (${originalId})`);
             } else {
                 await setDoc(doc(db, "employee_pins", originalId), { employeeName: name }, { merge: true });
             }
@@ -19556,8 +19700,15 @@
                 logAudit("Joining Date Changed",
                     `${name}: ${joinBefore || '(none)'} -> ${joinDate || '(none)'}`);
             }
-            statusEl.innerText = "Changes saved successfully!";
+            statusEl.innerText = pinCancelled
+                ? "Changes saved. The PIN change was cancelled — the current PIN was kept."
+                : "Changes saved successfully!";
             statusEl.style.color = "var(--success)";
+            // ⭐ إن كنّا نعرضُ الـPIN لهذا الدور، أعِد تحميلَ سطر «Current» بعد
+            //   الحفظ حتى يظهرَ الرقمُ الجديدُ (لا يبقى القديمُ على الشاشة).
+            if (pin && !pinCancelled) {
+                loadCurrentPinDisplay(originalId);
+            }
             await loadEmployees();
         } catch (error) {
             statusEl.innerText = "Error: " + error.message;
