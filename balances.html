@@ -442,6 +442,70 @@
         line-height: 1.8; margin: var(--space-4) 0 0;
     }
 
+    /* =====================================================================
+       شاشةُ الترحيب بالبضاعة الجديدة — كحليٌّ وذهب
+       ---------------------------------------------------------------------
+       ⚠️ «سوداء» = `--ink-900` أغمقُ أسطحِ الهوية، لا أسودَ خامًّا.
+       ⚠️ والذهبُ نصًّا **لا يجوز إلّا على الكحلي**: على الأبيض 3.08:1 ويرسب.
+          وهنا `--gold-400` على #0B1226 = 8.63:1 — الاقترانُ الموثَّق في الورقة.
+       ⚠️ ولا تدرّجَ ولا لمعان: الاتجاهُ Swiss، والحضورُ من اللونِ لا من الحيلة.
+       ===================================================================== */
+    .nw {
+        position: fixed; inset: 0; z-index: 120;
+        display: flex; align-items: center; justify-content: center; padding: var(--space-5);
+        background: var(--ink-900, #0B1226);
+    }
+    .nwbox {
+        width: 100%; max-width: 460px; text-align: center;
+        padding: var(--space-6) var(--space-5);
+    }
+    /* الشعارُ على إطارٍ فاتحٍ دائمًا: ملفُّه بخلفيةٍ بيضاءَ لا شفّافة، فعلى
+       الكحليِّ مباشرةً يظهر مربّعًا أبيضَ قاسيًا. فيُوضع في قرصٍ بحدٍّ ذهبيّ. */
+    .nwlogo {
+        width: 92px; height: 92px; object-fit: contain; display: block; margin: 0 auto;
+        background: var(--cream-50, #FDFBF6); border-radius: 50%;
+        border: 2px solid var(--gold-600, #A89060); padding: 10px;
+    }
+    .nwhello {
+        margin: var(--space-5) 0 0; font-size: var(--text-sm); font-weight: 700;
+        letter-spacing: .04em; color: var(--gold-600, #A89060);
+        line-height: var(--leading-arabic, 1.85);
+    }
+    /* ⭐ سطرُ الترحيب الذهبيُّ — هو المقصودُ بـ«الخط الذهبي» */
+    .nwtitle {
+        margin: var(--space-2) 0 0; font-size: var(--text-2xl); font-weight: 800;
+        color: var(--gold-400, #CAAD73);            /* 8.63:1 على الكحليّ */
+        line-height: var(--leading-arabic, 1.85);
+    }
+    .nwmsg {
+        margin: var(--space-4) 0 0; font-size: var(--text-base);
+        color: var(--dark-text, #E8EDF6); line-height: var(--leading-arabic, 1.85);
+    }
+    .nwmsg b { color: var(--gold-400, #CAAD73); font-family: var(--font-mono); }
+    /* الإنجليزيةُ تحت العربية — عُرفُ المشروع، وبإيقاعِ السطر اللاتينيّ */
+    .nwmsgen {
+        margin: var(--space-4) 0 0; font-size: var(--text-sm);
+        color: var(--dark-text-dim, #9FB0CA); line-height: var(--leading-normal, 1.55);
+    }
+    .nwacts { margin-top: var(--space-6); display: flex; flex-direction: column; gap: var(--space-3); }
+    /* ⚠️ الزرُّ الأساسيُّ **ذهبيٌّ بنصٍّ كحليّ**: الأبيضُ على الذهب 3.08:1 ويرسب،
+       والكحليُّ عليه 5.80:1 — وهذه قاعدةٌ مكتوبةٌ في الهوية لا اختيار. */
+    .nwgo {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-height: 50px; padding: 0 var(--space-5); border-radius: var(--radius-md);
+        background: var(--gold-600, #A89060); color: var(--ink-800, #0F172A);
+        font-size: var(--text-base); font-weight: 800; text-decoration: none;
+        font-family: inherit;
+    }
+    .nwgo:hover { background: var(--gold-500, #B99E6A); }
+    .nwlater {
+        min-height: 44px; width: 100%; border-radius: var(--radius-md);
+        background: transparent; color: var(--dark-text-dim, #9FB0CA);
+        border: var(--border-hairline, 1px) solid var(--dark-border, #24314B);
+        font-size: var(--text-sm); font-weight: 700; cursor: pointer; font-family: inherit;
+    }
+    .nwlater:hover { color: var(--dark-text, #E8EDF6); border-color: var(--gold-600, #A89060); }
+
     .hidden { display: none !important; }
 </style>
 </head>
@@ -455,6 +519,45 @@
             <p>Restaurants &amp; Abaya &mdash; view only</p>
         </div>
     </header>
+
+    <!-- ==================================================================
+         ⭐⭐⭐⭐⭐ شاشةُ الترحيب — «هناك بضاعةٌ جديدةٌ وصلت»
+         ------------------------------------------------------------------
+         بطلب المالك: «عندما تكون بضاعةٌ جديدة وتدخل فاطمة إلى البانل، أوّلَ ما
+         تدخل تكون شاشةٌ سوداء واللوقو شيخة ستايل ورسالةٌ مكتوبةٌ بالخط الذهبي:
+         أهلًا وسهلًا السيدة فاطمة، هناك بضاعةٌ جديدةٌ وصلت، يُرجى منك وضعُ السعر
+         وإرسالُها إلى المتاجر — بكلِّ لباقة».
+
+         ⚠️ «سوداء» بلغة الهوية هي `--ink-900` #0B1226 أغمقُ أسطحِها، لا أسودَ
+         خامًّا: الأسودُ الخامُّ ليس في السلّم، والذهبُ عليه يفقد دفأه. والذهبُ
+         نصًّا على الكحلي هو الاقترانُ الموثَّق في ورقة التوكنز — قِستُه: ذهب
+         `--gold-400` على #0B1226 = **8.63:1**، والأبيضُ الثانويُّ 18.60:1.
+
+         ⚠️⚠️ ولا تظهر إلّا إذا كان هناك **عملٌ فعليٌّ ينتظرها**: صفرُ شحناتٍ
+         منتظرةٍ = لا شاشة. وترحيبٌ يُقال كلَّ مرّةٍ بلا سببٍ يصير ضجيجًا يُغلق
+         بلا قراءة، فتُفقد قيمتُه يوم يكون فيه بضاعةٌ حقًّا.
+
+         ⚠️⚠️⚠️ والاسمُ يُنادى بالاسم **لصاحبته وحدَها**: هذه الصفحة يفتحها
+         المالكُ بحسابه الثاني وتفتحها السيدة فاطمة. ومناداةُ المالكِ «السيدة
+         فاطمة» خطأٌ لا يُحتمل، فالتحيّةُ تُبنى على الإيميل: باسمها لها، وترحيبٌ
+         محترمٌ محايدٌ لغيرها.
+
+         ⚠️ ولا تحبسها: زرٌّ يأخذها إلى البضاعة مباشرةً، وزرٌّ «لاحقًا» يُغلق.
+         وتُغلق بـEscape وبالضغط خارج الصندوق كبقيّة نوافذ المشروع.
+         ================================================================== -->
+    <div id="newsWelcome" class="nw hidden" role="dialog" aria-modal="true" aria-labelledby="nwTitle">
+        <div class="nwbox" id="nwBox">
+            <img class="nwlogo" id="nwLogo" src="./brand/al-sheikha-style-logo.png" alt="Al Sheikha Style">
+            <p class="nwhello" id="nwHello" dir="rtl">&mdash;</p>
+            <h2 class="nwtitle" id="nwTitle" dir="rtl">&mdash;</h2>
+            <p class="nwmsg" id="nwMsg" dir="rtl">&mdash;</p>
+            <p class="nwmsgen" id="nwMsgEn">&mdash;</p>
+            <div class="nwacts">
+                <a class="nwgo" id="nwGo" href="./abaya-balances.html?view=arrivals">&#10148;&nbsp; <span id="nwGoLabel">Go to the new goods</span></a>
+                <button type="button" class="nwlater" id="nwLater">Later &mdash; لاحقًا</button>
+            </div>
+        </div>
+    </div>
 
     <!-- تسجيل الدخول -->
     <div class="panel" id="loginPanel">
@@ -1874,6 +1977,9 @@
             // showBiz('') تُنادي showView('') بنفسها، فتُصفَّر المستويان.
             showBiz('');
             loadAll();
+            // ⭐ شاشةُ «وصلت بضاعةٌ جديدة» — تُفحَص مرّةً لكلِّ دخولٍ لا كلَّ دقيقة.
+            newsWelcomeShown = false;
+            maybeShowNewsWelcome();
             if (timer) clearInterval(timer);
             timer = setInterval(refreshShown, AUTO_REFRESH_MS);
         } else {
@@ -1883,6 +1989,89 @@
             el('pass').value = '';
         }
     });
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ «أهلًا وسهلًا… هناك بضاعةٌ جديدةٌ وصلت»
+    // ---------------------------------------------------------------------
+    // بطلب المالك حرفيًّا. والشرطُ الجوهريُّ أنّها لا تظهر إلّا إذا كان هناك
+    // **عملٌ فعليٌّ ينتظرها** — ترحيبٌ يُقال بلا سببٍ يصير ضجيجًا يُغلق بلا
+    // قراءة، فيُفقد قيمتَه يوم يكون فيه بضاعةٌ حقًّا.
+    // =====================================================================
+
+    /** الإيميلُ الذي تُنادى صاحبتُه باسمها — مطابقٌ لقائمة isViewer في القواعد. */
+    const NEWS_FATIMA_EMAIL = 'fatima.alrumaihi@alsheikhagroup.qa';
+    /** حالةُ شحنةٍ لم تُرسَل — نصٌّ مطابقٌ لما في admin.html وabaya-balances.html. */
+    const NEWS_ARRIVAL_WAITING = 'waiting';
+    let newsWelcomeShown = false;
+
+    function newsCloseWelcome() {
+        el('newsWelcome').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    /**
+     * ⚠️ تُقرأ `abaya_arrivals` بلا orderBy — نفسُ درسِ المشروع: فايرستور يُسقط
+     *   بصمتٍ كلَّ مستندٍ لا يحمل الحقلَ المرتَّبَ به، فشحنةٌ بلا تاريخٍ تختفي.
+     * ⚠️⚠️ والفشلُ **صامتٌ عن قصد**: هذه شاشةُ ترحيبٍ لا وظيفةٌ. لو تعذّرت
+     *   القراءة (قاعدةٌ لم تُنشر، أو شبكةٌ) فالصحيحُ ألّا تظهر شاشةٌ أصلًا، لا
+     *   أن تُرمى السيدةُ فاطمة برسالةِ خطأٍ أوّلَ ما تدخل. والعدُّ على زرِّ
+     *   «وصل حديثًا» داخل لوحة العبايات يبقى الطريقَ الثاني الذي لا يعتمد عليها.
+     */
+    async function maybeShowNewsWelcome() {
+        if (newsWelcomeShown) return;
+        newsWelcomeShown = true;                 // محاولةٌ واحدةٌ لكلِّ دخول
+        let waiting = 0;
+        try {
+            const snap = await getDocs(collection(db, 'abaya_arrivals'));
+            snap.forEach(d => {
+                const v = d.data() || {};
+                // أيُّ قيمةٍ غير 'sent' تُقرأ «في الانتظار» — فشحنةٌ لم تُرسل
+                // تُذكَر، وهو الأسلمُ من إغفال شيءٍ في المستودع.
+                if (v.status !== 'sent') waiting++;
+            });
+        } catch (e) {
+            return;                              // صامتٌ — انظر الملاحظة أعلاه
+        }
+        if (waiting <= 0) return;                // لا عملَ ينتظرها ⇒ لا شاشة
+
+        const email = String((auth.currentUser && auth.currentUser.email) || '').trim().toLowerCase();
+        const isFatima = email === NEWS_FATIMA_EMAIL;
+        // ⚠️ المناداةُ بالاسم لصاحبتِه وحدَها: هذه الصفحةَ يفتحها المالكُ بحسابه
+        //   الثاني، ومناداتُه «السيدة فاطمة» خطأٌ لا يُحتمل.
+        el('nwHello').textContent = isFatima ? 'أهلًا وسهلًا السيدة فاطمة' : 'أهلًا وسهلًا';
+        el('nwTitle').textContent = waiting === 1
+            ? 'هناك بضاعةٌ جديدةٌ وصلت'
+            : `هناك ${waiting} شحناتٍ جديدةٌ وصلت`;
+        // ⚠️ نصُّ المالك بلباقته كما طلب — ولا أمرَ فيه، بل رجاءٌ وشكر.
+        el('nwMsg').innerHTML = isFatima
+            ? `يُرجى منكِ التكرُّمُ بوضعِ سعرِ البيع وإرسالِها إلى المتاجر، `
+              + `وذلك في نافذة <b>«وصل حديثًا»</b>.<br>ولكِ جزيلُ الشكر.`
+            : `يُرجى وضعُ سعرِ البيع وإرسالُها إلى المتاجر، `
+              + `وذلك في نافذة <b>«وصل حديثًا»</b>.<br>وجزيلُ الشكر.`;
+        el('nwMsgEn').textContent = waiting === 1
+            ? 'One new shipment has arrived and is waiting for a selling price and a shop.'
+            : `${waiting} new shipments have arrived and are waiting for a selling price and a shop.`;
+        el('nwGoLabel').textContent = waiting === 1
+            ? 'Go to the new goods' : `Go to the ${waiting} new shipments`;
+
+        el('newsWelcome').classList.remove('hidden');
+        // ⚠️ يُحبس تمريرُ الصفحة تحت الشاشة، ويُعاد عند الإغلاق — نسيانُ الإرجاع
+        //   يترك الصفحةَ **لا تتمرّر** بعدها، وهو عطلٌ سبق في هذا المشروع.
+        document.body.style.overflow = 'hidden';
+        el('nwLater').focus();
+    }
+
+    el('nwLater').addEventListener('click', newsCloseWelcome);
+    // الضغطُ خارج الصندوق يُغلق — كبقيّة نوافذ المشروع
+    el('newsWelcome').addEventListener('click', (ev) => {
+        if (!ev.target.closest('#nwBox')) newsCloseWelcome();
+    });
+    // وEscape كذلك: نافذةٌ لا تُغلق إلّا بزرٍّ صغيرٍ تحبس القارئ على الهاتف
+    document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape' && !el('newsWelcome').classList.contains('hidden')) newsCloseWelcome();
+    });
+    // ⚠️ الشعارُ إن غاب ملفُّه يُخفى: صورةٌ مكسورةٌ وسطَ شاشةِ ترحيبٍ أسوأُ من لا شعار.
+    el('nwLogo').addEventListener('error', () => { el('nwLogo').style.display = 'none'; });
 
     // إعادة الحساب عند العودة إلى الصفحة، فالوقت تقدّم وقد تكون مبيعات دخلت.
     document.addEventListener('visibilitychange', () => {
