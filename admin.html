@@ -2858,6 +2858,11 @@
                 <div style="flex: 1; min-width: 220px;"><label for="acName">Name / model</label>
                     <input type="text" id="acName" placeholder="e.g. Black crepe, silver embroidery" autocomplete="off">
                 </div>
+                <!-- ⭐⭐⭐ «السيز المتوفر» — تُملأ تلقائيًّا من الشحنة عند إرسالها،
+                     وتبقى هنا لتصحيحها: المقاسُ ينفد قبل نفاد التصميم كلِّه. -->
+                <div style="width: 180px;"><label for="acSize">Sizes available</label>
+                    <input type="text" id="acSize" maxlength="60" placeholder="e.g. 54, 56, 58" autocomplete="off">
+                </div>
                 <div style="width: 150px;"><label for="acCost">Cost (QAR)</label>
                     <input type="number" id="acCost" step="1" min="0" placeholder="0">
                 </div>
@@ -2923,6 +2928,7 @@
                             <th>Picture</th>
                             <th>Barcode</th>
                             <th>Name</th>
+                            <th>Sizes</th>
                             <th class="money-col money-only">Cost</th>
                             <th class="money-col">Price</th>
                             <th class="money-col">After discount</th>
@@ -2932,7 +2938,7 @@
                             <th></th>
                         </tr>
                     </thead>
-                    <tbody id="acBody"><tr><td colspan="10" style="text-align:center;">Loading...</td></tr></tbody>
+                    <tbody id="acBody"><tr><td colspan="11" style="text-align:center;">Loading...</td></tr></tbody>
                     <tfoot id="acFoot"></tfoot>
                 </table>
             </div>
@@ -3037,6 +3043,14 @@
                 </div>
                 <div style="width: 180px;"><label for="arvType">What is it <span style="color: var(--danger);">*</span></label>
                     <select id="arvType"></select>
+                </div>
+                <!-- ⭐⭐⭐ «السيز المتوفر» بطلب المالك. نصٌّ حرٌّ لا قائمةٌ مغلقة:
+                     المقاسُ يُكتب بالأرقام (54·56·58) أو بالحروف (S·M·L) أو
+                     «مقاسٌ واحد»، وقائمةٌ أخترعها أنا ستمنع مقاسًا حقيقيًّا يومًا.
+                     ⚠️ ويُنقل إلى سطر الكتالوج فتقرؤه البياعةُ على شاشتها — وهو
+                     أوّلُ ما تسأل عنه الزبونة. -->
+                <div style="width: 190px;"><label for="arvSize">Sizes available</label>
+                    <input type="text" id="arvSize" maxlength="60" placeholder="e.g. 54, 56, 58" autocomplete="off">
                 </div>
                 <div style="width: 200px;"><label for="arvSupplier">Supplier</label>
                     <input type="text" id="arvSupplier" placeholder="Who sent it" autocomplete="off">
@@ -3146,6 +3160,7 @@
                             <th>Barcode</th>
                             <th>Name</th>
                             <th>What</th>
+                            <th>Sizes</th>
                             <th>Supplier</th>
                             <th class="money-col">Pieces</th>
                             <th class="money-col money-only">USD</th>
@@ -3156,7 +3171,7 @@
                             <th></th>
                         </tr>
                     </thead>
-                    <tbody id="arvBody"><tr><td colspan="12" style="text-align:center;">Loading...</td></tr></tbody>
+                    <tbody id="arvBody"><tr><td colspan="13" style="text-align:center;">Loading...</td></tr></tbody>
                     <tfoot id="arvFoot"></tfoot>
                 </table>
             </div>
@@ -12659,6 +12674,17 @@
     const ABAYA_PHOTO_MAX_BYTES = 160 * 1024;
     // حدُّ الباركود: طولٌ معقول يمنع معرّف مستندٍ مشوّهًا.
     const ABAYA_CODE_MAX = 40;
+    /**
+     * ⭐⭐⭐ «السيز المتوفر» — حدُّ طولِ خانة المقاسات، بطلب المالك.
+     * ⚠️⚠️ ونصٌّ حرٌّ لا قائمةٌ مغلقة، وهذا قرارٌ مقصود: مقاساتُ العبايات في
+     *   الخليج تُكتب بالأرقام (54 · 56 · 58) وبعضُ القطع بحروفٍ (S · M · L)
+     *   وبعضُها «مقاسٌ واحد» وبعضُها بالطول (58 طويل). وقائمةٌ مغلقةٌ أخترعها
+     *   أنا ستمنع يومًا مقاسًا حقيقيًّا وصل فعلًا، فتُترك الخانةُ حرّةً ويُكتب
+     *   فيها ما هو موجودٌ في الشحنة.
+     * ⚠️ والمقاسُ **ليس سرًّا** بخلاف أرقام الشراء، فهو يُحفظ على مستند المنتج
+     *   نفسِه: البياعةُ تحتاجه لتقول للزبونة ما المتوفّر — وهذا كلُّ الغرض منه.
+     */
+    const ABAYA_SIZE_MAX = 60;
     // كم حركةً تُعرض. ⚠️ العدد المقروء يُقال على الشاشة كي لا يكون القصّ صامتًا.
     const ABAYA_MOVES_SHOWN = 200;
 
@@ -12837,7 +12863,7 @@
         if (!canSeeAbaya()) return;
         const body = document.getElementById('acBody');
         if (body && !abayaCatalogLoaded) {
-            body.innerHTML = `<tr><td colspan="10" style="text-align:center;">Loading...</td></tr>`;
+            body.innerHTML = `<tr><td colspan="11" style="text-align:center;">Loading...</td></tr>`;
         }
         try {
             const [prodSnap, costSnap, moveSnap, seasonSnap] = await Promise.all([
@@ -12858,6 +12884,7 @@
                     id: d.id,
                     code: String(v.code || d.id),
                     name: String(v.name || ''),
+                    size: String(v.size || ''),
                     cost: costById[d.id] || 0,
                     price: Number(v.price || 0) || 0,
                     discountPrice: Number(v.discountPrice || 0) || 0,
@@ -12879,7 +12906,7 @@
         } catch (e) {
             console.error('Error loading the abaya catalogue:', e);
             if (body) {
-                body.innerHTML = `<tr><td colspan="10" style="text-align:center; color: var(--danger);">`
+                body.innerHTML = `<tr><td colspan="11" style="text-align:center; color: var(--danger);">`
                     + `Error loading: ${escapeHtml(e.message)}`
                     + `<br><span style="font-weight:400; font-size:12px;">If it says "permission", the new rules have not been published yet.</span>`
                     + `</td></tr>`;
@@ -12985,7 +13012,7 @@
         const body = document.getElementById('acBody');
         if (body) {
             if (!rows.length) {
-                body.innerHTML = `<tr><td colspan="10" style="text-align:center;">`
+                body.innerHTML = `<tr><td colspan="11" style="text-align:center;">`
                     + (abayaProducts.length ? 'Nothing matches the search or the filters.' : 'No abaya yet.')
                     + `</td></tr>`;
             } else {
@@ -13005,6 +13032,7 @@
                               : `<span style="font-size:11.5px; color: var(--text-dim);">no picture</span>`}</td>`
                         + `<td style="font-family: monospace; direction: ltr;"><b>${escapeHtml(p.code)}</b></td>`
                         + `<td>${escapeHtml(p.name) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
+                        + `<td style="direction: ltr; white-space: nowrap;">${escapeHtml(p.size) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
                         + `<td class="money-col money-only">${money(p.cost)}</td>`
                         + `<td class="money-col"${disc && abayaDiscountSeason ? ' style="text-decoration: line-through; color: var(--text-dim);"' : ''}>${money(p.price)}</td>`
                         + `<td class="money-col">${disc ? `<b style="color: var(--success);">${money(p.discountPrice)}</b>` : '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
@@ -13024,7 +13052,7 @@
         const foot = document.getElementById('acFoot');
         if (foot) {
             foot.innerHTML = rows.length
-                ? `<tr><th colspan="3">Total of the ${rows.length} shown</th>`
+                ? `<tr><th colspan="4">Total of the ${rows.length} shown</th>`
                   + `<th class="money-col money-only">${money(rows.reduce((s, p) => s + countFor(p) * Number(p.cost || 0), 0))}</th>`
                   + `<th class="money-col">&mdash;</th><th class="money-col">&mdash;</th>`
                   + `<th>&mdash;</th>`
@@ -13171,7 +13199,7 @@
         acPendingPhoto = null;
         acPhotoCleared = false;
         const v = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
-        v('acCode', ''); v('acName', ''); v('acCost', ''); v('acPrice', ''); v('acDisc', '');
+        v('acCode', ''); v('acName', ''); v('acSize', ''); v('acCost', ''); v('acPrice', ''); v('acDisc', '');
         ABAYA_SHOPS.forEach(s => v('acQty_' + abayaShopKey(s), '0'));
         const act = document.getElementById('acActive'); if (act) act.checked = true;
         const code = document.getElementById('acCode'); if (code) code.disabled = false;
@@ -13191,6 +13219,7 @@
         const v = (eid, val) => { const el = document.getElementById(eid); if (el) el.value = val; };
         v('acCode', p.code);
         v('acName', p.name);
+        v('acSize', p.size || '');
         v('acCost', p.cost ? String(p.cost) : '');
         v('acPrice', p.price ? String(p.price) : '');
         v('acDisc', p.discountPrice ? String(p.discountPrice) : '');
@@ -13282,6 +13311,9 @@
             await setDoc(doc(db, ABAYA_PRODUCTS_COLL, id), {
                 code: codeToSave,
                 name, price,
+                // ⚠️ المقاسُ **ليس سرًّا**: البياعةُ تقرؤه لتقول للزبونة ما المتوفّر،
+                //   فهو على مستند المنتج بخلاف الكوست وأرقام الشراء.
+                size: String((document.getElementById('acSize') || {}).value || '').trim().slice(0, ABAYA_SIZE_MAX),
                 discountPrice: disc,
                 qty, active, hasImage,
                 updatedAt: serverTimestamp(),
@@ -13402,6 +13434,7 @@
             const r = {
                 'Barcode': p.code,
                 'Name': p.name,
+                'Sizes available': p.size,
                 'Cost': p.cost,
                 'Selling price': p.price,
                 'Price after discount': abayaHasDiscount(p) ? p.discountPrice : '',
@@ -13493,7 +13526,7 @@
         if (!canSeeAbaya()) return;
         const body = document.getElementById('arvBody');
         if (body && !abayaArrivalsLoaded) {
-            body.innerHTML = `<tr><td colspan="12" style="text-align:center;">Loading...</td></tr>`;
+            body.innerHTML = `<tr><td colspan="13" style="text-align:center;">Loading...</td></tr>`;
         }
         try {
             const snap = await getDocs(collection(db, ABAYA_ARRIVALS_COLL));
@@ -13506,6 +13539,7 @@
                     productId: String(v.productId || ''),
                     name: String(v.name || ''),
                     type: String(v.type || ''),
+                    size: String(v.size || ''),
                     supplier: String(v.supplier || ''),
                     unitUsd: Number(v.unitUsd || 0) || 0,
                     usdRate: Number(v.usdRate || 0) || 0,
@@ -13538,7 +13572,7 @@
         } catch (e) {
             console.error('Error loading the arrivals:', e);
             if (body) {
-                body.innerHTML = `<tr><td colspan="12" style="text-align:center; color: var(--danger);">`
+                body.innerHTML = `<tr><td colspan="13" style="text-align:center; color: var(--danger);">`
                     + `Error loading: ${escapeHtml(e.message)}`
                     + `<br><span style="font-weight:400; font-size:12px;">If it says "permission", the new rules have not been published yet.</span>`
                     + `</td></tr>`;
@@ -13598,7 +13632,7 @@
         const body = document.getElementById('arvBody');
         if (body) {
             if (!rows.length) {
-                body.innerHTML = `<tr><td colspan="12" style="text-align:center;">`
+                body.innerHTML = `<tr><td colspan="13" style="text-align:center;">`
                     + (abayaArrivals.length ? 'Nothing matches the search or the filters.' : 'No arrival recorded yet.')
                     + `</td></tr>`;
             } else {
@@ -13625,6 +13659,7 @@
                         + `<td style="font-family: monospace; direction: ltr;"><b>${escapeHtml(a.code)}</b></td>`
                         + `<td>${escapeHtml(a.name) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
                         + `<td>${escapeHtml(arrivalTypeLabel(a.type))}</td>`
+                        + `<td style="direction: ltr; white-space: nowrap;">${escapeHtml(a.size) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
                         + `<td>${escapeHtml(a.supplier) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
                         + `<td class="money-col"><b>${a.pieces}</b></td>`
                         + `<td class="money-col money-only">${a.unitUsd ? '$' + money(a.unitUsd) : '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
@@ -13643,7 +13678,7 @@
         const foot = document.getElementById('arvFoot');
         if (foot) {
             foot.innerHTML = rows.length
-                ? `<tr><th colspan="5">Total of the ${rows.length} shown</th>`
+                ? `<tr><th colspan="6">Total of the ${rows.length} shown</th>`
                   + `<th class="money-col">${rows.reduce((s, a) => s + a.pieces, 0)}</th>`
                   + `<th class="money-col money-only">&mdash;</th>`
                   + `<th class="money-col money-only">${money(rows.reduce((s, a) => s + Number(a.totalQar || 0), 0))}</th>`
@@ -13788,7 +13823,7 @@
         arvPendingPhoto = null;
         arvPhotoCleared = false;
         const v = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
-        v('arvCode', ''); v('arvName', ''); v('arvSupplier', '');
+        v('arvCode', ''); v('arvName', ''); v('arvSupplier', ''); v('arvSize', '');
         v('arvUsd', ''); v('arvQar', ''); v('arvPieces', '');
         v('arvShipping', ''); v('arvLabour', ''); v('arvSuggested', '');
         v('arvRate', String(ABAYA_USD_RATE_DEFAULT));
@@ -13824,6 +13859,7 @@
         v('arvCode', a.code);
         v('arvName', a.name);
         v('arvSupplier', a.supplier);
+        v('arvSize', a.size);
         v('arvUsd', a.unitUsd ? String(a.unitUsd) : '');
         v('arvRate', String(a.usdRate || ABAYA_USD_RATE_DEFAULT));
         v('arvQar', a.unitQar ? String(a.unitQar) : '');
@@ -13885,6 +13921,9 @@
                 productId,
                 name: g('arvName'),
                 type,
+                // ⚠️ يُقصّ عند الحدّ لا يُرفض: لصقٌ طويلٌ بالخطأ لا يجوز أن يمنع
+                //   تسجيلَ شحنةٍ وصلت فعلًا.
+                size: g('arvSize').slice(0, ABAYA_SIZE_MAX),
                 supplier: g('arvSupplier'),
                 unitUsd: Number(g('arvUsd')) || 0,
                 // ⚠️ السعرُ المستعملُ يُجمَّد على المستند: تغييرُه لاحقًا لا يُعيد
@@ -13997,6 +14036,7 @@
                 'Barcode': a.code,
                 'Name': a.name,
                 'What': arrivalTypeLabel(a.type),
+                'Sizes available': a.size,
                 'Supplier': a.supplier,
                 'Pieces': a.pieces,
                 'One piece USD': a.unitUsd || '',

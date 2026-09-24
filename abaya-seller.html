@@ -1629,6 +1629,7 @@
                     id: d.id,
                     code: String(v.code || d.id),
                     name: String(v.name || ''),
+                    size: String(v.size || ''),
                     price: Number(v.price || 0) || 0,
                     discountPrice: Number(v.discountPrice || 0) || 0,
                     qty: (v.qty && typeof v.qty === 'object') ? v.qty : {},
@@ -1673,6 +1674,8 @@
                 id: snap.id,
                 code: String(v.code || snap.id),
                 name: String(v.name || ''),
+                // ⭐ المقاسُ المتوفّر — أوّلُ ما تسأل عنه الزبونة، فيُقرأ ويُعرض.
+                size: String(v.size || ''),
                 price: Number(v.price || 0) || 0,
                 discountPrice: Number(v.discountPrice || 0) || 0,
                 qty: (v.qty && typeof v.qty === 'object') ? v.qty : {},
@@ -1692,7 +1695,9 @@
         el('cpList').classList.add('hidden');
         el('cpFound').classList.remove('hidden');
         el('cpFoundCode').innerText = p.code;
-        el('cpFoundName').innerText = p.name || '';
+        // ⚠️ المقاسُ مع الاسم في سطرٍ واحد: مساحةُ الشاشة ضيّقةٌ على الهاتف،
+        //   وسطرٌ ثالثٌ يدفع زرَّ التأكيد أسفلَ الشاشة.
+        el('cpFoundName').innerText = [p.name || '', p.size ? 'Sizes: ' + p.size : ''].filter(Boolean).join('  ·  ');
         const disc = cpSeasonOn && cpHasDiscount(p);
         el('cpFoundPrice').innerHTML = `${money(cpShownPrice(p))} QAR`
             + (disc ? `<span class="was">${money(p.price)}</span>` : '');
@@ -1744,7 +1749,10 @@
         const rows = cpProducts.filter(p => {
             if (cpQtyOf(p, state.shop) <= 0) return false;   // ما ليس في محلّها لا يُعرض
             if (!q) return true;
-            return String(p.code).toUpperCase().includes(q) || String(p.name).toUpperCase().includes(q);
+            // ⭐ والمقاسُ داخلٌ في البحث: الزبونةُ تسأل «عندكم 56؟» فتكتب 56.
+            return String(p.code).toUpperCase().includes(q)
+                || String(p.name).toUpperCase().includes(q)
+                || String(p.size || '').toUpperCase().includes(q);
         });
         if (!rows.length) {
             el('cpGrid').innerHTML = '';
@@ -1763,6 +1771,7 @@
                 + `<span class="tx">`
                 + `<span class="c">${escapeHtml(p.code)}</span>`
                 + `<span class="p">${money(cpShownPrice(p))} QAR${disc ? ' &#9733;' : ''}</span>`
+                + (p.size ? `<span class="q" dir="ltr">${escapeHtml(p.size)}</span>` : '')
                 + `<span class="q">${left} left</span>`
                 + `</span></button>`;
         }).join('');

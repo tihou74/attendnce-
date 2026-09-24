@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v16   (2026-09-24)  <<<
+//   >>>  RULES REVISION: v17   (2026-09-24)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -44,6 +44,18 @@ rules_version = '2';
 // exact mistake happened with the "(v4)" label, which never changed across
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
+//
+//  v17  2026-09-24  + SIZES AVAILABLE (خانة السيز المتوفر), requested right after
+//                     v16 and never published separately — publish v17 instead.
+//                     A `size` field now rides on abaya_products (it is NOT a
+//                     secret: it is the first thing a customer asks and the
+//                     saleswoman must read it), and the viewer's update key list
+//                     gains 'size'. That is deliberate and is the ONLY widening:
+//                     a second shipment of the same barcode routinely arrives in
+//                     different sizes, and without it the catalogue's size line
+//                     would go stale with no way for her to correct it. A size
+//                     carries no money and cannot be confused with a price.
+//                     ⚠️ 'price' is STILL absent from every grant of hers.
 //
 //  v16  2026-09-24  + NEW GOODS ARRIVED — abaya_arrivals + abaya_arrival_images,
 //                     and THE FIRST WRITE ACCESS MRS FATIMA HAS EVER HAD.
@@ -871,8 +883,18 @@ service cloud.firestore {
       allow create: if isAdmin() || isViewer();
       allow delete: if isAdmin();
       allow update: if isAdmin()
-        || ((isKiosk() || isViewer())
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['qty', 'updatedAt']));
+        // ⚠️ الكشكُ يبقى على ['qty','updatedAt'] وحدَهما: شاشةُ البياعة مجهولةُ
+        //   الدخول، فكلُّ ما تستطيع تغييرَه يستطيعه كلُّ من يملك الرابط — ومقاسٌ
+        //   يُكتب من هناك يُفسد وصفَ البضاعة على كلّ شاشة.
+        || (isKiosk()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['qty', 'updatedAt']))
+        // ⚠️ والسيدةُ فاطمة تزيد 'size' عليهما (v17): شحنةٌ ثانيةٌ من نفس الباركود
+        //   تصل بمقاساتٍ مختلفةٍ عادةً، وبلا ذلك يبقى سطرُ المقاسات قديمًا بلا
+        //   سبيلٍ لتصحيحه. والمقاسُ لا يحمل مالًا ولا يُشبه سعرًا.
+        //   ⚠️⚠️ ولا يزيد عليها 'price' بحال — هذا هو الحدُّ الذي يفصل «تُسعّر
+        //   الجديدَ» عن «تُعيد تسعيرَ المحلّ كلِّه».
+        || (isViewer()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['qty', 'size', 'updatedAt']));
     }
 
     // ---- abaya_product_costs (WHAT THE ABAYA COST US) -----------------------

@@ -1559,6 +1559,7 @@
                     id: d.id,
                     code: String(v.code || d.id),
                     name: String(v.name || ''),
+                    size: String(v.size || ''),
                     price: Number(v.price || 0) || 0,
                     discountPrice: Number(v.discountPrice || 0) || 0,
                     cost: costById[d.id] || 0,
@@ -1753,6 +1754,7 @@
                 + `<span class="bd">`
                 + `<span class="code">${escapeHtml(p.code)}</span>`
                 + (p.name ? `<span class="nm">${escapeHtml(p.name)}</span>` : '')
+                + (p.size ? `<span class="nm" dir="ltr">Sizes: ${escapeHtml(p.size)}</span>` : '')
                 + prices
                 + costRow
                 + `<span class="qt${n <= 0 ? ' zero' : ''}">${n <= 0 ? 'Sold out' : n + ' piece(s) left'}</span>`
@@ -2955,6 +2957,7 @@
                     productId: String(v.productId || ''),
                     name: String(v.name || ''),
                     type: String(v.type || ''),
+                    size: String(v.size || ''),
                     supplier: String(v.supplier || ''),
                     unitQar: Number(v.unitQar || 0) || 0,
                     pieces: Math.floor(Number(v.pieces || 0)) || 0,
@@ -3051,6 +3054,7 @@
                         <span class="acode">${escapeHtml(a.code)}</span>
                         <span class="aname">${escapeHtml(arvTypeLabel(a.type))}</span>
                         ${a.name ? `<span class="aname">${escapeHtml(a.name)}</span>` : ''}
+                        ${a.size ? `<span class="arow"><span>Sizes</span><b dir="ltr">${escapeHtml(a.size)}</b></span>` : ''}
                         <span class="arow"><span>Pieces</span><b>${a.pieces}</b></span>
                         <span class="arow"><span>Cost / piece</span><b>${money(a.costPerPiece)} QAR</b></span>
                         ${a.supplier ? `<span class="arow"><span>From</span><b style="font-family:inherit;">${escapeHtml(a.supplier)}</b></span>` : ''}
@@ -3073,6 +3077,8 @@
                                   <b>${money(inCat.price)} QAR</b>. Sending it <b>adds ${a.pieces} piece(s)</b> to the
                                   shop you choose and <b>keeps that price</b> &mdash; a price already on a shelf is the
                                   owner's to change, and the catalogue screen has the request button for it.
+                                  ${a.size ? `<br>Its sizes line becomes <b dir="ltr">${escapeHtml(a.size)}</b>.` : ''}
+                                  ${!inCat.hasImage && a.hasImage ? `<br>It has no picture in the catalogue; the owner adds that one.` : ''}
                               </p>`
                            : `<label for="arvPrice_${escapeHtml(a.id)}" style="margin-top:8px;">Selling price (QAR)</label>
                               <input type="number" id="arvPrice_${escapeHtml(a.id)}" min="1" step="1"
@@ -3237,23 +3243,62 @@
             if (prodExists) {
                 // ⚠️ increment ذرّيّةٌ في الخادم: بياعةٌ تبيع من نفس الرفّ في هذه
                 //   اللحظة لا تُلغى بإضافتنا، ولا نُلغي بيعتَها.
-                // ⚠️⚠️ ولا حقلَ غير qty وupdatedAt: القاعدةُ ترفض غيرهما منها،
+                // ⚠️⚠️ ولا حقلَ غير qty وsize وupdatedAt: القاعدةُ ترفض غيرها منها،
                 //   وهو ما يمنعها من تغيير سعرِ شيءٍ على رفّ.
-                await updateDoc(doc(db, 'abaya_products', a.productId), {
+                const patch = {
                     ['qty.' + key]: increment(a.pieces),
                     updatedAt: serverTimestamp()
-                });
+                };
+                // ⚠️ المقاسُ يُحدَّث إن حملت الشحنةُ مقاسًا، و**لا يُمحى** إن لم تحمل:
+                //   شحنةٌ بلا مقاسٍ مكتوبٍ لا تعني أنّ المقاساتِ القديمةَ لم تبقَ.
+                if (a.size) patch.size = a.size;
+                await updateDoc(doc(db, 'abaya_products', a.productId), patch);
             } else {
+                /**
+                 * ⚠️⚠️⚠️ الصورةُ تُكتب **قبل** إنشاءِ المنتج، وهذا ليس ترتيبًا
+                 *   جميلًا بل **ضرورةٌ من القاعدة**: تحديثُها على منتجٍ محصورٌ في
+                 *   ['qty','size','updatedAt']، فحقلُ hasImage **يُرفض** منها في
+                 *   أيّ update. فلا سبيل لرفعه بعد الإنشاء — يجب أن يُولد المستندُ
+                 *   بقيمته الصحيحة.
+                 *   (وقد كتبتُها أوّلَ مرّةٍ بـupdate بعد الإنشاء، فكانت القاعدةُ
+                 *    سترفضها وتُفقد الصورةُ بصمتٍ بينما القطعُ على الرفّ.)
+                 */
+                let imgUrl = '';
+                if (a.hasImage) {
+                    try {
+                        imgUrl = arvImages.get(id) || '';
+                        if (!imgUrl) {
+                            const isnap = await getDoc(doc(db, ABAYA_ARRIVAL_IMAGES_COLL, id));
+                            imgUrl = isnap.exists() ? String(isnap.data().imageBase64 || '') : '';
+                        }
+                        if (/^data:image\//.test(imgUrl)) {
+                            await setDoc(doc(db, 'abaya_product_images', a.productId), {
+                                imageBase64: imgUrl,
+                                updatedAt: serverTimestamp(),
+                                updatedBy: who
+                            });
+                        } else { imgUrl = ''; }
+                    } catch (e) {
+                        // صورةٌ لم تُنسخ لا تُبطل الإرسال: القطعةُ على الرفّ وتُباع.
+                        console.error('The picture did not copy across:', e);
+                        imgUrl = '';
+                    }
+                }
                 const qty = {};
                 ABAYA_SHOPS.forEach(s => { qty[abayaShopKey(s)] = 0; });
                 qty[key] = a.pieces;
                 await setDoc(doc(db, 'abaya_products', a.productId), {
                     code: a.code,
                     name: a.name || '',
+                    // ⚠️ المقاسُ ينتقل إلى سطر الكتالوج فتقرؤه البياعةُ على شاشتها.
+                    //   وهو ليس سرًّا بخلاف الكوست، فمكانُه مستندُ المنتج نفسُه.
+                    size: a.size || '',
                     price: price,
                     discountPrice: 0,
                     qty, active: true,
-                    hasImage: false,          // يُرفع بعد كتابة الصورة، كما في لوحة الإدارة
+                    // ⚠️ القيمةُ الصحيحةُ منذ الإنشاء: وسمٌ يقول «فيها صورة» وليس
+                    //   لها صورة يُنتج مربّعًا فارغًا على شاشة البياعة إلى الأبد.
+                    hasImage: !!imgUrl,
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp(),
                     updatedBy: who
@@ -3268,33 +3313,19 @@
                 updatedBy: who
             }, { merge: true });
 
-            // ---- (4) الصورة: تُنسخ **فقط** إن لم يكن للتصميم صورةٌ بعد
-            // ⚠️⚠️ استبدالُ صورةِ تصميمٍ على رفٍّ يُغيّر ما يُعرض للزبونة، وهذا
-            //   للمالك. فإعادةُ التعبئة لا تمسّ الصورةَ القائمة.
-            if (a.hasImage && !prodHasImage) {
-                try {
-                    let url = arvImages.get(id) || '';
-                    if (!url) {
-                        const isnap = await getDoc(doc(db, ABAYA_ARRIVAL_IMAGES_COLL, id));
-                        url = isnap.exists() ? String(isnap.data().imageBase64 || '') : '';
-                    }
-                    if (/^data:image\//.test(url)) {
-                        await setDoc(doc(db, 'abaya_product_images', a.productId), {
-                            imageBase64: url,
-                            updatedAt: serverTimestamp(),
-                            updatedBy: who
-                        });
-                        // ⚠️ الوسمُ **بعد** كتابة الصورة: وسمٌ يقول «فيها صورة»
-                        //   وليس لها صورة يُنتج مربّعًا فارغًا على شاشة البياعة.
-                        await updateDoc(doc(db, 'abaya_products', a.productId), {
-                            hasImage: true, updatedAt: serverTimestamp()
-                        });
-                    }
-                } catch (e) {
-                    // صورةٌ لم تُنسخ لا تُبطل الإرسال: القطعةُ على الرفّ وتُباع.
-                    console.error('The picture did not copy across:', e);
-                }
-            }
+            /**
+             * ---- (4) الصورةُ في إعادة التعبئة: **لا تُلمس إطلاقًا.**
+             *
+             * ⚠️⚠️ للتصميم الجديد نُسخت قبل إنشائه (انظر أعلاه). أمّا تصميمٌ قائمٌ
+             *   فلا تُنسخ صورتُه هنا لسببين يجتمعان:
+             *   ١) استبدالُ صورةِ تصميمٍ على رفٍّ يُغيّر ما يُعرض للزبونة، وهذا
+             *      قرارُ المالك لا قرارُها.
+             *   ٢) وحتى لو كان التصميمُ **بلا** صورة، فرفعُ وسم hasImage يحتاج
+             *      `update` بحقلٍ خارجَ ['qty','size','updatedAt'] — والقاعدةُ
+             *      ترفضه منها. فمحاولتُه تُفشل الإرسالَ كلَّه بلا فائدة.
+             *   فتصميمٌ قائمٌ بلا صورةٍ يُضيفها المالكُ من نافذة الكتالوج، ويُقال
+             *   لها ذلك على الشاشة بدل أن يُحاول الكودُ ما سيُرفض.
+             */
 
             // ---- (5) سطرُ الحركة باسمها
             try {
