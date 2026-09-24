@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v17   (2026-09-24)  <<<
+//   >>>  RULES REVISION: v18   (2026-09-24)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -44,6 +44,32 @@ rules_version = '2';
 // exact mistake happened with the "(v4)" label, which never changed across
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
+//
+//  v18  2026-09-24  + A CATALOGUE FOR EVERY TYPE (كتالوج لكل الأصناف). Requested
+//                     right after v17 and never published separately — PUBLISH v18,
+//                     it contains v16 and v17 in full.
+//
+//                     A `type` field now rides on abaya_products, taken from the
+//                     nine entries of ABAYA_STOCK_ITEMS (abaya, kaftan, shela,
+//                     inner, travel, jalabiya, dress, perfume, bags). The owner's
+//                     words: "it must appear in the shops' catalogue, so a
+//                     catalogue must be created for all the types — abayas,
+//                     dress, dresses, everything".
+//
+//                     ⚠️ This closes a gap I created in v16: the dispatch carried
+//                     the SIZE onto the catalogue line but not the TYPE, so a
+//                     dress arriving became a row nobody could tell from an abaya,
+//                     and the catalogue could not be filtered or counted by type.
+//
+//                     The viewer's update key list gains 'type' for exactly the
+//                     same reason 'size' was added: a design created before this
+//                     existed has no type, and a restock is the natural moment to
+//                     fill it in. Her page writes it ONLY when the catalogue line
+//                     has no type yet — repairing a blank, never overwriting a
+//                     type the owner has already set. A type carries no money and
+//                     cannot be mistaken for a price.
+//                     ⚠️ 'price' is STILL absent from every grant of hers.
+//                     ⚠️ And the KIOSK still gets ['qty','updatedAt'] only.
 //
 //  v17  2026-09-24  + SIZES AVAILABLE (خانة السيز المتوفر), requested right after
 //                     v16 and never published separately — publish v17 instead.
@@ -348,9 +374,12 @@ function salaryUnchanged() {
 //     write of any kind outside the abaya business, and none at all on
 //     employees, payroll, attendance or settings.
 //     If you are reading this while auditing: the one thing to check is that
-//     abaya_products `update` for a viewer stays hasOnly(['qty','updatedAt']).
-//     That single clause is what stops her changing the price of anything
-//     already on a shelf.
+//     abaya_products `update` for a viewer stays hasOnly() over DESCRIPTIVE keys
+//     only — as of v18 that list is ['qty','size','type','updatedAt']. That
+//     single clause is what stops her changing the price of anything already on
+//     a shelf. 'price' and 'discountPrice' must never appear in it. Each key on
+//     it answers "what is physically on the shelf and what is it", never "what
+//     is it worth".
 //
 // The email must match EXACTLY the account created in
 // Firebase Console > Authentication > Users. Create the accounts with these
@@ -869,11 +898,15 @@ service cloud.firestore {
     //   sold before IS a new design and her selling price is the whole point of
     //   the step the owner described ("هي التي تضع سعر البيع").
     //
-    //   UPDATE — restricted to hasOnly(['qty','updatedAt']), the SAME clause the
-    //   kiosk lives under. So sending a second shipment of a design that is
-    //   already on a shelf ADDS PIECES and cannot touch the price, the barcode,
-    //   the name or the discount. ⚠️ DO NOT widen this to include 'price' for
-    //   her convenience: that is the difference between "she prices new goods"
+    //   UPDATE — restricted to hasOnly(['qty','size','type','updatedAt']). The
+    //   kiosk stays on ['qty','updatedAt'] and is deliberately NARROWER: it signs
+    //   in anonymously, so whatever it may write, anyone holding the saleswoman's
+    //   link may write. Sending a second shipment of a design already on a shelf
+    //   ADDS PIECES, and may fill in a blank size or type, but cannot touch the
+    //   price, the barcode, the name or the discount.
+    //   ⚠️ Every key on that list is DESCRIPTIVE — how many, what size, what kind.
+    //   DO NOT widen it with 'price' or 'discountPrice' for her convenience:
+    //   that is the difference between "she prices new goods"
     //   and "she can reprice the whole shop". Repricing existing stock stays the
     //   owner's, and her panel already has the WhatsApp request for asking.
     //
@@ -894,7 +927,7 @@ service cloud.firestore {
         //   ⚠️⚠️ ولا يزيد عليها 'price' بحال — هذا هو الحدُّ الذي يفصل «تُسعّر
         //   الجديدَ» عن «تُعيد تسعيرَ المحلّ كلِّه».
         || (isViewer()
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['qty', 'size', 'updatedAt']));
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['qty', 'size', 'type', 'updatedAt']));
     }
 
     // ---- abaya_product_costs (WHAT THE ABAYA COST US) -----------------------

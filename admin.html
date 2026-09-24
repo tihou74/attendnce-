@@ -2785,8 +2785,8 @@
          ================================================================== -->
     <div id="tab-abaya-catalog" class="tab-content">
         <div class="filter-section">
-            <h3><span data-icon="inbox"></span> Al Sheikha Style &mdash; Abaya Catalogue
-                <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">كتالوج العبايات</span></h3>
+            <h3><span data-icon="inbox"></span> Al Sheikha Style &mdash; Products Catalogue
+                <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">كتالوج الأصناف — كلُّ الأنواع</span></h3>
             <p class="card-sub" style="margin: 0 0 12px;">
                 One line per <b>design</b>: its picture, its barcode, its cost and its two prices &mdash; written
                 <b>once</b> &mdash; and the quantity <b>of each shop</b> beside it. The saleswomen see the picture and
@@ -2798,6 +2798,9 @@
                 </div>
                 <div style="width: 210px;"><label for="acFilterShop">Shop</label>
                     <select id="acFilterShop" onchange="renderAbayaCatalog()"></select>
+                </div>
+                <div style="width: 185px;"><label for="acFilterType">Type</label>
+                    <select id="acFilterType" onchange="renderAbayaCatalog()"></select>
                 </div>
                 <div style="width: 190px;"><label for="acFilterState">Show</label>
                     <select id="acFilterState" onchange="renderAbayaCatalog()">
@@ -2857,6 +2860,12 @@
                 </div>
                 <div style="flex: 1; min-width: 220px;"><label for="acName">Name / model</label>
                     <input type="text" id="acName" placeholder="e.g. Black crepe, silver embroidery" autocomplete="off">
+                </div>
+                <!-- ⭐⭐⭐⭐ نوعُ القطعة — بطلب المالك أن يكون الكتالوجُ لكلِّ الأصناف.
+                     تُملأ تلقائيًّا من الشحنة عند إرسالها، وتبقى هنا لضبطِ
+                     التصاميم التي أُضيفت قبل هذه الميزة (نوعُها فارغ). -->
+                <div style="width: 185px;"><label for="acType">What is it</label>
+                    <select id="acType"></select>
                 </div>
                 <!-- ⭐⭐⭐ «السيز المتوفر» — تُملأ تلقائيًّا من الشحنة عند إرسالها،
                      وتبقى هنا لتصحيحها: المقاسُ ينفد قبل نفاد التصميم كلِّه. -->
@@ -2928,6 +2937,7 @@
                             <th>Picture</th>
                             <th>Barcode</th>
                             <th>Name</th>
+                            <th>What</th>
                             <th>Sizes</th>
                             <th class="money-col money-only">Cost</th>
                             <th class="money-col">Price</th>
@@ -2938,7 +2948,7 @@
                             <th></th>
                         </tr>
                     </thead>
-                    <tbody id="acBody"><tr><td colspan="11" style="text-align:center;">Loading...</td></tr></tbody>
+                    <tbody id="acBody"><tr><td colspan="12" style="text-align:center;">Loading...</td></tr></tbody>
                     <tfoot id="acFoot"></tfoot>
                 </table>
             </div>
@@ -12730,7 +12740,36 @@
     const ARRIVAL_WAITING = 'waiting';
     const ARRIVAL_SENT = 'sent';
 
-    let abayaProducts = [];          // [{ id, code, name, cost, price, discountPrice, qty{}, active }]
+    /**
+     * ⭐⭐⭐⭐⭐ نوعُ القطعة على مستند الكتالوج — بطلب المالك:
+     * «يجب أن يظهر في الكتالوج الخاص بالمحلات، لذلك يجب إنشاءُ كتالوجٍ لكلِّ
+     *  الأصناف: عبايات، دريس، فساتين، كلّ شي».
+     *
+     * ⚠️⚠️⚠️ وهذه ثغرةٌ **صنعتُها أنا**: حين بنيتُ «وصل حديثًا» نقلتُ المقاسَ إلى
+     *   سطر الكتالوج ونسيتُ النوعَ، فكان الدريسُ الواصلُ يصير سطرًا لا يُعرف
+     *   نوعُه — والكتالوجُ كلُّه قائمةٌ واحدةٌ لا يُميَّز فيها فستانٌ من عباية.
+     *
+     * ⚠️⚠️ والنوعُ من `ABAYA_STOCK_ITEMS` وحدَها، ولم أخترع صنفًا: القائمةُ فيها
+     *   تسعةُ أصناف، وهي **مكرَّرةٌ حرفيًّا في ثلاثة ملفّات** ويحرس تطابقَها
+     *   اختبار. فصنفٌ أضيفه هنا وحدَه يجعل شاشةً تعرض نوعًا لا تعرفه الأخرى.
+     *
+     * ⚠️ و«فستان» و«دريس» **صنفٌ واحدٌ** في قائمتك (`dress`) لا صنفان. لم أُنشئ
+     *   له ثانيًا لأنّ ذلك يُقسّم مخزونًا واحدًا على سطرين فيختلف العدد. وإن
+     *   أردتَ أن تقرأ التسميةُ «دريس / فستان» في كلّ الشاشات فهي كلمةٌ واحدةٌ
+     *   منك وأُعدّلها في الملفّات الثلاثة معًا.
+     *
+     * ⚠️ والنوعُ **ليس سرًّا** بخلاف الكوست، فمكانُه مستندُ المنتج نفسُه:
+     *   البياعةُ تحتاجه لتقول «الفساتين عندنا هنا».
+     */
+    /** نصُّ النوع للعرض: مفتاحٌ ← «Dress · دريس». وما لا يُعرف يُعرض كما هو. */
+    function abayaTypeLabel(key) {
+        const k = String(key || '').trim();
+        if (!k) return '';
+        const t = ABAYA_STOCK_ITEMS.find(x => x.key === k);
+        return t ? `${t.en} · ${t.ar}` : k;
+    }
+
+    let abayaProducts = [];          // [{ id, code, name, type, size, cost, price, discountPrice, qty{}, active }]
     let abayaProductMoves = [];      // [{ id, ... }]
     let abayaCatalogLoaded = false;
     let abayaCatalogLoadedAt = null;
@@ -12863,7 +12902,7 @@
         if (!canSeeAbaya()) return;
         const body = document.getElementById('acBody');
         if (body && !abayaCatalogLoaded) {
-            body.innerHTML = `<tr><td colspan="11" style="text-align:center;">Loading...</td></tr>`;
+            body.innerHTML = `<tr><td colspan="12" style="text-align:center;">Loading...</td></tr>`;
         }
         try {
             const [prodSnap, costSnap, moveSnap, seasonSnap] = await Promise.all([
@@ -12884,6 +12923,11 @@
                     id: d.id,
                     code: String(v.code || d.id),
                     name: String(v.name || ''),
+                    // ⚠️ الفراغُ مقبولٌ عن قصد: كلُّ تصميمٍ أُضيف قبل هذه الميزة
+                    //   بلا نوع. ولا يُخمَّن له نوعٌ بحال — «عباية» مفترضةٌ على
+                    //   فستانٍ تُفسد كلَّ ترشيحٍ وكلَّ جردٍ بعدها. يُعرض «غيرُ
+                    //   محدَّد» ويُنبّه عليه، ويضبطه المالكُ بيده.
+                    type: String(v.type || ''),
                     size: String(v.size || ''),
                     cost: costById[d.id] || 0,
                     price: Number(v.price || 0) || 0,
@@ -12906,7 +12950,7 @@
         } catch (e) {
             console.error('Error loading the abaya catalogue:', e);
             if (body) {
-                body.innerHTML = `<tr><td colspan="11" style="text-align:center; color: var(--danger);">`
+                body.innerHTML = `<tr><td colspan="12" style="text-align:center; color: var(--danger);">`
                     + `Error loading: ${escapeHtml(e.message)}`
                     + `<br><span style="font-weight:400; font-size:12px;">If it says "permission", the new rules have not been published yet.</span>`
                     + `</td></tr>`;
@@ -12916,7 +12960,33 @@
 
     // ---- بناء خانات الكميّة وقائمة المحلات ---------------------------------
     /** ⚠️ تُبنى من ABAYA_SHOPS لا بيدٍ: محلٌّ جديد يظهر وحده ولا يُنسى. */
+    /**
+     * ⚠️ قائمتا النوع تُبنيان من ABAYA_STOCK_ITEMS لا بيدٍ: صنفٌ جديدٌ يظهر
+     *   وحده في الشاشتين ولا يُنسى في إحداهما.
+     * ⚠️⚠️ وخيارُ «غيرُ محدَّد» في المرشِّح وحدَه لا في نموذج الحفظ: هو حالةٌ
+     *   قائمةٌ يُبحث بها عن التصاميم القديمة، **وليست خيارًا يُحفظ** — فحفظُ
+     *   تصميمٍ جديدٍ بلا نوعٍ يُعيد إنتاج المشكلة التي نُصلحها.
+     */
+    function buildAbayaTypeSelects() {
+        const sel = document.getElementById('acType');
+        if (sel && !sel.dataset.built) {
+            sel.innerHTML = `<option value="">— not set —</option>`
+                + ABAYA_STOCK_ITEMS.map(t =>
+                    `<option value="${escapeHtml(t.key)}">${escapeHtml(t.en)} &middot; ${escapeHtml(t.ar)}</option>`).join('');
+            sel.dataset.built = '1';
+        }
+        const f = document.getElementById('acFilterType');
+        if (f && !f.dataset.built) {
+            f.innerHTML = `<option value="">Every type</option>`
+                + ABAYA_STOCK_ITEMS.map(t =>
+                    `<option value="${escapeHtml(t.key)}">${escapeHtml(t.en)} &middot; ${escapeHtml(t.ar)}</option>`).join('')
+                + `<option value="__NONE__">&mdash; type not set yet &mdash;</option>`;
+            f.dataset.built = '1';
+        }
+    }
+
     function buildAbayaCatalogShopInputs() {
+        buildAbayaTypeSelects();
         const wrap = document.getElementById('acQtyWrap');
         if (wrap && !wrap.dataset.built) {
             wrap.innerHTML = ABAYA_SHOPS.map(s => {
@@ -12949,8 +13019,16 @@
         const q = String((document.getElementById('acSearch') || {}).value || '').trim().toUpperCase();
         const shop = String((document.getElementById('acFilterShop') || {}).value || '');
         const state = String((document.getElementById('acFilterState') || {}).value || 'all');
+        const ty = String((document.getElementById('acFilterType') || {}).value || '');
         return abayaProducts.filter(p => {
-            if (q && !(String(p.code).toUpperCase().includes(q) || String(p.name).toUpperCase().includes(q))) return false;
+            // ⚠️ «غيرُ محدَّد» قيمةٌ يُرشَّح بها: هي الطريقُ لإيجاد التصاميم
+            //   القديمةِ التي تحتاج ضبطَ نوعِها، وبلا ذلك تضيع في القائمة.
+            if (ty === '__NONE__' ? !!p.type : (ty && p.type !== ty)) return false;
+            // ⭐ والبحثُ يقبل اسمَ النوع والمقاس: «دريس» أو «56» تجد ما يُطابق.
+            if (q && !(String(p.code).toUpperCase().includes(q)
+                || String(p.name).toUpperCase().includes(q)
+                || String(p.size || '').toUpperCase().includes(q)
+                || abayaTypeLabel(p.type).toUpperCase().includes(q))) return false;
             const n = shop ? abayaQtyOf(p, shop) : abayaQtyTotal(p);
             if (state === 'instock' && n <= 0) return false;
             if (state === 'out' && n > 0) return false;
@@ -13012,8 +13090,8 @@
         const body = document.getElementById('acBody');
         if (body) {
             if (!rows.length) {
-                body.innerHTML = `<tr><td colspan="11" style="text-align:center;">`
-                    + (abayaProducts.length ? 'Nothing matches the search or the filters.' : 'No abaya yet.')
+                body.innerHTML = `<tr><td colspan="12" style="text-align:center;">`
+                    + (abayaProducts.length ? 'Nothing matches the search or the filters.' : 'No item yet.')
                     + `</td></tr>`;
             } else {
                 body.innerHTML = rows.map(p => {
@@ -13032,6 +13110,9 @@
                               : `<span style="font-size:11.5px; color: var(--text-dim);">no picture</span>`}</td>`
                         + `<td style="font-family: monospace; direction: ltr;"><b>${escapeHtml(p.code)}</b></td>`
                         + `<td>${escapeHtml(p.name) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
+                        + `<td>${p.type
+                              ? escapeHtml(abayaTypeLabel(p.type))
+                              : '<span style="color: var(--warning); font-weight: 700;">not set</span>'}</td>`
                         + `<td style="direction: ltr; white-space: nowrap;">${escapeHtml(p.size) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
                         + `<td class="money-col money-only">${money(p.cost)}</td>`
                         + `<td class="money-col"${disc && abayaDiscountSeason ? ' style="text-decoration: line-through; color: var(--text-dim);"' : ''}>${money(p.price)}</td>`
@@ -13052,7 +13133,7 @@
         const foot = document.getElementById('acFoot');
         if (foot) {
             foot.innerHTML = rows.length
-                ? `<tr><th colspan="4">Total of the ${rows.length} shown</th>`
+                ? `<tr><th colspan="5">Total of the ${rows.length} shown</th>`
                   + `<th class="money-col money-only">${money(rows.reduce((s, p) => s + countFor(p) * Number(p.cost || 0), 0))}</th>`
                   + `<th class="money-col">&mdash;</th><th class="money-col">&mdash;</th>`
                   + `<th>&mdash;</th>`
@@ -13200,6 +13281,7 @@
         acPhotoCleared = false;
         const v = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
         v('acCode', ''); v('acName', ''); v('acSize', ''); v('acCost', ''); v('acPrice', ''); v('acDisc', '');
+        const acTy = document.getElementById('acType'); if (acTy) acTy.value = '';
         ABAYA_SHOPS.forEach(s => v('acQty_' + abayaShopKey(s), '0'));
         const act = document.getElementById('acActive'); if (act) act.checked = true;
         const code = document.getElementById('acCode'); if (code) code.disabled = false;
@@ -13219,6 +13301,7 @@
         const v = (eid, val) => { const el = document.getElementById(eid); if (el) el.value = val; };
         v('acCode', p.code);
         v('acName', p.name);
+        const acTyE = document.getElementById('acType'); if (acTyE) acTyE.value = p.type || '';
         v('acSize', p.size || '');
         v('acCost', p.cost ? String(p.cost) : '');
         v('acPrice', p.price ? String(p.price) : '');
@@ -13311,8 +13394,9 @@
             await setDoc(doc(db, ABAYA_PRODUCTS_COLL, id), {
                 code: codeToSave,
                 name, price,
-                // ⚠️ المقاسُ **ليس سرًّا**: البياعةُ تقرؤه لتقول للزبونة ما المتوفّر،
-                //   فهو على مستند المنتج بخلاف الكوست وأرقام الشراء.
+                // ⚠️ النوعُ والمقاسُ **ليسا سرًّا**: البياعةُ تقرؤهما لتقول للزبونة
+                //   ما المتوفّر، فهما على مستند المنتج بخلاف الكوست وأرقام الشراء.
+                type: String((document.getElementById('acType') || {}).value || ''),
                 size: String((document.getElementById('acSize') || {}).value || '').trim().slice(0, ABAYA_SIZE_MAX),
                 discountPrice: disc,
                 qty, active, hasImage,
@@ -13434,6 +13518,7 @@
             const r = {
                 'Barcode': p.code,
                 'Name': p.name,
+                'What it is': abayaTypeLabel(p.type),
                 'Sizes available': p.size,
                 'Cost': p.cost,
                 'Selling price': p.price,
@@ -13448,7 +13533,7 @@
         });
         const ws = XLSX.utils.json_to_sheet(sheet);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Abaya Catalogue');
+        XLSX.utils.book_append_sheet(wb, ws, 'Products Catalogue');
         XLSX.writeFile(wb, `Abaya_Catalogue_${todayISO()}.xlsx`);
     };
 
