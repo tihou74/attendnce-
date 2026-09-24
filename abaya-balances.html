@@ -11,10 +11,27 @@
      للمالك والسيدة فاطمة. ثلاثة أزرار عند الدخول، ولا نتائج قبل الاختيار —
      بنفس أسلوب balances.html الذي اعتمده المالك.
 
-     ⚠️ لا يوجد في هذه الصفحة أي أمر كتابة إطلاقًا: لا setDoc ولا addDoc ولا
-     updateDoc ولا deleteDoc ولا writeBatch. تقرأ وتحسب في المتصفح فقط. وأي
-     إضافة مستقبلية لزر يُعدّل هنا تُخالف الغرض منها وتُوسّع صلاحيات من يفتحها.
-     ويحرس ذلك اختبارٌ يفشل إن ظهر أي أمر كتابة.
+     ⚠️⚠️⚠️ كان هنا: «لا يوجد في هذه الصفحة أي أمر كتابة إطلاقًا». **لم يبقَ
+     صحيحًا.** طلب المالك صريحًا أن تختار السيدةُ فاطمة المتجرَ الذي تُرسل إليه
+     البضاعةَ الواصلة **وأن تضع سعرَ البيع بنفسها**، فيدخل الكتالوجَ تلقائيًّا.
+     والمشروع بلا خادمٍ خلفيٍّ وبلا Cloud Functions، فـ«تلقائيًّا» لا تعني إلا
+     أنّ **متصفّحَها هو الذي يكتب**.
+
+     والكتابةُ محصورةٌ في قسم «وصل حديثًا» وحدَه، وفي خمس مجموعاتٍ للعبايات فقط:
+       • abaya_arrivals        — ستّة حقولِ إرسالٍ فقط، وما دامت «في الانتظار».
+       • abaya_products        — إنشاءُ تصميمٍ جديد (وهنا يُوضع سعرُها)، وتحديثُ
+                                 ['qty','updatedAt'] وحدَهما — فإعادةُ التعبئة
+                                 تُضيف قطعًا و**لا تستطيع تغيير سعر**.
+       • abaya_product_costs   — كوستُ الشحنة ينتقل إلى سطر الكتالوج.
+       • abaya_product_images  — صورةُ الوصول تصبح صورةَ الكتالوج.
+       • abaya_product_moves   — سطرُ حركةٍ باسمها، فالكميّة لا تزيد بلا تفسير.
+
+     ولا كتابةَ لها خارج العبايات بحال: لا موظفين، ولا رواتب، ولا حضور، ولا
+     إعدادات. والحدُّ الحقيقيُّ في `firestore.rules` (RULES REVISION v16) لا في
+     هذه الصفحة — فالشاشةُ تُتجاوَز من أدوات المتصفّح، والقاعدةُ لا تُتجاوَز.
+
+     ⚠️ وباقي الأقسام (الحساب · التارقت · الستوك · الكتالوج · من على الدوام)
+     للقراءة وحدَها كما كانت، ولم يُضف إليها أمرُ كتابةٍ واحد.
 
      ⚠️ تضاعف منطقي مقصود: دوال الحساب أدناه (abayaRow، abayaTotals،
      abayaStockFor، abayaMoveOwner، abayaTargetRowFor، abayaTargetTotals) نسخة
@@ -149,6 +166,51 @@
     /* خمسة أقسام: ثلاثةٌ ثم اثنان على الشاشة المتوسطة، وخمسةٌ في صفٍّ على الواسعة */
     @media (min-width: 560px) and (max-width: 899px) { .chooser.five { grid-template-columns: 1fr 1fr; } }
     @media (min-width: 900px) { .chooser.five { grid-template-columns: repeat(5, 1fr); } }
+    /* ⚠️ ستّة أزرار: ثلاثةٌ في صفَّين على الشاشة الواسعة لا ستّةٌ في صفٍّ واحد —
+       ستّةُ أعمدةٍ تجعل كلَّ زرٍّ أضيقَ من سطر عنوانه فيُقتطع النص. */
+    @media (min-width: 560px) and (max-width: 899px) { .chooser.six { grid-template-columns: 1fr 1fr; } }
+    @media (min-width: 900px) { .chooser.six { grid-template-columns: repeat(3, 1fr); } }
+    /* ⚠️ الزرُّ الذي ينتظر عملًا يُوسَم بلونٍ دافئ: «وصل حديثًا» فيه شحناتٌ لم
+       تُرسل، وهي عملٌ مطلوبٌ منها لا معلومةٌ تُقرأ. */
+    .pick.todo { border-top: 3px solid var(--warning-600, #B45309); }
+    .pick .badge {
+        display: inline-block; margin-inline-start: 6px; padding: 1px 7px;
+        border-radius: var(--radius-pill, 999px); background: var(--warning-600, #B45309);
+        color: #ffffff; font-size: 11px; font-weight: 800; vertical-align: middle;
+    }
+
+    /* ---- «وصل حديثًا»: بطاقةُ شحنةٍ تنتظر إرسالًا ---- */
+    /* ⚠️ ليست زرًّا: فيها خانةُ سعرٍ وقائمةُ متاجرَ وزرُّ إرسال، وحقلٌ داخل زرٍّ
+       ترميزٌ غير صحيح تُفكّكه المتصفّحات — نفسُ الدرس الذي جعل .cat غلافًا. */
+    .arvg { display: grid; gap: var(--space-4); grid-template-columns: 1fr; }
+    @media (min-width: 680px) { .arvg { grid-template-columns: 1fr 1fr; } }
+    @media (min-width: 1100px) { .arvg { grid-template-columns: repeat(3, 1fr); } }
+    .arv {
+        background: var(--color-surface); border: var(--border-hairline) solid var(--color-border);
+        border-radius: var(--radius-md); overflow: hidden; display: flex; flex-direction: column;
+    }
+    .arv.sent { opacity: 0.6; }
+    .arv .ah { display: flex; gap: var(--space-3); padding: var(--space-3); align-items: flex-start; }
+    .arv .aimg {
+        width: 84px; height: 106px; flex: 0 0 auto; object-fit: cover;
+        border-radius: var(--radius-sm); border: var(--border-hairline) solid var(--color-border);
+        background: var(--color-surface-2);
+    }
+    .arv .aimg.none { display: flex; }
+    .arv .ameta { min-width: 0; flex: 1; }
+    .arv .acode { font-family: 'IBM Plex Mono', ui-monospace, monospace; direction: ltr;
+        font-weight: 800; font-size: var(--text-sm); word-break: break-all; }
+    .arv .aname { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 2px; }
+    .arv .arow { display: flex; justify-content: space-between; gap: 8px; font-size: var(--text-xs); margin-top: 4px; }
+    .arv .arow b { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+    .arv .abody { padding: 0 var(--space-3) var(--space-3); }
+    .arv .asend {
+        width: 100%; min-height: 42px; border: 0; border-radius: var(--radius-sm);
+        background: var(--color-primary); color: #ffffff; font-size: var(--text-sm); font-weight: 800;
+        cursor: pointer; font-family: inherit; margin-top: var(--space-3);
+    }
+    .arv .asend[disabled] { opacity: 0.5; cursor: not-allowed; }
+    .arv .amsg { font-size: var(--text-xs); margin-top: 6px; line-height: 1.5; }
     /* زرّ «الكل مجتمعين» يُميَّز بحدّه الذهبي: هو ملخّصٌ لا محلًّا. */
     .pick.all { border-top: 3px solid var(--color-brand); }
     /* شريط الرجوع: اسم المحل بجانب زرّ العودة إلى أزرار المحلات. */
@@ -561,7 +623,7 @@
         </div>
 
         <!-- ثلاثة أزرار، ولا نتائج قبل الضغط -->
-        <div class="chooser five" id="chooser">
+        <div class="chooser six" id="chooser">
             <!-- ⭐⭐ «Who is in the shops now» أوّلًا عن قصد: هذا هو السؤال الذي
                  يُسأل عشر مرّات في اليوم، والأرقام تُقرأ مرّةً في اليوم. -->
             <button type="button" class="pick" id="pickDuty" aria-pressed="false" aria-controls="viewDuty">
@@ -600,6 +662,19 @@
                 <span>
                     <span class="t1">Abaya catalogue</span>
                     <span class="t2">The picture, the barcode, the price and how many are left</span>
+                </span>
+            </button>
+            <!-- ⭐⭐⭐⭐⭐ «وصل حديثًا» — القسمُ الوحيدُ في هذه الصفحة الذي يكتب.
+                 بطلب المالك: تجد السيدةُ فاطمة نافذةً مكتوبًا عليها «وصل حديثًا»،
+                 فيها صورةُ القطعة، فتختار المتجرَ الذي يُرسل إليه **وتضع سعرَ
+                 البيع** — فيدخل الكتالوجَ بكوستِه ويعود قرارُها إلى لوحة الإدارة.
+                 ⚠️ وعددُ ما ينتظر يُكتب على الزرّ نفسِه: قسمٌ فيه عملٌ مطلوبٌ ولا
+                 علامةَ عليه لا يُفتح، فتبقى البضاعةُ في المستودع بلا أن يعلم أحد. -->
+            <button type="button" class="pick" id="pickArrivals" aria-pressed="false" aria-controls="viewArrivals">
+                <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 10v10h14V10"/><path d="M9.5 20v-6h5v6"/></svg></span>
+                <span>
+                    <span class="t1">Newly arrived <span class="badge hidden" id="arvBadge">0</span></span>
+                    <span class="t2">Choose the shop and set the selling price</span>
                 </span>
             </button>
         </div>
@@ -797,6 +872,26 @@
             </div>
         </div>
 
+        <!-- ============ وصل حديثًا ============
+             ⚠️⚠️ القسمُ الوحيدُ الذي يكتب في هذه الصفحة. كلُّ بطاقةٍ شحنةٌ وصلت
+             وسجّلها المالكُ بأرقام شرائها، وتنتظر منها شيئين: المتجر، وسعر البيع.
+             ⚠️ والكوستُ معروضٌ عليها بأمر المالك الصريح («هاي السيدة فاطمة يجب ان
+             يظهر سعر الكوست») — وبلا الكوستِ لا يُقرَّر سعرُ بيعٍ إطلاقًا. -->
+        <div id="viewArrivals" class="hidden">
+            <div class="bar">
+                <div style="width: 240px;">
+                    <label for="arvSearchF">Search &mdash; barcode, name or supplier</label>
+                    <input type="text" id="arvSearchF" placeholder="Type anything" autocomplete="off">
+                </div>
+                <button class="ghost" id="arvShowSent" aria-pressed="false">Show the ones already sent</button>
+                <button class="ghost" id="arvRefresh">Refresh</button>
+            </div>
+            <p class="err" id="arvErrorF"></p>
+            <p class="note" id="arvIntro" style="margin: 0 0 var(--space-4);"></p>
+            <div class="arvg" id="arvGrid"></div>
+            <p class="note" id="arvNoteF"></p>
+        </div>
+
         <!-- ============ نافذة العباية ============
              ⚠️ بأمر المالك: «عندما تظغط على العباية تظهر صورة كل العباية».
              صورةُ البطاقة مقصوصةٌ لتتساوى البطاقات، وهذه تُظهرها **كاملة**.
@@ -901,7 +996,12 @@
     // ⚠️ query و where أُضيفتا للوحة الحضور: تُقرأ بيوم واحد (where date ==) لا
     // بمسح المجموعة كلها — تلك تنمو مستندَين لكل بياعة كل يوم، ومسحُها كاملًا كل
     // دقيقة على هاتف السيدة فاطمة يستهلك بياناتها بلا داعٍ.
+    // ⚠️⚠️⚠️ setDoc/addDoc/updateDoc/increment/serverTimestamp أُضيفت في v16 لقسم
+    // «وصل حديثًا» وحدَه — انظر ترويسة الملفّ. هذه الصفحة لم تكن تكتب شيئًا قبله.
+    // ⚠️ وincrement تحديدًا **ذرّيّةٌ في الخادم**: إضافةُ قطعٍ إلى رفٍّ تبيع منه
+    //   بياعةٌ في اللحظة نفسها يجب ألّا تُلغي بيعتَها — وكتابةُ رقمٍ ثابتٍ تُلغيها.
     import { getFirestore, collection, doc, getDoc, getDocs, query, where,
+             setDoc, addDoc, updateDoc, increment, serverTimestamp,
              initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut }
         from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -1028,6 +1128,14 @@
     const ABAYA_DEFAULT_CARD_FEE_PCT = 1.5;
     const ABAYA_CENT = 0.005;
     const AUTO_REFRESH_MS = 60000;
+
+    // ---- «وصل حديثًا» — ثوابتُ مطابقةٌ حرفيًّا لما في admin.html --------------
+    // ⚠️⚠️ أيُّ اختلافٍ هنا يعني أنّ هذه الشاشةَ تكتب حالةً لا يقرؤها المالك، أو
+    //   تقرأ مجموعةً لا يكتبها — فتبدو البضاعةُ ضائعةً بين الشاشتين.
+    const ABAYA_ARRIVALS_COLL = 'abaya_arrivals';
+    const ABAYA_ARRIVAL_IMAGES_COLL = 'abaya_arrival_images';
+    const ARRIVAL_WAITING = 'waiting';
+    const ARRIVAL_SENT = 'sent';
 
     let allAbayaReports = [];
     let abayaRates = { cardFeePercent: ABAYA_DEFAULT_CARD_FEE_PCT, shantonPerPiece: SHANTON_DEFAULT_PER_PIECE };
@@ -1299,13 +1407,14 @@
     let activeView = '';
     function showView(which) {
         activeView = which;
-        const views = { duty: 'viewDuty', account: 'viewAccount', target: 'viewTarget', stock: 'viewStock', catalog: 'viewCatalog' };
+        const views = { duty: 'viewDuty', account: 'viewAccount', target: 'viewTarget', stock: 'viewStock', catalog: 'viewCatalog', arrivals: 'viewArrivals' };
         Object.entries(views).forEach(([k, id]) => el(id).classList.toggle('hidden', k !== which));
         el('pickDuty').setAttribute('aria-pressed', String(which === 'duty'));
         el('pickAccount').setAttribute('aria-pressed', String(which === 'account'));
         el('pickTarget').setAttribute('aria-pressed', String(which === 'target'));
         el('pickStock').setAttribute('aria-pressed', String(which === 'stock'));
         el('pickCatalog').setAttribute('aria-pressed', String(which === 'catalog'));
+        el('pickArrivals').setAttribute('aria-pressed', String(which === 'arrivals'));
         el('pickHint').classList.toggle('hidden', !!which);
         // كل دخول إلى الستوك يبدأ من أزرار المحلات، وكل خروج منه يُنسي المُختار.
         showStock('');
@@ -1323,6 +1432,15 @@
     el('pickTarget').addEventListener('click', () => showView('target'));
     el('pickStock').addEventListener('click', () => showView('stock'));
     el('pickCatalog').addEventListener('click', () => { showView('catalog'); loadCatalog(); });
+    // ⚠️⚠️ الكتالوجُ يُقرأ مع الوصولات **إلزامًا**: قرارُ «تصميمٌ جديدٌ أم إعادةُ
+    //   تعبئة» يُبنى على catProducts. وبلا قراءته تكون القائمةُ فارغةً فتظنُّ كلَّ
+    //   شحنةٍ تصميمًا جديدًا، فتُنشئ مستندًا فوق مستندٍ قائمٍ وتمحو سعرَه وكميّاتِه
+    //   في كلّ المحلات. هذا أخطرُ سطرٍ في هذا القسم.
+    el('pickArrivals').addEventListener('click', async () => {
+        showView('arrivals');
+        await loadCatalog();
+        loadArrivals();
+    });
 
     // ---------------------------------------------------------------------
     // اختيار المحل داخل الستوك
@@ -1383,6 +1501,14 @@
     let catWaId = '';                  // العباية المفتوح عليها الطلب
     let catWaKind = '';                // price | move | free
     const catImages = new Map();    // id -> data URL (تُقرأ مرّةً واحدة لهذه الجلسة)
+
+    // ---- حالةُ «وصل حديثًا» ------------------------------------------------
+    let arrivals = [];                 // [{ id, code, name, type, pieces, costPerPiece, status, ... }]
+    let arrivalsLoaded = false;
+    let arrivalsError = '';
+    let arvShowSent = false;
+    let arvBusy = '';                  // معرّفُ الشحنة التي يُرسَل الآن، أو ''
+    const arvImages = new Map();       // id -> data URL
 
     /**
      * ⚠️⚠️ نسخةٌ **مطابقة حرفيًّا** لما في admin.html وabaya-seller.html، وفحصٌ
@@ -2773,6 +2899,455 @@
     // =====================================================================
     // المصادقة
     // =====================================================================
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ «وصل حديثًا» — القسمُ الوحيدُ الذي يكتب في هذه الصفحة
+    // ---------------------------------------------------------------------
+    // كلامُ المالك: «في البانل تبع السيدة فاطمة تكون لما تدخل لشيخة ستايل تجد
+    // نافذة جديدة مكتوب عليها وصل حديثا، تظهر فيها صورة القطعة ثم تختار السيدة
+    // فاطمة الى اي متجر ترسله … ويدخل في الكتالوج تبع المتاجر والكوست، وخانة
+    // سعر البيع هي التي تضع سعر البيع، لما تضع هي سعر البيع يدخل اوتوماتيكيا
+    // الى البانل الادمين».
+    // =====================================================================
+
+    /** تقريبٌ إلى قرشين — نسخةٌ مطابقةٌ لـarvRound2 في admin.html. */
+    function arvRound2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
+
+    /**
+     * ⚠️⚠️ **نسخةٌ مطابقةٌ حرفيًّا** لـarrivalMath في admin.html، ويحرس التطابقَ
+     * اختبارٌ يُشغّل النسختين على نفس البيانات ويطالب بتساوي كلِّ رقم.
+     * ولو اختلفت هنا لعرضت هذه الشاشةُ كوستًا غيرَ الذي حُفظ، وعلى الكوست
+     * يُبنى سعرُ البيع الذي تضعه.
+     */
+    function arrivalMath(o) {
+        const unitQar = Math.max(0, Number((o || {}).unitQar) || 0);
+        const pieces = Math.max(0, Math.floor(Number((o || {}).pieces) || 0));
+        const shipping = Math.max(0, Number((o || {}).shipping) || 0);
+        const labour = Math.max(0, Number((o || {}).labour) || 0);
+        const sell = Math.max(0, Number((o || {}).sellingPrice) || 0);
+        const goods = arvRound2(unitQar * pieces);
+        const total = arvRound2(goods + shipping + labour);
+        const costPerPiece = pieces > 0 ? arvRound2(total / pieces) : 0;
+        const profit = sell > 0 ? arvRound2(sell - costPerPiece) : 0;
+        const marginPct = (sell > 0) ? arvRound2((profit / sell) * 100) : 0;
+        return { unitQar, pieces, shipping, labour, goods, total, costPerPiece, sellingPrice: sell, profit, marginPct };
+    }
+
+    function arvTypeLabel(key) {
+        const t = ABAYA_STOCK_ITEMS.find(x => x.key === String(key || ''));
+        return t ? `${t.en} · ${t.ar}` : String(key || '');
+    }
+
+    /**
+     * ⚠️ بلا orderBy — نفسُ درسِ بقيّة الملفّ: فايرستور يُسقط بصمتٍ كلَّ مستندٍ لا
+     *   يحمل الحقلَ المرتَّبَ به، فشحنةٌ بلا تاريخٍ تختفي ولا يُرمى خطأ.
+     */
+    async function loadArrivals(force) {
+        if (arrivalsLoaded && !force) { renderArrivals(); return; }
+        arrivalsError = '';
+        try {
+            const snap = await getDocs(collection(db, ABAYA_ARRIVALS_COLL));
+            arrivals = [];
+            snap.forEach(d => {
+                const v = d.data() || {};
+                arrivals.push({
+                    id: d.id,
+                    code: String(v.code || ''),
+                    productId: String(v.productId || ''),
+                    name: String(v.name || ''),
+                    type: String(v.type || ''),
+                    supplier: String(v.supplier || ''),
+                    unitQar: Number(v.unitQar || 0) || 0,
+                    pieces: Math.floor(Number(v.pieces || 0)) || 0,
+                    shipping: Number(v.shipping || 0) || 0,
+                    labour: Number(v.labour || 0) || 0,
+                    totalQar: Number(v.totalQar || 0) || 0,
+                    costPerPiece: Number(v.costPerPiece || 0) || 0,
+                    suggestedPrice: Number(v.suggestedPrice || 0) || 0,
+                    // ⚠️ أيُّ قيمةٍ غير 'sent' تُقرأ «في الانتظار»: شحنةٌ لم تُرسل
+                    //   تظهر لها، وهو الأسلم من إخفاء شيءٍ في المستودع.
+                    status: v.status === ARRIVAL_SENT ? ARRIVAL_SENT : ARRIVAL_WAITING,
+                    sentShop: String(v.sentShop || ''),
+                    sentPieces: Math.floor(Number(v.sentPieces || 0)) || 0,
+                    sellingPrice: Number(v.sellingPrice || 0) || 0,
+                    sentAt: String(v.sentAt || ''),
+                    arrivedAt: String(v.arrivedAt || ''),
+                    hasImage: v.hasImage === true
+                });
+            });
+            arrivals.sort((a, b) => String(b.arrivedAt || '').localeCompare(String(a.arrivedAt || '')));
+            arrivalsLoaded = true;
+        } catch (e) {
+            console.error('Could not read the arrivals:', e);
+            arrivalsError = /permission/i.test(String(e && e.message))
+                ? 'Newly arrived goods are not readable yet — the new rules (v16) have not been published.'
+                : 'The arrivals could not be read just now. What you see may be a saved copy.';
+        }
+        renderArrivals();
+        renderArrivalBadge();
+    }
+
+    /** العددُ على الزرّ — يُحدَّث بعد كلِّ قراءةٍ وبعد كلِّ إرسال. */
+    function renderArrivalBadge() {
+        const n = arrivals.filter(a => a.status === ARRIVAL_WAITING).length;
+        const b = el('arvBadge');
+        if (!b) return;
+        b.textContent = String(n);
+        b.classList.toggle('hidden', n === 0);
+    }
+
+    function arvRows() {
+        const q = String(el('arvSearchF').value || '').trim().toUpperCase();
+        return arrivals.filter(a => {
+            if (!arvShowSent && a.status === ARRIVAL_SENT) return false;
+            if (q && !(String(a.code).toUpperCase().includes(q)
+                || String(a.name).toUpperCase().includes(q)
+                || String(a.supplier).toUpperCase().includes(q))) return false;
+            return true;
+        });
+    }
+
+    function renderArrivals() {
+        el('arvErrorF').textContent = arrivalsError;
+        const rows = arvRows();
+        const waiting = arrivals.filter(a => a.status === ARRIVAL_WAITING).length;
+
+        el('arvIntro').innerHTML = waiting
+            ? `<b>${waiting} shipment(s) have arrived and are waiting for you.</b> For each one: choose the shop it `
+              + `goes to, type the price it will sell for, and press <b>Send to the shop</b>. That puts it in that `
+              + `shop's catalogue with its cost, and the owner sees your price straight away.`
+            : (arvShowSent
+                ? `Nothing is waiting. Below are the shipments already sent.`
+                : `<b>Nothing is waiting for you.</b> When new goods arrive and the owner records them, they appear `
+                  + `here with their picture.`);
+
+        const grid = el('arvGrid');
+        if (!rows.length) {
+            grid.innerHTML = `<p class="note" style="grid-column: 1 / -1;">`
+                + (arrivals.length
+                    ? 'Nothing matches what you typed.'
+                    : 'No shipment has been recorded yet.')
+                + `</p>`;
+            el('arvNoteF').textContent = '';
+            return;
+        }
+
+        grid.innerHTML = rows.map(a => {
+            const sent = a.status === ARRIVAL_SENT;
+            const m = arrivalMath(a);
+            // ⚠️ العبايةُ الموجودةُ سلفًا في الكتالوج: سعرُها **لا يتغيّر** بإعادة
+            //   التعبئة (القاعدةُ تسمح بالكمية وحدَها)، فيُقال ذلك قبل أن تكتب
+            //   سعرًا تظنُّ أنه سيُطبَّق ثم لا يُطبَّق.
+            const inCat = catProducts.find(p => p.id === a.productId);
+            const shopOpts = ABAYA_SHOPS.map(s =>
+                `<option value="${escapeHtml(s)}">${escapeHtml(s)}`
+                + `${isShopOpeningSoon(s) ? ' — opening soon' : ''}</option>`).join('');
+            return `
+            <div class="arv${sent ? ' sent' : ''}">
+                <div class="ah">
+                    ${a.hasImage
+                        ? `<img class="aimg" data-arvimg="${escapeHtml(a.id)}" alt="">`
+                        : `<span class="aimg none" style="align-items:center; justify-content:center; font-size:11px; color:var(--color-text-muted); text-align:center;">no picture</span>`}
+                    <span class="ameta">
+                        <span class="acode">${escapeHtml(a.code)}</span>
+                        <span class="aname">${escapeHtml(arvTypeLabel(a.type))}</span>
+                        ${a.name ? `<span class="aname">${escapeHtml(a.name)}</span>` : ''}
+                        <span class="arow"><span>Pieces</span><b>${a.pieces}</b></span>
+                        <span class="arow"><span>Cost / piece</span><b>${money(a.costPerPiece)} QAR</b></span>
+                        ${a.supplier ? `<span class="arow"><span>From</span><b style="font-family:inherit;">${escapeHtml(a.supplier)}</b></span>` : ''}
+                        ${a.arrivedAt ? `<span class="arow"><span>Arrived</span><b>${escapeHtml(a.arrivedAt)}</b></span>` : ''}
+                    </span>
+                </div>
+                <div class="abody">
+                ${sent
+                    ? `<p class="amsg" style="color: var(--success-600, #15803D);">
+                           <b>Sent to ${escapeHtml(a.sentShop)}</b> &mdash; ${a.sentPieces} piece(s) at
+                           <b>${money(a.sellingPrice)} QAR</b>
+                           ${m.profit ? `<br>Profit ${money(m.profit)} QAR a piece (${m.marginPct}% of the price).` : ''}
+                           ${a.sentAt ? `<br><span style="color: var(--color-text-muted);" dir="ltr">${escapeHtml(String(a.sentAt).replace('T', ' ').slice(0, 16))}</span>` : ''}
+                       </p>`
+                    : `<label for="arvShop_${escapeHtml(a.id)}">Which shop</label>
+                       <select id="arvShop_${escapeHtml(a.id)}">${shopOpts}</select>
+                       ${inCat
+                           ? `<p class="amsg" style="color: var(--info-600, #0369A1);">
+                                  This barcode is <b>already in the catalogue</b> at
+                                  <b>${money(inCat.price)} QAR</b>. Sending it <b>adds ${a.pieces} piece(s)</b> to the
+                                  shop you choose and <b>keeps that price</b> &mdash; a price already on a shelf is the
+                                  owner's to change, and the catalogue screen has the request button for it.
+                              </p>`
+                           : `<label for="arvPrice_${escapeHtml(a.id)}" style="margin-top:8px;">Selling price (QAR)</label>
+                              <input type="number" id="arvPrice_${escapeHtml(a.id)}" min="1" step="1"
+                                     inputmode="decimal" placeholder="what it sells for"
+                                     value="${a.suggestedPrice ? String(a.suggestedPrice) : ''}">
+                              <p class="amsg" style="color: var(--color-text-muted);">
+                                  ${a.suggestedPrice
+                                      ? `The owner suggested <b>${money(a.suggestedPrice)} QAR</b> &mdash; change it if you decide otherwise.`
+                                      : `It cost <b>${money(a.costPerPiece)} QAR</b> a piece.`}
+                              </p>`}
+                       <button type="button" class="asend" data-arvsend="${escapeHtml(a.id)}"
+                               ${arvBusy === a.id ? 'disabled' : ''}>
+                           ${arvBusy === a.id ? 'Sending...' : 'Send to the shop'}
+                       </button>
+                       <p class="amsg" id="arvMsg_${escapeHtml(a.id)}"></p>`}
+                </div>
+            </div>`;
+        }).join('');
+
+        el('arvNoteF').innerHTML = `<b>${rows.length}</b> shown`
+            + (arvShowSent ? ' (waiting and already sent).' : ' waiting.')
+            + ` A shipment is on <b>no shelf at all</b> until you send it &mdash; no saleswoman can see it or sell it.`;
+
+        arvObserveThumbs();
+    }
+
+    /** الصورُ تُقرأ عند وصول البطاقة إلى الشاشة — نفسُ منطقِ الكتالوج ولنفس السبب. */
+    function arvObserveThumbs() {
+        const imgs = Array.from(document.querySelectorAll('img[data-arvimg]'));
+        if (!imgs.length) return;
+        const fill = async (img) => {
+            const id = img.getAttribute('data-arvimg');
+            if (!id || img.dataset.done === '1') return;
+            img.dataset.done = '1';
+            try {
+                if (arvImages.has(id)) { img.src = arvImages.get(id); return; }
+                const snap = await getDoc(doc(db, ABAYA_ARRIVAL_IMAGES_COLL, id));
+                const url = snap.exists() ? String(snap.data().imageBase64 || '') : '';
+                if (/^data:image\/(png|jpe?g|webp|gif);base64,/.test(url)) {
+                    arvImages.set(id, url);
+                    img.src = url;
+                }
+            } catch (e) { /* صورةٌ لا تُقرأ لا تمنع الإرسال */ }
+        };
+        if (typeof IntersectionObserver !== 'function') { imgs.forEach(fill); return; }
+        const obs = new IntersectionObserver((entries) => {
+            entries.forEach(en => { if (en.isIntersecting) { fill(en.target); obs.unobserve(en.target); } });
+        }, { rootMargin: '200px' });
+        imgs.forEach(i => { if (i.dataset.done !== '1') obs.observe(i); });
+    }
+
+    /**
+     * ⭐⭐⭐⭐⭐ الإرسالُ إلى المتجر — الكتابةُ الوحيدةُ في هذه الصفحة.
+     *
+     * ⚠️⚠️⚠️ **ترتيبُ الخطوات مقصودٌ ولا يُعكَس.** الشحنةُ تُوسَم «أُرسلت» **أوّلًا**
+     *   قبل أيّ كتابةٍ على الكتالوج. والسببُ أنّ القاعدةَ ترفض تعديلَ شحنةٍ
+     *   حالتُها 'sent'، فهذا الوسمُ هو **القفلُ** الذي يمنع إرسالها مرّتين.
+     *   ولو كُتب الكتالوجُ أوّلًا ثم فشل الوسمُ، لبقيت «في الانتظار» بينما
+     *   قطعُها على الرفّ — فتضغط ثانيةً فتتضاعف الكميّةُ في المحل بشحنةٍ كاملةٍ
+     *   وصلت مرّةً واحدة، ولا شيء على الشاشة يدلّ على ذلك.
+     *   أمّا بهذا الترتيب فأسوأُ ما يقع هو شحنةٌ موسومةٌ «أُرسلت» بلا كميّةٍ على
+     *   الرفّ — وهذا **ظاهرٌ** في الكتالوج ويُصلحه المالكُ بسطرٍ واحد، ويُقال لها
+     *   بالحرف ما تمّ وما لم يتمّ.
+     *
+     * ⚠️⚠️ وتُقرأ الشحنةُ من الخادم قبل الكتابة: القائمةُ في الذاكرة قد يكون
+     *   عمرها دقائقَ وقد أرسلها المالكُ من لوحته في هذه الأثناء.
+     */
+    async function arvSend(id) {
+        if (arvBusy) return;
+        const a = arrivals.find(x => x.id === id);
+        if (!a) return;
+        const msg = (t, color) => {
+            const m = el('arvMsg_' + id);
+            if (m) { m.innerHTML = t; m.style.color = color || ''; }
+        };
+        const shopEl = el('arvShop_' + id);
+        const shop = shopEl ? String(shopEl.value || '') : '';
+        if (!shop || !ABAYA_SHOPS.includes(shop)) { msg('Choose the shop first.', 'var(--danger-600, #B91C1C)'); return; }
+
+        const inCat = catProducts.find(p => p.id === a.productId);
+        let price = 0;
+        if (!inCat) {
+            const pEl = el('arvPrice_' + id);
+            price = Number(pEl ? pEl.value : 0) || 0;
+            if (price <= 0) { msg('Type the price it will sell for.', 'var(--danger-600, #B91C1C)'); return; }
+            // ⚠️ بيعٌ بأقلّ من الكوست يُؤكَّد صريحًا: قد يكون تصفيةً مقصودة، وقد
+            //   يكون رقمًا كُتب خطأً — والفرقُ خسارةٌ على كلّ قطعة.
+            if (price < a.costPerPiece && !confirm(
+                `${a.code} costs ${money(a.costPerPiece)} QAR a piece and you are pricing it at `
+                + `${money(price)} QAR.\n\nThat is a loss of ${money(a.costPerPiece - price)} QAR on every piece, `
+                + `${money((a.costPerPiece - price) * a.pieces)} QAR on all ${a.pieces}.\n\nSend it anyway?`)) {
+                msg('Nothing was sent.', 'var(--warning-600, #B45309)');
+                return;
+            }
+        }
+        if (!confirm(`Send ${a.pieces} piece(s) of ${a.code} to ${shop}?`
+            + (inCat
+                ? `\n\nIts price stays ${money(inCat.price)} QAR — restocking does not change a price.`
+                : `\n\nIt will sell for ${money(price)} QAR.`)
+            + `\n\nThe saleswomen there can sell it straight after this.`)) return;
+
+        arvBusy = id;
+        renderArrivals();
+        msg('Sending...', '');
+        const key = abayaShopKey(shop);
+        const who = (auth.currentUser && auth.currentUser.email) || '';
+        const nowIso = new Date().toISOString();
+        try {
+            // ---- (0) التحقّق من الخادم: هل ما زالت في الانتظار؟
+            const fresh = await getDoc(doc(db, ABAYA_ARRIVALS_COLL, id));
+            if (!fresh.exists()) throw new Error('That shipment is no longer recorded.');
+            if ((fresh.data() || {}).status === ARRIVAL_SENT) {
+                const fv = fresh.data() || {};
+                msg(`This shipment was already sent to <b>${escapeHtml(String(fv.sentShop || 'a shop'))}</b>. `
+                    + `Nothing was sent twice.`, 'var(--warning-600, #B45309)');
+                await loadArrivals(true);
+                return;
+            }
+
+            /**
+             * ---- (0b) هل التصميمُ موجودٌ فعلًا؟ **يُسأل الخادمُ لا القائمة.**
+             *
+             * ⚠️⚠️⚠️ هذا أخطرُ سطرٍ في القسم كلِّه. القائمةُ (catProducts) قد تكون
+             *   فارغةً لأنّ قراءةَ الكتالوج فشلت (شبكةٌ، أو قاعدةٌ لم تُنشر) — ولو
+             *   بُني القرارُ عليها لظُنَّ التصميمُ القائمُ جديدًا، فيُكتب مستندٌ
+             *   كاملٌ فوقه بـsetDoc **فيمحو سعرَه وكميّاتِه في كلّ المحلات وخصمَه**
+             *   ويُبقي كميّةَ محلٍّ واحد. أي أنّ فشلَ قراءةٍ يُتلف الكتالوج.
+             * ⚠️ ولهذا يُقرأ المستندُ بمعرّفه الآن: موجودٌ ⇒ زيادةُ كميّةٍ فقط،
+             *   غيرُ موجودٍ ⇒ إنشاء. ولا رأيَ للقائمة في هذا القرار.
+             */
+            const prodSnap = await getDoc(doc(db, 'abaya_products', a.productId));
+            const prodExists = prodSnap.exists();
+            const prodData = prodExists ? (prodSnap.data() || {}) : {};
+            const prodPrice = Number(prodData.price || 0) || 0;
+            const prodHasImage = prodData.hasImage === true;
+
+            // ⚠️ اختلفت القائمةُ عن الخادم: يُقال لها صريحًا أيُّ سعرٍ سيُطبَّق،
+            //   ولا يُرسل سعرُها بصمتٍ إلى مستندٍ لا يقبله.
+            if (prodExists && !inCat) {
+                if (!confirm(`${a.code} is ALREADY in the catalogue at ${money(prodPrice)} QAR`
+                    + ` — the list on this screen was out of date.\n\n`
+                    + `Sending will add ${a.pieces} piece(s) to ${shop} and KEEP that price`
+                    + `${price > 0 ? `, so the ${money(price)} QAR you typed will not be used` : ''}.\n\n`
+                    + `Continue?`)) {
+                    msg('Nothing was sent.', 'var(--warning-600, #B45309)');
+                    return;
+                }
+            }
+
+            // ---- (1) القفل: تُوسَم «أُرسلت» قبل أيّ كتابةٍ على الكتالوج
+            await updateDoc(doc(db, ABAYA_ARRIVALS_COLL, id), {
+                status: ARRIVAL_SENT,
+                sentShop: shop,
+                sentPieces: a.pieces,
+                sellingPrice: prodExists ? prodPrice : price,
+                sentAt: nowIso,
+                sentBy: who,
+                updatedAt: serverTimestamp()
+            });
+
+            // ---- (2) الكتالوج: تصميمٌ جديدٌ يُنشأ، وموجودٌ تُزاد كميّتُه فقط
+            if (prodExists) {
+                // ⚠️ increment ذرّيّةٌ في الخادم: بياعةٌ تبيع من نفس الرفّ في هذه
+                //   اللحظة لا تُلغى بإضافتنا، ولا نُلغي بيعتَها.
+                // ⚠️⚠️ ولا حقلَ غير qty وupdatedAt: القاعدةُ ترفض غيرهما منها،
+                //   وهو ما يمنعها من تغيير سعرِ شيءٍ على رفّ.
+                await updateDoc(doc(db, 'abaya_products', a.productId), {
+                    ['qty.' + key]: increment(a.pieces),
+                    updatedAt: serverTimestamp()
+                });
+            } else {
+                const qty = {};
+                ABAYA_SHOPS.forEach(s => { qty[abayaShopKey(s)] = 0; });
+                qty[key] = a.pieces;
+                await setDoc(doc(db, 'abaya_products', a.productId), {
+                    code: a.code,
+                    name: a.name || '',
+                    price: price,
+                    discountPrice: 0,
+                    qty, active: true,
+                    hasImage: false,          // يُرفع بعد كتابة الصورة، كما في لوحة الإدارة
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                    updatedBy: who
+                });
+            }
+
+            // ---- (3) الكوست ينتقل إلى سطر الكتالوج
+            // ⚠️ هي لا تكتب رقمًا من عندها: هذا كوستُ الشحنة الذي أدخله المالك.
+            await setDoc(doc(db, 'abaya_product_costs', a.productId), {
+                cost: a.costPerPiece,
+                updatedAt: serverTimestamp(),
+                updatedBy: who
+            }, { merge: true });
+
+            // ---- (4) الصورة: تُنسخ **فقط** إن لم يكن للتصميم صورةٌ بعد
+            // ⚠️⚠️ استبدالُ صورةِ تصميمٍ على رفٍّ يُغيّر ما يُعرض للزبونة، وهذا
+            //   للمالك. فإعادةُ التعبئة لا تمسّ الصورةَ القائمة.
+            if (a.hasImage && !prodHasImage) {
+                try {
+                    let url = arvImages.get(id) || '';
+                    if (!url) {
+                        const isnap = await getDoc(doc(db, ABAYA_ARRIVAL_IMAGES_COLL, id));
+                        url = isnap.exists() ? String(isnap.data().imageBase64 || '') : '';
+                    }
+                    if (/^data:image\//.test(url)) {
+                        await setDoc(doc(db, 'abaya_product_images', a.productId), {
+                            imageBase64: url,
+                            updatedAt: serverTimestamp(),
+                            updatedBy: who
+                        });
+                        // ⚠️ الوسمُ **بعد** كتابة الصورة: وسمٌ يقول «فيها صورة»
+                        //   وليس لها صورة يُنتج مربّعًا فارغًا على شاشة البياعة.
+                        await updateDoc(doc(db, 'abaya_products', a.productId), {
+                            hasImage: true, updatedAt: serverTimestamp()
+                        });
+                    }
+                } catch (e) {
+                    // صورةٌ لم تُنسخ لا تُبطل الإرسال: القطعةُ على الرفّ وتُباع.
+                    console.error('The picture did not copy across:', e);
+                }
+            }
+
+            // ---- (5) سطرُ الحركة باسمها
+            try {
+                await addDoc(collection(db, 'abaya_product_moves'), {
+                    productId: a.productId, code: a.code, name: a.name || '',
+                    shop, change: a.pieces,
+                    kind: 'arrived',
+                    by: who, byName: 'Mrs Fatima',
+                    at: nowIso, createdAt: serverTimestamp()
+                });
+            } catch (e) { console.error('Movement line failed (the pieces did go in):', e); }
+
+            msg(`<b>Done.</b> ${a.pieces} piece(s) of ${escapeHtml(a.code)} are now in `
+                + `<b>${escapeHtml(shop)}</b> at ${money(prodExists ? prodPrice : price)} QAR.`
+                + ` The owner sees it in his panel.`, 'var(--success-600, #15803D)');
+            // القائمتان تُقرآن من جديد: الكتالوجُ تغيّر فعلًا، وشاشةٌ تعرض القديم تكذب.
+            catalogLoaded = false;
+            await loadCatalog(true);
+            await loadArrivals(true);
+        } catch (e) {
+            console.error('Could not send the shipment:', e);
+            // ⚠️⚠️ رسالةُ الفشل تقول **ما تمّ وما لم يتمّ** لا «حدث خطأ»: لو نجح
+            //   الوسمُ وفشل الكتالوج، فالشحنةُ موسومةٌ ولا قطعةَ على الرفّ — وهي
+            //   حالةٌ يُصلحها المالكُ في دقيقة، لكن فقط إن عرف بها.
+            msg(/permission/i.test(String(e && e.message))
+                ? `Not allowed yet &mdash; the new rules (<b>v16</b>) have not been published from the Firebase `
+                  + `Console. Nothing was changed. Tell the owner.`
+                : `<b>It did not finish:</b> ${escapeHtml(String(e.message))}<br>`
+                  + `If the shipment now shows as sent but the shop's count did not go up, tell the owner &mdash; `
+                  + `he corrects the count on the catalogue screen. Do <b>not</b> press Send again.`,
+                'var(--danger-600, #B91C1C)');
+            await loadArrivals(true);
+        } finally {
+            arvBusy = '';
+            renderArrivals();
+            renderArrivalBadge();
+        }
+    }
+
+    // مستمعٌ واحدٌ على الحاوية لا مستمعٌ لكل زر: البطاقاتُ تُبنى في كلّ رسم.
+    el('arvGrid').addEventListener('click', (ev) => {
+        const b = ev.target.closest('button[data-arvsend]');
+        if (b && !b.disabled) arvSend(b.getAttribute('data-arvsend'));
+    });
+    el('arvSearchF').addEventListener('input', () => renderArrivals());
+    el('arvRefresh').addEventListener('click', () => loadArrivals(true));
+    el('arvShowSent').addEventListener('click', () => {
+        arvShowSent = !arvShowSent;
+        el('arvShowSent').setAttribute('aria-pressed', String(arvShowSent));
+        el('arvShowSent').textContent = arvShowSent ? 'Only the ones waiting' : 'Show the ones already sent';
+        renderArrivals();
+    });
+
     el('loginBtn').addEventListener('click', async () => {
         const err = el('loginError');
         err.innerText = '';
@@ -2804,6 +3379,12 @@
             // كل دخول يبدأ بلا اختيار — لا أول تحميل فقط.
             showView('');
             loadAll();
+            // ⭐⭐ الوصولاتُ تُقرأ عند الدخول **لأجل العدد على الزرّ وحدَه**: بضاعةٌ
+            // وصلت وتنتظر قرارَها يجب أن تُرى قبل أن تُفتح النافذة، وإلّا بقيت في
+            // المستودع أسبوعًا لأنّ لا شيءَ نادى عليها. والقراءةُ رخيصةٌ: مستندٌ
+            // صغيرٌ لكلّ شحنة، **بلا** صور (تلك تُقرأ عند ظهور البطاقة وحدَها).
+            // ⚠️ ولا يُقرأ الكتالوجُ هنا: قائمتُه أثقلُ، ولا حاجةَ لها قبل الفتح.
+            loadArrivals(true);
             if (timer) clearInterval(timer);
             timer = setInterval(refreshShown, AUTO_REFRESH_MS);
         } else {

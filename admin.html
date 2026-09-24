@@ -1292,6 +1292,9 @@
             <button class="nav-tab-btn" data-tab="tab-abaya" data-biz="abaya" data-group="abaya"><span class="ic-slot" data-icon="fileText"></span><span class="tab-label">Abaya &mdash; Daily</span></button>
             <button class="nav-tab-btn" data-tab="tab-abaya-month" data-biz="abaya" data-group="abaya"><span class="ic-slot" data-icon="dollar"></span><span class="tab-label">Abaya &mdash; Monthly</span></button>
             <button class="nav-tab-btn" data-tab="tab-abaya-catalog" data-biz="abaya" data-group="abaya"><span class="ic-slot" data-icon="inbox"></span><span class="tab-label">Abaya &mdash; Catalogue</span></button>
+            <!-- ⭐⭐⭐ «بضاعة جديدة وصلت» — بعد الكتالوج عن قصد: الوصولُ مرحلةٌ
+                 **قبل** الكتالوج، لكنّ الكتالوجَ هو ما يُقرأ كلَّ يوم. -->
+            <button class="nav-tab-btn" data-tab="tab-abaya-arrivals" data-biz="abaya" data-group="abaya"><span class="ic-slot" data-icon="plane"></span><span class="tab-label">Abaya &mdash; New Arrivals</span></button>
 
             <div class="rail-group" data-group="system">System</div>
             <button class="nav-tab-btn" data-tab="tab-audit" data-biz="both" data-group="system"><span class="ic-slot" data-icon="listChecks"></span><span class="tab-label">Audit Log</span></button>
@@ -2962,6 +2965,202 @@
                 </table>
             </div>
             <p class="card-sub" style="margin: 12px 0 0;" id="acMovesNote"></p>
+        </div>
+    </div>
+
+    <!-- ==================================================================
+         العبايات — بضاعةٌ جديدةٌ وصلت
+         ------------------------------------------------------------------
+         ⚠️⚠️ مرحلةٌ **قبل** الكتالوج لا بديلٌ عنه: القطعةُ تصل من المورّد فتُسجَّل
+         بأرقام شرائها كلِّها (دولار · ريال · شحن · يد عاملة · مورّد)، وتبقى
+         «في الانتظار» لا تراها بياعةٌ ولا هي على رفٍّ. ثم تفتح السيدةُ فاطمة
+         نافذةَ «وصل حديثًا» فتختار المتجر وتضع سعرَ البيع — فتصير سطرًا في
+         الكتالوج بكوستها، ويعود قرارُها إلى هذه النافذة تلقائيًّا.
+
+         ⚠️⚠️⚠️ وأرقامُ الشراء **لا تُكتب على مستند المنتج بحال**: ذاك تقرؤه شاشةُ
+         البياعة بحسابٍ مجهول، وفايرستور يُعيد المستندَ كلَّه. فحقلٌ واحدٌ منها
+         هناك = نشرُ سعرِ شرائنا واسمِ مورّدنا لكلّ من يملك الرابط.
+         ================================================================== -->
+    <div id="tab-abaya-arrivals" class="tab-content">
+        <div class="filter-section">
+            <h3><span data-icon="plane"></span> Al Sheikha Style &mdash; New goods arrived
+                <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">بضاعة جديدة وصلت</span></h3>
+            <p class="card-sub" style="margin: 0 0 12px;">
+                Record a shipment the moment it arrives: its picture, what it cost us in <b>dollars</b> and in
+                <b>riyals</b>, how many pieces, the shipping and the labour, and who supplied it. The system works
+                out the <b>total</b> and the <b>cost of one piece</b> by itself.
+                It then waits in <b>Newly arrived</b> on Mrs Fatima&rsquo;s panel, where she chooses the shop and sets
+                the selling price &mdash; and only then does it become a line in the catalogue.
+            </p>
+            <div class="date-group">
+                <div style="flex: 1; min-width: 200px;"><label for="arvSearch">Search &mdash; barcode, name or supplier</label>
+                    <input type="text" id="arvSearch" placeholder="Type anything" oninput="renderAbayaArrivals()">
+                </div>
+                <div style="width: 190px;"><label for="arvFilterStatus">Show</label>
+                    <select id="arvFilterStatus" onchange="renderAbayaArrivals()">
+                        <option value="all">Everything</option>
+                        <option value="waiting">Waiting for Mrs Fatima</option>
+                        <option value="sent">Already sent to a shop</option>
+                    </select>
+                </div>
+                <div style="width: 180px;"><label for="arvFilterType">Type</label>
+                    <select id="arvFilterType" onchange="renderAbayaArrivals()"></select>
+                </div>
+                <button class="btn-ghost" onclick="loadAbayaArrivals(true)"><span data-icon="refresh"></span> Refresh</button>
+                <button class="btn-ghost" onclick="clearAbayaArrivalFilters()" title="Clear the search and the filters so nothing can stay hidden">Show everything</button>
+                <button class="btn-success" onclick="exportAbayaArrivalsExcel()"><span data-icon="download"></span> Export Excel</button>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box"><div class="stat-icon" data-icon="plane"></div><div><h3>Shipments</h3><p id="arvStatCount">0</p></div></div>
+            <div class="stat-box"><div class="stat-icon" data-icon="inbox"></div><div><h3>Pieces arrived</h3><p id="arvStatPieces">0</p></div></div>
+            <div class="stat-box"><div class="stat-icon" data-icon="alertTriangle"></div><div><h3>Waiting for a shop</h3><p id="arvStatWaiting">0</p></div></div>
+            <div class="stat-box money-only"><div class="stat-icon" data-icon="dollar"></div><div><h3>Paid for the goods</h3><p id="arvStatTotal">0 QAR</p></div></div>
+        </div>
+
+        <!-- ============ تسجيل وصول ============ -->
+        <div class="card">
+            <h3><span data-icon="edit"></span> <span id="arvFormTitle">Record a new arrival</span></h3>
+            <p class="card-sub" id="arvFormHint">
+                The <b>total</b> and the <b>cost of one piece</b> are worked out from what you type and cannot be typed
+                over &mdash; a total that disagrees with its own parts is how a wrong cost ends up on a price decision.
+            </p>
+
+            <!-- ---- من نحن نشتري، وماذا ---- -->
+            <div class="date-group" style="align-items: flex-start;">
+                <div style="width: 200px;"><label for="arvCode">Barcode <span style="color: var(--danger);">*</span></label>
+                    <input type="text" id="arvCode" placeholder="e.g. AS-1042" autocomplete="off" oninput="onArrivalCodeTyped()">
+                </div>
+                <div style="flex: 1; min-width: 200px;"><label for="arvName">Name / model</label>
+                    <input type="text" id="arvName" placeholder="e.g. Black crepe, silver embroidery" autocomplete="off">
+                </div>
+                <div style="width: 180px;"><label for="arvType">What is it <span style="color: var(--danger);">*</span></label>
+                    <select id="arvType"></select>
+                </div>
+                <div style="width: 200px;"><label for="arvSupplier">Supplier</label>
+                    <input type="text" id="arvSupplier" placeholder="Who sent it" autocomplete="off">
+                </div>
+                <div style="width: 165px;"><label for="arvDate">Arrived on</label>
+                    <input type="date" id="arvDate">
+                </div>
+            </div>
+
+            <!-- ---- الأرقام ---- -->
+            <div style="margin: 18px 0 6px;">
+                <b style="font-size: 13.5px;">What it cost us</b>
+                <span class="card-sub" style="display: block; margin-top: 4px;">
+                    Type the price of <b>one piece</b> in dollars and the riyals fill in by themselves at the rate
+                    beside it. If the invoice says a different riyal figure, type it over &mdash; what the bank
+                    charged is truer than the official rate.
+                </span>
+            </div>
+            <div class="date-group" style="align-items: flex-start;">
+                <div style="width: 165px;"><label for="arvUsd">One piece &mdash; USD</label>
+                    <input type="number" id="arvUsd" step="0.01" min="0" placeholder="0.00" oninput="onArrivalUsdTyped()">
+                </div>
+                <div style="width: 120px;"><label for="arvRate">Rate &times;</label>
+                    <input type="number" id="arvRate" step="0.0001" min="0" oninput="onArrivalUsdTyped()">
+                </div>
+                <div style="width: 165px;"><label for="arvQar">One piece &mdash; QAR <span style="color: var(--danger);">*</span></label>
+                    <input type="number" id="arvQar" step="0.01" min="0" placeholder="0.00" oninput="onArrivalInput()">
+                </div>
+                <div style="width: 130px;"><label for="arvPieces">Pieces <span style="color: var(--danger);">*</span></label>
+                    <input type="number" id="arvPieces" step="1" min="1" placeholder="0" oninput="onArrivalInput()">
+                </div>
+                <div style="width: 160px;"><label for="arvShipping">Shipping (QAR)</label>
+                    <input type="number" id="arvShipping" step="0.01" min="0" placeholder="0 if none" oninput="onArrivalInput()">
+                </div>
+                <div style="width: 160px;"><label for="arvLabour">Labour (QAR)</label>
+                    <input type="number" id="arvLabour" step="0.01" min="0" placeholder="0 if none" oninput="onArrivalInput()">
+                </div>
+            </div>
+
+            <!-- ---- المحسوب: المجموع وكوست القطعة ---- -->
+            <!-- ⚠️ صفٌّ مستقلٌّ ومعلَّمٌ بلونٍ مختلف: هذان رقمان **محسوبان** لا
+                 مُدخَلان، وخانتان تبدوان كبقيّة الخانات تُوهم أنهما يُكتبان. -->
+            <div class="date-group" style="align-items: flex-start; margin-top: 4px; background: var(--surface-2);
+                 padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
+                <div style="width: 210px;">
+                    <label>Total paid for this shipment</label>
+                    <p id="arvCalcTotal" style="margin: 4px 0 0; font-family: 'IBM Plex Mono', ui-monospace, monospace;
+                       font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums;">0.00 QAR</p>
+                    <span class="card-sub" style="font-size: 11px;">(one piece &times; pieces) + shipping + labour</span>
+                </div>
+                <div style="width: 210px;">
+                    <label>Cost of ONE piece</label>
+                    <p id="arvCalcCost" style="margin: 4px 0 0; font-family: 'IBM Plex Mono', ui-monospace, monospace;
+                       font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--primary);">0.00 QAR</p>
+                    <span class="card-sub" style="font-size: 11px;">total &divide; pieces &mdash; this is what goes to the catalogue</span>
+                </div>
+                <div style="width: 200px;"><label for="arvSuggested">Suggested selling price</label>
+                    <input type="number" id="arvSuggested" step="1" min="0" placeholder="optional" oninput="onArrivalInput()">
+                    <span class="card-sub" style="font-size: 11px; display: block; margin-top: 4px;">
+                        Optional. <b>Mrs Fatima sets the final price</b> when she sends it to a shop &mdash; this is
+                        only a suggestion shown to her.
+                    </span>
+                </div>
+                <div style="width: 200px;">
+                    <label>Profit on one piece</label>
+                    <p id="arvCalcProfit" style="margin: 4px 0 0; font-family: 'IBM Plex Mono', ui-monospace, monospace;
+                       font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">&mdash;</p>
+                    <span class="card-sub" style="font-size: 11px;" id="arvCalcMargin">Type a suggested price to see it</span>
+                </div>
+            </div>
+
+            <!-- ---- الصورة ---- -->
+            <div class="date-group" style="align-items: flex-start; margin-top: 10px;">
+                <div style="flex: 1; min-width: 260px;">
+                    <label for="arvPhoto">Picture of the piece</label>
+                    <input type="file" id="arvPhoto" accept="image/*" onchange="onArrivalPhotoPicked(event)">
+                    <p class="card-sub" style="margin: 6px 0 0; font-size: 11.5px;">
+                        Shrunk and compressed here before saving, exactly like the catalogue pictures. When Mrs Fatima
+                        sends the piece to a shop <b>this same picture becomes the catalogue picture</b> &mdash; so she
+                        never has to find and upload it again.
+                    </p>
+                </div>
+                <div style="width: 170px; text-align: center;">
+                    <img id="arvPhotoImg" alt="" style="display: none; width: 150px; height: 190px; object-fit: cover;
+                        border-radius: 10px; border: 1px solid var(--border);">
+                    <p class="card-sub" id="arvPhotoEmpty" style="margin: 6px 0 0; font-size: 11.5px;">No picture yet</p>
+                    <button class="btn-ghost btn-sm" id="arvPhotoClear" style="display: none; margin-top: 6px;" onclick="clearArrivalPhoto()">Remove the picture</button>
+                </div>
+            </div>
+
+            <div class="controls" style="gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px;">
+                <button class="btn-success" id="arvSaveBtn" onclick="saveAbayaArrival()"><span data-icon="save"></span> Save the arrival</button>
+                <button class="btn-ghost" id="arvCancelBtn" style="display: none;" onclick="resetArrivalForm()">Cancel the edit</button>
+                <span id="arvFormStatus" style="font-weight: 600; font-size: 13px;"></span>
+            </div>
+        </div>
+
+        <!-- ============ الجدول ============ -->
+        <div class="card">
+            <h3><span data-icon="fileText"></span> Everything that arrived</h3>
+            <p class="card-sub" id="arvTableNote">&mdash;</p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Picture</th>
+                            <th>Barcode</th>
+                            <th>Name</th>
+                            <th>What</th>
+                            <th>Supplier</th>
+                            <th class="money-col">Pieces</th>
+                            <th class="money-col money-only">USD</th>
+                            <th class="money-col money-only">Total</th>
+                            <th class="money-col money-only">Cost / piece</th>
+                            <th class="money-col">Selling price</th>
+                            <th>Where it went</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="arvBody"><tr><td colspan="12" style="text-align:center;">Loading...</td></tr></tbody>
+                    <tfoot id="arvFoot"></tfoot>
+                </table>
+            </div>
+            <p class="card-sub" style="margin: 12px 0 0; font-size: 11.5px;" id="arvLoadedAt"></p>
         </div>
     </div>
 
@@ -6101,6 +6300,15 @@
         if (tabId === 'tab-abaya-catalog') {
             if (abayaCatalogLoaded) renderAbayaCatalog();
             loadAbayaCatalog();
+        }
+        // ⭐ الوصولات: تُعاد قراءتها في كل فتحة كالكتالوج — السيدةُ فاطمة تُرسل
+        // شحناتٍ طولَ اليوم، وشاشةٌ تقول «في الانتظار» وقد أُرسلت تكذب.
+        // ⚠️⚠️ ويُقرأ الكتالوجُ معها: تنبيهُ «هذا الباركود في الكتالوج سلفًا»
+        //   يقرأ abayaProducts، فبلا قراءته يبقى فارغًا فلا يُنبّه أبدًا.
+        if (tabId === 'tab-abaya-arrivals') {
+            if (abayaArrivalsLoaded) renderAbayaArrivals();
+            loadAbayaArrivals();
+            if (!abayaCatalogLoaded) loadAbayaCatalog();
         }
         // النوافذ الثلاث تتغذّى من نفس البيانات، فتحميلها واحد.
         if (tabId === 'tab-finance' || tabId === 'tab-fixed' || tabId === 'tab-variable') {
@@ -12454,6 +12662,48 @@
     // كم حركةً تُعرض. ⚠️ العدد المقروء يُقال على الشاشة كي لا يكون القصّ صامتًا.
     const ABAYA_MOVES_SHOWN = 200;
 
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ «بضاعة جديدة وصلت» — من المورّد إلى رفّ المحل
+    // ---------------------------------------------------------------------
+    // كلامُ المالك: خانةٌ فيها صورةُ القطعة، وسعرُ الشراء بالدولار ثم بالريال،
+    // وعددُ القطع، والشحنُ إن وُجد، واليدُ العاملة، واسمُ المورّد، والمجموع،
+    // والباركود، ونوعُ القطعة (فستان/عباية/أيُّ شيءٍ من ستوك الشيخة ستايل)،
+    // وفي الآخر كوستُ القطعة ثم سعرُ البيع. ثم في لوحة السيدة فاطمة نافذةٌ
+    // «وصل حديثًا» تختار فيها إلى أيِّ متجرٍ يُرسَل، **وهي** من تضع سعرَ البيع،
+    // فيدخل الكتالوجَ بالكوست ويعود إلى لوحة الإدارة تلقائيًّا.
+    //
+    // ⚠️⚠️⚠️ ولماذا مجموعةٌ مستقلّةٌ لا حقولٌ على المنتج: أرقامُ الشراء (الدولار،
+    // الشحن، اليد العاملة، المورّد) **أسرارُ شراء**. ومستندُ المنتج تقرؤه شاشةُ
+    // البياعة بحسابٍ **مجهول**، وفايرستور يُعيد المستندَ كلَّه لا بعضَ حقوله —
+    // فحقلٌ واحدٌ منها على المنتج يعني نشرَ سعرِ شرائنا واسمِ مورّدِنا لكلّ من
+    // يملك الرابط. وهذا نفسُ سببِ فصل `abaya_product_costs`، ولا يُخالَف.
+    //
+    // ⚠️⚠️ والوصولُ هنا مرحلةٌ قبل الكتالوج لا بديلٌ عنه: القطعةُ تصل، فتُسجَّل
+    // بأرقامها، ثم **تُرسَل** إلى محلٍّ فتصير سطرًا في الكتالوج. وقبل الإرسال
+    // ليست على أيّ رفٍّ ولا تراها بياعةٌ — وهذا هو الفرق الذي طلبه المالك.
+    // =====================================================================
+    const ABAYA_ARRIVALS_COLL = 'abaya_arrivals';
+    // ⚠️ الصورةُ في مستندها المستقلّ كصور الكتالوج: قائمةُ الوصولات تُقرأ في كل
+    //   فتحةٍ للنافذة، وصورةٌ داخلَ كلِّ سطرٍ تجعل القائمةَ ميغابايتاتٍ على هاتف
+    //   السيدة فاطمة لتعرضَ أسماءً. تُقرأ صورةُ السطر عند وصوله إلى الشاشة.
+    const ABAYA_ARRIVAL_IMAGES_COLL = 'abaya_arrival_images';
+    /**
+     * سعرُ تحويل الدولار إلى الريال.
+     * ⚠️⚠️ الريالُ القطريُّ **مربوطٌ** بالدولار على 3.64 رسميًّا، فهو رقمٌ ثابتٌ
+     *   لا سعرُ سوقٍ متغيّر. ومع ذلك يبقى **قابلًا للتعديل** في الخانة: فاتورةُ
+     *   البنك قد تحمل سعرًا مختلفًا قليلًا بعد العمولات، والمكتوبُ في الفاتورة
+     *   أصدقُ من الربط الرسميّ.
+     * ⚠️ والسعرُ المستعملُ **يُجمَّد على مستند الوصول** (`usdRate`): لو غُيّر
+     *   لاحقًا فلا يُعاد حسابُ شحنةٍ قديمةٍ بسعرٍ لم تُشترَ به. الكوستُ المحفوظُ
+     *   يبقى كوستَها الحقيقيّ.
+     */
+    const ABAYA_USD_RATE_DEFAULT = 3.64;
+    // كم وصولًا تُعرض في الجدول. يُقال العددُ على الشاشة كي لا يكون القصّ صامتًا.
+    const ABAYA_ARRIVALS_SHOWN = 300;
+    /** حالاتُ الوصول — نصٌّ واحدٌ لا نصّان، فالشاشتان تقرآن نفسَ الكلمة. */
+    const ARRIVAL_WAITING = 'waiting';
+    const ARRIVAL_SENT = 'sent';
+
     let abayaProducts = [];          // [{ id, code, name, cost, price, discountPrice, qty{}, active }]
     let abayaProductMoves = [];      // [{ id, ... }]
     let abayaCatalogLoaded = false;
@@ -12463,6 +12713,15 @@
     let acPendingPhoto = null;       // data URL مُصغَّرة بانتظار الحفظ
     let acPhotoCleared = false;      // طُلب حذف الصورة صريحًا
     const acImageCache = new Map();  // id -> data URL (تُقرأ مرّةً واحدة)
+
+    // ---- «بضاعة جديدة وصلت» ----------------------------------------------
+    let abayaArrivals = [];            // [{ id, code, type, pieces, costPerPiece, status, ... }]
+    let abayaArrivalsLoaded = false;
+    let abayaArrivalsLoadedAt = null;
+    let arvEditingId = '';             // '' = وصولٌ جديد
+    let arvPendingPhoto = null;
+    let arvPhotoCleared = false;
+    const arvImageCache = new Map();   // id -> data URL
 
     /**
      * مفتاح المحل داخل خريطة الكميّات.
@@ -12821,7 +13080,10 @@
         sold: 'Sold in the shop',
         adjust: 'Corrected by the owner',
         added: 'Added to the catalogue',
-        returned: 'Returned by a customer'
+        returned: 'Returned by a customer',
+        // ⚠️ بلا هذا السطر يُعرض المفتاحُ الخام «arrived» في عمود «لماذا»، فيبدو
+        //   السجلُّ معطوبًا. كلُّ نوعٍ جديدٍ من الحركة يحتاج سطرَه هنا.
+        arrived: 'Arrived from the supplier and sent to the shop'
     };
 
     function renderAbayaCatalogMoves() {
@@ -13155,6 +13417,610 @@
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Abaya Catalogue');
         XLSX.writeFile(wb, `Abaya_Catalogue_${todayISO()}.xlsx`);
+    };
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ «بضاعة جديدة وصلت» — التسجيل والأرقام
+    // =====================================================================
+
+    /** تقريبٌ إلى قرشين. ⚠️ حسابُ الفاصلة العائمة يُنتج 198.80000000000001. */
+    function arvRound2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
+
+    /**
+     * ⭐⭐⭐⭐⭐ حسابُ أرقام الشحنة — **دالّةٌ نقيّةٌ واحدةٌ** لا حسابٌ متكرّرٌ في
+     * الشاشة وفي الحفظ وفي التصدير.
+     *
+     * ⚠️⚠️ ولماذا نقيّةٌ ومعزولةٌ عن الـDOM: هذه الأرقامُ تُقرأ في **أربعة** مواضع
+     *   (المعاينة الحيّة، والحفظ، والجدول، وتصدير Excel) وفي **ملفَّين** (هنا
+     *   ولوحة السيدة فاطمة). ولو حُسبت في كل موضعٍ بيده لاختلف موضعٌ يومًا،
+     *   فتقرأ الشاشةُ كوستًا وتُحفظ قاعدةُ البيانات كوستًا آخر — وعلى الكوست
+     *   يُبنى سعرُ البيع. موضعٌ واحدٌ فقط، ومُختبَرٌ.
+     *
+     * ⚠️ والمجموعُ يُقرَّب **قبل** القسمة، وكوستُ القطعة يُقرَّب بعدها. فقد لا
+     *   يساوي (كوستُ القطعة × العدد) المجموعَ بالقرش — وهذا صحيحٌ محاسبيًّا لا
+     *   خطأ: المجموعُ هو ما دُفع فعلًا، وكوستُ القطعة نصيبُها منه.
+     */
+    function arrivalMath(o) {
+        const unitQar = Math.max(0, Number((o || {}).unitQar) || 0);
+        const pieces = Math.max(0, Math.floor(Number((o || {}).pieces) || 0));
+        const shipping = Math.max(0, Number((o || {}).shipping) || 0);
+        const labour = Math.max(0, Number((o || {}).labour) || 0);
+        const sell = Math.max(0, Number((o || {}).sellingPrice) || 0);
+        const goods = arvRound2(unitQar * pieces);
+        const total = arvRound2(goods + shipping + labour);
+        const costPerPiece = pieces > 0 ? arvRound2(total / pieces) : 0;
+        // الربحُ على القطعة الواحدة، و«الهامش» نسبةً من سعر البيع لا من الكوست:
+        // ⚠️ النسبةُ من سعر البيع هي ما يُفهم في التجزئة («ربحُنا ٤٠٪ من السعر»)،
+        //   والنسبةُ من الكوست رقمٌ آخرُ تمامًا — وخلطُهما يُنتج قرارَ سعرٍ خاطئًا.
+        const profit = sell > 0 ? arvRound2(sell - costPerPiece) : 0;
+        const marginPct = (sell > 0) ? arvRound2((profit / sell) * 100) : 0;
+        return { unitQar, pieces, shipping, labour, goods, total, costPerPiece, sellingPrice: sell, profit, marginPct };
+    }
+
+    /** نصُّ النوع للعرض: مفتاحٌ إنجليزيٌّ ← «Abaya · عباية». */
+    function arrivalTypeLabel(key) {
+        const t = ABAYA_STOCK_ITEMS.find(x => x.key === String(key || ''));
+        return t ? `${t.en}` : String(key || '');
+    }
+
+    /** ⚠️ تُبنى من ABAYA_STOCK_ITEMS لا بيدٍ: نوعٌ جديدٌ يظهر وحده ولا يُنسى. */
+    function buildArrivalTypeSelects() {
+        const sel = document.getElementById('arvType');
+        if (sel && !sel.dataset.built) {
+            sel.innerHTML = ABAYA_STOCK_ITEMS.map(t =>
+                `<option value="${escapeHtml(t.key)}">${escapeHtml(t.en)} &middot; ${escapeHtml(t.ar)}</option>`).join('');
+            sel.dataset.built = '1';
+        }
+        const f = document.getElementById('arvFilterType');
+        if (f && !f.dataset.built) {
+            f.innerHTML = `<option value="">Every type</option>`
+                + ABAYA_STOCK_ITEMS.map(t =>
+                    `<option value="${escapeHtml(t.key)}">${escapeHtml(t.en)} &middot; ${escapeHtml(t.ar)}</option>`).join('');
+            f.dataset.built = '1';
+        }
+        const r = document.getElementById('arvRate');
+        if (r && !r.value) r.value = String(ABAYA_USD_RATE_DEFAULT);
+        const d = document.getElementById('arvDate');
+        if (d && !d.value) d.value = todayISO();
+    }
+
+    // ---- التحميل ---------------------------------------------------------
+    /**
+     * ⚠️ بلا orderBy: فايرستور يُسقط بصمتٍ كلَّ مستندٍ لا يحمل الحقلَ المرتَّبَ به
+     *   — وهو العطلُ الذي أخفى تقاريرَ البياعات فعلًا. الترتيبُ محليٌّ بالتاريخ.
+     */
+    window.loadAbayaArrivals = async function(force) {
+        if (!canSeeAbaya()) return;
+        const body = document.getElementById('arvBody');
+        if (body && !abayaArrivalsLoaded) {
+            body.innerHTML = `<tr><td colspan="12" style="text-align:center;">Loading...</td></tr>`;
+        }
+        try {
+            const snap = await getDocs(collection(db, ABAYA_ARRIVALS_COLL));
+            abayaArrivals = [];
+            snap.forEach(d => {
+                const v = d.data() || {};
+                abayaArrivals.push({
+                    id: d.id,
+                    code: String(v.code || ''),
+                    productId: String(v.productId || ''),
+                    name: String(v.name || ''),
+                    type: String(v.type || ''),
+                    supplier: String(v.supplier || ''),
+                    unitUsd: Number(v.unitUsd || 0) || 0,
+                    usdRate: Number(v.usdRate || 0) || 0,
+                    unitQar: Number(v.unitQar || 0) || 0,
+                    pieces: Math.floor(Number(v.pieces || 0)) || 0,
+                    shipping: Number(v.shipping || 0) || 0,
+                    labour: Number(v.labour || 0) || 0,
+                    totalQar: Number(v.totalQar || 0) || 0,
+                    costPerPiece: Number(v.costPerPiece || 0) || 0,
+                    suggestedPrice: Number(v.suggestedPrice || 0) || 0,
+                    // ⚠️ الحالةُ تُقرأ بمقارنةٍ تامّةٍ مع ARRIVAL_SENT: أي قيمةٍ
+                    //   أخرى (أو غيابُ الحقل في مستندٍ قديم) تُقرأ «في الانتظار»
+                    //   لا «أُرسلت». فوصولٌ لم يُرسل يظهر لها، وهو الأسلم.
+                    status: v.status === ARRIVAL_SENT ? ARRIVAL_SENT : ARRIVAL_WAITING,
+                    sentShop: String(v.sentShop || ''),
+                    sentPieces: Math.floor(Number(v.sentPieces || 0)) || 0,
+                    sellingPrice: Number(v.sellingPrice || 0) || 0,
+                    sentAt: String(v.sentAt || ''),
+                    sentBy: String(v.sentBy || ''),
+                    arrivedAt: String(v.arrivedAt || ''),
+                    hasImage: v.hasImage === true
+                });
+            });
+            // الأحدثُ وصولًا أوّلًا، ثم الأحدثُ إنشاءً عند تساوي التاريخ.
+            abayaArrivals.sort((a, b) => String(b.arrivedAt || '').localeCompare(String(a.arrivedAt || '')));
+            abayaArrivalsLoaded = true;
+            abayaArrivalsLoadedAt = new Date();
+            if (force) arvImageCache.clear();
+            renderAbayaArrivals();
+        } catch (e) {
+            console.error('Error loading the arrivals:', e);
+            if (body) {
+                body.innerHTML = `<tr><td colspan="12" style="text-align:center; color: var(--danger);">`
+                    + `Error loading: ${escapeHtml(e.message)}`
+                    + `<br><span style="font-weight:400; font-size:12px;">If it says "permission", the new rules have not been published yet.</span>`
+                    + `</td></tr>`;
+            }
+        }
+    };
+
+    window.clearAbayaArrivalFilters = function() {
+        const s = document.getElementById('arvSearch'); if (s) s.value = '';
+        const st = document.getElementById('arvFilterStatus'); if (st) st.value = 'all';
+        const t = document.getElementById('arvFilterType'); if (t) t.value = '';
+        renderAbayaArrivals();
+    };
+
+    function arrivalRows() {
+        const q = String((document.getElementById('arvSearch') || {}).value || '').trim().toUpperCase();
+        const st = String((document.getElementById('arvFilterStatus') || {}).value || 'all');
+        const ty = String((document.getElementById('arvFilterType') || {}).value || '');
+        return abayaArrivals.filter(a => {
+            if (q && !(String(a.code).toUpperCase().includes(q)
+                || String(a.name).toUpperCase().includes(q)
+                || String(a.supplier).toUpperCase().includes(q))) return false;
+            if (st === 'waiting' && a.status !== ARRIVAL_WAITING) return false;
+            if (st === 'sent' && a.status !== ARRIVAL_SENT) return false;
+            if (ty && a.type !== ty) return false;
+            return true;
+        });
+    }
+
+    // ---- العرض -----------------------------------------------------------
+    window.renderAbayaArrivals = function() {
+        if (!canSeeAbaya()) return;
+        buildArrivalTypeSelects();
+        const rows = arrivalRows();
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+
+        set('arvStatCount', String(abayaArrivals.length));
+        set('arvStatPieces', String(abayaArrivals.reduce((s, a) => s + a.pieces, 0)));
+        set('arvStatWaiting', String(abayaArrivals.filter(a => a.status === ARRIVAL_WAITING).length));
+        set('arvStatTotal', money(abayaArrivals.reduce((s, a) => s + Number(a.totalQar || 0), 0)) + ' QAR');
+
+        const note = document.getElementById('arvTableNote');
+        if (note) {
+            const hidden = abayaArrivals.length - rows.length;
+            const waiting = abayaArrivals.filter(a => a.status === ARRIVAL_WAITING).length;
+            note.innerHTML = abayaArrivals.length === 0
+                ? `Nothing recorded yet. Fill the form above the moment a shipment arrives.`
+                : `<b>${rows.length}</b> of <b>${abayaArrivals.length}</b> shipments shown`
+                  + (hidden > 0 ? ` &mdash; <b style="color: var(--warning);">${hidden} hidden by the search or the filters.</b>` : '.')
+                  + (waiting
+                      ? `<br><b style="color: var(--warning);">${waiting} shipment(s) are still waiting for Mrs Fatima</b>`
+                        + ` to choose a shop and set the selling price. Until she does, they are on no shelf and no`
+                        + ` saleswoman can see them.`
+                      : `<br>Every shipment has been sent to a shop.`);
+        }
+
+        const body = document.getElementById('arvBody');
+        if (body) {
+            if (!rows.length) {
+                body.innerHTML = `<tr><td colspan="12" style="text-align:center;">`
+                    + (abayaArrivals.length ? 'Nothing matches the search or the filters.' : 'No arrival recorded yet.')
+                    + `</td></tr>`;
+            } else {
+                body.innerHTML = rows.map(a => {
+                    const m = arrivalMath(a);
+                    const sent = a.status === ARRIVAL_SENT;
+                    const where = sent
+                        ? `<b style="color: var(--success);">${escapeHtml(a.sentShop || 'a shop')}</b>`
+                          + (a.sentPieces ? `<br><span style="font-size:11.5px; color: var(--text-dim);">${a.sentPieces} piece(s)</span>` : '')
+                          + (a.sentAt ? `<br><span style="font-size:11px; color: var(--text-dim); direction: ltr;">${escapeHtml(String(a.sentAt).replace('T', ' ').slice(0, 16))}</span>` : '')
+                        : `<b style="color: var(--warning);">Waiting</b>`
+                          + `<br><span style="font-size:11.5px; color: var(--text-dim);">Mrs Fatima has not sent it yet</span>`;
+                    // سعرُ البيع: سعرُها إن أُرسلت، وإلّا اقتراحُ المالك موسومًا بأنه اقتراح.
+                    const priceCell = sent
+                        ? `<b>${money(a.sellingPrice)}</b>`
+                          + (m.profit ? `<br><span style="font-size:11px; color: var(--text-dim);">+${money(m.profit)} / piece</span>` : '')
+                        : (a.suggestedPrice
+                            ? `<span style="color: var(--text-dim);">${money(a.suggestedPrice)} suggested</span>`
+                            : `<span style="color: var(--text-dim);">&mdash;</span>`);
+                    return `<tr>`
+                        + `<td>${a.hasImage
+                              ? `<img data-arvimg="${escapeHtml(a.id)}" alt="" loading="lazy" style="width:54px; height:68px; object-fit:cover; border-radius:6px; border:1px solid var(--border); background: var(--bg-soft);">`
+                              : `<span style="font-size:11.5px; color: var(--text-dim);">no picture</span>`}</td>`
+                        + `<td style="font-family: monospace; direction: ltr;"><b>${escapeHtml(a.code)}</b></td>`
+                        + `<td>${escapeHtml(a.name) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
+                        + `<td>${escapeHtml(arrivalTypeLabel(a.type))}</td>`
+                        + `<td>${escapeHtml(a.supplier) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
+                        + `<td class="money-col"><b>${a.pieces}</b></td>`
+                        + `<td class="money-col money-only">${a.unitUsd ? '$' + money(a.unitUsd) : '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
+                        + `<td class="money-col money-only">${money(a.totalQar)}</td>`
+                        + `<td class="money-col money-only"><b>${money(a.costPerPiece)}</b></td>`
+                        + `<td class="money-col">${priceCell}</td>`
+                        + `<td>${where}</td>`
+                        + `<td style="white-space: nowrap;">`
+                        + `<button class="btn-ghost btn-sm" onclick="editAbayaArrival('${escapeJsAttr(a.id)}')">Edit</button> `
+                        + `<button class="btn-danger btn-sm" onclick="deleteAbayaArrival('${escapeJsAttr(a.id)}')">Delete</button>`
+                        + `</td></tr>`;
+                }).join('');
+            }
+        }
+
+        const foot = document.getElementById('arvFoot');
+        if (foot) {
+            foot.innerHTML = rows.length
+                ? `<tr><th colspan="5">Total of the ${rows.length} shown</th>`
+                  + `<th class="money-col">${rows.reduce((s, a) => s + a.pieces, 0)}</th>`
+                  + `<th class="money-col money-only">&mdash;</th>`
+                  + `<th class="money-col money-only">${money(rows.reduce((s, a) => s + Number(a.totalQar || 0), 0))}</th>`
+                  + `<th class="money-col money-only">&mdash;</th><th class="money-col">&mdash;</th>`
+                  + `<th></th><th></th></tr>`
+                : '';
+        }
+
+        const at = document.getElementById('arvLoadedAt');
+        if (at) {
+            at.textContent = abayaArrivalsLoadedAt
+                ? `Read from the database at ${abayaArrivalsLoadedAt.toLocaleTimeString('en-GB')}. Press Refresh to read it again.`
+                : '';
+        }
+        observeArrivalThumbs();
+    };
+
+    /** الصورُ تُقرأ عند وصول الصفِّ إلى الشاشة — نفسُ منطقِ الكتالوج ولنفس السبب. */
+    function observeArrivalThumbs() {
+        const imgs = Array.from(document.querySelectorAll('img[data-arvimg]'));
+        if (!imgs.length) return;
+        const fill = async (img) => {
+            const id = img.getAttribute('data-arvimg');
+            if (!id || img.dataset.arvDone === '1') return;
+            img.dataset.arvDone = '1';
+            try {
+                if (arvImageCache.has(id)) { img.src = arvImageCache.get(id); return; }
+                const snap = await getDoc(doc(db, ABAYA_ARRIVAL_IMAGES_COLL, id));
+                const url = snap.exists() ? String(snap.data().imageBase64 || '') : '';
+                // ⚠️ لا يُوضع في src إلّا ما هو صورةٌ مضمَّنةٌ فعلًا: قيمةٌ أخرى
+                //   في src تعني تحميلَ عنوانٍ خارجيٍّ من بياناتٍ محفوظة.
+                if (/^data:image\/(png|jpe?g|webp|gif);base64,/.test(url)) {
+                    arvImageCache.set(id, url);
+                    img.src = url;
+                }
+            } catch (e) { /* صورةٌ لا تُقرأ لا تُعطّل الجدول */ }
+        };
+        if (typeof IntersectionObserver !== 'function') { imgs.forEach(fill); return; }
+        const obs = new IntersectionObserver((entries) => {
+            entries.forEach(en => { if (en.isIntersecting) { fill(en.target); obs.unobserve(en.target); } });
+        }, { rootMargin: '200px' });
+        imgs.forEach(i => { if (i.dataset.arvDone !== '1') obs.observe(i); });
+    }
+
+    // ---- النموذج ---------------------------------------------------------
+    /** الدولارُ يملأ الريال. ⚠️ ولا يمنع الكتابةَ فوقه — الفاتورةُ أصدقُ من الربط. */
+    window.onArrivalUsdTyped = function() {
+        const usd = Number((document.getElementById('arvUsd') || {}).value || 0) || 0;
+        const rate = Number((document.getElementById('arvRate') || {}).value || 0) || 0;
+        const qarEl = document.getElementById('arvQar');
+        if (qarEl && usd > 0 && rate > 0) qarEl.value = String(arvRound2(usd * rate));
+        onArrivalInput();
+    };
+
+    /** يُعيد رسمَ المجموع وكوست القطعة والربح مع كلّ حرفٍ يُكتب. */
+    window.onArrivalInput = function() {
+        const g = (id) => (document.getElementById(id) || {}).value;
+        const m = arrivalMath({
+            unitQar: g('arvQar'), pieces: g('arvPieces'),
+            shipping: g('arvShipping'), labour: g('arvLabour'),
+            sellingPrice: g('arvSuggested')
+        });
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        set('arvCalcTotal', money(m.total) + ' QAR');
+        set('arvCalcCost', money(m.costPerPiece) + ' QAR');
+        const pEl = document.getElementById('arvCalcProfit');
+        const mEl = document.getElementById('arvCalcMargin');
+        if (m.sellingPrice > 0 && m.pieces > 0) {
+            if (pEl) {
+                pEl.textContent = (m.profit >= 0 ? '+' : '') + money(m.profit) + ' QAR';
+                pEl.style.color = m.profit >= 0 ? 'var(--success)' : 'var(--danger)';
+            }
+            if (mEl) {
+                mEl.innerHTML = m.profit < 0
+                    // ⚠️ بيعٌ بأقلّ من الكوست يُقال صريحًا بالأحمر: رقمٌ سالبٌ صغيرٌ
+                    //   في زاويةٍ يُقرأ كأنه عادي، وهذه خسارةٌ على كل قطعة.
+                    ? `<b style="color: var(--danger);">&#9888; That sells BELOW cost &mdash; a loss of `
+                      + `${money(Math.abs(m.profit))} QAR on every piece.</b>`
+                    : `${m.marginPct}% of the selling price`;
+            }
+        } else {
+            if (pEl) { pEl.textContent = '—'; pEl.style.color = ''; }
+            if (mEl) mEl.textContent = 'Type a suggested price to see it';
+        }
+    };
+
+    /** يُنبّه إن كان الباركود في الكتالوج سلفًا — فهذه إعادةُ تعبئةٍ لا تصميمٌ جديد. */
+    window.onArrivalCodeTyped = function() {
+        const st = document.getElementById('arvFormStatus');
+        if (!st) return;
+        const id = abayaProductId((document.getElementById('arvCode') || {}).value);
+        if (!id) { st.textContent = ''; return; }
+        const inCat = abayaProducts.find(p => p.id === id);
+        st.innerHTML = inCat
+            ? `<span style="color: var(--info-600, #0369A1);">This barcode is already in the catalogue`
+              + `${inCat.name ? ' (' + escapeHtml(inCat.name) + ')' : ''} at ${money(inCat.price)} QAR. `
+              + `Sending this shipment will <b>add to its quantity</b> and keep that price &mdash; it will not create a second design.</span>`
+            : '';
+    };
+
+    window.onArrivalPhotoPicked = async function(ev) {
+        const file = ev && ev.target && ev.target.files && ev.target.files[0];
+        const st = document.getElementById('arvFormStatus');
+        if (!file) return;
+        if (st) { st.style.color = ''; st.textContent = 'Compressing the picture...'; }
+        try {
+            // ⚠️ تُعاد استعمالُ shrinkAbayaPhoto نفسِها لا نسخةٌ ثانية: الصورةُ
+            //   ستصبح صورةَ الكتالوج حرفيًّا، فيجب أن تُضغط بنفس القياس تمامًا.
+            arvPendingPhoto = await shrinkAbayaPhoto(file);
+            arvPhotoCleared = false;
+            showArrivalFormPhoto(arvPendingPhoto);
+            const kb = Math.round(arvPendingPhoto.length * 0.75 / 1024);
+            if (st) { st.style.color = ''; st.textContent = `Picture ready (${kb} KB after compressing). Press Save.`; }
+        } catch (e) {
+            arvPendingPhoto = null;
+            showArrivalFormPhoto('');
+            if (st) { st.style.color = 'var(--danger)'; st.textContent = e.message; }
+        }
+        if (ev.target) ev.target.value = '';
+    };
+
+    function showArrivalFormPhoto(url) {
+        const img = document.getElementById('arvPhotoImg');
+        const empty = document.getElementById('arvPhotoEmpty');
+        const clr = document.getElementById('arvPhotoClear');
+        const has = !!url;
+        if (img) { img.style.display = has ? '' : 'none'; if (has) img.src = url; else img.removeAttribute('src'); }
+        if (empty) empty.style.display = has ? 'none' : '';
+        if (clr) clr.style.display = has ? '' : 'none';
+    }
+
+    window.clearArrivalPhoto = function() {
+        arvPendingPhoto = null;
+        arvPhotoCleared = true;
+        showArrivalFormPhoto('');
+        const st = document.getElementById('arvFormStatus');
+        if (st) { st.style.color = ''; st.textContent = 'The picture will be removed when you press Save.'; }
+    };
+
+    window.resetArrivalForm = function() {
+        arvEditingId = '';
+        arvPendingPhoto = null;
+        arvPhotoCleared = false;
+        const v = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        v('arvCode', ''); v('arvName', ''); v('arvSupplier', '');
+        v('arvUsd', ''); v('arvQar', ''); v('arvPieces', '');
+        v('arvShipping', ''); v('arvLabour', ''); v('arvSuggested', '');
+        v('arvRate', String(ABAYA_USD_RATE_DEFAULT));
+        v('arvDate', todayISO());
+        const ty = document.getElementById('arvType'); if (ty) ty.selectedIndex = 0;
+        const code = document.getElementById('arvCode'); if (code) code.disabled = false;
+        const t = document.getElementById('arvFormTitle'); if (t) t.textContent = 'Record a new arrival';
+        const c = document.getElementById('arvCancelBtn'); if (c) c.style.display = 'none';
+        const st = document.getElementById('arvFormStatus'); if (st) { st.style.color = ''; st.textContent = ''; }
+        showArrivalFormPhoto('');
+        onArrivalInput();
+    };
+
+    window.editAbayaArrival = async function(id) {
+        if (!canEditAbayaSetup()) { alert('Only the owner can change an arrival.'); return; }
+        const a = abayaArrivals.find(x => x.id === id);
+        if (!a) return;
+        // ⚠️⚠️ وصولٌ أُرسل إلى محلٍّ **لا يُعدَّل**: كوستُه صار على مستند الكتالوج
+        //   وكميّتُه على رفّ محلٍّ، فتعديلُ رقمِه هنا يجعل الشاشتين تقولان رقمين
+        //   لشيءٍ واحد. التصحيحُ يكون في الكتالوج نفسِه.
+        if (a.status === ARRIVAL_SENT) {
+            alert(`This shipment was already sent to ${a.sentShop || 'a shop'}.\n\n`
+                + `Its cost and its quantity are now on the catalogue line for ${a.code}, so changing the figures `
+                + `here would leave two different numbers for one thing.\n\n`
+                + `Correct it in "Abaya — Catalogue" instead.`);
+            return;
+        }
+        arvEditingId = id;
+        arvPendingPhoto = null;
+        arvPhotoCleared = false;
+        buildArrivalTypeSelects();
+        const v = (eid, val) => { const el = document.getElementById(eid); if (el) el.value = val; };
+        v('arvCode', a.code);
+        v('arvName', a.name);
+        v('arvSupplier', a.supplier);
+        v('arvUsd', a.unitUsd ? String(a.unitUsd) : '');
+        v('arvRate', String(a.usdRate || ABAYA_USD_RATE_DEFAULT));
+        v('arvQar', a.unitQar ? String(a.unitQar) : '');
+        v('arvPieces', a.pieces ? String(a.pieces) : '');
+        v('arvShipping', a.shipping ? String(a.shipping) : '');
+        v('arvLabour', a.labour ? String(a.labour) : '');
+        v('arvSuggested', a.suggestedPrice ? String(a.suggestedPrice) : '');
+        v('arvDate', a.arrivedAt || todayISO());
+        const ty = document.getElementById('arvType'); if (ty && a.type) ty.value = a.type;
+        const t = document.getElementById('arvFormTitle'); if (t) t.textContent = 'Edit the arrival of ' + a.code;
+        const c = document.getElementById('arvCancelBtn'); if (c) c.style.display = '';
+        const st = document.getElementById('arvFormStatus'); if (st) { st.style.color = ''; st.textContent = ''; }
+        showArrivalFormPhoto('');
+        if (a.hasImage) {
+            if (arvImageCache.has(id)) showArrivalFormPhoto(arvImageCache.get(id));
+            else {
+                try {
+                    const snap = await getDoc(doc(db, ABAYA_ARRIVAL_IMAGES_COLL, id));
+                    const url = snap.exists() ? String(snap.data().imageBase64 || '') : '';
+                    if (/^data:image\//.test(url)) { arvImageCache.set(id, url); showArrivalFormPhoto(url); }
+                } catch (e) { /* لا تُعطّل التحرير */ }
+            }
+        }
+        onArrivalInput();
+        if (t && t.scrollIntoView) t.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
+    window.saveAbayaArrival = async function() {
+        if (!canEditAbayaSetup()) { alert('Only the owner can record an arrival.'); return; }
+        const st = document.getElementById('arvFormStatus');
+        const fail = (msg) => { if (st) { st.style.color = 'var(--danger)'; st.textContent = msg; } };
+        const g = (id) => String((document.getElementById(id) || {}).value || '').trim();
+
+        const rawCode = g('arvCode');
+        const productId = abayaProductId(rawCode);
+        if (!productId) {
+            return fail('The barcode is required — it is the name the piece will carry in the catalogue.');
+        }
+        const type = g('arvType');
+        if (!type) return fail('Choose what the piece is.');
+        const pieces = Math.floor(Number(g('arvPieces')) || 0);
+        if (pieces < 1) return fail('How many pieces arrived? At least one.');
+        const unitQar = Number(g('arvQar')) || 0;
+        if (unitQar <= 0) {
+            return fail('The price of one piece in riyals is required — the cost of a piece is worked out from it.');
+        }
+        const m = arrivalMath({
+            unitQar, pieces, shipping: g('arvShipping'), labour: g('arvLabour'),
+            sellingPrice: g('arvSuggested')
+        });
+        if (m.shipping < 0 || m.labour < 0) return fail('Shipping and labour cannot be below zero.');
+
+        const btn = document.getElementById('arvSaveBtn');
+        if (btn) btn.disabled = true;
+        if (st) { st.style.color = ''; st.textContent = 'Saving...'; }
+        try {
+            const payload = {
+                code: rawCode,
+                productId,
+                name: g('arvName'),
+                type,
+                supplier: g('arvSupplier'),
+                unitUsd: Number(g('arvUsd')) || 0,
+                // ⚠️ السعرُ المستعملُ يُجمَّد على المستند: تغييرُه لاحقًا لا يُعيد
+                //   حسابَ شحنةٍ لم تُشترَ به.
+                usdRate: Number(g('arvRate')) || ABAYA_USD_RATE_DEFAULT,
+                unitQar: m.unitQar,
+                pieces: m.pieces,
+                shipping: m.shipping,
+                labour: m.labour,
+                totalQar: m.total,
+                costPerPiece: m.costPerPiece,
+                suggestedPrice: m.sellingPrice,
+                arrivedAt: g('arvDate') || todayISO(),
+                updatedAt: serverTimestamp(),
+                updatedBy: (currentUser && currentUser.email) || ''
+            };
+
+            let id = arvEditingId;
+            if (!id) {
+                // ⚠️⚠️ معرّفٌ تلقائيٌّ لا الباركود: **الشحنةُ ليست التصميم**. نفسُ
+                //   الباركود قد يصل ثلاث مرّاتٍ بأسعارٍ مختلفة، وكلُّ وصولٍ سجلٌّ
+                //   قائمٌ بنفسه. ولو كان المعرّفُ الباركودَ لمحا الوصولُ الثاني
+                //   الأوّلَ — أي لضاع كوستُ شحنةٍ دُفع فعلًا.
+                payload.status = ARRIVAL_WAITING;
+                payload.sentShop = '';
+                payload.sentPieces = 0;
+                payload.sellingPrice = 0;
+                payload.sentAt = '';
+                payload.sentBy = '';
+                payload.hasImage = false;
+                payload.createdAt = serverTimestamp();
+                const ref = await addDoc(collection(db, ABAYA_ARRIVALS_COLL), payload);
+                id = ref.id;
+            }
+
+            // ⚠️ الصورةُ تُكتب **قبل** وسم hasImage: وسمٌ يقول «فيها صورة» وليس
+            //   لها صورة يُنتج مربّعًا فارغًا على شاشة السيدة فاطمة إلى الأبد.
+            let hasImage = arvEditingId
+                ? ((abayaArrivals.find(x => x.id === id) || {}).hasImage === true)
+                : false;
+            if (arvPendingPhoto) {
+                await setDoc(doc(db, ABAYA_ARRIVAL_IMAGES_COLL, id), {
+                    imageBase64: arvPendingPhoto,
+                    updatedAt: serverTimestamp(),
+                    updatedBy: (currentUser && currentUser.email) || ''
+                });
+                arvImageCache.set(id, arvPendingPhoto);
+                hasImage = true;
+            } else if (arvPhotoCleared) {
+                try { await deleteDoc(doc(db, ABAYA_ARRIVAL_IMAGES_COLL, id)); } catch (e) { /* لم تكن موجودة */ }
+                arvImageCache.delete(id);
+                hasImage = false;
+            }
+
+            await setDoc(doc(db, ABAYA_ARRIVALS_COLL, id), { ...payload, hasImage }, { merge: true });
+
+            logAudit('abaya_arrival_saved', `${rawCode} — ${arrivalTypeLabel(type)} — ${pieces} piece(s) — `
+                + `total ${m.total} QAR — cost/piece ${m.costPerPiece} QAR`
+                + (payload.supplier ? ` — from ${payload.supplier}` : ''));
+            resetArrivalForm();
+            await loadAbayaArrivals();
+            if (st) {
+                st.style.color = 'var(--success)';
+                st.textContent = `Saved ${rawCode}. It is now waiting in "Newly arrived" on Mrs Fatima's panel.`;
+            }
+        } catch (e) {
+            console.error('Error saving the arrival:', e);
+            fail(`Could not save: ${e.message}`
+                + (/permission/i.test(String(e.message)) ? ' — the new rules have not been published yet.' : ''));
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    };
+
+    window.deleteAbayaArrival = async function(id) {
+        if (!canEditAbayaSetup()) { alert('Only the owner can delete an arrival.'); return; }
+        const a = abayaArrivals.find(x => x.id === id);
+        if (!a) return;
+        // ⚠️⚠️ حذفُ وصولٍ أُرسل **لا يُرجع** الكميّةَ من رفّ المحل ولا يمحو سطرَ
+        //   الكتالوج — فيُقال ذلك بالحرف قبل الحذف، وإلّا ظُنّ أنّ الحذف يُلغي
+        //   الإرسالَ كلَّه.
+        if (!confirm(`Delete the arrival of ${a.code}${a.name ? ' — ' + a.name : ''}?\n\n`
+            + (a.status === ARRIVAL_SENT
+                ? `⚠️ THIS SHIPMENT WAS ALREADY SENT to ${a.sentShop || 'a shop'}.\n`
+                  + `Deleting it here does NOT take the ${a.sentPieces || a.pieces} piece(s) off that shop's shelf and `
+                  + `does NOT remove the catalogue line. It only removes the record of what we PAID — so the cost of `
+                  + `${a.code} can no longer be checked against its price.\n\n`
+                : `It is still waiting for a shop, so nothing else is affected.\n\n`)
+            + `This cannot be undone.`)) return;
+        try {
+            await deleteDoc(doc(db, ABAYA_ARRIVALS_COLL, id));
+            try { await deleteDoc(doc(db, ABAYA_ARRIVAL_IMAGES_COLL, id)); } catch (e) { /* لا صورة */ }
+            arvImageCache.delete(id);
+            logAudit('abaya_arrival_deleted', `${a.code} — ${a.pieces} piece(s) — total ${a.totalQar} QAR`
+                + (a.status === ARRIVAL_SENT ? ` — HAD BEEN SENT to ${a.sentShop}` : ' — was still waiting'));
+            if (arvEditingId === id) resetArrivalForm();
+            await loadAbayaArrivals();
+        } catch (e) {
+            alert(`Could not delete: ${e.message}`);
+        }
+    };
+
+    window.exportAbayaArrivalsExcel = function() {
+        const rows = arrivalRows();
+        if (!rows.length) { alert('Nothing to export.'); return; }
+        const sheet = rows.map(a => {
+            const m = arrivalMath(a);
+            return {
+                'Arrived on': a.arrivedAt,
+                'Barcode': a.code,
+                'Name': a.name,
+                'What': arrivalTypeLabel(a.type),
+                'Supplier': a.supplier,
+                'Pieces': a.pieces,
+                'One piece USD': a.unitUsd || '',
+                'Rate used': a.usdRate || '',
+                'One piece QAR': a.unitQar,
+                'Shipping': a.shipping,
+                'Labour': a.labour,
+                'Total paid': a.totalQar,
+                'Cost per piece': a.costPerPiece,
+                'Suggested price': a.suggestedPrice || '',
+                'Selling price set': a.status === ARRIVAL_SENT ? a.sellingPrice : '',
+                'Profit per piece': a.status === ARRIVAL_SENT ? m.profit : '',
+                'Margin %': a.status === ARRIVAL_SENT ? m.marginPct : '',
+                'Status': a.status === ARRIVAL_SENT ? 'Sent' : 'Waiting',
+                'Sent to': a.sentShop,
+                'Pieces sent': a.sentPieces || '',
+                'Sent at': a.sentAt,
+                'Sent by': a.sentBy
+            };
+        });
+        const ws = XLSX.utils.json_to_sheet(sheet);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'New Arrivals');
+        XLSX.writeFile(wb, `Abaya_New_Arrivals_${todayISO()}.xlsx`);
     };
 
     // ---- التحميل ---------------------------------------------------------
@@ -22757,7 +23623,12 @@
         // وقع فعلًا مرّتين: مع أدلّة التدريب ومع بطاقات البياعات.
         // و`abaya_product_moves` سجلٌّ غير قابل للتعديل بقواعده — أي إثبات، ولا
         // يُعاد بناؤه من شيء آخر.
-        "abaya_products", "abaya_product_costs", "abaya_product_images", "abaya_product_moves"
+        "abaya_products", "abaya_product_costs", "abaya_product_images", "abaya_product_moves",
+        // ⚠️⚠️ الوصولات: **المصدرُ الوحيد** لأرقام الشراء (الدولار، الشحن، اليد
+        // العاملة، المورّد). مستندُ الكتالوج يحمل الكوستَ النهائيَّ وحدَه ولا
+        // يحمل منها شيئًا، فنسيانُ هذه المجموعتين في النسخة الاحتياطية يعني
+        // فقدانَ **تاريخِ شرائنا كلِّه** بلا أن يُعاد بناؤه من أيّ شيء آخر.
+        "abaya_arrivals", "abaya_arrival_images"
     ];
     // =====================================================================
     // تعيين المدراء بضغطة

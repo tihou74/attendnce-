@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v15   (2026-09-17)  <<<
+//   >>>  RULES REVISION: v16   (2026-09-24)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -44,6 +44,45 @@ rules_version = '2';
 // exact mistake happened with the "(v4)" label, which never changed across
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
+//
+//  v16  2026-09-24  + NEW GOODS ARRIVED — abaya_arrivals + abaya_arrival_images,
+//                     and THE FIRST WRITE ACCESS MRS FATIMA HAS EVER HAD.
+//
+//                     ⚠️⚠️⚠️ READ THIS BEFORE PUBLISHING. Until this revision the
+//                     VIEWERS could write NOTHING, ANYWHERE — that was stated as
+//                     an absolute in this file and it is now no longer true. The
+//                     owner asked for a flow where he records an arriving
+//                     shipment with its purchase figures, and MRS FATIMA chooses
+//                     which shop it goes to and SETS THE SELLING PRICE, after
+//                     which it becomes a catalogue line by itself. There is no
+//                     backend in this project and no Cloud Functions, so "by
+//                     itself" can only mean HER BROWSER performs those writes.
+//                     A screen cannot be trusted to limit them — these rules do.
+//
+//                     What she may now do, and nothing beyond it:
+//                       • abaya_arrivals   — update ONLY the six dispatch fields,
+//                         and only while the shipment is still 'waiting'. She can
+//                         never touch a purchase figure (USD, shipping, labour,
+//                         supplier, cost) and can never dispatch the same
+//                         shipment twice, which would double the stock.
+//                       • abaya_products   — CREATE a design (that is where her
+//                         selling price is set), and UPDATE only ['qty',
+//                         'updatedAt'] exactly like the kiosk. So restocking an
+//                         existing design adds pieces and CANNOT change its
+//                         price. Changing the price of something already on a
+//                         shelf stays the owner's, through the WhatsApp request
+//                         her panel already has.
+//                       • abaya_product_costs / abaya_product_images — write, so
+//                         the shipment's cost and its photograph carry onto the
+//                         new catalogue line without the owner re-entering them.
+//                       • abaya_product_moves — create, so the pieces she sends
+//                         appear in "what moved and who moved it" under her name.
+//
+//                     The KIOSK is granted NOTHING here. abaya_arrivals holds our
+//                     purchase price, our shipping and our supplier's name, and
+//                     the kiosk signs in ANONYMOUSLY — which in practice means
+//                     anyone holding the saleswoman's link. Never add isKiosk()
+//                     to these two collections.
 //
 //  v15  2026-09-17  + THE SALESWOMEN'S BOARD — abaya_seller_cards + abaya_presence.
 //                     Management's request: when a saleswoman signs in at a shop,
@@ -285,11 +324,21 @@ function salaryUnchanged() {
 // these rules and not only in the page.
 //
 // Consequences of being on this list, enforced server-side:
-//   • READ  only settings, sales_reports and financial_payments — exactly what
-//     the three balances are computed from.
-//   • NO write, update or delete anywhere, ever.
+//   • READ  only the collections their two panels are computed from.
 //   • NO access at all to employees, salaries, attendance, deductions, QID
 //     photos, warnings, leave requests, audit log or training records.
+//   • ⚠️⚠️⚠️ WRITE: this used to say "NO write, update or delete anywhere, ever"
+//     and that is NO LONGER TRUE as of v16. The owner asked for Mrs Fatima to
+//     send an arrived shipment to a shop and to set its selling price, and with
+//     no backend in this project that can only be her own browser writing. Her
+//     writes are enumerated in the v16 note at the top of this file and are
+//     confined to FIVE abaya collections with per-field limits. She still has no
+//     write of any kind outside the abaya business, and none at all on
+//     employees, payroll, attendance or settings.
+//     If you are reading this while auditing: the one thing to check is that
+//     abaya_products `update` for a viewer stays hasOnly(['qty','updatedAt']).
+//     That single clause is what stops her changing the price of anything
+//     already on a shelf.
 //
 // The email must match EXACTLY the account created in
 // Firebase Console > Authentication > Users. Create the accounts with these
@@ -800,12 +849,29 @@ service cloud.firestore {
     // affectedKeys().hasOnly(['qty','updatedAt']). Prices, cost, barcode and
     // name are the owner's alone, and a rule — not a screen — is what enforces
     // that, because a screen can be bypassed from the browser's own tools.
+    // ⚠️⚠️⚠️ v16 — THE VIEWER (Mrs Fatima) MAY NOW CREATE, AND MAY ADD QUANTITY.
+    // She dispatches an arrived shipment to a shop from her own panel, and with
+    // no backend that write is hers. Two different grants, deliberately unequal:
+    //
+    //   CREATE — allowed in full, because a shipment with a barcode nobody has
+    //   sold before IS a new design and her selling price is the whole point of
+    //   the step the owner described ("هي التي تضع سعر البيع").
+    //
+    //   UPDATE — restricted to hasOnly(['qty','updatedAt']), the SAME clause the
+    //   kiosk lives under. So sending a second shipment of a design that is
+    //   already on a shelf ADDS PIECES and cannot touch the price, the barcode,
+    //   the name or the discount. ⚠️ DO NOT widen this to include 'price' for
+    //   her convenience: that is the difference between "she prices new goods"
+    //   and "she can reprice the whole shop". Repricing existing stock stays the
+    //   owner's, and her panel already has the WhatsApp request for asking.
+    //
+    //   DELETE stays the owner's alone.
     match /abaya_products/{productId} {
       allow read: if isAdmin() || isAccountant() || isViewer() || isKiosk();
-      allow create: if isAdmin();
+      allow create: if isAdmin() || isViewer();
       allow delete: if isAdmin();
       allow update: if isAdmin()
-        || (isKiosk()
+        || ((isKiosk() || isViewer())
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['qty', 'updatedAt']));
     }
 
@@ -838,9 +904,19 @@ service cloud.firestore {
     // created himself. The kiosk is an ANONYMOUS sign-in, which in practice means
     // anybody who has the saleswoman's link — so cost there would be our purchase
     // price published to the world. Never add isKiosk() to this rule.
+    // ⚠️ v16: the viewer may now WRITE this. When she sends an arrived shipment
+    // to a shop, the cost the owner recorded on that shipment has to land on the
+    // catalogue line, or the catalogue would show a piece with no cost and his
+    // "stock at cost" figure would understate by that whole shipment. She is not
+    // typing a cost — her screen copies the one HE entered on the arrival.
+    // ⚠️⚠️ Note the consequence, which is deliberate and reported to him: if a
+    // design is restocked at a different purchase price, this document ends up
+    // holding the LATEST shipment's cost. Nothing is lost — every shipment keeps
+    // its own cost forever in abaya_arrivals — but the catalogue's single cost
+    // field can only hold one number, and the newest is the useful one.
     match /abaya_product_costs/{productId} {
       allow read: if isAdmin() || isAccountant() || isViewer();
-      allow write: if isAdmin();
+      allow write: if isAdmin() || isViewer();
     }
 
     // ---- abaya_product_images (the photograph, one document per design) -----
@@ -856,9 +932,16 @@ service cloud.firestore {
     //
     // Only the owner uploads: a saleswoman changing a photograph would change
     // what the shop is shown to be selling.
+    // ⚠️ v16: the viewer may now write, so the photograph taken when the shipment
+    // arrived becomes the catalogue photograph without anyone finding and
+    // uploading it a second time. Her screen only writes it when the product has
+    // NO picture yet — replacing the picture of something already on a shelf
+    // changes what the shop is shown to be selling, and that stays the owner's.
+    // That restraint is in her page, not in this rule, because a rule cannot read
+    // the old document's hasImage flag on a create.
     match /abaya_product_images/{productId} {
       allow read: if isAdmin() || isAccountant() || isViewer() || isKiosk();
-      allow write: if isAdmin();
+      allow write: if isAdmin() || isViewer();
     }
 
     // ---- abaya_product_moves (who moved which piece, and when) -------------
@@ -872,11 +955,76 @@ service cloud.firestore {
     // ⚠️ This is NOT a sales record and carries no money. It does not feed the
     // daily report, the commission or the target. A missing line here means the
     // movement write did not land — never that nothing was sold.
+    // ⚠️ v16: the viewer may now CREATE a line — the pieces she sends to a shop
+    // must appear in "what moved, and who moved it" under her own name. Without
+    // it the quantity of a shop would rise with no line explaining why, which is
+    // the exact question this log exists to answer.
+    // Update stays closed to everyone, as before: a correction is a NEW line.
     match /abaya_product_moves/{moveId} {
       allow read: if isAdmin() || isAccountant() || isViewer();
-      allow create: if isKiosk() || isAdmin();
+      allow create: if isKiosk() || isAdmin() || isViewer();
       allow update: if false;
       allow delete: if isAdmin();
+    }
+
+    // ======================================================================
+    // ---- NEW GOODS ARRIVED — abaya_arrivals + abaya_arrival_images ---------
+    // ======================================================================
+    // One document per SHIPMENT, not per design. The owner records a shipment the
+    // moment it lands: its barcode, what it is, who supplied it, the price of one
+    // piece in dollars, the rate used, the price in riyals, how many pieces, the
+    // shipping, the labour — and the two figures the system works out from those,
+    // the total paid and the cost of ONE piece.
+    //
+    // ⚠️ THE DOCUMENT ID IS AUTOMATIC, NOT THE BARCODE, and that is not a detail:
+    // the same barcode can arrive three times at three different prices. Keyed by
+    // barcode, the second shipment would overwrite the first and the cost of a
+    // shipment that was really paid for would be gone. Each arrival stands alone,
+    // and `productId` links it to the catalogue line it will become.
+    //
+    // ⚠️⚠️⚠️ THE KIOSK IS REFUSED, AND MUST STAY REFUSED. This document holds OUR
+    // PURCHASE PRICE, our shipping cost and OUR SUPPLIER'S NAME. The saleswoman's
+    // page signs in ANONYMOUSLY, so "the kiosk" is in practice anybody who opens
+    // that link. This is the same reasoning that keeps abaya_product_costs out of
+    // the product document, only worse — a cost is one number, a supplier is a
+    // relationship a competitor can go and buy from. NEVER add isKiosk() here.
+    //
+    // ⚠️ THE VIEWER'S UPDATE IS THE NARROWEST CLAUSE IN THIS FILE, on purpose:
+    //   • hasOnly([...]) — she writes the six dispatch fields and nothing else.
+    //     Every purchase figure is outside that list, so she cannot alter what we
+    //     paid, and cannot rewrite history to make a margin look better.
+    //   • status != 'sent' — she cannot dispatch the same shipment twice. Without
+    //     this a second press would add the pieces to a shop AGAIN and inflate
+    //     the shelf by a whole shipment, with the log showing two arrivals for
+    //     goods that came once.
+    //   • no create, no delete — recording and removing a shipment is the
+    //     owner's; her step is only "where does it go and what does it sell for".
+    match /abaya_arrivals/{arrivalId} {
+      allow read: if isAdmin() || isAccountant() || isViewer();
+      allow create: if isAdmin();
+      allow delete: if isAdmin();
+      allow update: if isAdmin()
+        || (isViewer()
+            && resource.data.get('status', 'waiting') != 'sent'
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['status', 'sentShop', 'sentPieces', 'sellingPrice',
+                           'sentAt', 'sentBy', 'updatedAt']));
+    }
+
+    // ---- abaya_arrival_images (the photograph of an arriving shipment) ------
+    // id = the arrival id. Split off the arrival document for the same reason the
+    // catalogue splits its pictures: Mrs Fatima's panel lists the waiting
+    // shipments every time she opens it, and a picture inside each row would make
+    // that list megabytes on a telephone in order to show a few names. The
+    // picture of a row is fetched only when that row reaches her screen.
+    //
+    // She may write it because dispatching copies this picture onto the new
+    // catalogue line. The kiosk is refused: it has no business seeing goods that
+    // have not been put on a shelf yet, and this collection is keyed to documents
+    // it must never read.
+    match /abaya_arrival_images/{arrivalId} {
+      allow read: if isAdmin() || isAccountant() || isViewer();
+      allow write: if isAdmin() || isViewer();
     }
 
     // NOTE: the discount-season switch (settings/abaya_discount) needs NO rule of
