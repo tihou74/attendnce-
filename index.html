@@ -579,7 +579,13 @@
         </div>
 
         <div class="form-group">
-            <label for="applyQidFront">Qatar ID (QID) Photo — Front Side (صورة البطاقة الشخصية):</label>
+            <!-- ⚠️ «Front Side» أُزيلت من التسمية بطلب المالك: صورةُ مطراش تحمل
+                 وجهَي البطاقة في صورةٍ واحدة، وطلبُ «الوجه الأمامي» كان يطلب ما
+                 لا وجودَ له ويجعل المتقدّمَ يظنُّ أنه يحتاج صورتين.
+                 ⚠️⚠️ ومعرّفُ الحقل `applyQidFront` واسمُ حقلِ فايرستور `qidFront`
+                 لم يُعادا تسميتُهما — إعادةُ التسمية تقطع الصلةَ بكلّ طلبٍ
+                 مُقدَّمٍ سلفًا وبكلّ صورةٍ محفوظة. التسميةُ المرئيةُ وحدَها تغيّرت. -->
+            <label for="applyQidFront">Qatar ID Photo from Metrash (صورة البطاقة الشخصية من مطراش):</label>
             <input type="file" id="applyQidFront" accept="image/*">
         </div>
 
@@ -2132,7 +2138,7 @@
             return;
         }
         if (!qidInput.files[0]) {
-            showStatus("Please upload a photo of your QID (front side).", "error");
+            showStatus("Please upload a photo of your Qatar ID from Metrash.", "error");
             return;
         }
         // ⚠️⚠️⚠️ رقمُ الهوية وتاريخُها — بطلب المالك. والتدقيقُ **بنفس** قاعدة

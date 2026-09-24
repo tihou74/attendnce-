@@ -1520,8 +1520,13 @@
             
 
             <div class="controls" style="margin-top: 18px; background: var(--surface-2); padding: 18px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
-                <div style="flex: 1; min-width: 150px;"><label>QID Front</label><input type="file" id="qidFrontInput" accept="image/*" style="font-size: 11px; padding: 8px;"></div>
-                <div style="flex: 1; min-width: 150px;"><label>QID Back</label><input type="file" id="qidBackInput" accept="image/*" style="font-size: 11px; padding: 8px;"></div>
+                <!-- ⭐⭐⭐ خانةٌ واحدةٌ للبطاقة الشخصية، بطلب المالك: صورةُ مطراش
+                     تُظهر **الوجهين في صورةٍ واحدة**، فخانةُ «الخلف» كانت تطلب
+                     ما لا وجودَ له. أُزيلت من هنا ومن ملفّ الموظف معًا.
+                     ⚠️ واسمُ الحقل في قاعدة البيانات بقي `qidFront` بلا تغيير:
+                     تغييرُه يقطع الصلةَ بكلّ صورةٍ محفوظةٍ سلفًا لمئةِ موظف.
+                     الاسمُ المعروضُ تغيّر، والمفتاحُ لا. -->
+                <div style="flex: 1; min-width: 150px;"><label>Qatar ID (Metrash)</label><input type="file" id="qidFrontInput" accept="image/*" style="font-size: 11px; padding: 8px;"></div>
                 <div style="flex: 1; min-width: 150px;"><label>Health Card</label><input type="file" id="healthCardInput" accept="image/*" style="font-size: 11px; padding: 8px;"></div>
                 <div style="flex: 1; min-width: 150px;"><label>Contract</label><input type="file" id="contractInput" accept="image/*" style="font-size: 11px; padding: 8px;"></div>
                 <div style="flex: 1; min-width: 150px;"><label>Health Cert</label><input type="file" id="healthCertInput" accept="image/*" style="font-size: 11px; padding: 8px;"></div>
@@ -3472,7 +3477,7 @@
              الموظف؟ لأن السيدة فاطمة مُشاهِدة (isViewer) ولا تستطيع قراءة
              مجموعة employees إطلاقًا — فيها الرواتب وأرقام الهويات وصورها.
              فالبطاقة نسخةٌ مقصودة ومحدودة: اسم وفرع ومسمّى وصورة صغيرة.
-             ⚠️ ولا تُستخدم صورة الهوية (qidFront/qidBack) بطاقةً بحال: تلك
+             ⚠️ ولا تُستخدم صورة البطاقة الشخصية (qidFront) بطاقةً بحال: تلك
              وثيقة رسمية، ووضعها هنا يعني نشر هوية المدير على من يقرأ المجموعة.
              ⚠️ الصورة تُصغَّر وتُضغط قبل الحفظ: صفحة السيدة فاطمة تُحدَّث كل
              دقيقة، وصورةٌ بحجم 700KB لكل مدير كانت ستستهلك بياناتها بلا داعٍ.
@@ -4245,8 +4250,16 @@
                  ويُرفض الحفظُ إن اختلف الوسمُ عن الملفّ المفتوح.
                  ⚠️ و`onchange` يُظهر اسمَ الملفّ المختار تحت الخانة، فترى السكرتيرةُ
                  بعينها ما هو مُعلَّقٌ قبل أن تحفظ. -->
-            <div class="qid-box"><strong>QID Front</strong><div id="qidFrontContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="qidFrontDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('qidFront', 'QID_Front')"><span data-icon="download"></span> Download</button><input type="file" id="editQidFrontInput" accept="image/*" style="font-size: 10px;" onchange="onProfileFilePicked('editQidFrontInput')"><small id="editQidFrontInputNote" style="display:none; margin-top:4px; font-size:10.5px; line-height:1.35; color: var(--warning);"></small></div>
-            <div class="qid-box"><strong>QID Back</strong><div id="qidBackContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="qidBackDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('qidBack', 'QID_Back')"><span data-icon="download"></span> Download</button><input type="file" id="editQidBackInput" accept="image/*" style="font-size: 10px;" onchange="onProfileFilePicked('editQidBackInput')"><small id="editQidBackInputNote" style="display:none; margin-top:4px; font-size:10.5px; line-height:1.35; color: var(--warning);"></small></div>
+            <!-- ⭐⭐⭐ «البطاقة الشخصية من مطراش» — خانةٌ واحدةٌ بطلب المالك:
+                 «يوجد صورةٌ واحدةٌ للبطاقة الشخصية بالوجهين، لذلك لا داعي لها».
+                 فأُزيلت خانةُ «QID Back» وسُمّيت هذه «Qatar ID (Metrash)».
+                 ⚠️⚠️ ومفتاحُ الحقل في فايرستور بقي `qidFront` كما هو — ولم
+                 يُعَد تسميتُه. إعادةُ التسمية تعني هجرةَ بياناتٍ لكلّ موظفٍ
+                 عنده صورةٌ محفوظة، وأيُّ ملفٍّ لم يُهاجَر تصبح صورتُه غيرَ
+                 مرئيةٍ. الاسمُ على الشاشة تغيّر، والمفتاحُ تحته لم يُمَسّ.
+                 ⚠️ وما حُفظ سابقًا في `qidBack` **لم يُحذف** من قاعدة البيانات
+                 ولا من النسخ الاحتياطية — لم يبقَ له عارضٌ في اللوحة فقط. -->
+            <div class="qid-box"><strong>Qatar ID (Metrash)</strong><div id="qidFrontContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="qidFrontDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('qidFront', 'Qatar_ID')"><span data-icon="download"></span> Download</button><input type="file" id="editQidFrontInput" accept="image/*" style="font-size: 10px;" onchange="onProfileFilePicked('editQidFrontInput')"><small id="editQidFrontInputNote" style="display:none; margin-top:4px; font-size:10.5px; line-height:1.35; color: var(--warning);"></small></div>
             <div class="qid-box"><strong>Health Card</strong><div id="healthCardContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="healthCardDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('healthCard', 'Health_Card')"><span data-icon="download"></span> Download</button><input type="file" id="editHealthCardInput" accept="image/*" style="font-size: 10px;" onchange="onProfileFilePicked('editHealthCardInput')"><small id="editHealthCardInputNote" style="display:none; margin-top:4px; font-size:10.5px; line-height:1.35; color: var(--warning);"></small></div>
             <div class="qid-box"><strong>Work Contract</strong><div id="contractContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="contractDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('contract', 'Work_Contract')"><span data-icon="download"></span> Download</button><input type="file" id="editContractInput" accept="image/*" style="font-size: 10px;" onchange="onProfileFilePicked('editContractInput')"><small id="editContractInputNote" style="display:none; margin-top:4px; font-size:10.5px; line-height:1.35; color: var(--warning);"></small></div>
             <div class="qid-box"><strong>Health Cert</strong><div id="healthCertContainer">No Image</div><button type="button" class="btn-ghost btn-sm" id="healthCertDownloadBtn" style="display:none; margin-bottom: 8px;" onclick="downloadEmployeeDocument('healthCert', 'Health_Cert')"><span data-icon="download"></span> Download</button><input type="file" id="editHealthCertInput" accept="image/*" style="font-size: 10px;" onchange="onProfileFilePicked('editHealthCertInput')"><small id="editHealthCertInputNote" style="display:none; margin-top:4px; font-size:10.5px; line-height:1.35; color: var(--warning);"></small></div>
@@ -6551,7 +6564,7 @@
                     branch: emp.branch || "GAIMER W KAHI WEST WALK",
                     shift: emp.shift || "Morning",
                     phone: emp.phone || "+974",
-                    qidFront: "", qidBack: "", healthCard: "", contract: "", healthCert: "",
+                    qidFront: "", healthCard: "", contract: "", healthCert: "",
                     createdAt: serverTimestamp()
                 });
                 await setDoc(doc(db, "employee_pins", id), { pin: emp.pin || "1234", employeeName: upperName });
@@ -14542,7 +14555,7 @@
                     joinDate: todayISO(),
                     business: BIZ_ABAYA,
                     qidNumber: '', qidExpiry: '',
-                    qidFront: '', qidBack: '', healthCard: '', contract: '', healthCert: '',
+                    qidFront: '', healthCard: '', contract: '', healthCert: '',
                     createdAt: serverTimestamp(),
                     createdFromAbayaSeller: sellerId  // أثرٌ يوضّح من أين جاء الملف
                 });
@@ -18914,8 +18927,9 @@
         return true;
     }
     // Downloads a document belonging to the employee currently open in the
-    // Profile modal (fieldKey is one of qidFront/qidBack/healthCard/
-    // contract/healthCert).
+    // Profile modal (fieldKey is one of qidFront/healthCard/contract/
+    // healthCert — qidFront is shown as "Qatar ID (Metrash)" and the old
+    // qidBack box was removed because a Metrash ID image carries both sides).
     window.downloadEmployeeDocument = function(fieldKey, label) {
         const empId = document.getElementById("editEmpOriginalId").value;
         const emp = allEmployees.find(e => e.id === empId);
@@ -18928,8 +18942,8 @@
     window.downloadApplicationDocument = function(appId) {
         const app = allApplications.find(a => a.id === appId);
         if (!app || !app.qidFront) { alert("No QID photo available to download."); return; }
-        downloadDataUrl(app.qidFront, `${app.fullName || appId}_QID_Front`);
-        logAudit("Document Downloaded", `${app.fullName || appId} (application, not yet approved): QID Front`);
+        downloadDataUrl(app.qidFront, `${app.fullName || appId}_Qatar_ID`);
+        logAudit("Document Downloaded", `${app.fullName || appId} (application, not yet approved): Qatar ID`);
     };
 
     window.addNewEmployee = async function() {
@@ -18986,7 +19000,6 @@
 
         try {
             let qidFront = await readFileIfPresent(document.getElementById("qidFrontInput"));
-            let qidBack = await readFileIfPresent(document.getElementById("qidBackInput"));
             let healthCard = await readFileIfPresent(document.getElementById("healthCardInput"));
             let contract = await readFileIfPresent(document.getElementById("contractInput"));
             let healthCert = await readFileIfPresent(document.getElementById("healthCertInput"));
@@ -18996,7 +19009,7 @@
                 name, role, phone, branch, shift, housingType, salary, joinDate,
                 business,
                 qidNumber, qidExpiry,
-                qidFront, qidBack, healthCard, contract, healthCert,
+                qidFront, healthCard, contract, healthCert,
                 createdAt: serverTimestamp()
             });
             await setDoc(doc(db, "employee_pins", id), { pin, employeeName: name });
@@ -19010,7 +19023,7 @@
              "newEmpJoinDate", "newEmpSalary", "newEmpQidNumber", "newEmpQidExpiry"].forEach(id => {
                 const el = document.getElementById(id); if (el) el.value = '';
             });
-            ["qidFrontInput", "qidBackInput", "healthCardInput", "contractInput", "healthCertInput"]
+            ["qidFrontInput", "healthCardInput", "contractInput", "healthCertInput"]
                 .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
             await loadEmployees();
         } catch (error) {
@@ -19216,8 +19229,9 @@
      *   في الخانة ورُفع على عمرو. السِجلُّ الواحدُ يجعل النسيانَ مستحيلًا.
      */
     const PROFILE_FILE_FIELDS = [
-        { input: 'editQidFrontInput',   field: 'qidFront',   label: 'QID Front' },
-        { input: 'editQidBackInput',    field: 'qidBack',    label: 'QID Back' },
+        // ⚠️ `field` هو مفتاحُ فايرستور ولا يُعاد تسميتُه؛ و`label` هو ما يُقرأ
+        //   على الشاشة وفي سجلّ التدقيق. خانةُ «الخلف» أُزيلت بطلب المالك.
+        { input: 'editQidFrontInput',   field: 'qidFront',   label: 'Qatar ID (Metrash)' },
         { input: 'editHealthCardInput', field: 'healthCard', label: 'Health Card' },
         { input: 'editContractInput',   field: 'contract',   label: 'Work Contract' },
         { input: 'editHealthCertInput', field: 'healthCert', label: 'Health Cert' }
@@ -19389,7 +19403,6 @@
             renderEndServicePanel(empId);
 
             document.getElementById("qidFrontContainer").innerHTML = emp.qidFront ? `<img src="${emp.qidFront}">` : "<span class='no-img'>No Image</span>";
-            document.getElementById("qidBackContainer").innerHTML = emp.qidBack ? `<img src="${emp.qidBack}">` : "<span class='no-img'>No Image</span>";
             document.getElementById("healthCardContainer").innerHTML = emp.healthCard ? `<img src="${emp.healthCard}">` : "<span class='no-img'>No Image</span>";
             document.getElementById("contractContainer").innerHTML = emp.contract ? `<img src="${emp.contract}">` : "<span class='no-img'>No Image</span>";
             document.getElementById("healthCertContainer").innerHTML = emp.healthCert ? `<img src="${emp.healthCert}">` : "<span class='no-img'>No Image</span>";
@@ -19399,7 +19412,6 @@
             // for a blank slot.
             [
                 ["qidFrontDownloadBtn", emp.qidFront],
-                ["qidBackDownloadBtn", emp.qidBack],
                 ["healthCardDownloadBtn", emp.healthCard],
                 ["contractDownloadBtn", emp.contract],
                 ["healthCertDownloadBtn", emp.healthCert]
@@ -20150,7 +20162,7 @@
                 nameAr: app.nameAr || "",
                 nationality: app.nationality || "",
                 passportNumber: app.passportNumber || "",
-                qidBack: "", healthCard: "", contract: "", healthCert: "",
+                healthCard: "", contract: "", healthCert: "",
                 // Carried over verbatim from the self-registration form in
                 // index.html, where agreeing to the Internal Regulations is
                 // mandatory before an application can even be submitted —
@@ -23056,7 +23068,7 @@
                         phone: '',
                         [R.field]: true,
                         qidNumber: '', qidExpiry: '',
-                        qidFront: '', qidBack: '', healthCard: '', contract: '', healthCert: '',
+                        qidFront: '', healthCard: '', contract: '', healthCert: '',
                         createdAt: serverTimestamp()
                     });
                     created++;
@@ -23230,6 +23242,12 @@
         const warns = cnt(typeof allWarnings !== 'undefined' ? allWarnings : [], 'employeeId');
         const leaveReq = cnt(typeof allPendingLeaveRequests !== 'undefined' ? allPendingLeaveRequests : [], 'employeeId');
         const hasCard = (typeof managerCards !== 'undefined' ? managerCards : []).some(c => c && c.id === id);
+        // ⚠️⚠️⚠️ `qidBack` يبقى في هذه القائمة **عن قصد** بعد إزالة خانتِه من
+        //   الشاشة. هذه الدالّةُ تَعدُّ آثارَ «هل هذا سجلٌّ حقيقيّ؟» قبل السماح
+        //   بحذفه كمكرَّر. فمن رُفعت له صورةُ ظهرِ بطاقةٍ قديمًا، تلك الصورةُ
+        //   **أثرٌ حقيقيٌّ** على أنّ أحدًا عمل على ملفّه. وحذفُها من القائمة
+        //   يُنقص آثارَه فيبدو سجلًّا فارغًا ويُعرَض للحذف — أي أنّ إزالةَ خانةٍ
+        //   من الواجهة كانت ستُسبّب حذفَ موظفٍ حقيقيّ. لا تُزلها من هنا.
         const files = ['qidFront', 'qidBack', 'healthCard', 'contract', 'healthCert']
             .filter(f => emp[f] && String(emp[f]).length > 20).length;
         const hasJoin = !!emp.joinDate;
