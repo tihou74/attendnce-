@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v18   (2026-09-24)  <<<
+//   >>>  RULES REVISION: v19   (2026-09-24)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -44,6 +44,27 @@ rules_version = '2';
 // exact mistake happened with the "(v4)" label, which never changed across
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
+//
+//  v19  2026-09-24  + ABAYA DETAIL FIELDS. PUBLISH v19 — it contains v16..v18.
+//                     For an ABAYA only: `fabric` (the owner types it on the
+//                     shipment, he bought it and knows it), plus TWO DECISIONS
+//                     THAT ARE HERS by his instruction — `tone` (gold or silver)
+//                     and `canOrder` (may a customer order it tailored).
+//
+//                     'tone' and 'canOrder' join the viewer's update keys, and
+//                     'fabric' too. Note the deliberate asymmetry in HER PAGE,
+//                     not in this rule: on a restock her code repairs a BLANK
+//                     fabric/type but never overwrites one, while tone and
+//                     canOrder are rewritten every time — because those two are
+//                     HER JUDGEMENT ("هي التي تحدد" / "هي التي تختار") and she is
+//                     entitled to revise a judgement, whereas fabric and type are
+//                     facts about the goods that a later shipment should not flip.
+//
+//                     canOrder does NOT touch stock arithmetic. The project's
+//                     existing rule stands: an order comes from the workshop
+//                     straight to the customer and never leaves the shop shelf.
+//                     This flag only says whether an order MAY be taken.
+//                     ⚠️ 'price' is STILL absent. ⚠️ KIOSK still ['qty','updatedAt'].
 //
 //  v18  2026-09-24  + A CATALOGUE FOR EVERY TYPE (كتالوج لكل الأصناف). Requested
 //                     right after v17 and never published separately — PUBLISH v18,
@@ -375,7 +396,8 @@ function salaryUnchanged() {
 //     employees, payroll, attendance or settings.
 //     If you are reading this while auditing: the one thing to check is that
 //     abaya_products `update` for a viewer stays hasOnly() over DESCRIPTIVE keys
-//     only — as of v18 that list is ['qty','size','type','updatedAt']. That
+//     only — as of v19 that list is ['qty','size','type','fabric','tone',
+//     'canOrder','updatedAt']. That
 //     single clause is what stops her changing the price of anything already on
 //     a shelf. 'price' and 'discountPrice' must never appear in it. Each key on
 //     it answers "what is physically on the shelf and what is it", never "what
@@ -898,7 +920,8 @@ service cloud.firestore {
     //   sold before IS a new design and her selling price is the whole point of
     //   the step the owner described ("هي التي تضع سعر البيع").
     //
-    //   UPDATE — restricted to hasOnly(['qty','size','type','updatedAt']). The
+    //   UPDATE — restricted to hasOnly(['qty','size','type','fabric','tone',
+    //   'canOrder','updatedAt']). The
     //   kiosk stays on ['qty','updatedAt'] and is deliberately NARROWER: it signs
     //   in anonymously, so whatever it may write, anyone holding the saleswoman's
     //   link may write. Sending a second shipment of a design already on a shelf
@@ -927,7 +950,8 @@ service cloud.firestore {
         //   ⚠️⚠️ ولا يزيد عليها 'price' بحال — هذا هو الحدُّ الذي يفصل «تُسعّر
         //   الجديدَ» عن «تُعيد تسعيرَ المحلّ كلِّه».
         || (isViewer()
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['qty', 'size', 'type', 'updatedAt']));
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['qty', 'size', 'type', 'fabric', 'tone', 'canOrder', 'updatedAt']));
     }
 
     // ---- abaya_product_costs (WHAT THE ABAYA COST US) -----------------------

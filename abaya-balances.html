@@ -1396,6 +1396,20 @@
     const ABAYA_ARRIVAL_IMAGES_COLL = 'abaya_arrival_images';
     const ARRIVAL_WAITING = 'waiting';
     const ARRIVAL_SENT = 'sent';
+    // ---- حقولُ العباية الثلاثة — ثوابتُ مطابقةٌ حرفيًّا لما في admin.html ----
+    // ⚠️ القماشُ يكتبه المالكُ على الشحنة؛ وهذان الخيارانِ **تختارهما هي** بنصّه:
+    //   «إذا يمكن أخذُ أوردر … والسيدةُ فاطمة هي التي تحدّد»، و«إمّا قولد أو
+    //   سيلفر … وهي التي تختار».
+    const ABAYA_DETAIL_TYPE = 'abaya';
+    const ABAYA_TONES = [
+        { key: 'gold',   en: 'Gold',   ar: 'ذهبي' },
+        { key: 'silver', en: 'Silver', ar: 'فضي' }
+    ];
+    function abayaToneLabel(key) {
+        const t = ABAYA_TONES.find(x => x.key === String(key || ''));
+        return t ? `${t.en} · ${t.ar}` : '';
+    }
+    const isAbayaType = (t) => String(t || '') === ABAYA_DETAIL_TYPE;
 
     let allAbayaReports = [];
     let abayaRates = { cardFeePercent: ABAYA_DEFAULT_CARD_FEE_PCT, shantonPerPiece: SHANTON_DEFAULT_PER_PIECE };
@@ -1831,6 +1845,9 @@
                     // ⚠️ فارغٌ للتصاميم التي أُضيفت قبل هذه الميزة — ولا يُخمَّن.
                     type: String(v.type || ''),
                     size: String(v.size || ''),
+                    fabric: String(v.fabric || ''),
+                    tone: String(v.tone || ''),
+                    canOrder: v.canOrder === true,
                     price: Number(v.price || 0) || 0,
                     discountPrice: Number(v.discountPrice || 0) || 0,
                     cost: costById[d.id] || 0,
@@ -2047,6 +2064,9 @@
                 + (p.name ? `<span class="nm">${escapeHtml(p.name)}</span>` : '')
                 + (p.type ? `<span class="nm">${escapeHtml(arvTypeLabel(p.type))}</span>` : '')
                 + (p.size ? `<span class="nm" dir="ltr">Sizes: ${escapeHtml(p.size)}</span>` : '')
+                + (p.fabric ? `<span class="nm">${escapeHtml(p.fabric)}</span>` : '')
+                + (p.tone ? `<span class="nm">${escapeHtml(abayaToneLabel(p.tone))}</span>` : '')
+                + (p.canOrder ? `<span class="nm">Orders can be taken &mdash; يمكن أخذُ أوردر</span>` : '')
                 + prices
                 + costRow
                 + `<span class="qt${n <= 0 ? ' zero' : ''}">${n <= 0 ? 'Sold out' : n + ' piece(s) left'}</span>`
@@ -3312,6 +3332,7 @@
                     name: String(v.name || ''),
                     type: String(v.type || ''),
                     size: String(v.size || ''),
+                    fabric: String(v.fabric || ''),
                     supplier: String(v.supplier || ''),
                     unitQar: Number(v.unitQar || 0) || 0,
                     pieces: Math.floor(Number(v.pieces || 0)) || 0,
@@ -3430,6 +3451,7 @@
                 </div>` : ''}
 
                 <div class="afacts">
+                    ${a.fabric ? `<div class="arow"><span>Fabric &mdash; القماش</span><b>${escapeHtml(a.fabric)}</b></div>` : ''}
                     <div class="arow"><span>Pieces arrived</span><b class="num">${a.pieces}</b></div>
                     ${a.supplier ? `<div class="arow"><span>Supplier</span><b>${escapeHtml(a.supplier)}</b></div>` : ''}
                     ${a.arrivedAt ? `<div class="arow"><span>Arrived on</span><b class="num">${escapeHtml(a.arrivedAt)}</b></div>` : ''}
@@ -3470,6 +3492,27 @@
                                              value="${a.suggestedPrice ? String(a.suggestedPrice) : ''}">
                                   </div>
                                   <p class="alive" id="arvLive_${eid}"></p>`}
+                           ${isAbayaType(a.type) ? `
+                           <!-- ⭐⭐⭐⭐ قرارانِ **لها** بنصّ المالك. ويظهرانِ للعباية
+                                وحدَها — «ذهبي أو فضي» على عطرٍ بلا معنى. -->
+                           <div style="border-top: var(--border-hairline) solid var(--color-border);
+                                       padding-top: var(--space-3);">
+                               <span class="alabel">Your decision &mdash; قرارُكِ</span>
+                               <label for="arvTone_${eid}" style="margin-top:6px;">Gold or silver &mdash; ذهبي أو فضي</label>
+                               <select id="arvTone_${eid}">
+                                   <option value="">&mdash; not chosen &mdash;</option>
+                                   ${ABAYA_TONES.map(t => `<option value="${escapeHtml(t.key)}">${escapeHtml(t.en)} &middot; ${escapeHtml(t.ar)}</option>`).join('')}
+                               </select>
+                               <label style="display:flex; align-items:center; gap:8px; margin-top:10px;
+                                      font-weight:700; cursor:pointer; font-size:var(--text-sm);">
+                                   <input type="checkbox" id="arvOrder_${eid}" style="width:17px; height:17px; cursor:pointer;">
+                                   <span>Orders can be taken &mdash; يمكن أخذُ أوردر</span>
+                               </label>
+                               <p class="amsg" style="color: var(--color-text-muted);">
+                                   Tick this if a customer may order this design tailored. An order comes from the
+                                   workshop, so it does <b>not</b> come off the shop's shelf.
+                               </p>
+                           </div>` : ''}
                            <button type="button" class="asend" data-arvsend="${eid}"
                                    ${arvBusy === a.id ? 'disabled' : ''}>
                                ${arvBusy === a.id ? 'Sending...' : 'Send to the shop'}
@@ -3543,6 +3586,13 @@
         if (!shop || !ABAYA_SHOPS.includes(shop)) { msg('Choose the shop first.', 'var(--danger-600, #B91C1C)'); return; }
 
         const inCat = catProducts.find(p => p.id === a.productId);
+        // ⭐ قرارَاها — للعباية وحدَها. ولغيرها يبقيان فارغَين فلا يُكتب معنًى
+        //   لا ينطبق على الصنف.
+        const isAb = isAbayaType(a.type);
+        const toneEl = el('arvTone_' + id);
+        const orderEl = el('arvOrder_' + id);
+        const tone = isAb && toneEl ? String(toneEl.value || '') : '';
+        const canOrder = isAb && orderEl ? !!orderEl.checked : false;
         let price = 0;
         if (!inCat) {
             const pEl = el('arvPrice_' + id);
@@ -3562,6 +3612,11 @@
             + (inCat
                 ? `\n\nIts price stays ${money(inCat.price)} QAR — restocking does not change a price.`
                 : `\n\nIt will sell for ${money(price)} QAR.`)
+            // ⚠️ قرارَاها يُقالان في التأكيد: «لم تُختَر» تُقرأ قبل الإرسال لا بعده.
+            + (isAb
+                ? `\n\nGold or silver: ${tone ? abayaToneLabel(tone) : 'not chosen'}`
+                  + `\nOrders can be taken: ${canOrder ? 'yes' : 'no'}`
+                : '')
             + `\n\nThe saleswomen there can sell it straight after this.`)) return;
 
         arvBusy = id;
@@ -3640,6 +3695,13 @@
                 //   قديمٌ تُصلحه إعادةُ التعبئة، وتصميمٌ نوعُه مضبوطٌ لا يُغيَّر من
                 //   شحنةٍ قد يكون نوعُها مكتوبًا بالخطأ. الإصلاحُ نعم، التبديلُ لا.
                 if (a.type && !prodData.type) patch.type = a.type;
+                // ⚠️ القماشُ كالنوع: يُصلح فراغًا ولا يُبدّل ما ضبطه المالك.
+                if (a.fabric && !prodData.fabric) patch.fabric = a.fabric;
+                // ⚠️⚠️ أمّا خيارَاها فيُحدَّثان **دائمًا** للعباية — والفرقُ مقصود:
+                //   النوعُ والقماشُ **واقعٌ** لا يتغيّر بالرأي، وهذان **قرارُها**
+                //   بنصّ المالك («هي التي تحدّد» و«هي التي تختار»)، فمن حقِّها أن
+                //   تُغيّر قرارَها في شحنةٍ تالية. ولا يحملان مالًا.
+                if (isAb) { patch.tone = tone; patch.canOrder = canOrder; }
                 await updateDoc(doc(db, 'abaya_products', a.productId), patch);
             } else {
                 /**
@@ -3685,6 +3747,10 @@
                     //   صنعتُها حين نقلتُ المقاسَ وحدَه، وهذا يُصلحها.
                     type: a.type || '',
                     size: a.size || '',
+                    // ⭐ القماشُ من الشحنة (كتبه المالك)، والخيارانِ من قرارها.
+                    fabric: a.fabric || '',
+                    tone: tone,
+                    canOrder: canOrder,
                     price: price,
                     discountPrice: 0,
                     qty, active: true,

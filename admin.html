@@ -2872,6 +2872,20 @@
                 <div style="width: 180px;"><label for="acSize">Sizes available</label>
                     <input type="text" id="acSize" maxlength="60" placeholder="e.g. 54, 56, 58" autocomplete="off">
                 </div>
+                <!-- ⭐⭐⭐⭐ حقولُ العباية الثلاثة — تُملأ تلقائيًّا عند الإرسال،
+                     وتبقى هنا لضبطها. وتُخفى لغير العباية بنصّ المالك. -->
+                <div style="width: 175px;" id="acFabricWrap"><label for="acFabric">Fabric &mdash; القماش</label>
+                    <input type="text" id="acFabric" maxlength="40" placeholder="e.g. Nida, Crepe" autocomplete="off">
+                </div>
+                <div style="width: 165px;" id="acToneWrap"><label for="acTone">Gold / silver</label>
+                    <select id="acTone"></select>
+                </div>
+                <div style="width: 170px;" id="acOrderWrap">
+                    <label style="display:flex; align-items:center; gap:7px; font-weight:700; margin-top:22px; cursor:pointer;">
+                        <input type="checkbox" id="acOrder" style="width:17px; height:17px; cursor:pointer;">
+                        <span>Orders can be taken</span>
+                    </label>
+                </div>
                 <div style="width: 150px;"><label for="acCost">Cost (QAR)</label>
                     <input type="number" id="acCost" step="1" min="0" placeholder="0">
                 </div>
@@ -3061,6 +3075,14 @@
                      أوّلُ ما تسأل عنه الزبونة. -->
                 <div style="width: 190px;"><label for="arvSize">Sizes available</label>
                     <input type="text" id="arvSize" maxlength="60" placeholder="e.g. 54, 56, 58" autocomplete="off">
+                </div>
+                <!-- ⭐⭐⭐⭐ نوعُ القماش — **للعباية وحدَها** بنصّ المالك، ويكتبه هو
+                     لأنه من اشترى ويعرف ما وصله. ويُخفى لغير العباية: «نوعُ
+                     القماش» على عطرٍ ضجيجٌ يُملأ بالخطأ.
+                     ⚠️ ونصٌّ حرٌّ: أسماءُ الأقمشة لا تُحصى، وقائمةٌ مغلقةٌ ترفض
+                     يومًا قماشًا وصل فعلًا. -->
+                <div style="width: 200px;" id="arvFabricWrap"><label for="arvFabric">Fabric &mdash; نوع القماش</label>
+                    <input type="text" id="arvFabric" maxlength="40" placeholder="e.g. Nida, Crepe, Satin" autocomplete="off">
                 </div>
                 <div style="width: 200px;"><label for="arvSupplier">Supplier</label>
                     <input type="text" id="arvSupplier" placeholder="Who sent it" autocomplete="off">
@@ -12695,6 +12717,47 @@
      *   نفسِه: البياعةُ تحتاجه لتقول للزبونة ما المتوفّر — وهذا كلُّ الغرض منه.
      */
     const ABAYA_SIZE_MAX = 60;
+
+    /**
+     * ⭐⭐⭐⭐⭐ ثلاثةُ حقولٍ **للعباية وحدَها** — بطلب المالك:
+     * «إذا كانت البضاعةُ الجديدةُ التي وصلت هي عباية يجب إضافةُ خانة نوع القماش،
+     *  وخانةٌ أخرى إذا يمكن أخذُ أوردرٍ أوّلًا والسيدةُ فاطمة هي التي تحدّد هذا،
+     *  وخيارين آخرى إمّا قولد أو سيلفر وهاتِه أيضًا السيدةُ فاطمة هي التي تختار».
+     *
+     * ⚠️⚠️ توزيعُ القرار كما نصَّ عليه، وهو ليس تفصيلًا:
+     *   • **القماش** يكتبه المالكُ على الشحنة — هو من اشترى ويعرف ما وصله.
+     *   • **إمكانُ الأوردر** و**ذهبيٌّ/فضّيّ** تختارهما **هي** عند الإرسال، وهي
+     *     من تُقرّر — فحقلاها في بطاقتها لا في نموذجه.
+     *
+     * ⚠️⚠️⚠️ و«الأوردر» **مفهومٌ قائمٌ في النظام** لا اختراعٌ جديد: `abayaOrder`
+     *   في ABAYA_ITEMS، وله قاعدةٌ مكتوبةٌ بنصّ المالك — «أيُّ أوردرٍ لا يخصم من
+     *   الستوك، فهو يخرج من الورشة مباشرةً إلى الزبون». فهذا الحقلُ يقول **هل
+     *   يُقبل أوردرٌ لهذا التصميم**، ولا يمسّ حسابَ المخزون بحرف.
+     *
+     * ⚠️ والقماشُ **نصٌّ حرٌّ** لا قائمةٌ مغلقة: أسماءُ الأقمشة في تجارة العبايات
+     *   لا تُحصى (نيدا · كريب · ساتان · شيفون · جورجيت · لينن …)، وقائمةٌ أخترعها
+     *   أنا ترفض يومًا قماشًا وصل فعلًا. يُقصّ عند الحدّ ولا يُرفض.
+     *
+     * ⚠️ وهذه الحقولُ **ليست سرًّا**: البياعةُ تحتاجها لتجيب الزبونةَ — «من أيِّ
+     *   قماش؟» و«فيها ذهبي؟» و«أقدر أطلبها تفصيل؟». فمكانُها مستندُ المنتج.
+     */
+    const ABAYA_FABRIC_MAX = 40;
+    /** النوعُ الذي تنطبق عليه الحقولُ الثلاثة — عبايةٌ وحدَها بنصّ المالك. */
+    const ABAYA_DETAIL_TYPE = 'abaya';
+    /**
+     * ⚠️ قائمةٌ لا نصٌّ حرّ: خيارانِ اثنان بنصّه، ومكرَّرةٌ في الملفّات الثلاثة
+     *   فيجب أن تتطابق — قيمةٌ تكتبها شاشةٌ ولا تقرؤها أخرى تضيع بصمت.
+     */
+    const ABAYA_TONES = [
+        { key: 'gold',   en: 'Gold',   ar: 'ذهبي' },
+        { key: 'silver', en: 'Silver', ar: 'فضي' }
+    ];
+    function abayaToneLabel(key) {
+        const t = ABAYA_TONES.find(x => x.key === String(key || ''));
+        return t ? `${t.en} · ${t.ar}` : '';
+    }
+    /** هل تنطبق حقولُ التفصيل على هذا النوع؟ */
+    const isAbayaType = (t) => String(t || '') === ABAYA_DETAIL_TYPE;
     // كم حركةً تُعرض. ⚠️ العدد المقروء يُقال على الشاشة كي لا يكون القصّ صامتًا.
     const ABAYA_MOVES_SHOWN = 200;
 
@@ -12929,6 +12992,9 @@
                     //   محدَّد» ويُنبّه عليه، ويضبطه المالكُ بيده.
                     type: String(v.type || ''),
                     size: String(v.size || ''),
+                    fabric: String(v.fabric || ''),
+                    tone: String(v.tone || ''),
+                    canOrder: v.canOrder === true,
                     cost: costById[d.id] || 0,
                     price: Number(v.price || 0) || 0,
                     discountPrice: Number(v.discountPrice || 0) || 0,
@@ -12985,8 +13051,31 @@
         }
     }
 
+    /** ⭐ حقولُ العباية تظهر للعباية وحدَها في نموذج الكتالوج كذلك. */
+    window.onAbayaTypeChanged = function() {
+        const t = String((document.getElementById('acType') || {}).value || '');
+        const on = isAbayaType(t);
+        ['acFabricWrap', 'acToneWrap', 'acOrderWrap'].forEach(w => {
+            const el = document.getElementById(w);
+            if (el) el.style.display = on ? '' : 'none';
+        });
+    };
+
     function buildAbayaCatalogShopInputs() {
         buildAbayaTypeSelects();
+        const tn = document.getElementById('acTone');
+        if (tn && !tn.dataset.built) {
+            tn.innerHTML = `<option value="">&mdash; not chosen &mdash;</option>`
+                + ABAYA_TONES.map(t =>
+                    `<option value="${escapeHtml(t.key)}">${escapeHtml(t.en)} &middot; ${escapeHtml(t.ar)}</option>`).join('');
+            tn.dataset.built = '1';
+        }
+        const tySel = document.getElementById('acType');
+        if (tySel && !tySel.dataset.hooked) {
+            tySel.addEventListener('change', onAbayaTypeChanged);
+            tySel.dataset.hooked = '1';
+        }
+        onAbayaTypeChanged();
         const wrap = document.getElementById('acQtyWrap');
         if (wrap && !wrap.dataset.built) {
             wrap.innerHTML = ABAYA_SHOPS.map(s => {
@@ -13112,7 +13201,13 @@
                         + `<td>${escapeHtml(p.name) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
                         + `<td>${p.type
                               ? escapeHtml(abayaTypeLabel(p.type))
-                              : '<span style="color: var(--warning); font-weight: 700;">not set</span>'}</td>`
+                              : '<span style="color: var(--warning); font-weight: 700;">not set</span>'}`
+                        // ⚠️ أسطرٌ تحت النوع لا أعمدةٌ جديدة: ثلاثةُ أعمدةٍ تجعل
+                        //   الجدولَ ١٥ عمودًا فيُقرأ بالتمرير الأفقيّ وحدَه.
+                        + (p.fabric ? `<br><span style="font-size:11px; color: var(--text-dim);">${escapeHtml(p.fabric)}</span>` : '')
+                        + (p.tone ? `<br><span style="font-size:11px; color: var(--text-dim);">${escapeHtml(abayaToneLabel(p.tone))}</span>` : '')
+                        + (p.canOrder ? `<br><span style="font-size:11px; color: var(--success); font-weight:700;">order OK</span>` : '')
+                        + `</td>`
                         + `<td style="direction: ltr; white-space: nowrap;">${escapeHtml(p.size) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
                         + `<td class="money-col money-only">${money(p.cost)}</td>`
                         + `<td class="money-col"${disc && abayaDiscountSeason ? ' style="text-decoration: line-through; color: var(--text-dim);"' : ''}>${money(p.price)}</td>`
@@ -13282,6 +13377,10 @@
         const v = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
         v('acCode', ''); v('acName', ''); v('acSize', ''); v('acCost', ''); v('acPrice', ''); v('acDisc', '');
         const acTy = document.getElementById('acType'); if (acTy) acTy.value = '';
+        v('acFabric', '');
+        const acTn = document.getElementById('acTone'); if (acTn) acTn.value = '';
+        const acOr = document.getElementById('acOrder'); if (acOr) acOr.checked = false;
+        onAbayaTypeChanged();
         ABAYA_SHOPS.forEach(s => v('acQty_' + abayaShopKey(s), '0'));
         const act = document.getElementById('acActive'); if (act) act.checked = true;
         const code = document.getElementById('acCode'); if (code) code.disabled = false;
@@ -13302,6 +13401,10 @@
         v('acCode', p.code);
         v('acName', p.name);
         const acTyE = document.getElementById('acType'); if (acTyE) acTyE.value = p.type || '';
+        v('acFabric', p.fabric || '');
+        const acTnE = document.getElementById('acTone'); if (acTnE) acTnE.value = p.tone || '';
+        const acOrE = document.getElementById('acOrder'); if (acOrE) acOrE.checked = p.canOrder === true;
+        onAbayaTypeChanged();
         v('acSize', p.size || '');
         v('acCost', p.cost ? String(p.cost) : '');
         v('acPrice', p.price ? String(p.price) : '');
@@ -13353,6 +13456,10 @@
             qty[k] = (isFinite(n) && n > 0) ? n : 0;
         });
         const active = !!((document.getElementById('acActive') || {}).checked);
+        const acTypeVal = String((document.getElementById('acType') || {}).value || '');
+        const acFabricVal = String((document.getElementById('acFabric') || {}).value || '').trim();
+        const acToneVal = String((document.getElementById('acTone') || {}).value || '');
+        const acOrderVal = !!((document.getElementById('acOrder') || {}).checked);
         const existing = abayaProducts.find(p => p.id === id);
         const codeToSave = acEditingId ? (existing ? existing.code : rawCode) : rawCode;
 
@@ -13398,6 +13505,11 @@
                 //   ما المتوفّر، فهما على مستند المنتج بخلاف الكوست وأرقام الشراء.
                 type: String((document.getElementById('acType') || {}).value || ''),
                 size: String((document.getElementById('acSize') || {}).value || '').trim().slice(0, ABAYA_SIZE_MAX),
+                // ⚠️ حقولُ العباية تُحفظ للعباية وحدَها، وتُفرَّغ لغيرها صراحةً —
+                //   لونٌ ذهبيٌّ على عطرٍ يظهر على شاشة البياعة بلا معنى.
+                fabric: isAbayaType(acTypeVal) ? acFabricVal.slice(0, ABAYA_FABRIC_MAX) : '',
+                tone: isAbayaType(acTypeVal) ? acToneVal : '',
+                canOrder: isAbayaType(acTypeVal) ? acOrderVal : false,
                 discountPrice: disc,
                 qty, active, hasImage,
                 updatedAt: serverTimestamp(),
@@ -13519,6 +13631,9 @@
                 'Barcode': p.code,
                 'Name': p.name,
                 'What it is': abayaTypeLabel(p.type),
+                'Fabric': p.fabric,
+                'Gold / silver': abayaToneLabel(p.tone),
+                'Orders can be taken': p.canOrder ? 'Yes' : 'No',
                 'Sizes available': p.size,
                 'Cost': p.cost,
                 'Selling price': p.price,
@@ -13581,12 +13696,24 @@
         return t ? `${t.en}` : String(key || '');
     }
 
+    /**
+     * ⭐ حقولُ العباية تظهر للعباية وحدَها.
+     * ⚠️ ولا تُحذف القيمةُ المكتوبةُ عند الإخفاء: من بدّل النوعَ سهوًا ثم أعاده
+     *   يجب أن يجد قماشَه كما كتبه. والحفظُ هو ما يُسقطها لغير العباية.
+     */
+    window.onArrivalTypeChanged = function() {
+        const t = String((document.getElementById('arvType') || {}).value || '');
+        const w = document.getElementById('arvFabricWrap');
+        if (w) w.style.display = isAbayaType(t) ? '' : 'none';
+    };
+
     /** ⚠️ تُبنى من ABAYA_STOCK_ITEMS لا بيدٍ: نوعٌ جديدٌ يظهر وحده ولا يُنسى. */
     function buildArrivalTypeSelects() {
         const sel = document.getElementById('arvType');
         if (sel && !sel.dataset.built) {
             sel.innerHTML = ABAYA_STOCK_ITEMS.map(t =>
                 `<option value="${escapeHtml(t.key)}">${escapeHtml(t.en)} &middot; ${escapeHtml(t.ar)}</option>`).join('');
+            sel.addEventListener('change', onArrivalTypeChanged);
             sel.dataset.built = '1';
         }
         const f = document.getElementById('arvFilterType');
@@ -13625,6 +13752,7 @@
                     name: String(v.name || ''),
                     type: String(v.type || ''),
                     size: String(v.size || ''),
+                    fabric: String(v.fabric || ''),
                     supplier: String(v.supplier || ''),
                     unitUsd: Number(v.unitUsd || 0) || 0,
                     usdRate: Number(v.usdRate || 0) || 0,
@@ -13743,7 +13871,9 @@
                               : `<span style="font-size:11.5px; color: var(--text-dim);">no picture</span>`}</td>`
                         + `<td style="font-family: monospace; direction: ltr;"><b>${escapeHtml(a.code)}</b></td>`
                         + `<td>${escapeHtml(a.name) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
-                        + `<td>${escapeHtml(arrivalTypeLabel(a.type))}</td>`
+                        + `<td>${escapeHtml(arrivalTypeLabel(a.type))}`
+                        + (a.fabric ? `<br><span style="font-size:11px; color: var(--text-dim);">${escapeHtml(a.fabric)}</span>` : '')
+                        + `</td>`
                         + `<td style="direction: ltr; white-space: nowrap;">${escapeHtml(a.size) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
                         + `<td>${escapeHtml(a.supplier) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
                         + `<td class="money-col"><b>${a.pieces}</b></td>`
@@ -13908,12 +14038,13 @@
         arvPendingPhoto = null;
         arvPhotoCleared = false;
         const v = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
-        v('arvCode', ''); v('arvName', ''); v('arvSupplier', ''); v('arvSize', '');
+        v('arvCode', ''); v('arvName', ''); v('arvSupplier', ''); v('arvSize', ''); v('arvFabric', '');
         v('arvUsd', ''); v('arvQar', ''); v('arvPieces', '');
         v('arvShipping', ''); v('arvLabour', ''); v('arvSuggested', '');
         v('arvRate', String(ABAYA_USD_RATE_DEFAULT));
         v('arvDate', todayISO());
         const ty = document.getElementById('arvType'); if (ty) ty.selectedIndex = 0;
+        onArrivalTypeChanged();
         const code = document.getElementById('arvCode'); if (code) code.disabled = false;
         const t = document.getElementById('arvFormTitle'); if (t) t.textContent = 'Record a new arrival';
         const c = document.getElementById('arvCancelBtn'); if (c) c.style.display = 'none';
@@ -13945,6 +14076,7 @@
         v('arvName', a.name);
         v('arvSupplier', a.supplier);
         v('arvSize', a.size);
+        v('arvFabric', a.fabric || '');
         v('arvUsd', a.unitUsd ? String(a.unitUsd) : '');
         v('arvRate', String(a.usdRate || ABAYA_USD_RATE_DEFAULT));
         v('arvQar', a.unitQar ? String(a.unitQar) : '');
@@ -13954,6 +14086,7 @@
         v('arvSuggested', a.suggestedPrice ? String(a.suggestedPrice) : '');
         v('arvDate', a.arrivedAt || todayISO());
         const ty = document.getElementById('arvType'); if (ty && a.type) ty.value = a.type;
+        onArrivalTypeChanged();
         const t = document.getElementById('arvFormTitle'); if (t) t.textContent = 'Edit the arrival of ' + a.code;
         const c = document.getElementById('arvCancelBtn'); if (c) c.style.display = '';
         const st = document.getElementById('arvFormStatus'); if (st) { st.style.color = ''; st.textContent = ''; }
@@ -14009,6 +14142,10 @@
                 // ⚠️ يُقصّ عند الحدّ لا يُرفض: لصقٌ طويلٌ بالخطأ لا يجوز أن يمنع
                 //   تسجيلَ شحنةٍ وصلت فعلًا.
                 size: g('arvSize').slice(0, ABAYA_SIZE_MAX),
+                // ⚠️⚠️ القماشُ يُكتب **للعباية وحدَها**، ويُفرَّغ لغيرها صراحةً:
+                //   من كتب قماشًا ثم بدّل النوعَ إلى «عطور» كان سيُخزَّن قماشٌ على
+                //   عطرٍ فيظهر على شاشة البياعة بلا معنى. فالنوعُ هو الحاكم.
+                fabric: isAbayaType(type) ? g('arvFabric').slice(0, ABAYA_FABRIC_MAX) : '',
                 supplier: g('arvSupplier'),
                 unitUsd: Number(g('arvUsd')) || 0,
                 // ⚠️ السعرُ المستعملُ يُجمَّد على المستند: تغييرُه لاحقًا لا يُعيد
@@ -14122,6 +14259,7 @@
                 'Name': a.name,
                 'What': arrivalTypeLabel(a.type),
                 'Sizes available': a.size,
+                'Fabric': a.fabric,
                 'Supplier': a.supplier,
                 'Pieces': a.pieces,
                 'One piece USD': a.unitUsd || '',

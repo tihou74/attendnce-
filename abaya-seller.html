@@ -480,7 +480,7 @@
             <!-- كل العبايات بالصور -->
             <div id="cpList" class="hidden" style="margin-top: var(--space-4);">
                 <label for="cpSearch">Search &mdash; barcode or name</label>
-                <input type="text" id="cpSearch" autocomplete="off" placeholder="Barcode, name, type or size">
+                <input type="text" id="cpSearch" autocomplete="off" placeholder="Barcode, name, type, fabric or size">
                 <div class="cpg" id="cpGrid"></div>
                 <p class="ar" id="cpListNote" style="margin-top: var(--space-3);"></p>
             </div>
@@ -860,6 +860,16 @@
     ];
     // شانتون تعرض عبايات فقط، فحركاتها لا تقبل نوعًا آخر.
     const ABAYA_SHANTON_ITEM = 'abaya';
+    // ---- ذهبيّ/فضّيّ — نسخةٌ مطابقةٌ لما في admin.html وabaya-balances.html ----
+    // ⚠️ تختارها السيدةُ فاطمة، والبياعةُ **تقرؤها** لتجيب الزبونة.
+    const ABAYA_TONES = [
+        { key: 'gold',   en: 'Gold',   ar: 'ذهبي' },
+        { key: 'silver', en: 'Silver', ar: 'فضي' }
+    ];
+    function cpToneLabel(key) {
+        const t = ABAYA_TONES.find(x => x.key === String(key || ''));
+        return t ? `${t.en} · ${t.ar}` : '';
+    }
     // ⚠️ نصيب المحل من مبيعات شانتون، ونسبة رسوم البنك: **ليسا في هذه الصفحة**
     // عن قصد. قرار الإدارة أن البياعة لا ترى ذلك، والصفحة مجهولة الدخول فأي
     // رقم فيها مقروءٌ لكل من يفتح الرابط. مكانهما admin.html وحده.
@@ -1644,6 +1654,11 @@
                     // ⭐ النوعُ — «عندكم فساتين؟» تُرشَّح به لا تُقلَّب القائمةُ كلُّها.
                     type: String(v.type || ''),
                     size: String(v.size || ''),
+                    // ⭐ ثلاثةٌ تُسأل عنها الزبونةُ مباشرةً: «من أيِّ قماش؟»
+                    //   و«فيها ذهبي؟» و«أقدر أطلبها تفصيل؟»
+                    fabric: String(v.fabric || ''),
+                    tone: String(v.tone || ''),
+                    canOrder: v.canOrder === true,
                     price: Number(v.price || 0) || 0,
                     discountPrice: Number(v.discountPrice || 0) || 0,
                     qty: (v.qty && typeof v.qty === 'object') ? v.qty : {},
@@ -1689,6 +1704,9 @@
                 code: String(v.code || snap.id),
                 name: String(v.name || ''),
                 type: String(v.type || ''),
+                fabric: String(v.fabric || ''),
+                tone: String(v.tone || ''),
+                canOrder: v.canOrder === true,
                 // ⭐ المقاسُ المتوفّر — أوّلُ ما تسأل عنه الزبونة، فيُقرأ ويُعرض.
                 size: String(v.size || ''),
                 price: Number(v.price || 0) || 0,
@@ -1712,8 +1730,11 @@
         el('cpFoundCode').innerText = p.code;
         // ⚠️ المقاسُ مع الاسم في سطرٍ واحد: مساحةُ الشاشة ضيّقةٌ على الهاتف،
         //   وسطرٌ ثالثٌ يدفع زرَّ التأكيد أسفلَ الشاشة.
-        el('cpFoundName').innerText = [cpTypeLabel(p.type), p.name || '',
-            p.size ? 'Sizes: ' + p.size : ''].filter(Boolean).join('  ·  ');
+        // ⚠️ سطرٌ واحدٌ مضغوطٌ لا أربعة: مساحةُ الشاشة ضيّقةٌ على الهاتف، وأسطرٌ
+        //   زائدةٌ تدفع زرَّ التأكيد أسفلَ الشاشة فلا يُرى وقتَ الزحمة.
+        el('cpFoundName').innerText = [cpTypeLabel(p.type), p.name || '', p.fabric || '',
+            cpToneLabel(p.tone), p.size ? 'Sizes: ' + p.size : '',
+            p.canOrder ? 'Order OK' : ''].filter(Boolean).join('  ·  ');
         const disc = cpSeasonOn && cpHasDiscount(p);
         el('cpFoundPrice').innerHTML = `${money(cpShownPrice(p))} QAR`
             + (disc ? `<span class="was">${money(p.price)}</span>` : '');
@@ -1770,6 +1791,8 @@
             return String(p.code).toUpperCase().includes(q)
                 || String(p.name).toUpperCase().includes(q)
                 || String(p.size || '').toUpperCase().includes(q)
+                || String(p.fabric || '').toUpperCase().includes(q)
+                || cpToneLabel(p.tone).toUpperCase().includes(q)
                 || cpTypeLabel(p.type).toUpperCase().includes(q);
         });
         if (!rows.length) {
@@ -1789,6 +1812,7 @@
                 + `<span class="tx">`
                 + `<span class="c">${escapeHtml(p.code)}</span>`
                 + (p.type ? `<span class="q">${escapeHtml(cpTypeLabel(p.type))}</span>` : '')
+                + (p.tone ? `<span class="q">${escapeHtml(cpToneLabel(p.tone))}</span>` : '')
                 + `<span class="p">${money(cpShownPrice(p))} QAR${disc ? ' &#9733;' : ''}</span>`
                 + (p.size ? `<span class="q" dir="ltr">${escapeHtml(p.size)}</span>` : '')
                 + `<span class="q">${left} left</span>`
