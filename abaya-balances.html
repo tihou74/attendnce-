@@ -197,6 +197,21 @@
         background: var(--color-surface-2);
     }
     .arv .aimg.none { display: flex; }
+    /* ⚠️⚠️ الصورةُ **زرٌّ حقيقيّ** لا img عليه onclick — بطلب المالك أن تُفتح
+       كاملةً بالضغط. والزرُّ يجعل لوحةَ المفاتيح وقارئَ الشاشة يعملان بلا كود،
+       وهو نفسُ الدرسِ الذي جعل .catmain زرًّا في الكتالوج.
+       ⚠️ وتنسيقاتُ الأزرار العامّة مُبطلةٌ عليه: هو إطارُ صورةٍ لا زرُّ إجراء. */
+    .arv .athumb {
+        padding: 0; border: 0; background: transparent; border-radius: var(--radius-sm);
+        flex: 0 0 auto; line-height: 0; cursor: zoom-in; min-height: 0; width: auto;
+        font-family: inherit;
+    }
+    .arv .athumb:hover .aimg { border-color: var(--color-primary); }
+    /* علامةٌ صغيرةٌ تقول إنّ الصورةَ تُفتح — صورةٌ تُضغط بلا علامةٍ لا يعرف أحدٌ أنها تُضغط */
+    .arv .azoom {
+        display: block; font-size: 10.5px; color: var(--color-text-muted);
+        text-align: center; margin-top: 3px; line-height: 1.3;
+    }
     .arv .ameta { min-width: 0; flex: 1; }
     .arv .acode { font-family: 'IBM Plex Mono', ui-monospace, monospace; direction: ltr;
         font-weight: 800; font-size: var(--text-sm); word-break: break-all; }
@@ -892,6 +907,30 @@
             <p class="note" id="arvNoteF"></p>
         </div>
 
+        <!-- ============ نافذةُ صورةِ الشحنة كاملةً ============
+             ⚠️ بأمر المالك: «عندما تضغط على صورة العباية تفتح الصورة لتظهر كل
+             الصورة». صورةُ البطاقة مقصوصةٌ (cover) لتتساوى البطاقات، وهذه
+             تُظهرها **كاملةً** (contain) — وهي نفسُ الصورةِ لا نسخةٌ أخرى.
+             ⚠️⚠️ ونافذةٌ مستقلّةٌ عن نافذة الكتالوج عن قصد: تلك تعرض أسعارًا
+             وكميّاتِ محلاتٍ من catProducts، والشحنةُ **ليست في الكتالوج بعد**
+             فلا سعرَ لها ولا رفّ. ولم تُعدَّل تلك ولم يُمسّ منها حرف.
+             ⚠️ وتستعمل **نفس** أصناف .catmodal: فلا تنسيقَ جديدٌ يُصان، ولا يختلف
+             شكلُ النافذتين على نفس الشاشة.
+             ⚠️ وتُغلق بثلاث طرق: الزرّ، والضغط خارج الصندوق، وEscape. -->
+        <div id="arvImgModal" class="catmodal hidden" role="dialog" aria-modal="true" aria-labelledby="arvImgName">
+            <div class="box" id="arvImgBox">
+                <div class="top">
+                    <div>
+                        <h3 id="arvImgName">&mdash;</h3>
+                        <span class="c" id="arvImgCode">&mdash;</span>
+                    </div>
+                    <button type="button" class="x" id="arvImgClose" aria-label="Close">&#10005; Close</button>
+                </div>
+                <div id="arvImgWrap"></div>
+                <div class="rows" id="arvImgRows"></div>
+            </div>
+        </div>
+
         <!-- ============ نافذة العباية ============
              ⚠️ بأمر المالك: «عندما تظغط على العباية تظهر صورة كل العباية».
              صورةُ البطاقة مقصوصةٌ لتتساوى البطاقات، وهذه تُظهرها **كاملة**.
@@ -1420,6 +1459,10 @@
         showStock('');
         // ونفس القاعدة للكتالوج.
         showCatalogShop('');
+        // ⚠️⚠️ ونافذةُ صورةِ الشحنة تُغلق عند مغادرة القسم: نافذةٌ مفتوحةٌ فوق
+        //   قسمٍ آخرَ تحجب الشاشةَ كلَّها، ويبدو البرنامجُ معلَّقًا — والقارئةُ لا
+        //   تعرف أنّ عليها الضغطَ خارج الصندوق لتُخرِج نفسَها.
+        arvCloseImg();
         // ⭐⭐ لوحة الحضور تُحمَّل عند فتحها لا مع كل دخول: هي القراءة الوحيدة التي
         // تُنزّل صورًا، فتحميلُها لمن جاء ليقرأ الأرقام وحدها إهدارٌ لبياناته.
         if (which === 'duty') {
@@ -1509,6 +1552,11 @@
     let arvShowSent = false;
     let arvBusy = '';                  // معرّفُ الشحنة التي يُرسَل الآن، أو ''
     const arvImages = new Map();       // id -> data URL
+    // ⚠️⚠️ معرّفُ الشحنةِ المفتوحةِ صورتُها — يُعرَّف **هنا** مع بقيّة الحالة لا عند
+    //   النافذة أسفل الملفّ، بنفس سببِ catModalOpen المكتوبِ أعلاه: showView
+    //   تُغلق النافذةَ وهي مُعرَّفةٌ قبلها في الملفّ، وتعريفٌ متأخّرٌ بـlet يُخاطر
+    //   بخطأ TDZ لو نُوديت أثناء تحميل الصفحة. الدرسُ نفسُه، فلا يُعاد تعلُّمه.
+    let arvImgOpen = '';
 
     /**
      * ⚠️⚠️ نسخةٌ **مطابقة حرفيًّا** لما في admin.html وabaya-seller.html، وفحصٌ
@@ -1905,12 +1953,16 @@
         if (!ev.target.closest('#catModalBox')) catCloseModal();
     });
     // ⚠️ وEscape: نافذةٌ لا تُغلق إلا بزرٍّ صغيرٍ في زاويةٍ تحبس القارئ.
-    // ⚠️ Escape يُغلق **النافذتين**: نافذةٌ ثانيةٌ لا تُغلق بـEscape تُقرأ عطلًا،
-    // والأولى تُغلق فتبدو الثانية عالقة. وتُغلق نافذة الطلب أوّلًا لأنها فوقها.
+    // ⚠️ Escape يُغلق **كلَّ** النوافذ: نافذةٌ لا تُغلق بـEscape تُقرأ عطلًا،
+    // وغيرُها يُغلق فتبدو هي عالقة. والترتيبُ من الأعلى إلى الأسفل.
+    // ⚠️⚠️ ونافذةُ صورةِ الشحنة أُضيفت هنا **إلزامًا**: نسيانُ سطرِها كان سيجعلها
+    // النافذةَ الوحيدةَ التي لا يُغلقها Escape في الصفحة كلِّها — وهو بالضبط
+    // العطلُ الذي يُحذّر منه هذا التعليق.
     document.addEventListener('keydown', (ev) => {
         if (ev.key !== 'Escape') return;
         if (!el('catWaModal').classList.contains('hidden')) { catCloseWa(); return; }
-        if (!el('catModal').classList.contains('hidden')) catCloseModal();
+        if (!el('catModal').classList.contains('hidden')) { catCloseModal(); return; }
+        if (!el('arvImgModal').classList.contains('hidden')) arvCloseImg();
     });
 
     // =====================================================================
@@ -3048,7 +3100,13 @@
             <div class="arv${sent ? ' sent' : ''}">
                 <div class="ah">
                     ${a.hasImage
-                        ? `<img class="aimg" data-arvimg="${escapeHtml(a.id)}" alt="">`
+                        ? `<span style="flex:0 0 auto;">
+                               <button type="button" class="athumb" data-arvopen="${escapeHtml(a.id)}"
+                                       aria-label="Open the whole picture of ${escapeHtml(a.code)}">
+                                   <img class="aimg" data-arvimg="${escapeHtml(a.id)}" alt="">
+                               </button>
+                               <span class="azoom">Tap to see it all</span>
+                           </span>`
                         : `<span class="aimg none" style="align-items:center; justify-content:center; font-size:11px; color:var(--color-text-muted); text-align:center;">no picture</span>`}
                     <span class="ameta">
                         <span class="acode">${escapeHtml(a.code)}</span>
@@ -3365,8 +3423,84 @@
         }
     }
 
+    // =====================================================================
+    // ⭐⭐⭐ صورةُ الشحنة كاملةً — بأمر المالك
+    // ---------------------------------------------------------------------
+    // «عندما تضغط على صورة العباية تفتح الصورة لتظهر كل الصورة».
+    // ⚠️ صورةُ البطاقة مقصوصةٌ بـcover لتتساوى البطاقاتُ في الشبكة، وهذه تُعرض
+    //   بـcontain — أي القطعةُ كلُّها بنسبتها، وهي **نفسُ** الصورة لا نسخةٌ أثقل.
+    // =====================================================================
+    // (arvImgOpen مُعرَّفٌ أعلى الملفّ مع بقيّة الحالة — انظر الملاحظة هناك.)
+
+    function arvCloseImg() {
+        arvImgOpen = '';
+        el('arvImgModal').classList.add('hidden');
+        // ⚠️ تُفرَّغ الصورة عند الإغلاق: صورةٌ بقيت في DOM تبقى في ذاكرة الهاتف.
+        el('arvImgWrap').innerHTML = '';
+        el('arvImgRows').innerHTML = '';
+        // ⚠️ ويُعاد تمريرُ الصفحة: نسيانُه يترك الصفحةَ **لا تتمرّر** بعد الإغلاق.
+        document.body.style.overflow = '';
+    }
+
+    async function arvOpenImg(id) {
+        const a = arrivals.find(x => x.id === id);
+        if (!a) return;
+        arvImgOpen = id;
+        el('arvImgName').textContent = a.name || arvTypeLabel(a.type) || a.code;
+        el('arvImgCode').textContent = a.code;
+        // سطورُ تفاصيلَ تخصُّ **الشحنة** لا الكتالوج: مقاسٌ وعددٌ وكوستٌ ومورّد.
+        const row = (k, v) => v
+            ? `<div style="display:flex; justify-content:space-between; gap:12px; padding:7px 0;
+                   border-top:var(--border-hairline) solid var(--color-border); font-size:var(--text-sm);">
+                   <span style="color:var(--color-text-muted);">${k}</span><b>${v}</b></div>`
+            : '';
+        el('arvImgRows').innerHTML =
+            `<div style="padding:0 var(--space-4) var(--space-4);">`
+            + row('What it is', escapeHtml(arvTypeLabel(a.type)))
+            + row('Sizes', a.size ? `<span dir="ltr">${escapeHtml(a.size)}</span>` : '')
+            + row('Pieces', String(a.pieces))
+            + row('Cost of one piece', money(a.costPerPiece) + ' QAR')
+            + row('Supplier', escapeHtml(a.supplier))
+            + row('Arrived on', escapeHtml(a.arrivedAt))
+            + (a.status === ARRIVAL_SENT
+                ? row('Sent to', `${escapeHtml(a.sentShop)} &mdash; ${money(a.sellingPrice)} QAR`)
+                : row('Status', 'Waiting for you to choose a shop'))
+            + `</div>`;
+        document.body.style.overflow = 'hidden';
+
+        const wrap = el('arvImgWrap');
+        if (arvImages.has(id)) {
+            wrap.innerHTML = `<img class="full" src="${arvImages.get(id)}" alt="${escapeHtml(a.code)}">`;
+        } else {
+            wrap.innerHTML = `<div class="noimg">Loading the picture...</div>`;
+            try {
+                const snap = await getDoc(doc(db, ABAYA_ARRIVAL_IMAGES_COLL, id));
+                const url = safePhoto(snap.exists() ? snap.data().imageBase64 : '');
+                // ⚠️⚠️ حرسُ السباق: لو أغلقتها أو فتحت صورةً أخرى أثناء القراءة،
+                //   لظهرت صورةُ شحنةٍ فوق تفاصيلِ شحنةٍ أخرى — وهي شحناتٌ متشابهةٌ
+                //   في الشكل ومختلفةٌ في السعر، فالخطأُ هنا يُسعّر القطعةَ الخطأ.
+                if (arvImgOpen !== id) return;
+                wrap.innerHTML = url
+                    ? `<img class="full" src="${url}" alt="${escapeHtml(a.code)}">`
+                    : `<div class="noimg">The picture could not be read</div>`;
+            } catch (e) {
+                if (arvImgOpen === id) wrap.innerHTML = `<div class="noimg">The picture could not be read</div>`;
+            }
+        }
+        el('arvImgModal').classList.remove('hidden');
+        el('arvImgClose').focus();
+    }
+
+    el('arvImgClose').addEventListener('click', arvCloseImg);
+    // الضغطُ خارج الصندوق يُغلق
+    el('arvImgModal').addEventListener('click', (ev) => {
+        if (!ev.target.closest('#arvImgBox')) arvCloseImg();
+    });
+
     // مستمعٌ واحدٌ على الحاوية لا مستمعٌ لكل زر: البطاقاتُ تُبنى في كلّ رسم.
     el('arvGrid').addEventListener('click', (ev) => {
+        const t = ev.target.closest('button[data-arvopen]');
+        if (t) { arvOpenImg(t.getAttribute('data-arvopen')); return; }
         const b = ev.target.closest('button[data-arvsend]');
         if (b && !b.disabled) arvSend(b.getAttribute('data-arvsend'));
     });
