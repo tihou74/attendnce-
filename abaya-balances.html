@@ -80,6 +80,84 @@
        الذهب #A89060 تباينه على الأبيض 3.08:1 فلا يحمل نصًّا: هو للحدود والأسطح.
        الأرقام كلها مونو ومتراصفة (tabular-nums) لأنها تُقرأ عموديًّا في جداول.
        ========================================================================= */
+
+    /* =========================================================================
+       ⭐⭐⭐⭐⭐ كريميٌّ وبيجٌ بحواف عنابية — بطلب المالك
+       -------------------------------------------------------------------------
+       بنصّه: «ضع اللون البيج الكريمي مع حواف عنابي، أريد شيئًا كلاسيكيًّا ومبهرًا».
+
+       ⚠️⚠️ ولم يُخترع لونٌ واحد: السلّمُ كلُّه موجودٌ في design-tokens.css منذ
+       طلبٍ سابقٍ له («أضف شوي ألوان كريمي مع بيج وعنابي»)، وكلُّ نسبةِ تباينٍ
+       فيه محسوبةٌ بمعادلة WCAG لا مُقدَّرةٌ بالنظر. وهذه الصفحةُ كانت وحدَها
+       ما زالت على الأبيض والرماديِّ **البارد**، فرُبطت أغراضُها بالسلّم الدافئ.
+
+       ⚠️⚠️⚠️ والأزرارُ تبقى **كحليةً** ولا تصير عنابيةً — وهذا قرارٌ مكتوبٌ في
+       ورقة التوكنز بسببٍ أمنيّ لا جماليّ: الفرقُ بين العنابي #73263A وأحمرِ
+       الخطر #B91C1C هو **1.57:1 فقط**، فزرُّ إجراءٍ عنابيٌّ بجانب زرٍّ أحمرَ
+       يصيران أحمرَين متشابهَين على هاتف. والعنابيُّ **للحواف والحضور** — وهو
+       عينُ ما طلبه المالك: «حواف عنابي».
+
+       ⚠️ وكلُّ إشارةٍ هنا لها **قيمةٌ احتياطية** `var(--x, #hex)`: لو تعذّر تحميلُ
+       ورقة التوكنز (أوّلُ فتحٍ بلا شبكةٍ، أو كاشٌ تالف) بقيت اللوحةُ بألوانها
+       الصحيحةِ مقروءةً، بدل أسطحٍ شفّافةٍ وحدودٍ بلا لون — وهو عطلٌ وقع فعلًا
+       في لوحة الإدارة من قبل.
+
+       ⚠️ والوضعُ الداكن لا يُكسَر: قيمُه في الورقة على `html[data-theme='dark']`
+       وخصوصيّتُه أعلى من `:root`، فيغلب هذا الرَّبطَ لو فُعّل يومًا.
+       ========================================================================= */
+    :root {
+        /* الأسطح: كريميٌّ متدرّج — القياسُ بالكحلي نصًّا عليها */
+        --color-bg:            var(--cream-100, #F8F3E9);   /* خلفيةُ الصفحة — كحليٌّ عليه 16.14:1 */
+        --color-surface:       var(--cream-50,  #FDFBF6);   /* البطاقات — 17.26:1 */
+        --color-surface-2:     var(--cream-200, #F1E9DA);   /* سطحٌ ثانٍ — 14.80:1 */
+        /* الحدود: بيجٌ مرئيّ. الحدُّ البارد القديم #E2E8F0 كان 1.23:1 على الأبيض
+           أي شبهَ غير مرئيّ، والبيجُ 1.67:1 — فالدفءُ هنا زاد الوضوحَ لا نقصه. */
+        --color-border:        var(--beige-400, #D3C3A8);
+        /* والحدُّ القويُّ عنابيٌّ مخفَّف: هو ما يُعطي «الحواف العنابية» على
+           الخانات والأزرار الشفّافة بلا أن يصير سطحًا عنابيًّا يُنافس الأحمر. */
+        --color-border-strong: var(--wine-tint-border, #C4A8B0);
+        /* النصوص: الكحليُّ يبقى، والثانويُّ يصير دافئًا — الرماديُّ الأزرقُ على
+           الكريمي يبدو باهتًا وباردًا. */
+        --color-text-muted:    var(--warm-650, #544938);    /* 7.95:1 / 7.29:1 */
+        /* ⚠️ ولا يُمسّ: --color-text (كحليّ) · --color-primary (أزرارٌ كحلية) ·
+           --color-brand (ذهبُ الهوية) — ولا يُغيَّر **معنى** لونٍ دلاليّ. */
+
+        /* ⭐⭐⭐ الأخضرُ والتحذيرُ يُعمَّقان درجةً — والسببُ قياسٌ لا ذوق:
+           على السطح الكريميِّ الثاني #F1E9DA كان
+             الأخضر  #15803D = 4.16:1  ❌ راسبٌ تحت 4.5
+             التحذير #B45309 = 4.16:1  ❌ راسبٌ كذلك
+           (وعلى الأبيضِ القديمِ كانا 4.68 و4.60 — أي أنّ الدفءَ أكلَ الهامشَ
+            الضئيلَ الذي كانا يقفان عليه.) وبدرجةٍ أعمقَ يمرّان بفارقٍ واسع:
+             #14532D = 8.81:1 / 7.55:1 · وأبيضٌ عليه 9.11:1
+             #92400E = 6.86:1 / 5.88:1 · وأبيضٌ عليه 7.09:1
+           والمعنى لم يتغيّر: أخضرُ نجاحٍ وبرتقاليُّ تحذير، أعمقَ وأنسبَ للكلاسيكيّ.
+           ⚠️ والموضعُ الذي كان سيرسب فعلًا: البطاقةُ المُرسَلةُ سطحُها ثانويّ. */
+        --color-success: var(--success-700, #14532D);
+        --color-warning: var(--warning-700, #92400E);
+
+        /* ⚠️⚠️⚠️ والأحمرُ **لا يُعمَّق**، وهذا قياسٌ لا تردُّد: ورقةُ التوكنز تُحذّر
+           أنّ الفرقَ بين العنّابيِّ وأحمرِ الخطر 1.57:1 فقط. وقِستُ التعميق:
+             عنّابيّ #73263A ضدّ #991B1B = 1.22:1
+             عنّابيّ #73263A ضدّ #7F1D1D = 1.01:1  ← أي **لونٌ واحدٌ للعين**
+           فتعميقُ الأحمرِ يُلغي تمييزَه عن لونِ الزينة الجديد — وثمنُ الالتباس
+           هنا إجراءٌ خطِرٌ يُضغط ظنًّا أنه زينة. يبقى #B91C1C، وهو يمرّ أصلًا
+           (6.26:1 / 5.36:1). والمعلومةُ (info) تمرّ كذلك فلا تُمَسّ. */
+
+        /* ⭐ لونُ الحافّة العنابية — تُستعمل صريحةً حيث تُراد حافّة، ولا يُعاد
+           تعريفُ --color-brand: ذاك ذهبُ المجموعة، والذهبُ يحمل نصًّا كحليًّا
+           بـ5.80:1 أمّا العنابيُّ فيحمل أبيضَ بـ10.16:1 — معنيان مختلفان. */
+        --edge:      var(--wine-600, #73263A);   /* أبيضٌ عليه 10.16:1 · ونصًّا على الكريمي 9.18:1 */
+        --edge-deep: var(--wine-700, #5C1E2E);   /* تمريرٌ — 12.50:1 */
+        --edge-tint: var(--wine-tint-bg, #F3E9EB);
+    }
+
+    /* ⚠️⚠️⚠️ ولا كتلةَ «تجاوُزاتٍ» هنا عن قصد. كتبتُ أوّلًا قواعدَ عنابيةً في هذا
+       الموضع (‎.panel و header و .pick و thead th) فكانت **كلُّها ميتة**: القواعدُ
+       الأصليةُ لتلك المحدِّدات مكتوبةٌ **أسفلَ** هذا الموضع، وبنفس الخصوصيّة يغلب
+       المتأخّرُ في الملفّ — فلا حافّةَ عنابيةَ واحدةً كانت ستظهر، والاختبارُ
+       الذي يبحث عن اسم التوكن كان سيمرّ ويقول «تمّ».
+       فالعنّابيُّ مكتوبٌ **داخل** كلِّ قاعدةٍ أصليةٍ في موضعها أدناه: مصدرٌ واحدٌ
+       لكلِّ محدِّدٍ، ولا قاعدتان تتنازعان. */
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; }
     body {
@@ -96,13 +174,18 @@
     header {
         display: flex; align-items: center; gap: var(--space-4);
         margin-bottom: var(--space-6); padding-bottom: var(--space-4);
-        border-bottom: var(--border-hairline) solid var(--color-border);
+        /* ⭐ خطُّ الترويسة عنابيٌّ — أحدُ المواضع التي تذكرها ورقةُ التوكنز
+           صريحًا للعنابي، وبسماكة 2px ليُرى أنه خطُّ هويّةٍ لا حدُّ فصل. */
+        border-bottom: 2px solid var(--edge);
     }
     /* الشعار على إطار أبيض دائمًا: ملفّه بخلفية بيضاء لا شفافة، فلو وُضع على
        سطح غامق ظهر مستطيلًا أبيض. الإطار يجعله يبدو مقصودًا. */
     header .logobox {
         flex: 0 0 auto; width: 48px; height: 48px; border-radius: var(--radius-md);
-        background: #FFFFFF; border: var(--border-hairline) solid var(--color-border);
+        /* ⚠️ كان #FFFFFF خامًّا — لونٌ خامٌّ يُخالف قاعدةَ الهوية، ويبدو رقعةً
+           بيضاءَ ساطعةً على صفحةٍ كريمية. صار من السلّم بحدٍّ عنابيّ. */
+        background: var(--cream-50, #FDFBF6);
+        border: var(--border-hairline) solid var(--edge);
         display: flex; align-items: center; justify-content: center; overflow: hidden;
     }
     header .logobox img { max-width: 100%; max-height: 100%; display: block; }
@@ -115,7 +198,8 @@
     header p { margin: 3px 0 0; font-size: var(--text-xs); color: var(--color-text-muted); }
     header .wordmark {
         display: block; font-size: var(--text-xs); font-weight: 700;
-        letter-spacing: .22em; color: var(--color-brand-text);
+        /* ⭐ كان ذهبًا نصًّا (gold-800)؛ صار عنابيًّا — 9.18:1 على الكريمي. */
+        letter-spacing: .22em; color: var(--edge);
         text-transform: uppercase; margin-top: 3px;
     }
 
@@ -151,7 +235,8 @@
     .panel {
         background: var(--color-surface);
         border: var(--border-hairline) solid var(--color-border);
-        border-top: 3px solid var(--color-brand);
+        /* ⭐ «حواف عنابي» بطلب المالك — كانت ذهبًا. */
+        border-top: 3px solid var(--edge);
         border-radius: var(--card-radius);
         padding: var(--space-5); margin-bottom: var(--space-5);
         box-shadow: var(--shadow-xs);
@@ -204,14 +289,22 @@
     .arvg { display: grid; gap: var(--space-5); grid-template-columns: 1fr; }
     @media (min-width: 620px) { .arvg { grid-template-columns: 1fr 1fr; } }
     @media (min-width: 1040px) { .arvg { grid-template-columns: repeat(3, 1fr); } }
+    /* ⭐ الحافّةُ العنابيةُ العلويةُ على كلِّ بطاقة — «حواف عنابي» بطلب المالك،
+       وبنفس نمط .panel في هذه الصفحة فلا لغةً بصريّةً ثانية. */
     .arv {
         background: var(--color-surface); border: var(--border-hairline) solid var(--color-border);
+        border-top: 3px solid var(--edge);
         border-radius: var(--radius-lg); overflow: hidden; display: flex; flex-direction: column;
         box-shadow: var(--shadow-xs);
     }
     /* ⚠️ المُرسَلةُ تُخفَت **بلا** opacity على البطاقة كلِّها: شفافيةٌ على الغلاف
-       تُخفت النصَّ فيهبط تباينُه تحت الحدّ. فالتمييزُ بحدٍّ أخضرَ وسطحٍ ثانويّ. */
-    .arv.sent { border-color: var(--color-success); background: var(--color-surface-2); }
+       تُخفت النصَّ فيهبط تباينُه تحت الحدّ. فالتمييزُ بحدٍّ أخضرَ وسطحٍ ثانويّ.
+       ⚠️⚠️ وحافّتُها العلويةُ تصير **خضراءَ** لا عنابية: الأخضرُ هنا معنًى
+       («تمّ») لا مزاج، والعنابيُّ زينة — فمعنى يغلب زينةً عند التعارض. */
+    .arv.sent {
+        border-color: var(--color-success); background: var(--color-surface-2);
+        border-top-color: var(--color-success);
+    }
 
     /* ---- ١) الصورة: بطلةُ البطاقة ---- */
     /* ⚠️⚠️ زرٌّ حقيقيٌّ لا img عليه ضغطة — بطلب المالك أن تُفتح كاملةً. والزرُّ
@@ -258,9 +351,9 @@
     /* وسمُ النوع — عربيٌّ وإنجليزيٌّ معًا، فيحتاج إيقاعَ السطر العربيّ */
     .arv .atype {
         display: inline-block; margin-top: var(--space-3);
-        background: var(--color-surface-2); border: var(--border-hairline) solid var(--color-border);
+        background: var(--edge-tint); border: var(--border-hairline) solid var(--edge);
         border-radius: var(--radius-pill); padding: 2px 10px;
-        font-size: var(--text-xs); font-weight: 700; color: var(--color-text);
+        font-size: var(--text-xs); font-weight: 700; color: var(--edge);
         line-height: var(--leading-arabic);
     }
 
@@ -268,9 +361,10 @@
     /* ⚠️ «44,46,48,50» في سطرٍ واحدٍ تُقرأ رقمًا واحدًا طويلًا. الوسومُ تفصلها
        فتُقرأ أربعةَ مقاساتٍ من نظرةٍ واحدة. */
     .arv .asizes { padding: 0 var(--space-4) var(--space-3); }
+    /* ⭐ التسمياتُ الصغيرةُ عنابيةٌ — 9.18:1 على الكريمي، فهي حضورٌ مقروءٌ لا خفوت */
     .arv .alabel {
         display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .09em;
-        text-transform: uppercase; color: var(--color-text-muted); margin-bottom: var(--space-2);
+        text-transform: uppercase; color: var(--edge); margin-bottom: var(--space-2);
     }
     .arv .achips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
     .arv .achip {
@@ -292,9 +386,12 @@
     .arv .arow > b.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; direction: ltr; }
 
     /* ---- ٣ج) كوستُ القطعة: الرقمُ الذي يُبنى عليه القرار ---- */
+    /* ⭐ كتلةُ الكوست: حافّةٌ عنابيةٌ جانبيةٌ تجعلها أبرزَ ما في البطاقة بعد
+       الصورة — وهي الرقمُ الذي يُبنى عليه قرارُ السعر. */
     .arv .acost {
         margin: var(--space-3) var(--space-4) 0; padding: var(--space-3);
         background: var(--color-surface-2); border: var(--border-hairline) solid var(--color-border);
+        border-inline-start: 3px solid var(--edge);
         border-radius: var(--radius-md);
         display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3);
     }
@@ -338,8 +435,8 @@
         margin-bottom: var(--space-2);
     }
     .arv .adone b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; direction: ltr; }
-    /* زرّ «الكل مجتمعين» يُميَّز بحدّه الذهبي: هو ملخّصٌ لا محلًّا. */
-    .pick.all { border-top: 3px solid var(--color-brand); }
+    /* زرّ «الكل مجتمعين» يُميَّز بحدّه العنابي: هو ملخّصٌ لا محلًّا. */
+    .pick.all { border-top: 3px solid var(--edge); }
     /* شريط الرجوع: اسم المحل بجانب زرّ العودة إلى أزرار المحلات. */
     .backbar { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-4); }
     .backbar button { width: auto; min-height: 40px; }
@@ -365,9 +462,13 @@
     }
     .pick:hover { background: var(--color-surface-2); border-color: var(--color-primary); }
     .pick[aria-pressed="true"] {
-        background: var(--color-surface-2); border-color: var(--color-primary);
-        border-top: 3px solid var(--color-primary);
+        /* ⭐ القسمُ المفتوح يُعرف من نظرةٍ بحافّةٍ عنابيةٍ وسطحٍ عنابيٍّ مخفَّف.
+           ⚠️ والسطحُ **مخفَّفٌ** (10%) لا عنابيٌّ كامل: سطحٌ عنابيٌّ كاملٌ يقترب
+           من أحمرِ الخطر، وهو ما تمنعه ورقةُ التوكنز صريحًا. */
+        background: var(--edge-tint); border-color: var(--edge);
+        border-top: 3px solid var(--edge);
     }
+    .pick[aria-pressed="true"] .t1 { color: var(--edge); }
     .pick .ic {
         flex: 0 0 auto; width: 42px; height: 42px; border-radius: var(--radius-md);
         background: var(--color-surface-2);
@@ -392,7 +493,8 @@
     .card {
         background: var(--color-surface);
         border: var(--border-hairline) solid var(--color-border);
-        border-top: 3px solid var(--color-brand);
+        /* ⭐ وبطاقاتُ الأرقام كذلك — فلا تبقى ذهبيةً وحدَها بين حوافَّ عنابية. */
+        border-top: 3px solid var(--edge);
         border-radius: var(--card-radius); padding: var(--space-5); box-shadow: var(--shadow-xs);
     }
     .card h2 {
@@ -421,9 +523,10 @@
     table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); background: var(--color-surface); }
     thead th {
         font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
-        color: var(--color-text-muted); text-align: start; padding: 10px 12px; white-space: nowrap;
+        /* ⭐ رؤوسُ الجداول عنابيةُ النصّ — من مواضع العنابي المذكورة في الورقة. */
+        color: var(--edge); text-align: start; padding: 10px 12px; white-space: nowrap;
         background: var(--color-surface-2);
-        border-bottom: var(--border-hairline) solid var(--color-border);
+        border-bottom: var(--border-hairline) solid var(--edge);
     }
     thead th.n, tbody td.n, tfoot td.n { text-align: end; }
     tbody td, tfoot td {
