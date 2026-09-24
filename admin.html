@@ -3023,7 +3023,7 @@
                 the selling price &mdash; and only then does it become a line in the catalogue.
             </p>
             <div class="date-group">
-                <div style="flex: 1; min-width: 200px;"><label for="arvSearch">Search &mdash; barcode, name or supplier</label>
+                <div style="flex: 1; min-width: 200px;"><label for="arvSearch">Search &mdash; barcode, name, supplier, or &ldquo;workshop&rdquo;</label>
                     <input type="text" id="arvSearch" placeholder="Type anything" oninput="renderAbayaArrivals()">
                 </div>
                 <div style="width: 190px;"><label for="arvFilterStatus">Show</label>
@@ -3084,13 +3084,25 @@
                 <div style="width: 200px;" id="arvFabricWrap"><label for="arvFabric">Fabric &mdash; نوع القماش</label>
                     <input type="text" id="arvFabric" maxlength="40" placeholder="e.g. Nida, Crepe, Satin" autocomplete="off">
                 </div>
-                <div style="width: 200px;"><label for="arvSupplier">Supplier</label>
+                <!-- ⭐⭐⭐⭐⭐ من أين وصلت — بأمر المالك: «إذا كانت البضاعة الجديدة
+                     السبلاير الخاص بها الورشة أي الفاكتوري فيظهر زرُّ واتساب
+                     لفاطمة».
+                     ⚠️ قائمةٌ مغلقةٌ لا كلمةٌ تُقرأ من خانة المورّد النصّيّة: بحثٌ
+                     عن «ورشة» في نصٍّ حرٍّ يفشل بصمتٍ فلا يظهر الزرُّ ولا يُعرف
+                     السبب. والمصدرُ حقيقةٌ تعرفها لحظةَ التسجيل. -->
+                <div style="width: 215px;"><label for="arvSource">Where from <span style="color: var(--danger);">*</span></label>
+                    <select id="arvSource" onchange="onArrivalSourceChanged()"></select>
+                </div>
+                <div style="width: 200px;"><label for="arvSupplier" id="arvSupplierLabel">Supplier</label>
                     <input type="text" id="arvSupplier" placeholder="Who sent it" autocomplete="off">
                 </div>
                 <div style="width: 165px;"><label for="arvDate">Arrived on</label>
                     <input type="date" id="arvDate">
                 </div>
             </div>
+            <!-- ⚠️ يُقال صراحةً ماذا يترتّب على «من الورشة»: إعدادٌ يُغيّر شاشةَ
+                 شخصٍ آخر ولا يُقال أثرُه يُختار بالخطأ ثم يُستغرب أثرُه. -->
+            <p class="card-sub" id="arvSourceNote" style="margin: 8px 0 0; font-size: 11.5px;"></p>
 
             <!-- ---- الأرقام ---- -->
             <div style="margin: 18px 0 6px;">
@@ -3180,6 +3192,38 @@
             </div>
         </div>
 
+        <!-- ============ رقمُ واتساب الورشة ============
+             ⚠️⚠️⚠️ رقمٌ **يكتبه المالكُ بيده** ولم أختلق واحدًا: رقمٌ أختلقه أنا
+             يفتح محادثةً مع غريبٍ ويُرسل إليه صورةَ تصميمِنا وباركودَه. وحتى
+             يُكتب تقول لوحةُ السيدة فاطمة صراحةً إنّ الرقمَ لم يُضبط بعد.
+             ⚠️ ومكانُه `settings` التي يقرؤها المشاهدُ بقاعدةٍ **قائمةٍ سلفًا** —
+             فلا قاعدةَ جديدةً في هذه الميزة ولا نشرٌ جديدٌ للقواعد. -->
+        <div class="card" id="arvWorkshopCard">
+            <h3><span data-icon="plane"></span> The workshop&rsquo;s WhatsApp number
+                <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">رقم واتساب الورشة</span></h3>
+            <p class="card-sub" style="margin: 0 0 12px;">
+                When a shipment is recorded as coming from <b>our workshop</b>, Mrs Fatima gets a <b>WhatsApp</b> button
+                on that shipment&rsquo;s card with the piece&rsquo;s details ready to send, and she can write whatever she
+                wants with it. <b>This is the number it goes to.</b> Leave it empty and her button still works through
+                her phone&rsquo;s share sheet &mdash; she just has to pick the chat herself.
+            </p>
+            <div class="date-group" style="align-items: flex-start;">
+                <div style="width: 250px;"><label for="wsName">What to call it on her screen</label>
+                    <input type="text" id="wsName" maxlength="60" placeholder="e.g. Al Sheikha Workshop" autocomplete="off">
+                </div>
+                <div style="width: 215px;"><label for="wsPhone">WhatsApp number</label>
+                    <input type="tel" id="wsPhone" dir="ltr" placeholder="e.g. 33123456" autocomplete="off" oninput="onWorkshopPhoneTyped()">
+                </div>
+                <div style="align-self: flex-end; padding-bottom: 2px;">
+                    <button class="btn-success" id="wsSaveBtn" onclick="saveAbayaWorkshop()"><span data-icon="save"></span> Save the number</button>
+                </div>
+            </div>
+            <!-- ⚠️ يُعرض الرقمُ **كما سيُستعمل** لا كما كُتب: نفسُ درسِ أرقام الموظفين
+                 — «+974» وحدها كانت تُقبل ثم لا يظهر الزرّ. فالتحقّقُ يُرى قبل الحفظ. -->
+            <p class="card-sub" id="wsPreview" style="margin: 10px 0 0; font-size: 12px;"></p>
+            <p style="margin: 8px 0 0; font-weight: 600; font-size: 13px;" id="wsStatus"></p>
+        </div>
+
         <!-- ============ الجدول ============ -->
         <div class="card">
             <h3><span data-icon="fileText"></span> Everything that arrived</h3>
@@ -3193,7 +3237,10 @@
                             <th>Name</th>
                             <th>What</th>
                             <th>Sizes</th>
-                            <th>Supplier</th>
+                            <!-- ⚠️ نفسُ العمود لا عمودٌ جديد: المصدرُ **هو** من أرسلها.
+                                 وعمودٌ رابعَ عشرَ كان سيُوجب تعديلَ كلِّ colspan وكلِّ
+                                 خليّةِ مجموعٍ في التذييل — حسابٌ يُخطئ ويُفكّك الجدول. -->
+                            <th>Where from</th>
                             <th class="money-col">Pieces</th>
                             <th class="money-col money-only">USD</th>
                             <th class="money-col money-only">Total</th>
@@ -12804,6 +12851,62 @@
     const ARRIVAL_SENT = 'sent';
 
     /**
+     * ⭐⭐⭐⭐⭐ من أين وصلت الشحنة: من مورّدٍ أم من **ورشتِنا** (الفاكتوري)؟
+     *
+     * كلامُ المالك: «إذا كانت البضاعة الجديدة السبلاير الخاص بها الورشة أي
+     * الفاكتوري فيظهر زرُّ واتساب لفاطمة مع معلومات العباية، إذا ضغطت عليه يرسل
+     * صورة العباية مباشر إلى الرقم هذا مع إمكانية كتابة ما تشاء».
+     *
+     * ⚠️⚠️⚠️ ولماذا **قائمةٌ صريحة** لا قراءةُ كلمة «ورشة» من خانة المورّد النصّيّة:
+     *   خانةُ المورّد نصٌّ حرٌّ يُكتب فيه «الورشة» أو «Workshop» أو «Factory» أو
+     *   «ورشتنا» أو يُترك فارغًا. وبحثٌ عن كلمةٍ في نصٍّ حرٍّ يفشل **بصمت**: تصل
+     *   عباية من الورشة فلا يظهر لها الزرّ، ولا أحدَ يعرف لماذا. والمصدرُ
+     *   حقيقةٌ يعرفها المالكُ لحظةَ التسجيل بضغطةٍ واحدة — فتُسأل لا تُخمَّن.
+     *
+     * ⚠️⚠️ والافتراضُ «مورّد» لا «ورشة»: كلُّ شحنةٍ سُجِّلت قبل هذه الميزة لا تحمل
+     *   الحقلَ إطلاقًا، وافتراضُ «ورشة» كان سيُظهر زرَّ الورشة على شحناتٍ وصلت
+     *   من مورّدٍ في الصين — أي رسالةٌ تُرسل إلى الجهة الخطأ. فالغيابُ يُقرأ
+     *   «مورّد»، والمالكُ يفتح شحنةً قديمةً ويضبطها بيده إن أراد الزرّ عليها.
+     *
+     * ⚠️ والتسميةُ مرآةٌ لِما في `ABAYA_MOVE_KINDS` سلفًا (`in_from_workshop`
+     *   و`in_from_supplier`): التمييزُ نفسُه موجودٌ في النظام منذ البداية، ولم
+     *   أخترع مفهومًا جديدًا.
+     */
+    const ARRIVAL_SOURCE_SUPPLIER = 'supplier';
+    const ARRIVAL_SOURCE_WORKSHOP = 'workshop';
+    const ARRIVAL_SOURCES = [
+        { key: ARRIVAL_SOURCE_SUPPLIER, en: 'A supplier',             ar: 'مورّد' },
+        { key: ARRIVAL_SOURCE_WORKSHOP, en: 'Our workshop (factory)', ar: 'ورشتُنا — الفاكتوري' }
+    ];
+    function arrivalSourceLabel(key) {
+        const s = ARRIVAL_SOURCES.find(x => x.key === String(key || ''));
+        return s ? `${s.en} · ${s.ar}` : '';
+    }
+    /** ⚠️ أيُّ قيمةٍ غير 'workshop' تُقرأ «مورّد» — انظر سببَ الافتراض أعلاه. */
+    const arrivalSourceOf = (v) =>
+        String(v || '') === ARRIVAL_SOURCE_WORKSHOP ? ARRIVAL_SOURCE_WORKSHOP : ARRIVAL_SOURCE_SUPPLIER;
+    const isWorkshopArrival = (v) => arrivalSourceOf(v) === ARRIVAL_SOURCE_WORKSHOP;
+
+    /**
+     * ⭐⭐⭐⭐ رقمُ واتساب الورشة — مستندُ إعدادٍ واحدٌ في `settings`.
+     *
+     * ⚠️⚠️⚠️ ولم أخترع رقمًا: المالكُ كتب «الرقم هذا» ولم يُعطِ رقمًا. ورقمٌ
+     *   أختلقه يفتح محادثةً مع **غريبٍ** ويُرسل إليه صورةَ تصميمِنا وباركودَه.
+     *   فالخانةُ فارغةٌ حتى يكتبه هو، وحتى ذلك الحين تقول لوحةُ السيدة فاطمة
+     *   صراحةً إنّ الرقمَ لم يُضبط بعد — لا تصمت ولا تتظاهر.
+     *
+     * ⚠️⚠️ ومكانُه `settings`: تلك المجموعةُ يقرؤها المشاهدُ سلفًا بقاعدةٍ قائمة
+     *   (`settings/{docId}`: read للمشاهد، write للمالك والمحاسب)، فلا تحتاج هذه
+     *   الميزةُ **أيَّ قاعدةٍ جديدة** ولا نشرًا جديدًا للقواعد. وهذا مقصود:
+     *   ميزةٌ تتعطّل حتى يُنشر ملفُّ قواعدَ هي ميزةٌ معطّلةٌ عمليًّا.
+     *
+     * ⚠️ والرقمُ **ليس سرًّا** يُخفى عنها: هي من سترسل إليه.
+     */
+    const ABAYA_WORKSHOP_DOC = 'abaya_workshop';
+    const ABAYA_WORKSHOP_NAME_MAX = 60;
+    let abayaWorkshop = { phone: '', name: '' };
+
+    /**
      * ⭐⭐⭐⭐⭐ نوعُ القطعة على مستند الكتالوج — بطلب المالك:
      * «يجب أن يظهر في الكتالوج الخاص بالمحلات، لذلك يجب إنشاءُ كتالوجٍ لكلِّ
      *  الأصناف: عبايات، دريس، فساتين، كلّ شي».
@@ -13707,6 +13810,41 @@
         if (w) w.style.display = isAbayaType(t) ? '' : 'none';
     };
 
+    /**
+     * ⭐ أثرُ «من أين وصلت» يُقال على الشاشة لحظةَ اختياره.
+     * ⚠️ وخانةُ المورّد **لا تُخفى** عند اختيار الورشة: للورشة اسمٌ أيضًا («ورشة
+     *   الدوحة»، «الخيّاط فلان»)، وإخفاءُ الخانة يمنع كتابةَ معلومةٍ صحيحة. يُبدَّل
+     *   عنوانُها ومثالُها فقط.
+     * ⚠️ وتُقال حالةُ الرقم هنا: من اختار «الورشة» ولم يُضبط رقمٌ يجب أن يعرف
+     *   **الآن** لا أن يكتشفه من السيدة فاطمة بعد أسبوع.
+     */
+    window.onArrivalSourceChanged = function() {
+        const src = arrivalSourceOf((document.getElementById('arvSource') || {}).value);
+        const lab = document.getElementById('arvSupplierLabel');
+        const inp = document.getElementById('arvSupplier');
+        const note = document.getElementById('arvSourceNote');
+        const workshop = src === ARRIVAL_SOURCE_WORKSHOP;
+        if (lab) lab.textContent = workshop ? 'Which workshop (optional)' : 'Supplier';
+        if (inp) inp.placeholder = workshop ? 'Name of the workshop, if you want it recorded' : 'Who sent it';
+        if (!note) return;
+        if (!workshop) {
+            note.innerHTML = `Recorded as coming from a <b>supplier</b>. `
+                + `Mrs Fatima gets no workshop WhatsApp button on it.`;
+            note.style.color = '';
+            return;
+        }
+        const num = waNumber(abayaWorkshop.phone);
+        note.innerHTML = num
+            ? `Mrs Fatima will get a <b>WhatsApp button</b> on this shipment&rsquo;s card, ready to send to `
+              + `<b dir="ltr">+${escapeHtml(num)}</b>`
+              + (abayaWorkshop.name ? ` (${escapeHtml(abayaWorkshop.name)})` : '')
+              + ` with the piece&rsquo;s details, and she can write whatever she wants with it.`
+            : `<b>&#9888; No workshop number is saved yet.</b> She will still get the WhatsApp button, but it will `
+              + `open her phone&rsquo;s share sheet and she has to pick the chat herself. `
+              + `Type the number in <b>The workshop&rsquo;s WhatsApp number</b> below and press Save.`;
+        note.style.color = num ? 'var(--success)' : 'var(--warning)';
+    };
+
     /** ⚠️ تُبنى من ABAYA_STOCK_ITEMS لا بيدٍ: نوعٌ جديدٌ يظهر وحده ولا يُنسى. */
     function buildArrivalTypeSelects() {
         const sel = document.getElementById('arvType');
@@ -13722,6 +13860,14 @@
                 + ABAYA_STOCK_ITEMS.map(t =>
                     `<option value="${escapeHtml(t.key)}">${escapeHtml(t.en)} &middot; ${escapeHtml(t.ar)}</option>`).join('');
             f.dataset.built = '1';
+        }
+        // ⚠️ تُبنى من ARRIVAL_SOURCES لا بيدٍ: مصدرٌ يُضاف يومًا يظهر وحده.
+        const so = document.getElementById('arvSource');
+        if (so && !so.dataset.built) {
+            so.innerHTML = ARRIVAL_SOURCES.map(s =>
+                `<option value="${escapeHtml(s.key)}">${escapeHtml(s.en)} &middot; ${escapeHtml(s.ar)}</option>`).join('');
+            so.dataset.built = '1';
+            onArrivalSourceChanged();
         }
         const r = document.getElementById('arvRate');
         if (r && !r.value) r.value = String(ABAYA_USD_RATE_DEFAULT);
@@ -13740,6 +13886,10 @@
         if (body && !abayaArrivalsLoaded) {
             body.innerHTML = `<tr><td colspan="13" style="text-align:center;">Loading...</td></tr>`;
         }
+        // ⚠️ رقمُ الورشة يُقرأ مع الوصولات: سطرُ «من الورشة» في الجدول يقول هل
+        //   للزرِّ رقمٌ أم لا، وقراءةٌ متأخّرةٌ تجعله يقول «لا رقم» ثم يتغيّر.
+        //   وقراءتُه **لا تُعطّل** الوصولات: فشلُها يُطبع ولا يُرمى.
+        await loadAbayaWorkshop();
         try {
             const snap = await getDocs(collection(db, ABAYA_ARRIVALS_COLL));
             abayaArrivals = [];
@@ -13754,6 +13904,9 @@
                     size: String(v.size || ''),
                     fabric: String(v.fabric || ''),
                     supplier: String(v.supplier || ''),
+                    // ⚠️ الغيابُ يُقرأ «مورّد»: كلُّ شحنةٍ قبل هذه الميزة بلا حقل،
+                    //   وافتراضُ «ورشة» يُظهر زرَّ الورشة على شحنةِ مورّدٍ صيني.
+                    source: arrivalSourceOf(v.source),
                     unitUsd: Number(v.unitUsd || 0) || 0,
                     usdRate: Number(v.usdRate || 0) || 0,
                     unitQar: Number(v.unitQar || 0) || 0,
@@ -13793,6 +13946,112 @@
         }
     };
 
+    /**
+     * خليّةُ «من أين وصلت»: وسمُ الورشة إن كانت منها، ثم الاسمُ المكتوبُ إن وُجد.
+     * ⚠️ وإن كانت من الورشة ولا رقمَ محفوظًا يُقال ذلك **في الصفّ نفسه**: المالكُ
+     *   يقرأ الجدولَ لا نموذجَ الإدخال، وتحذيرٌ في مكانٍ لا يُقرأ ليس تحذيرًا.
+     */
+    function arrivalWhereFromCell(a) {
+        const dim = '<span style="color: var(--text-dim);">&mdash;</span>';
+        if (!isWorkshopArrival(a.source)) {
+            return escapeHtml(a.supplier) || dim;
+        }
+        const num = waNumber(abayaWorkshop.phone);
+        return `<b style="display:inline-block; background: var(--surface-2); border:1px solid var(--edge, var(--border));`
+            + ` border-radius:999px; padding:2px 9px; font-size:11px; font-weight:800; letter-spacing:.03em;">`
+            + `WORKSHOP</b>`
+            + `<br><span style="font-size:11px; color: var(--text-dim);" dir="rtl">من ورشتِنا</span>`
+            + (a.supplier ? `<br><span style="font-size:11.5px;">${escapeHtml(a.supplier)}</span>` : '')
+            + (num
+                ? `<br><span style="font-size:11px; color: var(--success);">Mrs Fatima can WhatsApp it</span>`
+                : `<br><span style="font-size:11px; color: var(--warning);">&#9888; no workshop number saved</span>`);
+    }
+
+    // ---- رقمُ واتساب الورشة -----------------------------------------------
+    /**
+     * ⚠️ قراءةٌ **لا تُعطّل** قائمةَ الوصولات: مستندُ الإعداد قد لا يكون موجودًا
+     *   إطلاقًا (لم يُحفظ بعد)، وفشلُ قراءته لا يجوز أن يمنع عرضَ شحناتٍ وصلت.
+     */
+    async function loadAbayaWorkshop() {
+        try {
+            const snap = await getDoc(doc(db, 'settings', ABAYA_WORKSHOP_DOC));
+            const v = snap.exists() ? (snap.data() || {}) : {};
+            abayaWorkshop = {
+                phone: String(v.phone || ''),
+                name: String(v.name || '').slice(0, ABAYA_WORKSHOP_NAME_MAX)
+            };
+        } catch (e) {
+            console.error('Could not read the workshop number:', e);
+        }
+        const p = document.getElementById('wsPhone'); if (p) p.value = abayaWorkshop.phone;
+        const n = document.getElementById('wsName'); if (n) n.value = abayaWorkshop.name;
+        onWorkshopPhoneTyped();
+        onArrivalSourceChanged();
+    }
+
+    /** يُظهر الرقمَ **كما سيُستعمل** قبل الحفظ — لا بعد أن يشتكي أحدٌ أنّ الزرَّ لا يعمل. */
+    window.onWorkshopPhoneTyped = function() {
+        const prev = document.getElementById('wsPreview');
+        if (!prev) return;
+        const raw = String((document.getElementById('wsPhone') || {}).value || '').trim();
+        if (!raw) {
+            prev.innerHTML = `No number saved. Mrs Fatima&rsquo;s WhatsApp button will open her phone&rsquo;s share `
+                + `sheet and she picks the chat herself &mdash; it works, it just does not go straight to the workshop.`;
+            prev.style.color = '';
+            return;
+        }
+        const num = waNumber(raw);
+        prev.innerHTML = num
+            ? `WhatsApp will be opened on <b dir="ltr">+${escapeHtml(num)}</b>. `
+              + `A local 8-digit Qatari number gets <b>974</b> in front of it by itself.`
+            : `<b>&#9888; This is not a number WhatsApp will accept.</b> Type 8 digits for a Qatari number `
+              + `(starting 3, 5, 6 or 7), or the full international number for anywhere else. `
+              + `<b>It will not be saved as it is</b> &mdash; a half number makes WhatsApp show an error and she `
+              + `would think the panel is broken.`;
+        prev.style.color = num ? 'var(--success)' : 'var(--danger)';
+    };
+
+    window.saveAbayaWorkshop = async function() {
+        const st = document.getElementById('wsStatus');
+        const fail = (msg) => { if (st) { st.style.color = 'var(--danger)'; st.textContent = msg; } };
+        if (!canEditAbayaSetup()) return fail('Only the owner can set the workshop number.');
+        const raw = String((document.getElementById('wsPhone') || {}).value || '').trim();
+        const name = String((document.getElementById('wsName') || {}).value || '').trim().slice(0, ABAYA_WORKSHOP_NAME_MAX);
+        // ⚠️⚠️ رقمٌ مكتوبٌ ولا يصلح **يُرفض** ولا يُحفظ: رقمٌ ناقصٌ محفوظٌ يُخرج
+        //   رسالةَ خطأٍ من واتساب على هاتفها، فتظنّ أنّ اللوحةَ معطوبة. والفراغُ
+        //   مقبولٌ عن قصد — هو «لا رقمَ بعد»، وهي حالةٌ صادقةٌ تُقال لها.
+        if (raw && !waNumber(raw)) {
+            return fail('That is not a number WhatsApp will accept — see the line above. Nothing was saved.');
+        }
+        const btn = document.getElementById('wsSaveBtn');
+        if (btn) btn.disabled = true;
+        if (st) { st.style.color = ''; st.textContent = 'Saving...'; }
+        try {
+            await setDoc(doc(db, 'settings', ABAYA_WORKSHOP_DOC), {
+                phone: raw,
+                name,
+                updatedAt: serverTimestamp(),
+                updatedBy: (currentUser && currentUser.email) || ''
+            }, { merge: true });
+            abayaWorkshop = { phone: raw, name };
+            logAudit('abaya_workshop_number', raw ? `set to ${waNumber(raw)}${name ? ` (${name})` : ''}` : 'cleared');
+            // ⚠️ الرسالةُ لا تُمحى بمؤقّت — نفسُ درسِ موسم الخصم.
+            if (st) {
+                st.style.color = 'var(--success)';
+                st.textContent = raw
+                    ? `Saved. Mrs Fatima's WhatsApp button now goes straight to +${waNumber(raw)}.`
+                    : 'Saved as empty. Her button will open the share sheet and she picks the chat herself.';
+            }
+            onWorkshopPhoneTyped();
+            onArrivalSourceChanged();
+            renderAbayaArrivals();
+        } catch (e) {
+            fail(`Could not save: ${e.message}`);
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    };
+
     window.clearAbayaArrivalFilters = function() {
         const s = document.getElementById('arvSearch'); if (s) s.value = '';
         const st = document.getElementById('arvFilterStatus'); if (st) st.value = 'all';
@@ -13805,8 +14064,12 @@
         const st = String((document.getElementById('arvFilterStatus') || {}).value || 'all');
         const ty = String((document.getElementById('arvFilterType') || {}).value || '');
         return abayaArrivals.filter(a => {
+            // ⚠️ «WORKSHOP» و«ورشة» تُطابقان شحناتِ الورشة: الجدولُ يعرض الوسمَ،
+            //   والبحثُ الذي لا يجد ما يُعرض على الشاشة بحثٌ يُظنّ معطوبًا.
+            const srcWords = isWorkshopArrival(a.source) ? 'WORKSHOP ورشة FACTORY' : 'SUPPLIER مورّد';
             if (q && !(String(a.code).toUpperCase().includes(q)
                 || String(a.name).toUpperCase().includes(q)
+                || srcWords.toUpperCase().includes(q)
                 || String(a.supplier).toUpperCase().includes(q))) return false;
             if (st === 'waiting' && a.status !== ARRIVAL_WAITING) return false;
             if (st === 'sent' && a.status !== ARRIVAL_SENT) return false;
@@ -13875,7 +14138,7 @@
                         + (a.fabric ? `<br><span style="font-size:11px; color: var(--text-dim);">${escapeHtml(a.fabric)}</span>` : '')
                         + `</td>`
                         + `<td style="direction: ltr; white-space: nowrap;">${escapeHtml(a.size) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
-                        + `<td>${escapeHtml(a.supplier) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
+                        + `<td>${arrivalWhereFromCell(a)}</td>`
                         + `<td class="money-col"><b>${a.pieces}</b></td>`
                         + `<td class="money-col money-only">${a.unitUsd ? '$' + money(a.unitUsd) : '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
                         + `<td class="money-col money-only">${money(a.totalQar)}</td>`
@@ -14045,6 +14308,10 @@
         v('arvDate', todayISO());
         const ty = document.getElementById('arvType'); if (ty) ty.selectedIndex = 0;
         onArrivalTypeChanged();
+        // ⚠️ يعود إلى «مورّد» بعد كلِّ حفظ: من سجّل شحنةَ ورشةٍ ثم سجّل شحنةَ
+        //   مورّدٍ كانت ستُحفظ «ورشة» لأنّ الخانةَ بقيت على آخر اختيار.
+        const so = document.getElementById('arvSource'); if (so) so.value = ARRIVAL_SOURCE_SUPPLIER;
+        onArrivalSourceChanged();
         const code = document.getElementById('arvCode'); if (code) code.disabled = false;
         const t = document.getElementById('arvFormTitle'); if (t) t.textContent = 'Record a new arrival';
         const c = document.getElementById('arvCancelBtn'); if (c) c.style.display = 'none';
@@ -14087,6 +14354,8 @@
         v('arvDate', a.arrivedAt || todayISO());
         const ty = document.getElementById('arvType'); if (ty && a.type) ty.value = a.type;
         onArrivalTypeChanged();
+        const so = document.getElementById('arvSource'); if (so) so.value = arrivalSourceOf(a.source);
+        onArrivalSourceChanged();
         const t = document.getElementById('arvFormTitle'); if (t) t.textContent = 'Edit the arrival of ' + a.code;
         const c = document.getElementById('arvCancelBtn'); if (c) c.style.display = '';
         const st = document.getElementById('arvFormStatus'); if (st) { st.style.color = ''; st.textContent = ''; }
@@ -14146,6 +14415,11 @@
                 //   من كتب قماشًا ثم بدّل النوعَ إلى «عطور» كان سيُخزَّن قماشٌ على
                 //   عطرٍ فيظهر على شاشة البياعة بلا معنى. فالنوعُ هو الحاكم.
                 fabric: isAbayaType(type) ? g('arvFabric').slice(0, ABAYA_FABRIC_MAX) : '',
+                // ⚠️⚠️ يُمرَّر عبر arrivalSourceOf لا كما قُرئ: قيمةٌ غريبةٌ في الخانة
+                //   (تحريرُ HTML، حفظٌ قديم) تصير «مورّد» — وهو الافتراضُ الآمن.
+                //   ولا يُسقَط الحقلُ بحال: غيابُه على مستندٍ **حُرِّر** يجعل الشحنةَ
+                //   تُقرأ «مورّد» بعد أن اختار المالكُ «الورشة».
+                source: arrivalSourceOf(g('arvSource')),
                 supplier: g('arvSupplier'),
                 unitUsd: Number(g('arvUsd')) || 0,
                 // ⚠️ السعرُ المستعملُ يُجمَّد على المستند: تغييرُه لاحقًا لا يُعيد
@@ -14204,7 +14478,8 @@
 
             logAudit('abaya_arrival_saved', `${rawCode} — ${arrivalTypeLabel(type)} — ${pieces} piece(s) — `
                 + `total ${m.total} QAR — cost/piece ${m.costPerPiece} QAR`
-                + (payload.supplier ? ` — from ${payload.supplier}` : ''));
+                + ` — ${payload.source === ARRIVAL_SOURCE_WORKSHOP ? 'from OUR WORKSHOP' : 'from a supplier'}`
+                + (payload.supplier ? ` — ${payload.supplier}` : ''));
             resetArrivalForm();
             await loadAbayaArrivals();
             if (st) {
@@ -14260,7 +14535,8 @@
                 'What': arrivalTypeLabel(a.type),
                 'Sizes available': a.size,
                 'Fabric': a.fabric,
-                'Supplier': a.supplier,
+                'Where from': isWorkshopArrival(a.source) ? 'Our workshop' : 'A supplier',
+                'Supplier / workshop': a.supplier,
                 'Pieces': a.pieces,
                 'One piece USD': a.unitUsd || '',
                 'Rate used': a.usdRate || '',
