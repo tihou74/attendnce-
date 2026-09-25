@@ -2136,6 +2136,66 @@
         return String(shop || '').trim().toUpperCase()
             .replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
     }
+    /**
+     * ⭐⭐⭐⭐⭐ «في سطر عند فلوريندا حتى توزّع» — بأمر المالك.
+     *
+     * قطعٌ أُرسلت وما زالت عند فلوريندا: ليست على رفِّ أيِّ محلٍّ، ولا تُجمع في
+     * كميّاته. فبلا هذا السطر تقرأ السيدةُ فاطمة رفَّ جلف مول كما كان بعد إرسالها
+     * فتظنّ الإرسالَ فاشلًا وتُرسل ثانيةً.
+     *
+     * ⚠️⚠️ **محسوبٌ لا محفوظ**: يُجمع من مستندات `abaya_shelf_tasks` التي مرحلتُها
+     *   `with_florinda`. ورقمٌ يُحفظ في موضعٍ ثانٍ يختلف عن الأوّل يومًا.
+     * ⚠️⚠️ **ولا يُضاف إلى `catQtyOf` ولا إلى المجموع بحال**: تلك تجيب «كم على
+     *   الرفّ»، وجمعُ ما عند فلوريندا فيها يجعل النظامَ يبيع ما ليس في المحلّ —
+     *   وهو بعينه ما بُنيت الحلقةُ لمنعه. سطرٌ **بجانبه**، لا رقمٌ داخلَه.
+     * ⚠️ ولا `orderBy` ولا ترشيحٌ بالمنتج: استعلامٌ واحدٌ بالمرحلة، والتجميعُ محليّ.
+     */
+    let flHold = new Map();          // productId -> { total, byShop: { shop: n } }
+    let flHoldLoaded = false;
+
+    /**
+     * التجميعُ نفسُه، مفصولًا عن القراءة **كي يُفحَص بالتنفيذ**.
+     * ⚠️ ويُسقط ما لا يُحتسب: مستندٌ بلا معرّفِ منتجٍ لا يُنسب إلى تصميم، وصفرُ
+     *   قطعٍ أو رقمٌ سالبٌ ليس بضاعةً تنتظر. وإسقاطُهما هنا أصدقُ من رقمٍ لا أصلَ له.
+     * ⚠️ والعددُ يُقصّ بـfloor: نصفُ قطعةٍ لا يوجد، وكسرٌ في مستندٍ خطأٌ لا يُجمع.
+     */
+    function flHoldFrom(rows) {
+        const m = new Map();
+        (rows || []).forEach(v => {
+            const pid = String((v && v.productId) || '');
+            const n = Math.floor(Number((v && v.pieces) || 0)) || 0;
+            const shop = String((v && v.shop) || '');
+            if (!pid || n <= 0) return;
+            let e = m.get(pid);
+            if (!e) { e = { total: 0, byShop: {} }; m.set(pid, e); }
+            e.total += n;
+            e.byShop[shop] = (e.byShop[shop] || 0) + n;
+        });
+        return m;
+    }
+
+    async function loadFlorindaHold(force) {
+        if (flHoldLoaded && !force) return;
+        try {
+            const snap = await getDocs(query(collection(db, ABAYA_SHELF_TASKS_COLL),
+                                             where('stage', '==', 'with_florinda')));
+            const rows = [];
+            snap.forEach(d => rows.push(d.data() || {}));
+            flHold = flHoldFrom(rows);
+            flHoldLoaded = true;
+        } catch (e) {
+            // ⚠️ فشلُ هذه القراءة **لا يُسقط الكتالوج**: هي سطرٌ إضافيّ، والكتالوجُ
+            //   هو العمل. ويبقى flHold على حاله فلا يُعرض سطرٌ كاذبٌ بصفر.
+            console.error('Could not read what is still with Florinda:', e);
+        }
+    }
+
+    /** ما زال عند فلوريندا من هذا التصميم — أو null. */
+    function flHoldOf(productId) {
+        const e = flHold.get(String(productId || ''));
+        return (e && e.total > 0) ? e : null;
+    }
+
     function catQtyOf(p, shop) { return Number((p.qty || {})[abayaShopKey(shop)] || 0) || 0; }
     function catQtyTotal(p) { return ABAYA_SHOPS.reduce((s, sh) => s + catQtyOf(p, sh), 0); }
     function catHasDiscount(p) {
@@ -2202,6 +2262,11 @@
                 ? 'The catalogue is not readable yet — the new rules have not been published.'
                 : 'The catalogue could not be read just now. What you see may be a saved copy.';
         }
+        // ⚠️⚠️ **بعد** الكتالوج وفي انتظارٍ مستقلٍّ لا داخلَ Promise.all: تلك ترمي
+        //   عند فشلِ أيِّ فرعٍ منها، فقراءةٌ فاشلةٌ لمهمّاتِ الرفّ كانت ستُسقط
+        //   الكتالوجَ كلَّه — والكتالوجُ هو عملُها، وهذا سطرٌ إضافيٌّ بجانبه.
+        //   وفشلُه مُلتقَطٌ داخلَه فلا يحتاج try هنا.
+        await loadFlorindaHold(force);
         renderCatalog();
     }
 
@@ -2379,6 +2444,18 @@
             const per = all
                 ? `<span class="per">${ABAYA_SHOPS.map(s => `${escapeHtml(s)}: <b>${catQtyOf(p, s)}</b>`).join(' &middot; ')}</span>`
                 : '';
+            // ⭐⭐ سطرُ «عند فلوريندا» — **تحت** كميّات المحلات لا داخلَها.
+            // ⚠️ ويُسمّى المحلُّ المقصودُ لكلِّ حصّة: «5 عند فلوريندا» وحدَه يتركها
+            //   تسأل «لأيِّ محلّ؟» وهي من قسّمتها، فالجوابُ يجب أن يكون أمامها.
+            const hold = flHoldOf(p.id);
+            const holdLine = hold
+                ? `<span class="per" style="color: #b45309; font-weight: 700;">`
+                  + `&#9203; With Florinda: <b>${hold.total}</b> &mdash; not on a shelf yet`
+                  + `<br><span style="font-weight: 600;">`
+                  + Object.entries(hold.byShop).sort((a, b) => a[0].localeCompare(b[0]))
+                      .map(([s, n]) => `for ${escapeHtml(s)}: <b>${n}</b>`).join(' &middot; ')
+                  + `</span></span>`
+                : '';
             // ⚠️⚠️ سطران فقط: قبل الخصم وبعد الخصم. وكان تحتهما سطرٌ ثالث
             // («TAKEN NOW» مع الرقم المأخوذ) فأمر المالك بنزعه: «انزع كلمت تيكت
             // ناو … لماذا السعر قبل الخصم يظهر تحت، خلص سعر قبل الخصم وسعر بعد
@@ -2419,8 +2496,14 @@
                 + (p.canOrder ? `<span class="nm">Orders can be taken &mdash; يمكن أخذُ أوردر</span>` : '')
                 + prices
                 + costRow
-                + `<span class="qt${n <= 0 ? ' zero' : ''}">${n <= 0 ? 'Sold out' : n + ' piece(s) left'}</span>`
+                // ⚠️⚠️ و«Sold out» لا تُقال عن تصميمٍ قطعُه عند فلوريندا: لم يُبَع
+                //   ولم ينتهِ — لم يصل الرفَّ بعد. و«نُفدت» هنا تُقرأ «اطلبي المزيد»
+                //   فتُشترى بضاعةٌ موجودةٌ في الطريق.
+                + `<span class="qt${n <= 0 ? ' zero' : ''}">${n <= 0
+                    ? (hold ? 'Not on the shelves yet' : 'Sold out')
+                    : n + ' piece(s) left'}</span>`
                 + per
+                + holdLine
                 + `<span class="tap">Tap to see the whole abaya &rarr;</span>`
                 + `</span></button>`
                 + `<button type="button" class="cwa" data-catwa="${escapeHtml(p.id)}"`
