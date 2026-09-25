@@ -546,17 +546,17 @@
     .nwhello {
         margin: var(--space-5) 0 0; font-size: var(--text-sm); font-weight: 700;
         letter-spacing: .04em; color: var(--gold-600, #A89060);
-        line-height: var(--leading-arabic, 1.85);
+        line-height: var(--leading-normal, 1.55);
     }
     /* ⭐ السطرُ الذهبيُّ — هو المقصودُ بـ«ميساج بالذهبي» */
     .nwtitle {
         margin: var(--space-2) 0 0; font-size: var(--text-2xl); font-weight: 800;
         color: var(--gold-400, #CAAD73);
-        line-height: var(--leading-arabic, 1.85);
+        line-height: var(--leading-normal, 1.55);
     }
     .nwmsg {
         margin: var(--space-4) 0 0; font-size: var(--text-base);
-        color: var(--dark-text, #E8EDF6); line-height: var(--leading-arabic, 1.85);
+        color: var(--dark-text, #E8EDF6); line-height: var(--leading-normal, 1.55);
     }
     .nwmsg b { color: var(--gold-400, #CAAD73); }
     .nwmsgen {
@@ -605,13 +605,15 @@
 <div id="newsWelcome" class="nw hidden" role="dialog" aria-modal="true" aria-labelledby="nwTitle">
     <div class="nwbox" id="nwBox">
         <img class="nwlogo" id="nwLogo" src="./brand/al-sheikha-style-logo.png" alt="Al Sheikha Style">
-        <p class="nwhello" id="nwHello" dir="rtl">&mdash;</p>
-        <h2 class="nwtitle" id="nwTitle" dir="rtl">&mdash;</h2>
-        <p class="nwmsg" id="nwMsg" dir="rtl">&mdash;</p>
+        <!-- ⚠️ لا `dir="rtl"` ولا `--leading-arabic`: النصُّ صار إنجليزيًّا بأمر
+             المالك، واتّجاهُ RTL على نصٍّ لاتينيٍّ يُزيح الترقيمَ والنقطةَ إلى اليسار. -->
+        <p class="nwhello" id="nwHello">&mdash;</p>
+        <h2 class="nwtitle" id="nwTitle">&mdash;</h2>
+        <p class="nwmsg" id="nwMsg">&mdash;</p>
         <p class="nwmsgen" id="nwMsgEn">&mdash;</p>
         <div class="nwacts">
             <button type="button" class="nwgo" id="nwGo">&#10148;&nbsp; <span id="nwGoLabel">Go to the goods</span></button>
-            <button type="button" class="nwlater" id="nwLater">Later &mdash; لاحقًا</button>
+            <button type="button" class="nwlater" id="nwLater">Later</button>
         </div>
     </div>
 </div>
@@ -690,24 +692,24 @@
              ================================================================== -->
         <nav class="snav" id="sellerNav" aria-label="Sections">
             <button type="button" id="navAttend" aria-pressed="true" aria-controls="viewAttend">
-                <span class="t">My shift</span><span class="s">بصمتي</span>
+                <span class="t">My shift</span>
             </button>
             <!-- ⚠️⚠️ قسمُ التوزيع يظهر **لفلوريندا وحدَها** (`isDistributor` على
                  مستندها) وحين تكون هناك قطعٌ موقوفةٌ عندها فعلًا. وبقيّةُ البياعات
                  لا يرَينه إطلاقًا — ليس إخفاءَ سرٍّ، بل أنّه ليس عملَهنّ. -->
             <button type="button" id="navDistribute" class="hidden" aria-pressed="false" aria-controls="viewDistribute">
-                <span class="t">Distribute <span class="badge" id="navDistributeBadge">0</span></span><span class="s">توزيع البضاعة</span>
+                <span class="t">Distribute <span class="badge" id="navDistributeBadge">0</span></span>
             </button>
             <button type="button" id="navSell" aria-pressed="false" aria-controls="viewSell">
-                <span class="t">Sell</span><span class="s">بيع</span>
+                <span class="t">Sell</span>
             </button>
             <button type="button" id="navReport" aria-pressed="false" aria-controls="viewReport">
-                <span class="t">Today&rsquo;s report</span><span class="s">تقرير اليوم</span>
+                <span class="t">Today&rsquo;s report</span>
             </button>
             <!-- ⚠️ زرُّ البضاعة الواصلة يظهر **فقط** إن كان عليها عملٌ، ومعه عددُه:
                  زرٌّ دائمٌ فارغٌ يُدرَّب على تجاهله. -->
             <button type="button" id="navArrivals" class="hidden" aria-pressed="false" aria-controls="viewArrivals">
-                <span class="t">Goods arrived <span class="badge" id="navArrivalsBadge">0</span></span><span class="s">وصلتكم بضاعة</span>
+                <span class="t">Goods arrived <span class="badge" id="navArrivalsBadge">0</span></span>
             </button>
         </nav>
 
@@ -738,8 +740,7 @@
              ================================================================== -->
         <div class="panel hidden" id="saPanel">
             <h2 id="saTitle">New goods arrived</h2>
-            <p class="ar">Print the barcode and arrange them on the shelves
-                <span dir="rtl">&mdash; اطبعي الباركود ورتّبيها في الرفوف</span></p>
+            <p class="ar">Print the barcode and arrange them on the shelves</p>
             <p class="status" id="saMsg" style="margin-top: var(--space-3);"></p>
             <div class="sag" id="saGrid"></div>
             <p class="note" id="saNote" style="margin-top: var(--space-3);"></p>
@@ -777,8 +778,7 @@
              ================================================================== -->
         <div class="panel hidden" id="flPanel">
             <h2 id="flTitle">Goods are ready for you</h2>
-            <p class="ar">Print the encoding and the price, then send each shop its share
-                <span dir="rtl">&mdash; اطبعي الانكودينق والسعر ووزّعيها على المحلات</span></p>
+            <p class="ar">Print the encoding and the price, then send each shop its share</p>
             <p class="status" id="flMsg" style="margin-top: var(--space-3);"></p>
             <div class="sag" id="flGrid"></div>
             <p class="note" id="flNote" style="margin-top: var(--space-3);"></p>
@@ -850,7 +850,7 @@
                 <button id="cpFind" style="width: auto;">Find it</button>
                 <!-- ⭐⭐⭐⭐ بأمر المالك: «أضف في البيع زرَّ سكان تعمل سكان للباركود
                      تطلع لها القطعة». ويعمل على آيفون وأندرويد معًا بنصّه. -->
-                <button class="ghost" id="cpScan" style="width: auto;">&#128247; Scan &mdash; سكان</button>
+                <button class="ghost" id="cpScan" style="width: auto;">&#128247; Scan</button>
                 <button class="ghost" id="cpBrowse" style="width: auto;">Show the abayas</button>
             </div>
             <p class="status" id="cpMsg" style="margin-top: var(--space-3);"></p>
@@ -1128,7 +1128,7 @@
     <div id="scModal" class="scan hidden" role="dialog" aria-modal="true" aria-labelledby="scTitle">
         <div class="scbox" id="scBox">
             <div class="sctop">
-                <h3 id="scTitle">Scan the barcode &mdash; امسحي الباركود</h3>
+                <h3 id="scTitle">Scan the barcode</h3>
                 <button type="button" class="x" id="scClose" aria-label="Close">&#10005; Close</button>
             </div>
             <div class="scvid">
@@ -1242,12 +1242,10 @@
     const ABAYA_SHOPS_OPENING_SOON = ['WEST WALK'];
     /** هل هذا المحل مُجهَّزٌ ولم يُفتح؟ */
     const isShopOpeningSoon = (shop) => ABAYA_SHOPS_OPENING_SOON.includes(String(shop || ''));
-    const ABAYA_SHOPS_AR = {
-        'GULF MALL': 'جلف مول',
-        'VENDOME MALL': 'فندوم مول',
-        'DOHA FESTIVAL CITY': 'دوحة فيستفال سيتي',
-        'WEST WALK': 'ويست ولك'
-    };
+    // ⚠️ حُذفت `ABAYA_SHOPS_AR` (أسماءُ المحلات بالعربية): لم تكن تُقرأ في موضعٍ
+    //   واحدٍ في هذا الملفّ — لا في هذه الصفحة ولا في غيرها — والمالكُ أمر بألّا
+    //   عربيةَ على هذه الشاشة. وثابتٌ ميتٌ فيه نصٌّ ظاهرٌ يُستعمل يومًا بالخطأ.
+    //   وأسماءُ المحلات تُعرض من `ABAYA_SHOPS` كما هي (وهي إنجليزيةٌ أصلًا).
     // «طلب/تفصيل» للعباية فقط — بقية الأنواع بيع جاهز وحده (قرار الإدارة).
     const ABAYA_ITEMS = [
         { key: 'abayaReady',    en: 'Abaya — ready',             ar: 'عباية — بيع جاهز' },
@@ -1371,7 +1369,7 @@
     }
     /** عنوانُ القسم. ⚠️ ولا يُترك فارغًا لِما لا نوعَ له — قسمٌ بلا عنوانٍ يُقرأ عطلًا. */
     function catSectionLabel(key) {
-        return key === CAT_NO_TYPE ? 'Not set · غير محدّد' : (cpTypeLabel(key) || key);
+        return key === CAT_NO_TYPE ? 'Not set' : (cpTypeLabel(key) || key);
     }
     // ⚠️ شانتون تعرض عبايتها في محل واحد فقط. مصفوفة لا نصّ حتى يُضاف محل
     // لاحقًا بلا تعديل منطق. وبقية المحلات لا يظهر لها قسمها إطلاقًا، فلا
@@ -1401,9 +1399,16 @@
         { key: 'gold',   en: 'Gold',   ar: 'ذهبي' },
         { key: 'silver', en: 'Silver', ar: 'فضي' }
     ];
+    /**
+     * ⚠️⚠️ الإنجليزيةُ وحدَها بأمر المالك: «ولا داعي للعربية كليًّا».
+     * ⚠️ وحقلُ `ar` **يبقى في الثابت ولا يُحذف**: `ABAYA_TONES` مكرَّرٌ حرفيًّا في
+     *   ثلاثة ملفّاتٍ ويحرس تطابقَه فحص، ولوحةُ المالك تعرض العربيةَ عن قصد. فما
+     *   يُغيَّر هو **العرضُ هنا** لا مصدرُ البيانات — وحذفُه كان سيُفشل الفحصَ
+     *   ويُفرغ لوحةَ المالك من نصفِ تسمياتها.
+     */
     function cpToneLabel(key) {
         const t = ABAYA_TONES.find(x => x.key === String(key || ''));
-        return t ? `${t.en} · ${t.ar}` : '';
+        return t ? t.en : '';
     }
 
     // =====================================================================
@@ -2241,11 +2246,12 @@
      * ⚠️ والعربيُّ معه: الزبونةُ تسأل بالعربية والبياعةُ تقرأ الإنجليزية، فسطرٌ
      *   واحدٌ باللغتين يُغني عن ترجمةٍ في رأسها وقتَ الزحمة.
      */
+    /** ⚠️ الإنجليزيةُ وحدَها — والثابتُ لا يُمسّ، انظر `cpToneLabel`. */
     function cpTypeLabel(key) {
         const k = String(key || '').trim();
         if (!k) return '';
         const t = ABAYA_STOCK_ITEMS.find(x => x.key === k);
-        return t ? `${t.en} · ${t.ar}` : k;
+        return t ? t.en : k;
     }
 
     function cpQtyOf(p, shop) { return Number((p.qty || {})[abayaShopKey(shop)] || 0) || 0; }
@@ -2903,7 +2909,7 @@
         if (t.name) s += `<span class="nm">${escapeHtml(t.name)}</span>`;
         if (t.type) s += `<span class="ln">${escapeHtml(cpTypeLabel(t.type))}</span>`;
         // ⚠️ «اسم القماش إن كان متوفّرًا» بنصّ المالك — ففراغُه حالةٌ صحيحةٌ لا نقص.
-        if (t.fabric) s += `<span class="ln">Fabric &mdash; القماش: <b>${escapeHtml(t.fabric)}</b></span>`;
+        if (t.fabric) s += `<span class="ln">Fabric: <b>${escapeHtml(t.fabric)}</b></span>`;
         if (t.size) s += `<span class="ln">Sizes: <b dir="ltr">${escapeHtml(t.size)}</b></span>`;
         s += `<span class="ln"><b>${t.pieces}</b> piece(s) to put on the shelf</span>`;
         s += `<span class="pr">${money(priceNow)} QAR`
@@ -2919,7 +2925,7 @@
         }
         s += `<span class="tags">`
             + (tone ? `<span class="tag tone"><i class="${tone}"></i>${escapeHtml(cpToneLabel(tone))}</span>` : '')
-            + (t.canOrder ? `<span class="tag order">Order can be taken &mdash; يمكن أخذ أوردر</span>` : '')
+            + (t.canOrder ? `<span class="tag order">Order can be taken</span>` : '')
             + `</span>`;
         if (t.done) {
             s += `<span class="ok">&#10003; Printed and shelved`
@@ -3177,7 +3183,7 @@
         s += `<span class="bc">${escapeHtml(g.code)}</span>`;
         if (g.name) s += `<span class="nm">${escapeHtml(g.name)}</span>`;
         if (g.type) s += `<span class="ln">${escapeHtml(cpTypeLabel(g.type))}</span>`;
-        if (g.fabric) s += `<span class="ln">Fabric &mdash; القماش: <b>${escapeHtml(g.fabric)}</b></span>`;
+        if (g.fabric) s += `<span class="ln">Fabric: <b>${escapeHtml(g.fabric)}</b></span>`;
         if (g.size) s += `<span class="ln">Sizes: <b dir="ltr">${escapeHtml(g.size)}</b></span>`;
         s += `<span class="pr">${money(priceNow)} QAR</span>`;
         if (changed) {
@@ -3196,7 +3202,7 @@
             + `</span>`;
         s += `<span class="tags">`
             + (tone ? `<span class="tag tone"><i class="${tone}"></i>${escapeHtml(cpToneLabel(tone))}</span>` : '')
-            + (g.canOrder ? `<span class="tag order">Order can be taken &mdash; يمكن أخذ أوردر</span>` : '')
+            + (g.canOrder ? `<span class="tag order">Order can be taken</span>` : '')
             + `</span>`;
         s += `<button type="button" data-fldist="${escapeHtml(g.key)}"${busy ? ' disabled' : ''}>`
            + `${busy ? 'Sending...' : 'Everything is ready &mdash; sent to the shops &#10003;'}</button>`;
@@ -3344,18 +3350,21 @@
         // ⚠️ الاسمُ الأوّلُ وحدَه: «أهلًا وسهلًا FLORINDA REYES ALFONSO» ثقيلةٌ على
         //   شاشةٍ صغيرة، والاسمُ الكاملُ مكتوبٌ بحروفٍ كبيرةٍ في ملفّها.
         const first = String(state.sellerName || '').trim().split(/\s+/)[0] || '';
-        el('nwHello').textContent = first ? `أهلًا وسهلًا ${first}` : 'أهلًا وسهلًا';
+        el('nwHello').textContent = first ? `WELCOME ${first}` : 'WELCOME';
         el('nwTitle').textContent = groups.length === 1
-            ? 'وصلت بضاعةٌ جديدة'
-            : `وصلت ${groups.length} شحناتٍ جديدة`;
-        // ⚠️ رجاءٌ وشكرٌ لا أمر — نفسُ نبرةِ رسالةِ السيدة فاطمة بأمر المالك.
+            ? 'New goods have arrived'
+            : `${groups.length} new shipments have arrived`;
+        // ⚠️ رجاءٌ وشكرٌ لا أمر — نفسُ نبرةِ رسالةِ السيدة فاطمة بأمر المالك،
+        //   والنبرةُ تبقى وإن تغيّرت اللغة.
         el('nwMsg').innerHTML =
-            `البضاعةُ جاهزةٌ عندكِ: <b>${pieces}</b> قطعة.<br>`
-            + `يُرجى التكرُّمُ بطباعةِ الانكودينق والسعر، ثمّ توزيعُها على المحلات `
-            + `حسب طلب السيدة فاطمة.<br>ولكِ جزيلُ الشكر.`;
+            `<b>${pieces}</b> piece(s) are ready with you.<br>`
+            + `Please print the encoding and the price, then send each shop its share `
+            + `as Mrs Fatima divided them.<br>Thank you.`;
+        // ⚠️⚠️ السطرُ الثاني كان ترجمةَ الأوّل، والأوّلُ صار إنجليزيًّا — فلا يُعاد
+        //   نفسُ الكلام مرّتين. صار يحمل **ما لا يقوله الأوّل**: أنها ليست على رفّ.
         el('nwMsgEn').textContent = groups.length === 1
-            ? `${pieces} piece(s) are ready for you to encode and send to the shops.`
-            : `${pieces} piece(s) in ${groups.length} shipments are ready for you to encode and send to the shops.`;
+            ? 'They are not on any shelf until you send them.'
+            : `In ${groups.length} shipments. They are not on any shelf until you send them.`;
         el('nwGoLabel').textContent = groups.length === 1
             ? 'Go to the goods' : `Go to the ${groups.length} shipments`;
 

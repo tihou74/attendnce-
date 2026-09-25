@@ -428,6 +428,43 @@
     }
     .arv .asum b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
     .arv .aact select, .arv .aact input { margin: 0; }
+
+    /* =====================================================================
+       ⭐⭐⭐⭐ دائرتا الذهبيِّ والفضّيِّ — تُضغطُ إحداهما، بأمر المالك
+       ---------------------------------------------------------------------
+       ⚠️⚠️ الدائرةُ تقع على خلفيّةٍ فاتحةٍ ويجب أن تُرى، والفضّيُّ فاتحٌ قريبٌ من
+          لونِ السطح. فلكلِّ دائرةٍ **حدٌّ داكن** لا لونٌ وحدَه — وهو نفسُ سببِ
+          الحلقتَين على صورة البياعة.
+       ⚠️ والمختارةُ تُعرَّف **بثلاث** إشاراتٍ لا بلونٍ واحد: حدٌّ سميكٌ · علامةُ صحٍّ
+          داخلَ الدائرة · واسمٌ يثقُل خطُّه. ومن لا يُفرّق بين الذهبيِّ والفضّيِّ
+          (وهما متقاربانِ في التدرّج الرماديّ) يعرف مع ذلك ماذا اختار.
+       ⚠️ ومقاسُ اللمس 44px على الأقلّ: هذه لوحةٌ تُستعمل على الهاتف.
+       ===================================================================== */
+    .arv .tsel { display: flex; gap: var(--space-3); margin-top: 8px; }
+    .arv .tcirc {
+        display: flex; flex-direction: column; align-items: center; gap: 5px;
+        background: none; border: 0; padding: 4px 6px; cursor: pointer;
+        font-family: inherit; min-width: 64px; min-height: 44px;
+    }
+    .arv .tcirc .dot {
+        width: 40px; height: 40px; border-radius: 50%;
+        border: 2px solid var(--color-border);
+        display: flex; align-items: center; justify-content: center;
+    }
+    .arv .tcirc .dot.gold   { background: #C9A227; }
+    .arv .tcirc .dot.silver { background: #C0C4CC; }
+    /* علامةُ الصحِّ مخفيّةٌ حتى يُختار: مساحتُها محفوظةٌ فلا تَقفِز الدائرة. */
+    .arv .tcirc .dot i { font-style: normal; font-size: 20px; font-weight: 800; opacity: 0; }
+    /* ⚠️ لونُ العلامةِ داكنٌ لا أبيض: الأبيضُ على الذهب 3.08:1 ويرسب، وهي نفسُ
+       القاعدةِ المقيسةِ في الهويّة ولا تُخالَف لأجل علامةِ صحّ. */
+    .arv .tcirc[aria-pressed="true"] .dot i { opacity: 1; color: var(--ink-800, #0F172A); }
+    .arv .tcirc[aria-pressed="true"] .dot {
+        border-color: var(--ink-800, #0F172A); border-width: 3px;
+    }
+    .arv .tcirc .nm {
+        font-size: var(--text-xs); font-weight: 600; color: var(--color-text-muted);
+    }
+    .arv .tcirc[aria-pressed="true"] .nm { font-weight: 800; color: var(--color-text); }
     /* قراءةُ الربح الحيّة — تتغيّر وهي تكتب السعر */
     .arv .alive {
         margin: 0; font-size: var(--text-xs); line-height: var(--leading-normal);
@@ -1159,7 +1196,7 @@
                     <!-- ⭐⭐ مرشِّحُ النوع — بطلب المالك أن يكون الكتالوجُ لكلِّ الأصناف.
                          فبلا مرشِّحٍ تصير قائمةً واحدةً لا يُعرف فيها فستانٌ من عباية. -->
                     <div style="width: 200px;">
-                        <label for="catType">Type &mdash; النوع</label>
+                        <label for="catType">Type</label>
                         <select id="catType"></select>
                     </div>
                     <button class="ghost" id="catOnlyIn" aria-pressed="false">Hide the sold-out ones</button>
@@ -1255,7 +1292,7 @@
                     <div class="towho" id="arvWaWho">&mdash;</div>
 
                     <label for="arvWaNote">What do you want to say (optional)</label>
-                    <textarea id="arvWaNote" placeholder="Write whatever you want &mdash; اكتبي ما تشائين"></textarea>
+                    <textarea id="arvWaNote" placeholder="Write whatever you want"></textarea>
 
                     <p class="err" id="arvWaErr"></p>
                     <div class="prev" id="arvWaPrev">&mdash;</div>
@@ -1592,7 +1629,7 @@
     }
     /** عنوانُ القسم. ⚠️ ولا يُترك فارغًا لِما لا نوعَ له — قسمٌ بلا عنوانٍ يُقرأ عطلًا. */
     function catSectionLabel(key) {
-        return key === CAT_NO_TYPE ? 'Not set · غير محدّد' : (arvTypeLabel(key) || key);
+        return key === CAT_NO_TYPE ? 'Not set' : (arvTypeLabel(key) || key);
     }
     const ABAYA_MOVE_KINDS = [
         { key: 'out_to_shop',        en: 'Sent to another shop',                ar: 'خرجت إلى محل آخر',           owner: 'own',     needsShop: true,     sign: -1 },
@@ -1645,7 +1682,7 @@
     ];
     function abayaToneLabel(key) {
         const t = ABAYA_TONES.find(x => x.key === String(key || ''));
-        return t ? `${t.en} · ${t.ar}` : '';
+        return t ? t.en : '';
     }
     const isAbayaType = (t) => String(t || '') === ABAYA_DETAIL_TYPE;
     // ---- من أين وصلت الشحنة — ثوابتُ مطابقةٌ حرفيًّا لما في admin.html --------
@@ -2299,9 +2336,9 @@
     function buildCatTypeSelect() {
         const f = el('catType');
         if (!f || f.dataset.built) return;
-        f.innerHTML = `<option value="">Every type &mdash; كلُّ الأنواع</option>`
+        f.innerHTML = `<option value="">Every type</option>`
             + ABAYA_STOCK_ITEMS.map(t =>
-                `<option value="${escapeHtml(t.key)}">${escapeHtml(t.en)} &middot; ${escapeHtml(t.ar)}</option>`).join('')
+                `<option value="${escapeHtml(t.key)}">${escapeHtml(t.en)}</option>`).join('')
             + `<option value="__NONE__">&mdash; type not set yet &mdash;</option>`;
         f.dataset.built = '1';
     }
@@ -2493,7 +2530,7 @@
                 + (p.size ? `<span class="nm" dir="ltr">Sizes: ${escapeHtml(p.size)}</span>` : '')
                 + (p.fabric ? `<span class="nm">${escapeHtml(p.fabric)}</span>` : '')
                 + (p.tone ? `<span class="nm">${escapeHtml(abayaToneLabel(p.tone))}</span>` : '')
-                + (p.canOrder ? `<span class="nm">Orders can be taken &mdash; يمكن أخذُ أوردر</span>` : '')
+                + (p.canOrder ? `<span class="nm">Orders can be taken</span>` : '')
                 + prices
                 + costRow
                 // ⚠️⚠️ و«Sold out» لا تُقال عن تصميمٍ قطعُه عند فلوريندا: لم يُبَع
@@ -3700,7 +3737,7 @@
 
     function arvTypeLabel(key) {
         const t = ABAYA_STOCK_ITEMS.find(x => x.key === String(key || ''));
-        return t ? `${t.en} · ${t.ar}` : String(key || '');
+        return t ? t.en : String(key || '');
     }
 
     /**
@@ -3723,7 +3760,7 @@
         if (!isWorkshopArrival(a.source)) {
             return `<b>${escapeHtml(a.supplier) || 'A supplier'}</b>`;
         }
-        return `<b>Our workshop &middot; <span dir="rtl">ورشتُنا</span>`
+        return `<b>Our workshop`
             + (a.supplier ? ` &middot; ${escapeHtml(a.supplier)}` : '')
             + `</b>`;
     }
@@ -4001,7 +4038,7 @@
                 </div>` : ''}
 
                 <div class="afacts">
-                    ${a.fabric ? `<div class="arow"><span>Fabric &mdash; القماش</span><b>${escapeHtml(a.fabric)}</b></div>` : ''}
+                    ${a.fabric ? `<div class="arow"><span>Fabric</span><b>${escapeHtml(a.fabric)}</b></div>` : ''}
                     <div class="arow"><span>Pieces arrived</span><b class="num">${a.pieces}</b></div>
                     <!-- ⚠️ السطرُ يُعرض **دائمًا** الآن لا عند وجود اسمِ مورّدٍ فقط:
                          وجودُ زرِّ واتسابٍ أخضرَ على بطاقةٍ لا تقول من أين وصلت
@@ -4042,14 +4079,22 @@
                                 المعلومةُ المطلوبة، ومُنتقٍ متعدّدٌ يختار المحلات ثم
                                 يحتاج أعدادًا على أيِّ حال. -->
                            <div>
-                               <span class="alabel">How many to each shop &mdash; كم لكلِّ محل</span>
+                               <span class="alabel">How many to each shop</span>
+                               <!-- ⚠️⚠️ الخاناتُ تبدأ **فارغةً** لا بصفرٍ مكتوب، بأمر
+                                    المالك: «في الكميات التي ترسلها صفر يلخبط، هي تكتب
+                                    العدد، إذا تركته خالي يعني 0».
+                                    والصفرُ المكتوبُ يجب أن يُمحى أوّلًا قبل الكتابة، وإن
+                                    نُسي صار «04» — والفراغُ يُكتب فيه الرقمُ مباشرةً.
+                                    و arvReadPlan تقرأ الفراغَ صفرًا سلفًا، فلا حسابَ تغيّر.
+                                    ⚠️⚠️ ولا علامةَ اقتباسٍ خلفيّةٍ في تعليقٍ داخلَ قالبٍ
+                                    نصّيّ: كتبتُها هنا فأنهت القالبَ وانكسر الملفُّ كلُّه. -->
                                <div class="asplit">
                                    ${ABAYA_SHOPS.map(s => `
                                    <label>
                                        <span>${escapeHtml(s)}${isShopOpeningSoon(s) ? ' — opening soon' : ''}</span>
                                        <input type="number" min="0" step="1" inputmode="numeric"
                                               id="arvQ_${eid}_${escapeHtml(abayaShopKey(s))}"
-                                              data-arvsplit="${eid}" value="0">
+                                              data-arvsplit="${eid}" value="" placeholder="0">
                                    </label>`).join('')}
                                </div>
                                <!-- ⚠️ المجموعُ يُقرأ وهي تكتب: مجموعٌ لا يساوي قطعَ
@@ -4079,16 +4124,40 @@
                                 وحدَها — «ذهبي أو فضي» على عطرٍ بلا معنى. -->
                            <div style="border-top: var(--border-hairline) solid var(--color-border);
                                        padding-top: var(--space-3);">
-                               <span class="alabel">Your decision &mdash; قرارُكِ</span>
-                               <label for="arvTone_${eid}" style="margin-top:6px;">Gold or silver &mdash; ذهبي أو فضي</label>
-                               <select id="arvTone_${eid}">
-                                   <option value="">&mdash; not chosen &mdash;</option>
-                                   ${ABAYA_TONES.map(t => `<option value="${escapeHtml(t.key)}">${escapeHtml(t.en)} &middot; ${escapeHtml(t.ar)}</option>`).join('')}
-                               </select>
+                               <span class="alabel">Your decision</span>
+                               <!-- ⭐⭐⭐⭐ دائرتانِ تُضغطُ إحداهما، بأمر المالك: «في خيار
+                                    الذهبي والفضي سوِّ دائرتين، وحدة ذهبية ووحدة فضية،
+                                    وتضغط على اللون لكي تختار».
+                                    ⚠️⚠️ والقيمةُ تبقى في arvTone_ بنفس المعرّف —
+                                       صار hidden بدل select. فـarvSend تقرأ
+                                       .value كما كانت ولم يُمسّ سطرٌ واحدٌ منها:
+                                       تغييرُ شكلِ الإدخال لا يجوز أن يُعيد كتابةَ منطق
+                                       الإرسال، وهو الموضعُ الذي تُكتب فيه كميّاتُ الرفوف.
+                                    ⚠️ ويبقى الاختيارُ **قابلًا للإلغاء** بضغطةٍ ثانية على
+                                       نفس الدائرة: كان في المُنتقي «— not chosen —»
+                                       ونزعُه كان سيجعل ضغطةً بالخطأ لا رجعةَ فيها.
+                                    ⚠️ ولونٌ وحدَه لا يكفي: الذهبيُّ والفضّيُّ متقاربانِ في
+                                       التدرّج الرماديّ، ومن لا يُفرّق بينهما لا يعرف ماذا
+                                       اختار. فالاسمُ مكتوبٌ تحت كلِّ دائرة، والدائرةُ
+                                       المختارةُ عليها علامةُ صحٍّ وحدٌّ سميك — ثلاثُ
+                                       إشاراتٍ لا إشارةُ لون. -->
+                               <input type="hidden" id="arvTone_${eid}" value="">
+                               <div class="tsel" role="group" aria-label="Gold or silver">
+                                   ${ABAYA_TONES.map(t => `
+                                   <button type="button" class="tcirc" data-arvtone="${eid}"
+                                           data-tonekey="${escapeHtml(t.key)}" aria-pressed="false"
+                                           title="${escapeHtml(t.en)}">
+                                       <span class="dot ${escapeHtml(t.key)}" aria-hidden="true"><i>&#10003;</i></span>
+                                       <span class="nm">${escapeHtml(t.en)}</span>
+                                   </button>`).join('')}
+                               </div>
+                               <p class="amsg" id="arvToneMsg_${eid}" style="color: var(--color-text-muted);">
+                                   Tap a colour to choose it. Tap it again to unchoose.
+                               </p>
                                <label style="display:flex; align-items:center; gap:8px; margin-top:10px;
                                       font-weight:700; cursor:pointer; font-size:var(--text-sm);">
                                    <input type="checkbox" id="arvOrder_${eid}" style="width:17px; height:17px; cursor:pointer;">
-                                   <span>Orders can be taken &mdash; يمكن أخذُ أوردر</span>
+                                   <span>Orders can be taken</span>
                                </label>
                                <p class="amsg" style="color: var(--color-text-muted);">
                                    Tick this if a customer may order this design tailored. An order comes from the
@@ -4112,7 +4181,7 @@
                 <button type="button" class="awa" data-arvwa="${eid}"
                         aria-label="Message the workshop about ${escapeHtml(a.code)}">
                     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2c-5.5 0-9.94 4.44-9.94 9.92 0 1.75.46 3.45 1.32 4.95L2 22l5.27-1.38a9.9 9.9 0 0 0 4.77 1.22h.01c5.48 0 9.93-4.44 9.93-9.92C21.98 6.44 17.53 2 12.04 2zm5.8 14.02c-.24.68-1.4 1.3-1.93 1.35-.53.05-1.03.2-3.52-.85-2.99-1.27-4.86-4.4-5-4.6-.15-.2-1.2-1.63-1.2-3.1 0-1.48.77-2.2 1.05-2.5.27-.3.6-.37.8-.37.2 0 .4 0 .58.01.19.01.44-.07.68.52.25.6.85 2.08.92 2.23.08.15.13.32.03.52-.1.2-.15.32-.3.5-.15.17-.31.38-.44.51-.15.15-.3.31-.13.6.17.3.76 1.26 1.63 2.04 1.12 1 2.06 1.31 2.35 1.46.3.15.47.13.64-.08.17-.2.74-.86.94-1.16.2-.3.4-.25.66-.15.27.1 1.7.8 2 .95.3.15.5.22.57.35.07.13.07.75-.17 1.43z"/></svg>
-                    Message the workshop &mdash; واتساب الورشة
+                    Message the workshop
                 </button>` : ''}
             </div>`;
         }).join('');
@@ -4929,6 +4998,33 @@
         if (t) { arvOpenImg(t.getAttribute('data-arvopen')); return; }
         const w = ev.target.closest('button[data-arvwa]');
         if (w) { arvOpenWa(w.getAttribute('data-arvwa')); return; }
+        // ⭐⭐⭐⭐ دائرةُ اللون — ضغطةٌ تختار، وضغطةٌ ثانيةٌ على نفسها تُلغي.
+        // ⚠️ بنفس المستمع المُفوَّض: البطاقاتُ تُبنى من جديدٍ في كلِّ رسم، ومستمعٌ
+        //   على دائرةٍ بعينها يضيع مع أوّل إعادةِ رسم.
+        // ⚠️⚠️ ولا تُعاد الشبكةُ رسمًا هنا بحال: إعادةُ الرسم تمحو ما كتبته في
+        //   خاناتِ الأعداد والسعر. تُحدَّث الدائرتانِ وحدَهما — وهذا نفسُ سببِ
+        //   عدمِ إعادةِ الرسم عند الكتابة أدناه.
+        const tc = ev.target.closest('button[data-arvtone]');
+        if (tc) {
+            const eid = tc.getAttribute('data-arvtone');
+            const key = tc.getAttribute('data-tonekey');
+            const hidden = el('arvTone_' + eid);
+            if (hidden) {
+                const now = String(hidden.value || '');
+                hidden.value = (now === key) ? '' : key;   // ضغطةٌ ثانيةٌ تُلغي
+                // ⚠️⚠️ الدائرتانِ تُقرآن من **حاويتهما** لا بمُنتقٍ يُبنى من قيمة:
+                //   مُنتقٍ فيه ${eid} كان يعمل لأنّ معرّفَ المستند حروفٌ وأرقامٌ
+                //   فقط — أي أنه يعمل **بالحظّ**. ومعرّفٌ فيه محرفٌ خاصٌّ يومًا يرمي
+                //   خطأَ مُنتقٍ غيرِ صالحٍ فتتوقّف اللوحة. والحاويةُ تحصر النطاقَ في
+                //   هذه البطاقة بطبيعتها لا بنصٍّ يُركَّب.
+                const box = tc.closest('.tsel');
+                (box ? box.querySelectorAll('button[data-arvtone]') : []).forEach(btn => {
+                    btn.setAttribute('aria-pressed',
+                        String(btn.getAttribute('data-tonekey') === hidden.value));
+                });
+            }
+            return;
+        }
         const b = ev.target.closest('button[data-arvsend]');
         if (b && !b.disabled) arvSend(b.getAttribute('data-arvsend'));
     });
