@@ -16177,6 +16177,30 @@
                         + `.</small>`
                         + (editable ? `<br><button class="btn-success btn-sm" style="margin-top:5px;"
                              onclick="linkAbayaAttendance('${sid}','${escapeJsAttr(lk.empId)}')">Link her attendance</button>` : '');
+                })()}${(() => {
+                    // ⭐⭐⭐ علَمُ التوزيع (فلوريندا) — هي من تستقبل البضاعةَ أوّلًا.
+                    // ⚠️ ولماذا علَمٌ على صفٍّ قائمٍ لا حسابٌ جديد: المالكُ وصف
+                    // **عملَها** ولم يطلب شاشةً لها. فتدخل بشاشة البياعات نفسها
+                    // وبرقمها السرّيّ، ويظهر لها قسمُ التوزيع وحدَها. ولو تركت
+                    // العملَ غدًا يُنقل العلَمُ بضغطةٍ — لا حسابَ يُحذف ولا شاشةَ.
+                    // ⚠️ ولا يظهر على صفٍّ بلا مستندِ بياعةٍ (orphan/not confirmed):
+                    // العلَمُ يُكتب على ذلك المستند، فبلا مستندٍ لا مكانَ له.
+                    if (!seller) return '';
+                    const on = seller.isDistributor === true;
+                    if (!editable) {
+                        return on ? `<br><b style="color: var(--accent, #0EA5E9);">&#9733; Receives all goods first</b>` : '';
+                    }
+                    return `<div style="margin-top:7px; padding-top:6px; border-top:1px dashed var(--border, #E2E8F0);">`
+                        + (on
+                            ? `<b style="color: var(--accent, #0EA5E9);">&#9733; Receives all goods first</b>`
+                              + `<br><small style="color: var(--text-dim);">Gulf Mall, Vendome and Festival goods stop with `
+                              + `her to print the encoding, then she distributes them. West Walk is not affected.</small>`
+                              + `<br><button class="btn-ghost btn-sm" style="margin-top:4px;"
+                                   onclick="setAbayaDistributor('${sid}', false)">Stop &mdash; she no longer distributes</button>`
+                            : `<small style="color: var(--text-dim);">Not the distributor.</small>`
+                              + `<br><button class="btn-ghost btn-sm" style="margin-top:4px;"
+                                   onclick="setAbayaDistributor('${sid}', true)">Make her the one who receives goods first</button>`)
+                        + `</div>`;
                 })()}</td>
                 <td>${emp && seller ? renderAbayaCardCell({ id: key, name, employeeId: emp.id }, editable)
                     : `<span style="color: var(--text-dim); font-size:12px;">${orphan
@@ -16398,6 +16422,68 @@
             show(`&#10004; <b>${escapeHtml(emp.name || empId)}</b> can now record attendance. She must `
                 + `<b>close her screen and open it again</b> &mdash; the list of names is read once when the page opens, `
                 + `so the buttons stay dead until she reloads.`, 'var(--success)');
+        } catch (e) {
+            show('Could not do it: ' + escapeHtml(e.message), 'var(--danger)');
+        }
+    };
+
+    /**
+     * ⭐⭐⭐ تعيينُ «من تستقبل البضاعةَ أوّلًا» — فلوريندا.
+     *
+     * ⚠️⚠️ واحدةٌ فقط في أيِّ لحظة، والعلَمُ يُنزع عن غيرها **في نفس الضغطة**.
+     * ولماذا: القطعُ الموقوفةُ عندها تُقرأ بمرحلتها (`with_florinda`)، فلو حملت
+     * اثنتانِ العلَمَ لرأت كلٌّ منهما نفسَ الشحنة، ولو وزّعتا في نفس الدقيقة
+     * **زيدت كميّةُ الرفِّ مرّتين** — أي مخزونٌ وهميٌّ يبيع النظامُ منه ما لا يوجد.
+     * والحرسُ الثاني في شاشتها نفسها: تُقرأ مرحلةُ كلِّ مهمّةٍ من الخادم قبل زيادة
+     * أيِّ كميّة، فمن تضغط ثانيةً لا تُضيف شيئًا.
+     *
+     * ⚠️ ولا يُمسّ شيءٌ آخر على مستندها: لا اسمَها ولا رقمَها ولا ربطَ بصمتها.
+     */
+    window.setAbayaDistributor = async function(sellerId, on) {
+        const st = document.getElementById('abSellerStatus');
+        const show = (m, c) => { if (st) { st.innerHTML = m; st.style.color = c; } };
+        if (!canEditAbayaSetup()) { show('Only the owner can do this.', 'var(--danger)'); return; }
+        const seller = (abayaSellers || []).find(s => String(s.id) === String(sellerId));
+        if (!seller) { show('That saleswoman no longer exists — press Refresh.', 'var(--danger)'); return; }
+        const name = String(seller.name || sellerId);
+
+        // من تحمل العلَمَ الآن غيرها — تُنزع عنها، ويُقال ذلك قبل الكتابة.
+        const others = (abayaSellers || []).filter(s =>
+            String(s.id) !== String(sellerId) && s.isDistributor === true);
+        if (on && others.length && !confirm(
+            `${others.map(s => s.name || s.id).join(', ')} currently receives the goods first.\n\n`
+            + `Hand that over to ${name}?\n\n`
+            + `Only one person can receive the goods, otherwise the same shipment would be `
+            + `distributed twice and the shop quantities would be doubled.`)) {
+            show('Cancelled — nothing was changed.', 'var(--warning)');
+            return;
+        }
+        if (!on && !confirm(
+            `${name} will no longer receive the goods first.\n\n`
+            + `Until you choose someone else, goods for Gulf Mall, Vendome and Festival will `
+            + `WAIT with nobody able to distribute them.\n\nContinue?`)) {
+            show('Cancelled — nothing was changed.', 'var(--warning)');
+            return;
+        }
+        show(on ? `Making ${escapeHtml(name)} the one who receives goods first...` : 'Saving...', 'var(--warning)');
+        try {
+            if (on) {
+                for (const o of others) {
+                    await updateDoc(doc(db, "abaya_sellers", String(o.id)), { isDistributor: false });
+                    o.isDistributor = false;
+                }
+            }
+            await updateDoc(doc(db, "abaya_sellers", String(sellerId)), { isDistributor: !!on });
+            seller.isDistributor = !!on;
+            logAudit(on ? 'Abaya distributor set' : 'Abaya distributor cleared',
+                `${name}${on && others.length ? ` (taken from ${others.map(o => o.name || o.id).join(', ')})` : ''}`);
+            renderAbayaSellers();
+            show(on
+                ? `&#10004; <b>${escapeHtml(name)}</b> now receives the goods for <b>Gulf Mall</b>, <b>Vendome Mall</b> `
+                  + `and <b>Doha Festival City</b> before any shelf. She must close her screen and open it again to see `
+                  + `the Distribute section. <b>West Walk is unchanged</b> and still goes straight to the shop.`
+                : `${escapeHtml(name)} no longer distributes. Choose someone else, or goods for the three shops will wait.`,
+                on ? 'var(--success)' : 'var(--warning)');
         } catch (e) {
             show('Could not do it: ' + escapeHtml(e.message), 'var(--danger)');
         }

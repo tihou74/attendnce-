@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v21   (2026-09-25)  <<<
+//   >>>  RULES REVISION: v22   (2026-09-25)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,7 +12,7 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       sentPlan
+//       distributedBy
 //
 //   (This exact text exists nowhere in any earlier revision, which is the whole
 //    point of a marker. Every earlier marker is now useless for telling the
@@ -24,10 +24,11 @@ rules_version = '2';
 //      "manager_presence"           introduced in v13, still here in v14/v15
 //      "supervisor_presence"        introduced in v14, still here in v15
 //      "abaya_presence"             introduced in v13, was the marker for v15..v19
+//      "sentPlan"                   introduced in v21, was the marker for v21
 //    Always search for the marker named directly above, and when publishing a
 //    new revision, change that name to something introduced by it.)
 //
-//   FOUND     -> v21 is live. Good.
+//   FOUND     -> v22 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -45,6 +46,51 @@ rules_version = '2';
 // exact mistake happened with the "(v4)" label, which never changed across
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
+//
+//  v22  2026-09-25  + distributedBy — FLORINDA RECEIVES THE GOODS FIRST.
+//                     PUBLISH v22 — it contains v16..v21 in full.
+//
+//                     The owner: "if the new goods are going to Gulf Mall or
+//                     Vendome or Festival, the FIRST thing is that the message
+//                     appears to Florinda ONLY, that the goods are ready with the
+//                     picture and all the details — print the barcode and the
+//                     price and distribute them to the shops. Then when she
+//                     finishes, a button appears for her: everything is ready and
+//                     the goods have been sent to the shops. Automatically a
+//                     button appears at all the saleswomen in the three shops
+//                     that they received the goods."
+//
+//                     A shelf task now carries a `stage`:
+//                       with_florinda -> at_shops -> (shelved, via `done`)
+//                     Mrs Fatima's dispatch creates the three loop shops' tasks
+//                     at `with_florinda`, and the pieces are NOT on any shelf yet.
+//                     Florinda's one press moves them to `at_shops` and only THEN
+//                     is `qty.<shop>` raised.
+//
+//                     THE ONE GRANT ADDED, and it is deliberately a SEPARATE
+//                     shape rather than four more keys on the existing one:
+//                       kiosk update, either
+//                         ['done','doneAt','doneBy','doneByName']            (a shop shelves it)
+//                         ['stage','distributedAt','distributedBy',
+//                          'distributedByName','updatedAt']                  (Florinda distributes)
+//                     Merging the two into one hasOnly of nine keys would let a
+//                     shop's tick also rewrite `stage`, i.e. push a piece back to
+//                     Florinda or on to a shop it never reached. Two shapes means
+//                     each press may write ONLY its own fields.
+//
+//                     ⚠️ `stage` is writable ONLY in this shape and never in the
+//                     shelving one, and the value is not validated by the rule —
+//                     the kiosk is an anonymous account (= anyone with the link),
+//                     which is the standing trade-off of this whole panel, already
+//                     recorded under abaya_shelf_tasks below. What the rule DOES
+//                     guarantee is that no purchase figure and no price can ride
+//                     along with either press.
+//
+//                     ⚠️ NOTHING else widened. `isDistributor` needed no rule at
+//                     all: it is a field on abaya_sellers, which the kiosk may
+//                     already read and only the owner may write. A feature that
+//                     needs no new rule is a feature that cannot be broken by an
+//                     unpublished file.
 //
 //  v21  2026-09-25  + sentPlan — ONE SHIPMENT SPLIT ACROSS SEVERAL SHOPS.
 //                     PUBLISH v21 — it contains v16..v20 in full.
@@ -1210,10 +1256,21 @@ service cloud.firestore {
              ['cost', 'costPerPiece', 'supplier', 'source', 'unitUsd', 'usdRate',
               'unitQar', 'shipping', 'labour', 'totalQar', 'suggestedPrice',
               'profit', 'margin', 'marginPct', 'sentBy']);
+      // v22: TWO separate kiosk shapes, never one merged list.
+      //   1) a shop shelves the task            -> done / doneAt / doneBy / doneByName
+      //   2) Florinda distributes the shipment   -> stage / distributedAt / ...
+      // Merging them into one hasOnly of nine keys would let a shop's shelving
+      // tick also rewrite `stage` — pushing a piece back to Florinda, or on to a
+      // shop it never physically reached. Kept apart, each press may write ONLY
+      // the fields belonging to it, and neither can carry a price or a cost.
       allow update: if isAdmin()
         || (isKiosk()
             && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['done', 'doneAt', 'doneBy', 'doneByName']));
+                 .hasOnly(['done', 'doneAt', 'doneBy', 'doneByName']))
+        || (isKiosk()
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['stage', 'distributedAt', 'distributedBy',
+                           'distributedByName', 'updatedAt']));
       allow delete: if isAdmin();
     }
 
