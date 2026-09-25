@@ -42,7 +42,7 @@
 // الكاش القديم حتى لا يبقى من ثبّت التطبيق سابقًا على النسخة القديمة.
 // ⚠️⚠️ ويجب أن يساوي `APP_BUILD` في admin.html: الصفحةُ تُقارن الرقمَين وتُعلن
 //   الاختلافَ في ذيلها. فمن غيّر هذا ونسي ذاك يُظهر تحذيرًا كاذبًا لكلِّ من يفتح.
-const CACHE_VERSION = 'v190';
+const CACHE_VERSION = 'v191';
 const SHELL_CACHE = `alsheikha-shell-${CACHE_VERSION}`;
 const ASSET_CACHE = `alsheikha-assets-${CACHE_VERSION}`;
 

@@ -11341,12 +11341,41 @@
         );
     }
 
+    /**
+     * ⭐⭐⭐⭐⭐ قراءةُ سجلّ الحضور — **بلا `orderBy` بحال**.
+     *
+     * ⚠️⚠️⚠️ هذا السطرُ بعينه أخفى بصماتِ البياعات كلَّها:
+     *
+     *     query(collection(db, "attendance"), orderBy("timestamp", "desc"))
+     *
+     *   وفايرستور **يُسقط بصمتًا** كلَّ مستندٍ لا يحمل الحقلَ المرتَّبَ به. لا خطأ،
+     *   ولا رسالة — صفوفٌ أقلّ. وشاشةُ الموظفين (`index.html`) تكتب `timestamp`،
+     *   وشاشةُ البياعات (`abaya-seller.html`) **لا تكتبه** — تكتب `serverTime`
+     *   و`deviceTime`. فكانت بصمةُ كلِّ بياعةٍ تُكتب بنجاح، وشاشتُها تقول
+     *   «Recorded» بصدق، ثم **تُستبعد من `allAttendance` قبل أن يقرأها أحد**.
+     *   ومعها تختفي من: جدول الحضور · أرقام الرئيسية · الورديات المفتوحة · ملفّ
+     *   الموظفة · **كشف الرواتب** · ومحرّك الغياب (فتُعدّ أيامُها غيابًا).
+     *   والمطاعمُ تعمل لأنها تكتب الحقل — فبدا العطلُ «في شاشة البياعات».
+     *
+     * ⚠️⚠️ والقاعدةُ مكتوبةٌ في ذاكرة المشروع بيدي («لا orderBy في أيِّ قراءة —
+     *   وهو العطلُ الذي أخفى تقاريرَ البياعات فعلًا») وخالفتُها هنا. فلا يُعاد.
+     *
+     * ⚠️⚠️ ولم يُنقذها الاحتياطُ الذي كان تحتها: قراءةٌ غيرُ مرتَّبةٍ داخل `catch`
+     *   — أي الشِّفرةُ الصحيحة — **لا تُنفَّذ أبدًا**، لأنّ `orderBy` بحقلٍ واحدٍ لا
+     *   يرمي خطأً (فايرستور يُنشئ فهرسَه تلقائيًّا). فكان احتياطًا ميتًا يُطمئن
+     *   قارئَ الكود ولا يفعل شيئًا. وحُذف: احتياطٌ لا يعمل أسوأُ من لا احتياط،
+     *   لأنه يُنهي البحثَ عن السبب.
+     *
+     * ⚠️ والترتيبُ محليٌّ بـ`tsToMillis` — وهي تُفضّل **ساعةَ الخادم** ثم
+     *   `timestamp` ثم التاريخ. فالترتيبُ صار أصدقَ مما كان: القديمُ يرتّب بساعة
+     *   **الجهاز** التي يستطيع الموظفُ تغييرها.
+     */
     window.loadAttendanceLogs = async function() {
         try {
-            const q = query(collection(db, "attendance"), orderBy("timestamp", "desc"));
-            const querySnapshot = await getDocs(q);
+            const querySnapshot = await getDocs(collection(db, "attendance"));
             allAttendance = [];
             querySnapshot.forEach((docSnap) => allAttendance.push({ id: docSnap.id, ...docSnap.data() }));
+            allAttendance.sort((a, b) => tsToMillis(b) - tsToMillis(a));
             // ⚠️ لا يُكتب العدد هنا مباشرةً: يمرّ بالمصدر الواحد ليُرشَّح
             // بالنشاط المعروض. الكتابة المباشرة كانت تُظهر بصمات المطاعم
             // داخل شاشة العبايات — وهو ما أفزع المالك.
@@ -11360,27 +11389,8 @@
             renderCancelledDays();
             renderMissedCheckins();
             maybeAutoCloseOnce();
-        } catch (error) {
-            try {
-                const querySnapshot = await getDocs(collection(db, "attendance"));
-                allAttendance = [];
-                querySnapshot.forEach((docSnap) => allAttendance.push({ id: docSnap.id, ...docSnap.data() }));
-                // ⚠️ لا يُكتب العدد هنا مباشرةً: يمرّ بالمصدر الواحد ليُرشَّح
-            // بالنشاط المعروض. الكتابة المباشرة كانت تُظهر بصمات المطاعم
-            // داخل شاشة العبايات — وهو ما أفزع المالك.
-            refreshHomeCounters();
-                filterData();
-                renderOpenShifts();
-                renderMonthArchive();
-                renderClockSkewAlert();
-                renderTamperAlert();
-                renderServerTimeDiagnostic();
-                renderCancelledDays();
-                renderMissedCheckins();
-                maybeAutoCloseOnce();
-            } catch (err) {
+        } catch (err) {
             reportLoadFailure('Attendance logs', err);
-        }
         }
     };
 
@@ -18606,7 +18616,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v190';
+        const APP_BUILD = 'v191';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
