@@ -4253,6 +4253,10 @@
                     &middot; <span id="footYear">2026</span></div>
             </div>
         </div>
+        <!-- ⭐⭐ ختمُ النسخة — يُقرأ بالعين ولا يُخمَّن.
+             ⚠️ سببُه: قال المالكُ «لم يتغيّر شيءٌ في الصفحة» بعد رفعٍ منشورٍ فعلًا،
+                وثبت أنّ خادمَ GitHub بنى الرفعةَ نفسَها. فالفرقُ في جهازه وحدَه، ولم
+                يكن عند أيٍّ منّا طريقةٌ لمعرفة **أيَّ** نسخةٍ يرى. فصار الجوابُ مكتوبًا. -->
         <div class="af-rule">HR &amp; Payroll Management Suite &middot; <span id="footVersion">Internal use only</span></div>
     </footer>
 </div>
@@ -6591,6 +6595,8 @@
         // أسوأُ من وسمٍ بلا سنة، ويصير كذبًا في أوّل يناير.
         const fy = document.getElementById('footYear');
         if (fy) fy.textContent = String(new Date().getFullYear());
+        // ⭐ ختمُ النسخة بجانبها — به يُعرف أيُّ نسخةٍ تعمل على هذا الجهاز.
+        if (typeof paintBuildStamp === 'function') paintBuildStamp();
         const start = firstDayOfCurrentMonthISO();
         const end = lastDayOfCurrentMonthISO();
         ["payrollStartDate", "startDate", "attReportStart", "salesStartDate"].forEach(id => { const el = document.getElementById(id); if (el) el.value = start; });
@@ -18578,6 +18584,62 @@
             }
         });
     }
+    /**
+     * ⭐⭐⭐⭐⭐ ختمُ النسخة في ذيل الصفحة — ومقارنتُها بنسخة الـservice worker.
+     *
+     * ⚠️⚠️ رقمانِ لا رقمٌ واحد، وهذا هو بيتُ القصيد:
+     *   · `APP_BUILD`  = نسخةُ **هذا الملفّ** الذي حُمِّل الآن.
+     *   · نسخةُ العامل = نسخةُ الـservice worker **الذي يخدم الصفحة فعلًا**.
+     *   واختلافُهما هو بعينه العطلُ الذي شكا منه المالك: ملفٌّ جديدٌ منشورٌ على
+     *   الخادم، وعاملٌ قديمٌ ما زال يُقدّم القديمَ من الكاش. ورقمٌ واحدٌ لا يكشف
+     *   ذلك أبدًا — لأنّ الرقمَ نفسَه يكون قديمًا مع الملفّ القديم.
+     *
+     * ⚠️ ويُقال ما يُفعل لا «هناك اختلافٌ»: إغلاقُ كلِّ التبويبات وإعادةُ الفتح.
+     * ⚠️ ولا يُعطَّل شيءٌ ولا تُفرض إعادةُ تحميل: اللوحةُ تعمل، وقد يكون في يده
+     *   عملٌ نصفَ مكتوب. إخبارٌ لا مقاطعة.
+     */
+    function paintBuildStamp() {
+        // ⚠️⚠️ الثابتُ **داخل** الدالّة لا قبلها: كان `const APP_BUILD` مكتوبًا في
+        //   نطاق الوحدة عند السطر 18601، والدالّةُ تُنادى من التهيئة عند السطر 6599.
+        //   وتصريحُ `const` يبقى في «المنطقة الميتة» حتى يُنفَّذ سطرُه، فنداءٌ قبله
+        //   يرمي ReferenceError — أي أنّ ختمَ النسخةِ نفسَه كان قد يتعطّل بصمت،
+        //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
+        //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
+        // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
+        const APP_BUILD = 'v190';
+        const el = document.getElementById('footVersion');
+        if (!el) return;
+        el.textContent = `Build ${APP_BUILD}`;
+        el.title = 'The version of this page that your device loaded';
+        if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return;
+        let answered = false;
+        try {
+            const ch = new MessageChannel();
+            ch.port1.onmessage = (ev) => {
+                answered = true;
+                const swv = String((ev.data || {}).version || '');
+                if (!swv) return;
+                if (swv === APP_BUILD) {
+                    el.textContent = `Build ${APP_BUILD}`;
+                    return;
+                }
+                // ⚠️⚠️ عاملٌ أقدمُ يخدم الصفحة — وهذا سببُ «لم يتغيّر شيء».
+                el.innerHTML = `Build ${escapeHtml(APP_BUILD)} `
+                    + `<b style="color: var(--danger);">&#9888; an older version (${escapeHtml(swv)}) `
+                    + `is still running &mdash; close every tab of this page and open it again</b>`;
+            };
+            navigator.serviceWorker.controller.postMessage({ type: 'WHICH_VERSION' }, [ch.port2]);
+            // ⚠️ عاملٌ قديمٌ لا يعرف هذه الرسالة **لا يردّ أبدًا**، فلا يُنتظر للأبد:
+            //   وصمتُه بنفسه دليلٌ على أنه أقدمُ من هذه الميزة.
+            setTimeout(() => {
+                if (answered) return;
+                el.innerHTML = `Build ${escapeHtml(APP_BUILD)} `
+                    + `<b style="color: var(--danger);">&#9888; an older version is still running &mdash; `
+                    + `close every tab of this page and open it again</b>`;
+            }, 2500);
+        } catch (e) { /* الختمُ وحدَه يبقى — ولا تُعطَّل الصفحة لأجل سطرٍ في الذيل */ }
+    }
+
     function openTabFromHash() {
         const h = String(location.hash || '').replace('#', '');
         if (h.startsWith('tab-') && typeof switchTab === 'function') {

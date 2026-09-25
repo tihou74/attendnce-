@@ -40,7 +40,9 @@
 // تبويبًا جديدًا بعد نشره. v3: أُزيل التحويل التلقائي من report.html (كان يُبطل تثبيت تطبيق المديرين على
 // iOS)، ويجب إبطال
 // الكاش القديم حتى لا يبقى من ثبّت التطبيق سابقًا على النسخة القديمة.
-const CACHE_VERSION = 'v189';
+// ⚠️⚠️ ويجب أن يساوي `APP_BUILD` في admin.html: الصفحةُ تُقارن الرقمَين وتُعلن
+//   الاختلافَ في ذيلها. فمن غيّر هذا ونسي ذاك يُظهر تحذيرًا كاذبًا لكلِّ من يفتح.
+const CACHE_VERSION = 'v190';
 const SHELL_CACHE = `alsheikha-shell-${CACHE_VERSION}`;
 const ASSET_CACHE = `alsheikha-assets-${CACHE_VERSION}`;
 
@@ -220,6 +222,26 @@ async function cacheFirst(request) {
     } catch (e) { /* تخزين فاشل لا يمنع تسليم الرد */ }
     return response;
 }
+
+/**
+ * ⭐⭐⭐⭐⭐ «ما هي النسخةُ التي تعمل عندي الآن؟»
+ *
+ * ⚠️⚠️ سببُ وجود هذا: قال المالكُ «لم يتغيّر شيءٌ في الصفحة» بعد رفعٍ منشورٍ
+ *   فعلًا — وأثبتَ خادمُ GitHub أنّ البناءَ تمّ للرفعة نفسها. فالاختلافُ كان في
+ *   جهازه وحدَه، ولا سبيلَ لأحدِنا أن يعرف **أيَّ** نسخةٍ يرى. فصار يُسأل
+ *   الـservice worker عن نسخته، ويُعرض الجوابُ في ذيل الصفحة.
+ *
+ * ⚠️ ويُجاب على قناةٍ خاصّةٍ بالرسالة (`ports[0]`) لا ببثٍّ إلى كلِّ العملاء:
+ *   البثُّ يصل إلى كلِّ تبويبٍ مفتوحٍ فيردّ كلُّ واحدٍ على سؤال غيره.
+ */
+self.addEventListener('message', (event) => {
+    const data = event.data || {};
+    if (data.type !== 'WHICH_VERSION') return;
+    const reply = { type: 'VERSION', version: CACHE_VERSION };
+    if (event.ports && event.ports[0]) { event.ports[0].postMessage(reply); return; }
+    // ⚠️ احتياطٌ لمتصفّحٍ لا يُمرّر قناة: يُردّ على المُرسِل وحدَه إن أمكن.
+    if (event.source && event.source.postMessage) event.source.postMessage(reply);
+});
 
 self.addEventListener('fetch', (event) => {
     const request = event.request;
