@@ -354,6 +354,43 @@
     }
     .cpsold button { width: auto; min-height: 36px; padding: 0 12px; font-size: 12px; }
 
+    /* ============ شريطُ التنقّل بين الأقسام ============
+       ⚠️ لاصقٌ أعلى الشاشة: الجهازُ هاتفٌ والأقسامُ طويلة، فزرُّ الانتقال يجب أن
+          يكون في متناولها بلا تمريرٍ إلى الأعلى.
+       ⚠️ وصفٌّ واحدٌ يتمدّد: أربعةُ أزرارٍ على شاشةِ هاتفٍ ضيّقة، فـflex: 1 1 0 مع
+          min-width: 0 كي ينضغط الزرُّ أصغرَ من نصّه بدل أن يتجاوز الشريط — وهو
+          نفسُ درسِ شريط تبويبات الكشك المكتوبِ في open-issues.md. */
+    .snav {
+        position: sticky; top: 0; z-index: 5;
+        display: flex; gap: 6px; padding: 8px 0 10px; margin-bottom: var(--space-4);
+        background: var(--color-bg);
+        border-bottom: var(--border-hairline) solid var(--color-border);
+    }
+    .snav button {
+        flex: 1 1 0; min-width: 0; width: auto;
+        min-height: 52px; padding: 6px 8px;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+        background: var(--color-surface); color: var(--color-text);
+        border: var(--border-hairline) solid var(--color-border);
+        border-radius: var(--radius-md);
+        font-family: inherit; font-weight: 700; cursor: pointer;
+    }
+    .snav button .t { font-size: 12px; line-height: 1.25; text-align: center; }
+    .snav button .s { font-size: 10.5px; font-weight: 600; color: var(--color-text-muted); line-height: 1.2; }
+    /* ⚠️ القسمُ المفتوح يُميَّز بحدٍّ عريضٍ **وخلفيّةٍ** لا بلونٍ وحدَه: حدٌّ رقيقٌ
+       على شاشةٍ صغيرةٍ بيدٍ مشغولةٍ لا يُرى. */
+    .snav button[aria-pressed="true"] {
+        border-color: var(--color-brand); border-width: 2px;
+        background: var(--color-surface-2);
+    }
+    .snav button[aria-pressed="true"] .t { color: var(--color-brand-text); }
+    .snav .badge {
+        display: inline-block; min-width: 18px; padding: 0 5px; margin-inline-start: 4px;
+        border-radius: var(--radius-pill, 999px);
+        background: var(--color-danger); color: #fff;
+        font-size: 10px; font-weight: 800; line-height: 17px; text-align: center;
+    }
+
     /* ============ «وصلت بضاعة جديدة» — مهمّةُ الرفّ ============
        ⚠️ كلُّ اسمٍ هنا داخل .sag أو .sait، على نفس قاعدة .cpcard/.cpg أعلاه: لا
           اسمٌ عامٌّ يتعارض مع تنسيقٍ قائمٍ في هذه الصفحة. */
@@ -490,6 +527,40 @@
     <div class="hidden" id="stepForm">
 
         <!-- ==================================================================
+             ⭐⭐⭐⭐⭐ شريطُ التنقّل — بأمر المالك: «يجب ترتيب اللوحة الخاصة بهم،
+             فمثلًا السيلس ريبورت زرٌّ بروحه، والبيع زرٌّ بروحه».
+             ------------------------------------------------------------------
+             ⚠️⚠️ ما كان قبله: **عشرُ لوحاتٍ مفتوحةٍ معًا** في تمريرٍ واحد، وفيها
+             نحو **٥٠ خانةَ إدخال** (جدولُ المبيعات وحدَه ٢٨). وسبعٌ من العشر هي
+             **عملٌ واحدٌ يُعمل مرّةً واحدةً عند الإغلاق** (تقريرُ اليوم)، معروضةٌ
+             كسبع لوحاتٍ متساويةٍ فتبدو سبعةَ أشياءَ غيرَ مترابطة. وهذا هو
+             «مخربطة» بنصّه.
+             ⚠️⚠️⚠️ والخانات **تبقى كلُّها في الصفحة** وإن كان القسمُ مخفيًّا
+             (`display:none` لا يحذف من DOM): فـ`recalc()` تقرأ بالمعرّفات،
+             والتقريرُ المُرسَلُ يُبنى من نفس المعرّفات — **فلا رقمٌ يتغيّر ولا
+             حقلٌ يضيع**. ولو حُذفت الحقولُ فعلًا لانكسر المال، ولذلك أُخفي ولا
+             يُحذف، وثمّة فحصٌ يُثبت ذلك.
+             ⚠️ والافتراضُ «بصمتي»: أوّلُ ما تفعله البياعةُ في يومها.
+             ================================================================== -->
+        <nav class="snav" id="sellerNav" aria-label="Sections">
+            <button type="button" id="navAttend" aria-pressed="true" aria-controls="viewAttend">
+                <span class="t">My shift</span><span class="s">بصمتي</span>
+            </button>
+            <button type="button" id="navSell" aria-pressed="false" aria-controls="viewSell">
+                <span class="t">Sell</span><span class="s">بيع</span>
+            </button>
+            <button type="button" id="navReport" aria-pressed="false" aria-controls="viewReport">
+                <span class="t">Today&rsquo;s report</span><span class="s">تقرير اليوم</span>
+            </button>
+            <!-- ⚠️ زرُّ البضاعة الواصلة يظهر **فقط** إن كان عليها عملٌ، ومعه عددُه:
+                 زرٌّ دائمٌ فارغٌ يُدرَّب على تجاهله. -->
+            <button type="button" id="navArrivals" class="hidden" aria-pressed="false" aria-controls="viewArrivals">
+                <span class="t">Goods arrived <span class="badge" id="navArrivalsBadge">0</span></span><span class="s">وصلتكم بضاعة</span>
+            </button>
+        </nav>
+
+        <div class="hidden" id="viewArrivals">
+        <!-- ==================================================================
              ⭐⭐⭐⭐⭐ «وصلت بضاعة جديدة» — بأمر المالك
              ------------------------------------------------------------------
              «لما تضع السيدة فاطمة السعر وكلشي يظهر لهم في البانال أنه وصلت بضاعة
@@ -525,6 +596,7 @@
                 <button class="ghost small" id="saRefresh" style="width: auto;">Refresh</button>
             </div>
         </div>
+        </div><!-- /viewArrivals -->
         <!-- ==================================================================
              ⭐⭐ البصمة — بطلب المالك: «يبصمون من نفس شاشة إرسال التقرير»
              ------------------------------------------------------------------
@@ -542,6 +614,7 @@
              الإدارة ترشّح البصمات بنشاط صاحبها، فبصمة البياعة لا تظهر في
              شاشة المطاعم أصلًا.
              ================================================================== -->
+        <div id="viewAttend">
         <div class="panel" id="attendPanel">
             <h2>My attendance</h2>
             <p class="ar">Press when you start and when you finish &mdash; no location is checked</p>
@@ -557,6 +630,7 @@
                 <b>Create employee file</b> next to your name. Sending the daily report still works normally.
             </p>
         </div>
+        </div><!-- /viewAttend -->
 
         <!-- ==================================================================
              ⭐⭐⭐ بيع عباية من الكتالوج — بطلب المالك:
@@ -575,6 +649,7 @@
              ⚠️ وموضعُه بعد اختيار المحل عن قصد: النقص يجب أن يقع على **محلّها
              اليوم**، والجهاز مشترك ولا تعمل في محل ثابت (قرار الإدارة).
              ================================================================== -->
+        <div class="hidden" id="viewSell">
         <div class="panel" id="cpPanel">
             <h2>Sell an abaya</h2>
             <p class="ar">Type the barcode, or press <b>Show the abayas</b> and tap the picture</p>
@@ -632,6 +707,12 @@
                 </p>
             </div>
         </div>
+        </div><!-- /viewSell -->
+
+        <!-- ⚠️⚠️ تقريرُ اليوم: سبعُ لوحاتٍ كانت مبثوثةً بين البصمة والبيع، وهي **عملٌ
+             واحدٌ** يُعمل مرّةً عند الإغلاق. جُمعت هنا خلفَ زرٍّ واحد.
+             ⚠️ والحقولُ باقيةٌ في DOM وإن كان القسمُ مخفيًّا — انظر ملاحظةَ الشريط. -->
+        <div class="hidden" id="viewReport">
 
         <div class="panel">
             <h2>Report details</h2>
@@ -831,8 +912,8 @@
         <p class="note">
             Once sent, this report goes straight to management. You cannot open it again from here,
             so please check the figures before sending.
-            
         </p>
+        </div><!-- /viewReport -->
     </div>
 
     <!-- ================= 4) الملخّص ================= -->
@@ -1214,6 +1295,36 @@
         const v = Number(raw);
         if (!isFinite(v) || v < 0) return null;
         return integer ? Math.round(v) : v;
+    }
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ التنقّلُ بين أقسام اللوحة — «السيلس ريبورت زرٌّ بروحه، والبيع زرٌّ بروحه»
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️⚠️ الإخفاءُ بـ`.hidden` (display:none) **لا يحذف من DOM**: كلُّ خانةٍ
+    //   تبقى موجودةً بقيمتها، فـ`recalc()` تقرؤها بالمعرّف والتقريرُ المُرسَلُ
+    //   يُبنى منها. فلا رقمٌ يتغيّر بتغيير القسم المعروض. ولو حُذفت الحقولُ من
+    //   الصفحة لانكسر المال — ولذلك تُخفى ولا تُحذف، وثمّة فحصٌ يُثبته.
+    // ⚠️ ولا يُصفَّر شيءٌ عند التنقّل: من كتبت نصفَ التقرير ثمّ ذهبت لتبيع عبايةً
+    //   يجب أن تجد نصفَها كما تركته.
+    // =====================================================================
+    const SELLER_VIEWS = {
+        attend:   { view: 'viewAttend',   nav: 'navAttend' },
+        sell:     { view: 'viewSell',     nav: 'navSell' },
+        report:   { view: 'viewReport',   nav: 'navReport' },
+        arrivals: { view: 'viewArrivals', nav: 'navArrivals' }
+    };
+    let sellerView = 'attend';
+
+    function showSellerView(which) {
+        if (!SELLER_VIEWS[which]) which = 'attend';
+        sellerView = which;
+        Object.entries(SELLER_VIEWS).forEach(([k, o]) => {
+            const v = el(o.view); if (v) v.classList.toggle('hidden', k !== which);
+            const n = el(o.nav); if (n) n.setAttribute('aria-pressed', String(k === which));
+        });
+        // ⚠️ التمريرُ إلى الأعلى: الأقسامُ طويلة، ومن ضغطت زرًّا وهي في أسفل الصفحة
+        //   كانت ترى منتصفَ القسم الجديد فتظنّه ناقصًا.
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function showStep(which) {
@@ -1790,6 +1901,8 @@
         //   محلٍّ سابقٍ تبقى على الشاشة فتُطبع باركوداتُ بضاعةٍ ليست هنا.
         resetShelfTasks();
         showStep('stepForm');
+        // ⚠️ تبدأ على «بصمتي»: أوّلُ ما تفعله في يومها. والزرُّ الآخر بضغطةٍ واحدة.
+        showSellerView('attend');
         // ⭐ حالة البصمة تُقرأ بعد ظهور الشاشة لا قبلها: قراءةٌ من الشبكة لا يجوز
         // أن تُبطئ ظهور النموذج، وهي لا تمنع شيئًا إن تأخّرت.
         setMsg('attendMsg', '', '');
@@ -1808,6 +1921,18 @@
         loadShelfTasks(true);
     }
     el('btnBackShop').addEventListener('click', () => showStep('stepShop'));
+    // ---- أزرارُ التنقّل بين الأقسام -------------------------------------
+    el('navAttend').addEventListener('click', () => showSellerView('attend'));
+    el('navSell').addEventListener('click', () => {
+        showSellerView('sell');
+        // ⚠️ الكتالوجُ يُقرأ عند فتح القسم أيضًا: قد تكون الشحنةُ وصلت بعد دخولها.
+        loadSellerCatalog();
+    });
+    el('navReport').addEventListener('click', () => showSellerView('report'));
+    el('navArrivals').addEventListener('click', () => {
+        showSellerView('arrivals');
+        loadShelfTasks(true);
+    });
 
     // =====================================================================
     // ⭐⭐⭐ بيع عباية من الكتالوج — «اذا اي بياعة باعت عباية تنقص الكمية»
@@ -2175,6 +2300,28 @@
         el('saGrid').innerHTML = '';
         el('saNote').innerHTML = '';
         setMsg('saMsg', '', '');
+        renderArrivalsNav();
+    }
+
+    /**
+     * زرُّ «وصلتكم بضاعة» في شريط التنقّل.
+     * ⚠️ يظهر **فقط** إن كان عليها عملٌ فعلًا، ومعه العدد: زرٌّ دائمٌ يُفتح على
+     *   «لا شيء» يُدرَّب المرءُ على تجاهله، ثم يتجاهله في اليوم الذي فيه عمل.
+     * ⚠️ وإن كانت واقفةً في قسم البضاعة ثمّ لم يبقَ فيه شيءٌ (أنجزتِ الكلَّ) فلا
+     *   تُخرَج منه قهرًا: تبقى ترى «تمّ كلُّ شيء» حتى تنتقل بيدها. وإخراجُها
+     *   فجأةً يبدو عطلًا.
+     */
+    function renderArrivalsNav() {
+        const btn = el('navArrivals');
+        if (!btn) return;
+        const waiting = saTasks.filter(t => !t.done).length;
+        const show = waiting > 0 || sellerView === 'arrivals';
+        btn.classList.toggle('hidden', !show);
+        const b = el('navArrivalsBadge');
+        if (b) {
+            b.textContent = String(waiting);
+            b.classList.toggle('hidden', waiting === 0);
+        }
     }
 
     /**
@@ -2366,6 +2513,8 @@
 
         // ⚠️ الصورُ تُقرأ بمحمّل الكتالوج نفسِه — انظر الملاحظة في saCard.
         cpObserveImages();
+        // ⚠️ وزرُّ الشريط يُحدَّث مع كلِّ رسم: العددُ عليه يجب أن يطابق ما في القسم.
+        renderArrivalsNav();
     }
 
     /**
