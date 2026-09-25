@@ -408,6 +408,25 @@
         background: var(--color-surface); display: flex; flex-direction: column; gap: var(--space-3);
     }
     .arv .aact label { margin: 0; }
+    /* ⭐⭐⭐⭐ تقسيمُ القطع على المحلات: صفٌّ لكلِّ محلٍّ باسمه وخانةِ عدده.
+       ⚠️ الاسمُ والخانةُ في سطرٍ واحدٍ متقابلَين لا الاسمُ فوق الخانة: أربعةُ
+          محلاتٍ رأسيًّا تُطيل البطاقةَ على الهاتف حتى يغيب زرُّ الإرسال. */
+    .arv .asplit { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+    .arv .asplit label {
+        display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+        font-size: var(--text-xs); font-weight: 700;
+    }
+    .arv .asplit label > span { min-width: 0; overflow-wrap: anywhere; }
+    /* ⚠️ خانةٌ ضيّقةٌ وبخطٍّ أحاديّ: العددُ يُقرأ ويُقارن بالمجموع بلمحة. */
+    .arv .asplit input {
+        flex: 0 0 72px; width: 72px; text-align: center;
+        font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+    }
+    .arv .asum {
+        margin: 8px 0 0; font-size: var(--text-xs); font-weight: 700;
+        line-height: var(--leading-normal);
+    }
+    .arv .asum b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
     .arv .aact select, .arv .aact input { margin: 0; }
     /* قراءةُ الربح الحيّة — تتغيّر وهي تكتب السعر */
     .arv .alive {
@@ -3608,6 +3627,62 @@
      * ⚠️⚠️ وبيعٌ تحت الكوست يُقال **صريحًا بالأحمر** لا برقمٍ سالبٍ صغير: خسارةٌ
      *   على كلِّ قطعةٍ تُقرأ عاديّةً إن لم تُسمَّ خسارةً.
      */
+    /**
+     * ⭐⭐⭐⭐⭐ يقرأ توزيعَ القطع على المحلات من خانات بطاقةٍ واحدة.
+     * يُعيد: `{ plan: { 'GULF MALL': 4, … }, total, shops: [أسماء] }`
+     * ⚠️ لا يُعيد إلّا المحلات التي لها عددٌ أكبرُ من صفر: محلٌّ بصفرٍ ليس وجهةً،
+     *   وكتابةُ صفرٍ في خطّة الإرسال تُنشئ سطرَ حركةٍ بلا حركة.
+     * ⚠️ والأعدادُ تُقصّ إلى أعدادٍ صحيحةٍ غيرِ سالبة: «2.7 قطعة» أو «-3» لا معنى
+     *   لهما على رفّ، والمتصفّحُ يقبلهما في خانة number إن كُتبا بلوحة المفاتيح.
+     */
+    function arvReadPlan(a) {
+        const plan = {};
+        let total = 0;
+        ABAYA_SHOPS.forEach(s => {
+            const inp = el('arvQ_' + a.id + '_' + abayaShopKey(s));
+            const n = Math.max(0, Math.floor(Number(inp ? inp.value : 0) || 0));
+            if (n > 0) { plan[s] = n; total += n; }
+        });
+        return { plan, total, shops: Object.keys(plan) };
+    }
+
+    /** نصٌّ مقروءٌ للتوزيع: «GULF MALL 4 · VENDOME MALL 3». */
+    function arvPlanLabel(plan) {
+        return Object.entries(plan).map(([s, n]) => `${s} ${n}`).join(' · ');
+    }
+
+    /**
+     * سطرُ المجموع تحت خانات التوزيع — يُقرأ وهي تكتب.
+     * ⚠️ ويُقال **الفرق** لا «خطأ» فقط: «بقيت 3 قطع» أو «زدتِ قطعتين» يُرشد إلى
+     *   التصحيح، و«المجموع غير صحيح» يتركها تعدّ بنفسها.
+     */
+    function arvRenderSum(id) {
+        const out = el('arvSum_' + id);
+        if (!out) return;
+        const a = arrivals.find(x => x.id === id);
+        if (!a) return;
+        const { total, shops } = arvReadPlan(a);
+        if (total === 0) {
+            out.innerHTML = `<span style="color: var(--color-text-muted);">`
+                + `Type how many pieces go to each shop &mdash; <b>${a.pieces}</b> in total.</span>`;
+            return;
+        }
+        const diff = a.pieces - total;
+        if (diff === 0) {
+            out.innerHTML = `<span style="color: var(--color-success);">`
+                + `&#10003; All <b>${a.pieces}</b> piece(s) allocated`
+                + (shops.length > 1 ? ` across <b>${shops.length}</b> shops.` : ` to one shop.`)
+                + `</span>`;
+        } else if (diff > 0) {
+            out.innerHTML = `<span style="color: var(--color-danger);">`
+                + `<b>${diff}</b> piece(s) still not given to a shop `
+                + `(<b>${total}</b> of <b>${a.pieces}</b>).</span>`;
+        } else {
+            out.innerHTML = `<span style="color: var(--color-danger);">`
+                + `<b>${-diff}</b> piece(s) too many &mdash; you only have <b>${a.pieces}</b>.</span>`;
+        }
+    }
+
     function arvRenderLive(id) {
         const out = el('arvLive_' + id);
         if (!out) return;                     // شحنةٌ في الكتالوج سلفًا: لا خانةَ سعرٍ لها
@@ -3683,6 +3758,9 @@
                     //   تظهر لها، وهو الأسلم من إخفاء شيءٍ في المستودع.
                     status: v.status === ARRIVAL_SENT ? ARRIVAL_SENT : ARRIVAL_WAITING,
                     sentShop: String(v.sentShop || ''),
+                    // ⭐ التوزيعُ المُهيكَل. ⚠️ وغيابُه مقبولٌ: كلُّ شحنةٍ أُرسلت قبل
+                    //   هذه الميزة لا تحمله، ويبقى `sentShop` نصَّها المقروء.
+                    sentPlan: (v.sentPlan && typeof v.sentPlan === 'object') ? v.sentPlan : null,
                     sentPieces: Math.floor(Number(v.sentPieces || 0)) || 0,
                     sellingPrice: Number(v.sellingPrice || 0) || 0,
                     sentAt: String(v.sentAt || ''),
@@ -3766,9 +3844,9 @@
             //   التعبئة (القاعدةُ تسمح بالكمية والمقاس)، فيُقال ذلك قبل أن تكتب
             //   سعرًا تظنُّ أنه سيُطبَّق ثم لا يُطبَّق.
             const inCat = catProducts.find(p => p.id === a.productId);
-            const shopOpts = ABAYA_SHOPS.map(s =>
-                `<option value="${escapeHtml(s)}">${escapeHtml(s)}`
-                + `${isShopOpeningSoon(s) ? ' — opening soon' : ''}</option>`).join('');
+            // ⚠️ (حُذفت `shopOpts` هنا: كانت تبني خيارات المُنتقي الواحد الذي
+            //   استُبدل بخاناتِ التوزيع، فصارت تُبنى في كلِّ رسمٍ ولا يقرؤها أحد.
+            //   وكودٌ ميتٌ يبقى يُوهم القارئَ بعدي أنّ المُنتقيَ ما زال موجودًا.)
             const eid = escapeHtml(a.id);
             // ⚠️ الاسمُ هو العنوانُ إن وُجد، وإلّا فالنوعُ — وبطاقةٌ بلا عنوانٍ
             //   تبدو معطوبةً، ولا يُترك الباركودُ عنوانًا فهو ليس اسمًا يُقرأ.
@@ -3818,15 +3896,44 @@
                 ${sent
                     ? `<p class="adone">
                            <span class="ok">Sent</span><br>
-                           ${a.sentPieces} piece(s) went to <b style="font-family: inherit;">${escapeHtml(a.sentShop)}</b>
-                           and sell at <b>${money(a.sellingPrice)} QAR</b>.
+                           ${a.sentPieces} piece(s) went to
+                           <!-- ⚠️ التوزيعُ يُعرض سطرًا سطرًا إن وُجد، وإلّا فالنصُّ
+                                المحفوظ: شحناتٌ أُرسلت قبل هذه الميزة لا تحمل خطّةً. -->
+                           ${a.sentPlan
+                               ? `<br>` + Object.entries(a.sentPlan).map(([s, n]) =>
+                                     `<b style="font-family: inherit;">${escapeHtml(s)}</b>: <b>${n}</b>`).join('<br>')
+                               : `<b style="font-family: inherit;">${escapeHtml(a.sentShop)}</b>`}
+                           <br>and sell at <b>${money(a.sellingPrice)} QAR</b>.
                            ${m.profit ? `<br>That is <b>${money(m.profit)} QAR</b> profit a piece &mdash; ${m.marginPct}% of the price.` : ''}
                            ${a.sentAt ? `<br><span style="color: var(--color-text-muted);" dir="ltr">${escapeHtml(String(a.sentAt).replace('T', ' ').slice(0, 16))}</span>` : ''}
                        </p>`
                     : `<div class="aact">
+                           <!-- ⭐⭐⭐⭐⭐ تقسيمُ القطع على المحلات — بأمر المالك:
+                                «في بعض الأحيان توجد نفسُ القطعة أكثرَ من واحدة
+                                وتريد السيدة فاطمة توزيعَ القطع على المحلات،
+                                لذلك يجب إضافة هاته الميزة».
+                                ⚠️ كان هنا مُنتقٍ واحدٌ (select) فتذهب **كلُّ** القطع
+                                إلى محلٍّ واحد — فشحنةٌ فيها 10 قطع لا تُقسَّم إلّا
+                                بإرسالها عشرَ مرّات، وهو مستحيلٌ لأنّ الإرسال يقع
+                                مرّةً واحدةً ثم تُوسَم الشحنةُ «أُرسلت».
+                                ⚠️⚠️ وخانةُ عددٍ لكلِّ محلٍّ لا مُنتقٍ متعدّد: العددُ هو
+                                المعلومةُ المطلوبة، ومُنتقٍ متعدّدٌ يختار المحلات ثم
+                                يحتاج أعدادًا على أيِّ حال. -->
                            <div>
-                               <label for="arvShop_${eid}">Which shop</label>
-                               <select id="arvShop_${eid}">${shopOpts}</select>
+                               <span class="alabel">How many to each shop &mdash; كم لكلِّ محل</span>
+                               <div class="asplit">
+                                   ${ABAYA_SHOPS.map(s => `
+                                   <label>
+                                       <span>${escapeHtml(s)}${isShopOpeningSoon(s) ? ' — opening soon' : ''}</span>
+                                       <input type="number" min="0" step="1" inputmode="numeric"
+                                              id="arvQ_${eid}_${escapeHtml(abayaShopKey(s))}"
+                                              data-arvsplit="${eid}" value="0">
+                                   </label>`).join('')}
+                               </div>
+                               <!-- ⚠️ المجموعُ يُقرأ وهي تكتب: مجموعٌ لا يساوي قطعَ
+                                    الشحنة يُرفض عند الإرسال، ومعرفةُ ذلك **قبل**
+                                    الضغط أرحمُ من رسالةِ خطأٍ بعده. -->
+                               <p class="asum" id="arvSum_${eid}"></p>
                            </div>
                            ${inCat
                                ? `<p class="amsg" style="color: var(--color-info);">
@@ -3889,7 +3996,13 @@
         }).join('');
         // ⚠️ قراءةُ الربح تُرسم بعد بناء الشبكة: بطاقةٌ فيها سعرٌ مقترحٌ يجب أن
         //   تُظهر ربحَه **قبل** أن تلمس الخانة، وإلّا بدا السطرُ فارغًا بلا سبب.
-        rows.forEach(a => { if (a.status !== ARRIVAL_SENT) arvRenderLive(a.id); });
+        rows.forEach(a => {
+            if (a.status === ARRIVAL_SENT) return;
+            arvRenderLive(a.id);
+            // ⚠️ وسطرُ المجموع يُرسم مع البطاقة لا عند أوّل كتابة: بطاقةٌ تُفتح
+            //   بسطرٍ فارغٍ لا تقول كم قطعةً عليها أن توزّع.
+            arvRenderSum(a.id);
+        });
 
         el('arvNoteF').innerHTML = `<b>${rows.length}</b> shown`
             + (arvShowSent ? ' (waiting and already sent).' : ' waiting.')
@@ -3947,9 +4060,28 @@
             const m = el('arvMsg_' + id);
             if (m) { m.innerHTML = t; m.style.color = color || ''; }
         };
-        const shopEl = el('arvShop_' + id);
-        const shop = shopEl ? String(shopEl.value || '') : '';
-        if (!shop || !ABAYA_SHOPS.includes(shop)) { msg('Choose the shop first.', 'var(--danger-600, #B91C1C)'); return; }
+        /**
+         * ⭐⭐⭐⭐⭐ التوزيعُ على المحلات بدل محلٍّ واحد — بأمر المالك.
+         * ⚠️⚠️⚠️ والمجموعُ يجب أن يساوي قطعَ الشحنة **بالضبط**، لا أقلَّ ولا أكثر:
+         *   · أكثر = قطعٌ تُضاف إلى رفوفٍ لم تصل فعلًا، فيبيع النظامُ ما لا يوجد.
+         *   · أقلّ = قطعٌ تبقى بلا مكان، والشحنةُ تُوسَم «أُرسلت» فلا تعود تظهر لها
+         *     أبدًا — أي قطعٌ تضيع من الجرد بصمتٍ ولا أحدَ يعرف أين هي.
+         *   ولذلك يُرفض الإرسالُ ويُقال **الفرقُ بالرقم**، لا «خطأ في المجموع».
+         */
+        const { plan, total: planTotal, shops: planShops } = arvReadPlan(a);
+        if (!planShops.length) {
+            msg('Type how many pieces go to each shop first.', 'var(--danger-600, #B91C1C)');
+            return;
+        }
+        if (planTotal !== a.pieces) {
+            const d = a.pieces - planTotal;
+            msg(d > 0
+                ? `<b>${d} piece(s) have no shop yet.</b> You allocated ${planTotal} of ${a.pieces}. `
+                  + `Every piece must be given a shop &mdash; otherwise they vanish from the count.`
+                : `<b>${-d} piece(s) too many.</b> This shipment has only ${a.pieces}.`,
+                'var(--danger-600, #B91C1C)');
+            return;
+        }
 
         const inCat = catProducts.find(p => p.id === a.productId);
         // ⭐ قرارَاها — للعباية وحدَها. ولغيرها يبقيان فارغَين فلا يُكتب معنًى
@@ -3974,7 +4106,11 @@
                 return;
             }
         }
-        if (!confirm(`Send ${a.pieces} piece(s) of ${a.code} to ${shop}?`
+        // ⚠️ التأكيدُ يعرض التوزيعَ سطرًا سطرًا: «أرسل 10 قطع» لا تكفي حين تذهب
+        //   إلى ثلاثة محلاتٍ بأعدادٍ مختلفة — والخطأُ في رقمٍ واحدٍ يُصحَّح هنا
+        //   بضغطةِ إلغاء، وبعد الإرسال يُصحَّح في الكتالوج بيد المالك.
+        if (!confirm(`Send ${a.pieces} piece(s) of ${a.code}?\n\n`
+            + Object.entries(plan).map(([s, n]) => `  • ${s}: ${n} piece(s)`).join('\n')
             + (inCat
                 ? `\n\nIts price stays ${money(inCat.price)} QAR — restocking does not change a price.`
                 : `\n\nIt will sell for ${money(price)} QAR.`)
@@ -3988,7 +4124,9 @@
         arvBusy = id;
         renderArrivals();
         msg('Sending...', '');
-        const key = abayaShopKey(shop);
+        // نصٌّ مقروءٌ للتوزيع، يُحفظ في `sentShop` كي تبقى كلُّ الشاشات القديمة
+        // تقرأ شيئًا مفهومًا («GULF MALL 4 · VENDOME MALL 3») لا حقلًا فارغًا.
+        const planLabel = arvPlanLabel(plan);
         const who = (auth.currentUser && auth.currentUser.email) || '';
         const nowIso = new Date().toISOString();
         // ⚠️ تبليغُ البياعات قد يفشل وحدَه بينما القطعُ على الرفّ فعلًا — وهذه
@@ -4028,7 +4166,7 @@
             if (prodExists && !inCat) {
                 if (!confirm(`${a.code} is ALREADY in the catalogue at ${money(prodPrice)} QAR`
                     + ` — the list on this screen was out of date.\n\n`
-                    + `Sending will add ${a.pieces} piece(s) to ${shop} and KEEP that price`
+                    + `Sending will add ${a.pieces} piece(s) (${planLabel}) and KEEP that price`
                     + `${price > 0 ? `, so the ${money(price)} QAR you typed will not be used` : ''}.\n\n`
                     + `Continue?`)) {
                     msg('Nothing was sent.', 'var(--warning-600, #B45309)');
@@ -4039,8 +4177,13 @@
             // ---- (1) القفل: تُوسَم «أُرسلت» قبل أيّ كتابةٍ على الكتالوج
             await updateDoc(doc(db, ABAYA_ARRIVALS_COLL, id), {
                 status: ARRIVAL_SENT,
-                sentShop: shop,
-                sentPieces: a.pieces,
+                // ⚠️ `sentShop` يبقى **نصًّا مقروءًا** لا مصفوفة: تقرؤه شاشاتٌ عدّةٌ
+                //   سلفًا (جدولُ المالك، وبطاقتُها، ورسالةُ التأكيد). ولو صار كائنًا
+                //   لطبعت تلك الشاشاتُ «[object Object]» في وجه المالك.
+                sentShop: planLabel,
+                // ⭐ والتوزيعُ المُهيكَلُ في حقلٍ جديدٍ بجانبه، منه تُقرأ الأعداد.
+                sentPlan: plan,
+                sentPieces: planTotal,
                 sellingPrice: prodExists ? prodPrice : price,
                 sentAt: nowIso,
                 sentBy: who,
@@ -4053,10 +4196,13 @@
                 //   اللحظة لا تُلغى بإضافتنا، ولا نُلغي بيعتَها.
                 // ⚠️⚠️ ولا حقلَ غير qty وsize وupdatedAt: القاعدةُ ترفض غيرها منها،
                 //   وهو ما يمنعها من تغيير سعرِ شيءٍ على رفّ.
-                const patch = {
-                    ['qty.' + key]: increment(a.pieces),
-                    updatedAt: serverTimestamp()
-                };
+                // ⚠️⚠️ كميّةُ **كلِّ** محلٍّ في التوزيع تُزاد بحسّته في تحديثٍ واحد:
+                //   تحديثٌ واحدٌ لا ثلاثةٌ متتابعة، فلا يقع فشلٌ بعد نجاحٍ فتُزاد
+                //   كميّةُ محلَّين وتبقى الثالثةُ ناقصةً بلا أثرٍ ظاهر.
+                const patch = { updatedAt: serverTimestamp() };
+                Object.entries(plan).forEach(([s, n]) => {
+                    patch['qty.' + abayaShopKey(s)] = increment(n);
+                });
                 // ⚠️ المقاسُ يُحدَّث إن حملت الشحنةُ مقاسًا، و**لا يُمحى** إن لم تحمل:
                 //   شحنةٌ بلا مقاسٍ مكتوبٍ لا تعني أنّ المقاساتِ القديمةَ لم تبقَ.
                 if (a.size) patch.size = a.size;
@@ -4103,9 +4249,11 @@
                         imgUrl = '';
                     }
                 }
+                // ⚠️ كلُّ المحلات تُولد بصفرٍ ثمّ تُكتب حصّةُ كلِّ محلٍّ في التوزيع:
+                //   مفتاحٌ غائبٌ يُقرأ «غيرَ معروف» لا «صفرًا» في بعض الشاشات.
                 const qty = {};
                 ABAYA_SHOPS.forEach(s => { qty[abayaShopKey(s)] = 0; });
-                qty[key] = a.pieces;
+                Object.entries(plan).forEach(([s, n]) => { qty[abayaShopKey(s)] = n; });
                 await setDoc(doc(db, 'abaya_products', a.productId), {
                     code: a.code,
                     name: a.name || '',
@@ -4155,15 +4303,20 @@
              */
 
             // ---- (5) سطرُ الحركة باسمها
-            try {
-                await addDoc(collection(db, 'abaya_product_moves'), {
-                    productId: a.productId, code: a.code, name: a.name || '',
-                    shop, change: a.pieces,
-                    kind: 'arrived',
-                    by: who, byName: 'Mrs Fatima',
-                    at: nowIso, createdAt: serverTimestamp()
-                });
-            } catch (e) { console.error('Movement line failed (the pieces did go in):', e); }
+            // ⚠️⚠️ سطرُ حركةٍ **لكلِّ محلّ** لا سطرٌ واحدٌ للشحنة: سجلُّ الحركات هو
+            //   كيف يُتتبَّع رفُّ كلِّ محلٍّ على حدة، وسطرٌ واحدٌ بعشرِ قطعٍ على ثلاثةِ
+            //   محلاتٍ لا يُجيب «كم دخل جلف مول؟» — وهو أوّلُ سؤالٍ عند الجرد.
+            for (const [s, n] of Object.entries(plan)) {
+                try {
+                    await addDoc(collection(db, 'abaya_product_moves'), {
+                        productId: a.productId, code: a.code, name: a.name || '',
+                        shop: s, change: n,
+                        kind: 'arrived',
+                        by: who, byName: 'Mrs Fatima',
+                        at: nowIso, createdAt: serverTimestamp()
+                    });
+                } catch (e) { console.error('Movement line failed (the pieces did go in):', e); }
+            }
 
             /**
              * ---- (6) ⭐⭐⭐⭐⭐ مهمّةُ الرفّ: تُبلَّغ بياعاتُ المحلّ أنّ بضاعةً وصلت
@@ -4196,31 +4349,36 @@
              * ⚠️ وفشلُ هذه الخطوة **لا يُبطل الإرسال**: القطعُ صارت على الرفّ فعلًا
              *   وتُباع. فتُلتقط في try/catch مستقلٍّ كسطر الحركة، ويُقال لها ذلك.
              */
+            // ⚠️⚠️ ومهمّةُ رفٍّ **لكلِّ محلّ** بحسّته: بياعةُ جلف مول يجب أن تقرأ
+            //   «4 قطع» لا «10» — فالعشرةُ ليست عندها، وطباعةُ عشرِ لواصقَ لأربع
+            //   قطعٍ خطأٌ يُكتشف على الرفّ.
             try {
-                await addDoc(collection(db, ABAYA_SHELF_TASKS_COLL), shelfTaskPayload({
-                    a, shop, pieces: a.pieces,
-                    price: prodExists ? prodPrice : price,
-                    tone, canOrder, isAb,
-                    hasImage: prodExists ? prodHasImage : a.hasImage,
-                    nowIso
-                }));
+                for (const [s, n] of Object.entries(plan)) {
+                    await addDoc(collection(db, ABAYA_SHELF_TASKS_COLL), shelfTaskPayload({
+                        a, shop: s, pieces: n,
+                        price: prodExists ? prodPrice : price,
+                        tone, canOrder, isAb,
+                        hasImage: prodExists ? prodHasImage : a.hasImage,
+                        nowIso
+                    }));
+                }
             } catch (e) {
                 // ⚠️ يُقال صريحًا: القطعُ على الرفّ، والتبليغُ وحدَه لم يُكتب.
                 console.error('The shelf task was not created (the pieces DID go in):', e);
                 shelfTaskFailed = true;
             }
 
-            msg(`<b>Done.</b> ${a.pieces} piece(s) of ${escapeHtml(a.code)} are now in `
-                + `<b>${escapeHtml(shop)}</b> at ${money(prodExists ? prodPrice : price)} QAR.`
-                + ` The owner sees it in his panel.`
+            msg(`<b>Done.</b> ${a.pieces} piece(s) of ${escapeHtml(a.code)} are now on the shelves at `
+                + `${money(prodExists ? prodPrice : price)} QAR:<br><b>${escapeHtml(planLabel)}</b>`
+                + `<br>The owner sees it in his panel.`
                 // ⚠️ التبليغُ يُذكر في الحالتين: نجاحُه ليكفَّ السؤالُ عنه، وفشلُه
                 //   لأنّ القطعَ على الرفّ ولن تعرف البياعاتُ أنّ عليهنّ عملًا.
                 + (shelfTaskFailed
-                    ? `<br><b>&#9888; But the shop was not told.</b> The pieces ARE on the shelf, yet the `
-                      + `&ldquo;new goods arrived&rdquo; note did not reach ${escapeHtml(shop)}&rsquo;s screen. `
+                    ? `<br><b>&#9888; But the shops were not told.</b> The pieces ARE on the shelves, yet the `
+                      + `&ldquo;new goods arrived&rdquo; note did not reach their screens. `
                       + `Tell them to print the barcode and shelve it, and tell the owner.`
-                    : `<br>${escapeHtml(shop)} now sees <b>new goods arrived</b> on their screen, with the `
-                      + `barcode to print.`),
+                    : `<br>Each of those shops now sees <b>new goods arrived</b> on their screen, with the `
+                      + `barcode to print and their own count.`),
                 'var(--success-600, #15803D)');
             /**
              * ⭐⭐⭐⭐⭐ «أيُّ بضاعةٍ وصلت وتمّ تسعيرُها تختفي أوتوماتيكيًّا من نافذة
@@ -4601,7 +4759,11 @@
     //   فيتوقّف الكتابةُ بعد كلِّ رقم. يُحدَّث سطرُ الربح وحدَه.
     el('arvGrid').addEventListener('input', (ev) => {
         const t = ev.target.closest('input[data-arvprice]');
-        if (t) arvRenderLive(t.getAttribute('data-arvprice'));
+        if (t) { arvRenderLive(t.getAttribute('data-arvprice')); return; }
+        // ⚠️ ومجموعُ التوزيع يُحدَّث مع كلِّ رقمٍ تكتبه — بنفس المستمع المُفوَّض،
+        //   فالبطاقاتُ تُبنى من جديدٍ في كلِّ رسمٍ ومستمعٌ على خانةٍ بعينها يضيع.
+        const q = ev.target.closest('input[data-arvsplit]');
+        if (q) arvRenderSum(q.getAttribute('data-arvsplit'));
     });
     el('arvSearchF').addEventListener('input', () => renderArrivals());
     el('arvRefresh').addEventListener('click', () => loadArrivals(true));

@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v20   (2026-09-24)  <<<
+//   >>>  RULES REVISION: v21   (2026-09-25)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,7 +12,7 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       abaya_shelf_tasks
+//       sentPlan
 //
 //   (This exact text exists nowhere in any earlier revision, which is the whole
 //    point of a marker. Every earlier marker is now useless for telling the
@@ -27,7 +27,7 @@ rules_version = '2';
 //    Always search for the marker named directly above, and when publishing a
 //    new revision, change that name to something introduced by it.)
 //
-//   FOUND     -> v20 is live. Good.
+//   FOUND     -> v21 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -45,6 +45,28 @@ rules_version = '2';
 // exact mistake happened with the "(v4)" label, which never changed across
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
+//
+//  v21  2026-09-25  + sentPlan — ONE SHIPMENT SPLIT ACROSS SEVERAL SHOPS.
+//                     PUBLISH v21 — it contains v16..v20 in full.
+//
+//                     The owner: "sometimes the same piece exists more than once
+//                     and Mrs Fatima wants to distribute the pieces across the
+//                     shops, so this feature must be added."
+//
+//                     Her dispatch used to send ALL of a shipment's pieces to ONE
+//                     shop. It now carries a map — { 'GULF MALL': 4, 'VENDOME
+//                     MALL': 3, ... } — written to `sentPlan`, which is the single
+//                     key added to her update grant.
+//
+//                     ⚠️ `sentShop` is UNCHANGED and still a readable string
+//                     ("GULF MALL 4 · VENDOME MALL 3"), because several screens
+//                     already print it and would have shown "[object Object]".
+//                     The structured figures live in the new field beside it.
+//
+//                     ⚠️ Nothing else widened. 'price' and 'discountPrice' are
+//                     still absent from every grant of hers, the double-dispatch
+//                     lock (status != 'sent') is untouched, and the kiosk gains
+//                     nothing at all.
 //
 //  v20  2026-09-24  + abaya_shelf_tasks — TELLING THE SHOP THAT GOODS ARRIVED.
 //                     PUBLISH v20 — it contains v16..v19 in full.
@@ -1129,7 +1151,7 @@ service cloud.firestore {
         || (isViewer()
             && resource.data.get('status', 'waiting') != 'sent'
             && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['status', 'sentShop', 'sentPieces', 'sellingPrice',
+                 .hasOnly(['status', 'sentShop', 'sentPlan', 'sentPieces', 'sellingPrice',
                            'sentAt', 'sentBy', 'updatedAt']));
     }
 
