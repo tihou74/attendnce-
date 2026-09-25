@@ -1441,6 +1441,34 @@
     //
     // يوم الافتتاح: يُحذف اسمه من هذه القائمة وحدها — لا شيء غيرها.
     const ABAYA_SHOPS_OPENING_SOON = ['WEST WALK'];
+    /**
+     * ⭐⭐⭐⭐⭐ محلاتُ حلقةِ فلوريندا — بأمر المالك بالحرف.
+     *
+     * «إذا كانت البضاعة الجديدة موجَّهة إلى جلف مول أو فندوم أو فيستفال فأوّلُ
+     *  شيءٍ يجب أن يظهر الميساج إلى فلوريندا فقط».
+     *
+     * ⚠️⚠️ ووست ولك **ليس فيها** بنصّه الصريح: «الوست ولك بروحه يبقى مثل ما هو».
+     *   فبضاعتُه تذهب إلى رفّه في نفس اللحظة كما كانت تمامًا. ومن يُضيفه إلى هذه
+     *   القائمة يُخالف نصَّ المالك.
+     * ⚠️ وقائمةٌ صريحةٌ لا «كلُّ المحلات إلّا وست ولك»: محلٌّ رابعٌ يُفتح غدًا
+     *   سيدخل الحلقةَ بلا قرارٍ من أحد، والحلقةُ قرارُ إدارةٍ لا نتيجةُ طرح.
+     */
+    const ABAYA_FLORINDA_SHOPS = ['GULF MALL', 'VENDOME MALL', 'DOHA FESTIVAL CITY'];
+    const shopViaFlorinda = (shop) => ABAYA_FLORINDA_SHOPS.includes(String(shop || ''));
+    /**
+     * تقسيمُ توزيعِ السيدة فاطمة إلى ما يذهب الآن وما يتوقّف عند فلوريندا.
+     * ⚠️ مصدرٌ واحدٌ للقسمة تقرؤه الكميّةُ وسطرُ الحركةِ ومهمّةُ الرفِّ والرسالةُ
+     *   معًا: أربعةُ مواضعَ تُقسّم كلٌّ منها بنفسها تعني أنّ واحدًا منها يُنسى
+     *   يومًا، فتُزاد كميّةُ محلٍّ لم تصله بضاعتُه بعد.
+     */
+    function planSplitStage(plan) {
+        const now = {}, later = {};
+        Object.entries(plan || {}).forEach(([s, n]) => {
+            (shopViaFlorinda(s) ? later : now)[s] = n;
+        });
+        const sum = (o) => Object.values(o).reduce((a, b) => a + (Number(b) || 0), 0);
+        return { now, later, nowTotal: sum(now), laterTotal: sum(later) };
+    }
     /** هل هذا المحل مُجهَّزٌ ولم يُفتح؟ */
     const isShopOpeningSoon = (shop) => ABAYA_SHOPS_OPENING_SOON.includes(String(shop || ''));
     const ABAYA_ITEMS = [
@@ -1671,7 +1699,7 @@
      * ⚠️ والسعرُ هو **سعرُ الرفّ الفعليّ**: سعرُها للتصميم الجديد، وسعرُ الكتالوج
      *   القائمِ لإعادة التعبئة — فاللاصقُ الذي تطبعه البياعةُ يطابق ما سيُحصَّل.
      */
-    function shelfTaskPayload({ a, shop, pieces, price, tone, canOrder, isAb, hasImage, nowIso }) {
+    function shelfTaskPayload({ a, shop, pieces, price, tone, canOrder, isAb, hasImage, nowIso, stage }) {
         return {
             productId: String(a.productId || ''),
             // ⚠️ الباركودُ أهمُّ حقلٍ هنا: المهمّةُ نفسُها «يجب طباعة الباركود».
@@ -1689,6 +1717,17 @@
             pieces: Math.floor(Number(pieces)) || 0,
             hasImage: hasImage === true,
             sentAt: String(nowIso || ''),
+            /**
+             * ⭐⭐⭐⭐⭐ المرحلة — أين القطعُ الآن.
+             *   with_florinda  عندها، **ليست على رفٍّ**، ولا تراها بياعةُ المحلّ.
+             *   at_shops       في المحلّ، ويُطالَب بطباعة الباركود وترتيبها.
+             * ⚠️ تُكتب صريحةً دائمًا ولا تُترك للغياب: شاشةُ البياعة تقرأ الغيابَ
+             *   `at_shops` (كي لا تختفي مهمّاتُ ما قبل الميزة)، فمهمّةٌ لفلوريندا
+             *   كُتبت بلا مرحلةٍ كانت ستظهر للمحلّ فورًا — أي تُلغى الحلقةُ بصمت.
+             * ⚠️ وقيمتُها من دالّةٍ واحدةٍ (`shopViaFlorinda`) لا من شرطٍ مكتوبٍ هنا:
+             *   قائمةُ المحلات قرارُ إدارةٍ في موضعٍ واحد.
+             */
+            stage: stage === 'with_florinda' ? 'with_florinda' : 'at_shops',
             // ⚠️ حالةُ الإنجاز تُولد مكتوبةً لا غائبة: حقلٌ غائبٌ يُقرأ «غير منجَز»
             //   على شاشةٍ وقد يُقرأ خطأً على أخرى، والصريحُ لا يُختلف فيه.
             done: false,
@@ -4073,6 +4112,21 @@
             msg('Type how many pieces go to each shop first.', 'var(--danger-600, #B91C1C)');
             return;
         }
+        /**
+         * ⭐⭐⭐⭐⭐ حلقةُ فلوريندا — هي من تستقبل البضاعةَ **قبل** الرفوف.
+         *
+         * ⚠️⚠️⚠️ وهذا هو الفرقُ الجوهريُّ كلُّه: حصّةُ جلف وفندوم وفيستفال **لا
+         *   تُزاد على أيِّ رفٍّ الآن**. تُكتب مهمّةٌ بمرحلة `with_florinda`، والقطعُ
+         *   تُحسب «عند فلوريندا» حتى تضغط هي «وزّعت» — فحينها فقط تُزاد الكميّة.
+         *   ولو زِيدت هنا لظهرت القطعةُ في كتالوج بياعةٍ **لم تصلها القطعةُ بعد**،
+         *   فتبيع ما ليس على رفّها. وهو بعينه ما أمر المالكُ بمنعه.
+         *
+         * ⚠️ ووست ولك يبقى مباشرًا بنصّه، فيُزاد رفُّه في هذه اللحظة كما كان.
+         *
+         * ⚠️ ولو لم يكن أحدٌ مُعيَّنًا للتوزيع بعد فالقطعُ **تنتظر ولا تضيع**: يضع
+         *   المالكُ العلَمَ في أيِّ وقتٍ فتظهر لها. لا شيءَ يُفقد، ولا كتابةَ تُعاد.
+         */
+        const stage = planSplitStage(plan);
         if (planTotal !== a.pieces) {
             const d = a.pieces - planTotal;
             msg(d > 0
@@ -4199,8 +4253,11 @@
                 // ⚠️⚠️ كميّةُ **كلِّ** محلٍّ في التوزيع تُزاد بحسّته في تحديثٍ واحد:
                 //   تحديثٌ واحدٌ لا ثلاثةٌ متتابعة، فلا يقع فشلٌ بعد نجاحٍ فتُزاد
                 //   كميّةُ محلَّين وتبقى الثالثةُ ناقصةً بلا أثرٍ ظاهر.
+                // ⚠️⚠️⚠️ `stage.now` لا `plan`: حصّةُ محلات حلقةِ فلوريندا **لا
+                //   تُزاد هنا بحال** — تُزاد لحظةَ ضغطها «وزّعت» من شاشتها. وزيادتُها
+                //   هنا تُظهر القطعةَ في كتالوج بياعةٍ لم تصلها البضاعةُ بعد.
                 const patch = { updatedAt: serverTimestamp() };
-                Object.entries(plan).forEach(([s, n]) => {
+                Object.entries(stage.now).forEach(([s, n]) => {
                     patch['qty.' + abayaShopKey(s)] = increment(n);
                 });
                 // ⚠️ المقاسُ يُحدَّث إن حملت الشحنةُ مقاسًا، و**لا يُمحى** إن لم تحمل:
@@ -4251,9 +4308,13 @@
                 }
                 // ⚠️ كلُّ المحلات تُولد بصفرٍ ثمّ تُكتب حصّةُ كلِّ محلٍّ في التوزيع:
                 //   مفتاحٌ غائبٌ يُقرأ «غيرَ معروف» لا «صفرًا» في بعض الشاشات.
+                // ⚠️⚠️ و`stage.now` هنا كذلك: التصميمُ الجديدُ يُولد بصفرٍ في محلات
+                //   حلقةِ فلوريندا، وتُكتب حصّتُها لحظةَ التوزيع. ولو وُلد بحصّته
+                //   لكان الفرقُ بين «وُجد سلفًا» و«جديد» يُنتج سلوكَين مختلفَين
+                //   لنفس الأمر — وهو أسوأُ أنواع الخلل: يعمل أحيانًا.
                 const qty = {};
                 ABAYA_SHOPS.forEach(s => { qty[abayaShopKey(s)] = 0; });
-                Object.entries(plan).forEach(([s, n]) => { qty[abayaShopKey(s)] = n; });
+                Object.entries(stage.now).forEach(([s, n]) => { qty[abayaShopKey(s)] = n; });
                 await setDoc(doc(db, 'abaya_products', a.productId), {
                     code: a.code,
                     name: a.name || '',
@@ -4306,7 +4367,12 @@
             // ⚠️⚠️ سطرُ حركةٍ **لكلِّ محلّ** لا سطرٌ واحدٌ للشحنة: سجلُّ الحركات هو
             //   كيف يُتتبَّع رفُّ كلِّ محلٍّ على حدة، وسطرٌ واحدٌ بعشرِ قطعٍ على ثلاثةِ
             //   محلاتٍ لا يُجيب «كم دخل جلف مول؟» — وهو أوّلُ سؤالٍ عند الجرد.
-            for (const [s, n] of Object.entries(plan)) {
+            // ⚠️⚠️⚠️ و`stage.now` هنا أيضًا: سطرُ الحركةِ يقول «دخل رفَّ هذا المحلّ
+            //   كذا قطعة»، وكتابتُه لمحلٍّ لم تصله البضاعةُ بعد **كذبٌ في السجلّ**
+            //   الذي يُعتمد عليه في الجرد. وسطرُ محلات الحلقة تكتبه فلوريندا نفسُها
+            //   لحظةَ التوزيع باسمها هي (kind: 'distributed') — فيُقرأ من السجلّ من
+            //   نقل القطعَ فعلًا ومتى، لا من قسّمها على الورق.
+            for (const [s, n] of Object.entries(stage.now)) {
                 try {
                     await addDoc(collection(db, 'abaya_product_moves'), {
                         productId: a.productId, code: a.code, name: a.name || '',
@@ -4353,13 +4419,18 @@
             //   «4 قطع» لا «10» — فالعشرةُ ليست عندها، وطباعةُ عشرِ لواصقَ لأربع
             //   قطعٍ خطأٌ يُكتشف على الرفّ.
             try {
+                // ⚠️⚠️ ومهمّةٌ لكلِّ محلٍّ **من التوزيع كلِّه** (plan لا stage.now):
+                //   مهمّاتُ محلات الحلقة تُكتب بمرحلة `with_florinda` فلا تراها
+                //   بياعةُ المحلّ، وهي المستندُ الذي تقرؤه فلوريندا وتوزّع منه. فلو
+                //   لم تُكتب لَمَا رأت شيئًا إطلاقًا — والقطعُ تضيع بين اثنتين.
                 for (const [s, n] of Object.entries(plan)) {
                     await addDoc(collection(db, ABAYA_SHELF_TASKS_COLL), shelfTaskPayload({
                         a, shop: s, pieces: n,
                         price: prodExists ? prodPrice : price,
                         tone, canOrder, isAb,
                         hasImage: prodExists ? prodHasImage : a.hasImage,
-                        nowIso
+                        nowIso,
+                        stage: shopViaFlorinda(s) ? 'with_florinda' : 'at_shops'
                     }));
                 }
             } catch (e) {
@@ -4368,17 +4439,43 @@
                 shelfTaskFailed = true;
             }
 
-            msg(`<b>Done.</b> ${a.pieces} piece(s) of ${escapeHtml(a.code)} are now on the shelves at `
-                + `${money(prodExists ? prodPrice : price)} QAR:<br><b>${escapeHtml(planLabel)}</b>`
+            /**
+             * ⚠️⚠️⚠️ والرسالةُ تفصل الحالتين بالحرف، ولا تقول «على الرفوف» عن قطعٍ
+             *   ما زالت عند فلوريندا. وهذا ليس تجميلَ نصّ: السيدةُ فاطمة تقرأ هذه
+             *   الجملةَ ثمّ تفتح شاشةَ الستوك، فلو قيل لها «على الرفوف» ورأت رفَّ
+             *   جلف مول كما كان لظنّت الإرسالَ فاشلًا وأرسلت مرّةً ثانية.
+             */
+            const labelNow = arvPlanLabel(stage.now);
+            const labelLater = arvPlanLabel(stage.later);
+            msg(`<b>Done.</b> ${a.pieces} piece(s) of ${escapeHtml(a.code)} priced at `
+                + `${money(prodExists ? prodPrice : price)} QAR &mdash; <b>${escapeHtml(planLabel)}</b>`
+                + (stage.laterTotal
+                    ? `<br><b>${stage.laterTotal} piece(s) went to Florinda first</b> `
+                      + `(${escapeHtml(labelLater)}). They are <b>not on any shelf yet</b> &mdash; she prints the `
+                      + `encoding, then presses her button, and only then does each shop's count go up.`
+                    : '')
+                + (stage.nowTotal
+                    ? `<br><b>${stage.nowTotal} piece(s) went straight to the shelf</b> `
+                      + `(${escapeHtml(labelNow)}).`
+                    : '')
                 + `<br>The owner sees it in his panel.`
                 // ⚠️ التبليغُ يُذكر في الحالتين: نجاحُه ليكفَّ السؤالُ عنه، وفشلُه
                 //   لأنّ القطعَ على الرفّ ولن تعرف البياعاتُ أنّ عليهنّ عملًا.
+                // ⚠️⚠️ وفشلُه الآن **أثقلُ** من قبل: مهمّاتُ محلات فلوريندا هي
+                //   المستندُ الوحيدُ الذي تقرؤه للتوزيع، فبلا كتابتها لا ترى شيئًا
+                //   ولا أحدَ يعرف أين القطع. فيُقال ذلك بوضوحٍ لا بجملةٍ عامّة.
                 + (shelfTaskFailed
-                    ? `<br><b>&#9888; But the shops were not told.</b> The pieces ARE on the shelves, yet the `
-                      + `&ldquo;new goods arrived&rdquo; note did not reach their screens. `
-                      + `Tell them to print the barcode and shelve it, and tell the owner.`
-                    : `<br>Each of those shops now sees <b>new goods arrived</b> on their screen, with the `
-                      + `barcode to print and their own count.`),
+                    ? `<br><b>&#9888; But the notes were not written.</b>`
+                      + (stage.nowTotal
+                          ? ` The pieces for ${escapeHtml(labelNow)} ARE on the shelf, but their screens were not told.`
+                          : '')
+                      + (stage.laterTotal
+                          ? ` And <b>Florinda will not see the ${stage.laterTotal} piece(s)</b> waiting for her. `
+                            + `Send that shipment again, or hand them to her yourself.`
+                          : '')
+                      + ` Tell the owner.`
+                    : `<br>Each shop sees <b>new goods arrived</b> when the pieces reach it, with the barcode `
+                      + `to print and its own count.`),
                 'var(--success-600, #15803D)');
             /**
              * ⭐⭐⭐⭐⭐ «أيُّ بضاعةٍ وصلت وتمّ تسعيرُها تختفي أوتوماتيكيًّا من نافذة
