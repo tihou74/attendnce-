@@ -513,10 +513,108 @@
     .sait .wr { font-size: 11px; font-weight: 700; color: var(--color-danger); line-height: 1.45; }
     .sait .ok { font-size: 11px; font-weight: 700; color: var(--color-success); line-height: 1.45; }
     .sait button { width: auto; min-height: 38px; padding: 0 14px; font-size: 12px; margin-top: var(--space-2); }
+
+    /* =====================================================================
+       ⭐⭐⭐⭐⭐ تذكيرُ فلوريندا — شاشةٌ سوداءُ برسالةٍ ذهبيّة
+       ---------------------------------------------------------------------
+       بأمر المالك: «يجب أيضًا تذكيرُ فلوريندا بأنّ بضاعةً جديدةً وصلت بشاشةٍ
+       سوداءَ مع ميساجٍ بالذهبي».
+
+       ⚠️⚠️ وهذه **نفسُ** الشاشة المبنيّة في `balances.html` للسيدة فاطمة (v167)،
+          منقولةٌ بحرفها. **ولا تُخترع ألوانٌ من جديد** — قراراتُها مقيسةٌ لا
+          مزاجيّة، وإعادةُ اشتقاقها خطرُ رسوبٍ في التباين:
+       ⚠️ «سوداء» = `--ink-900` #0B1226، أغمقُ أسطحِ الهوية — لا أسودَ خامًّا.
+       ⚠️ والذهبُ نصًّا **على الكحليِّ فقط**: على الأبيض 3.08:1 فيرسب.
+          و`--gold-400` على #0B1226 = 8.63:1، وهو الاقترانُ الموثَّق.
+       ⚠️ ونصُّ الزرِّ الذهبيِّ **كحليٌّ** لا أبيض: الأبيضُ على الذهب 3.08:1 يرسب،
+          والكحليُّ 5.80:1 يمرّ. قاعدةٌ مكتوبةٌ في الهوية لا اختيار.
+       ⚠️ ولا تدرّجَ ولا لمعان: الحضورُ من اللونِ لا من الحيلة.
+       ===================================================================== */
+    .nw {
+        position: fixed; inset: 0; z-index: 120;
+        display: flex; align-items: center; justify-content: center; padding: var(--space-5);
+        background: var(--ink-900, #0B1226);
+    }
+    .nwbox { width: 100%; max-width: 460px; text-align: center; padding: var(--space-6) var(--space-5); }
+    /* الشعارُ في قرصٍ فاتحٍ بحدٍّ ذهبيّ: ملفُّه بخلفيةٍ بيضاءَ لا شفّافة، فعلى
+       الكحليِّ مباشرةً يظهر مربّعًا أبيضَ قاسيًا. */
+    .nwlogo {
+        width: 92px; height: 92px; object-fit: contain; display: block; margin: 0 auto;
+        background: var(--cream-50, #FDFBF6); border-radius: 50%;
+        border: 2px solid var(--gold-600, #A89060); padding: 10px;
+    }
+    .nwhello {
+        margin: var(--space-5) 0 0; font-size: var(--text-sm); font-weight: 700;
+        letter-spacing: .04em; color: var(--gold-600, #A89060);
+        line-height: var(--leading-arabic, 1.85);
+    }
+    /* ⭐ السطرُ الذهبيُّ — هو المقصودُ بـ«ميساج بالذهبي» */
+    .nwtitle {
+        margin: var(--space-2) 0 0; font-size: var(--text-2xl); font-weight: 800;
+        color: var(--gold-400, #CAAD73);
+        line-height: var(--leading-arabic, 1.85);
+    }
+    .nwmsg {
+        margin: var(--space-4) 0 0; font-size: var(--text-base);
+        color: var(--dark-text, #E8EDF6); line-height: var(--leading-arabic, 1.85);
+    }
+    .nwmsg b { color: var(--gold-400, #CAAD73); }
+    .nwmsgen {
+        margin: var(--space-4) 0 0; font-size: var(--text-sm);
+        color: var(--dark-text-dim, #9FB0CA); line-height: var(--leading-normal, 1.55);
+    }
+    .nwacts { margin-top: var(--space-6); display: flex; flex-direction: column; gap: var(--space-3); }
+    .nwgo {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-height: 50px; padding: 0 var(--space-5); border-radius: var(--radius-md);
+        background: var(--gold-600, #A89060); color: var(--ink-800, #0F172A);
+        font-size: var(--text-base); font-weight: 800; border: 0;
+        cursor: pointer; font-family: inherit; width: 100%;
+    }
+    .nwgo:hover { background: var(--gold-500, #B99E6A); }
+    .nwlater {
+        min-height: 44px; width: 100%; border-radius: var(--radius-md);
+        background: transparent; color: var(--dark-text-dim, #9FB0CA);
+        border: var(--border-hairline, 1px) solid var(--dark-border, #24314B);
+        font-size: var(--text-sm); font-weight: 700; cursor: pointer; font-family: inherit;
+    }
+    .nwlater:hover { color: var(--dark-text, #E8EDF6); border-color: var(--gold-600, #A89060); }
+
     .hidden { display: none !important; }
 </style>
 </head>
 <body>
+
+<!-- ==================================================================
+     ⭐⭐⭐⭐⭐ تذكيرُ فلوريندا — «شاشةٌ سوداءُ مع ميساجٍ بالذهبي»
+     ------------------------------------------------------------------
+     ⚠️ وقواعدُ ظهورِها هي نفسُها التي أُقرّت مع أوّل شاشةٍ في `balances.html`،
+        وتُعاد كما هي ولا تُخفَّف:
+      · تظهر **فقط إن كان هناك عملٌ ينتظر** — لا ترحيبٌ يوميٌّ بلا سبب، فشاشةٌ
+        تظهر كلَّ يومٍ بلا عملٍ تُدرَّب العينُ على إغلاقها، ثم تُغلق في اليوم
+        الذي تحمل عملًا فعلًا.
+      · **ولفلوريندا وحدَها** (`isDistributor`): بقيّةُ البياعات لا يرَينها بحال.
+      · **ثلاثُ طرقٍ للإغلاق**: الزرُّ الأساسيُّ · «لاحقًا» · وEscape. ونافذةٌ لا
+        تُغلق إلّا بزرٍّ صغيرٍ تحبس القارئَ على الهاتف.
+      · **والزرُّ الأساسيُّ يذهب إلى العمل** لا يُغلق فقط: يفتح قسمَ التوزيع.
+      · ومخصَّصةٌ بالاسم لصاحبتها.
+     ⚠️ **ومرّةً واحدةً لكلِّ دخول**: تظهر بعد اختيار المحلّ وقراءةِ ما ينتظرها،
+        ولا تعود بعد إغلاقها — والزرُّ وعدّادُه في شريط الأقسام يبقيان الطريقَ
+        الثاني الذي لا يعتمد عليها.
+     ================================================================== -->
+<div id="newsWelcome" class="nw hidden" role="dialog" aria-modal="true" aria-labelledby="nwTitle">
+    <div class="nwbox" id="nwBox">
+        <img class="nwlogo" id="nwLogo" src="./brand/al-sheikha-style-logo.png" alt="Al Sheikha Style">
+        <p class="nwhello" id="nwHello" dir="rtl">&mdash;</p>
+        <h2 class="nwtitle" id="nwTitle" dir="rtl">&mdash;</h2>
+        <p class="nwmsg" id="nwMsg" dir="rtl">&mdash;</p>
+        <p class="nwmsgen" id="nwMsgEn">&mdash;</p>
+        <div class="nwacts">
+            <button type="button" class="nwgo" id="nwGo">&#10148;&nbsp; <span id="nwGoLabel">Go to the goods</span></button>
+            <button type="button" class="nwlater" id="nwLater">Later &mdash; لاحقًا</button>
+        </div>
+    </div>
+</div>
 
 <div class="wrap">
     <header>
@@ -2963,6 +3061,10 @@
         flLoaded = false;
         flBusy = '';
         flError = '';
+        // ⚠️ والتذكيرُ يُصفَّر معه: الجهازُ مشترك، ومن تُسلّم الهاتفَ لغيرها ثم
+        //   عادت يجب أن تُذكَّر من جديد. والشاشةُ مغلقةٌ في كلِّ الأحوال.
+        nwShown = false;
+        if (el('newsWelcome')) nwClose();
         const p = el('flPanel'); if (p) p.classList.add('hidden');
         const g = el('flGrid'); if (g) g.innerHTML = '';
         const n = el('flNote'); if (n) n.innerHTML = '';
@@ -3007,6 +3109,9 @@
             snap.forEach(d => flTasks.push(shelfTaskFromDoc(d.id, d.data() || {})));
             flTasks.sort((a, b) => String(b.sentAt).localeCompare(String(a.sentAt)));
             flLoaded = true;
+            // ⚠️ التذكيرُ **بعد** القراءة لا قبلها: الحكمُ على «لا عملَ ينتظرها»
+            //   بقائمةٍ لم تُقرأ بعد يمنع الشاشةَ في كلِّ مرّة.
+            nwMaybeShow();
         } catch (e) {
             console.error('Could not read the goods waiting to be distributed:', e);
             // ⚠️ خطأُ الصلاحيّة يُقال لها هنا **بخلاف** قسم المحلّ: ذاك يظهر لكلِّ
@@ -3207,6 +3312,74 @@
         //   الصفحة. وفشلٌ جزئيٌّ يجب أن يُرى بصدقه.
         await loadFlorindaTasks(true);
     }
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ الشاشةُ السوداءُ بالرسالة الذهبيّة — تذكيرُ فلوريندا
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ لا تُبنى على إشارةٍ مخترعة: تظهر على **نفسِ** القائمة التي توزّع منها
+    //   (`flTasks`)، فما تراه الشاشةُ هو ما في القسم بالضبط. وشاشةٌ تنطلق على
+    //   إشارةٍ أخرى تُنبّهها في اللحظة الخطأ — فتُدرَّب على تجاهلها.
+    // =====================================================================
+    let nwShown = false;             // مرّةً واحدةً لكلِّ دخول
+
+    function nwClose() {
+        el('newsWelcome').classList.add('hidden');
+        // ⚠️ يُعاد تمريرُ الصفحة عند الإغلاق. ونسيانُ الإرجاع يترك الصفحةَ **لا
+        //   تتمرّر** بعدها — وهو عطلٌ سبق في هذا المشروع.
+        document.body.style.overflow = '';
+    }
+
+    /** ⚠️ تُنادى **بعد** قراءة قائمتها، وإلّا حُكم على «لا عملَ ينتظرها» بقائمةٍ فارغة. */
+    function nwMaybeShow() {
+        if (nwShown) return;
+        if (!sellerIsDistributor()) return;          // لفلوريندا وحدَها
+        // ⚠️ ولا تُغطّي العملَ الذي هي فيه: من كانت واقفةً في قسم التوزيع تراه
+        //   أمامها بالفعل، وشاشةٌ تعترضه تصير عقبةً لا تذكيرًا.
+        if (sellerView === 'distribute') return;
+        const groups = flGroups();
+        const pieces = groups.reduce((a, g) => a + g.total, 0);
+        if (!groups.length || pieces <= 0) return;   // لا عملَ ⇒ لا شاشة
+        nwShown = true;
+
+        // ⚠️ الاسمُ الأوّلُ وحدَه: «أهلًا وسهلًا FLORINDA REYES ALFONSO» ثقيلةٌ على
+        //   شاشةٍ صغيرة، والاسمُ الكاملُ مكتوبٌ بحروفٍ كبيرةٍ في ملفّها.
+        const first = String(state.sellerName || '').trim().split(/\s+/)[0] || '';
+        el('nwHello').textContent = first ? `أهلًا وسهلًا ${first}` : 'أهلًا وسهلًا';
+        el('nwTitle').textContent = groups.length === 1
+            ? 'وصلت بضاعةٌ جديدة'
+            : `وصلت ${groups.length} شحناتٍ جديدة`;
+        // ⚠️ رجاءٌ وشكرٌ لا أمر — نفسُ نبرةِ رسالةِ السيدة فاطمة بأمر المالك.
+        el('nwMsg').innerHTML =
+            `البضاعةُ جاهزةٌ عندكِ: <b>${pieces}</b> قطعة.<br>`
+            + `يُرجى التكرُّمُ بطباعةِ الانكودينق والسعر، ثمّ توزيعُها على المحلات `
+            + `حسب طلب السيدة فاطمة.<br>ولكِ جزيلُ الشكر.`;
+        el('nwMsgEn').textContent = groups.length === 1
+            ? `${pieces} piece(s) are ready for you to encode and send to the shops.`
+            : `${pieces} piece(s) in ${groups.length} shipments are ready for you to encode and send to the shops.`;
+        el('nwGoLabel').textContent = groups.length === 1
+            ? 'Go to the goods' : `Go to the ${groups.length} shipments`;
+
+        el('newsWelcome').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        el('nwLater').focus();
+    }
+
+    // ⚠️ الزرُّ الأساسيُّ **يذهب إلى العمل** لا يُغلق فقط: من ضغطت «نعم» ثم وجدت
+    //   نفسَها في نفس المكان تبحث عن القسم بيدها — والشاشةُ تصير عقبةً لا تذكيرًا.
+    el('nwGo').addEventListener('click', () => {
+        nwClose();
+        showSellerView('distribute');
+    });
+    el('nwLater').addEventListener('click', nwClose);
+    // الضغطُ خارج الصندوق يُغلق — كبقيّة نوافذ المشروع
+    el('newsWelcome').addEventListener('click', (ev) => {
+        if (!ev.target.closest('#nwBox')) nwClose();
+    });
+    document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape' && !el('newsWelcome').classList.contains('hidden')) nwClose();
+    });
+    // ⚠️ الشعارُ إن غاب ملفُّه يُخفى: صورةٌ مكسورةٌ وسطَ شاشةِ ترحيبٍ أسوأُ من لا شعار.
+    el('nwLogo').addEventListener('error', () => { el('nwLogo').style.display = 'none'; });
 
     el('flGrid').addEventListener('click', (ev) => {
         const b = ev.target.closest('button[data-fldist]');
