@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v19   (2026-09-24)  <<<
+//   >>>  RULES REVISION: v20   (2026-09-24)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,7 +12,7 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       abaya_presence
+//       abaya_shelf_tasks
 //
 //   (This exact text exists nowhere in any earlier revision, which is the whole
 //    point of a marker. Every earlier marker is now useless for telling the
@@ -23,10 +23,11 @@ rules_version = '2';
 //      "abaya-balances.html"        introduced in v12, still here in v13/v14/v15
 //      "manager_presence"           introduced in v13, still here in v14/v15
 //      "supervisor_presence"        introduced in v14, still here in v15
+//      "abaya_presence"             introduced in v13, was the marker for v15..v19
 //    Always search for the marker named directly above, and when publishing a
 //    new revision, change that name to something introduced by it.)
 //
-//   FOUND     -> v15 is live. Good.
+//   FOUND     -> v20 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -44,6 +45,48 @@ rules_version = '2';
 // exact mistake happened with the "(v4)" label, which never changed across
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
+//
+//  v20  2026-09-24  + abaya_shelf_tasks — TELLING THE SHOP THAT GOODS ARRIVED.
+//                     PUBLISH v20 — it contains v16..v19 in full.
+//
+//                     The owner: "when Mrs Fatima sets the price and everything,
+//                     it must appear in their panel that new goods have arrived,
+//                     the barcode must be printed and they must be arranged on
+//                     the shelves... and THE COST PRICE AND THE SUPPLIER ARE
+//                     FORBIDDEN TO THEM."
+//
+//                     ⚠️⚠️⚠️ THIS IS THE FIRST COLLECTION IN THIS FILE THAT THE
+//                     KIOSK MAY READ **AND** WRITE, and the kiosk is anonymous —
+//                     in practice anybody who opens the saleswomen's link. So it
+//                     is effectively a PUBLIC collection, and it is built as one:
+//
+//                       • No new access was granted on abaya_arrivals. That
+//                         document holds our USD purchase price, the shipping,
+//                         the labour and OUR SUPPLIER'S NAME, and Firestore
+//                         returns whole documents — so it stays refused to the
+//                         kiosk exactly as its own comment demands. Instead, the
+//                         dispatch COPIES a small, safe subset into this new
+//                         collection. The owner's prohibition and that older rule
+//                         are the same prohibition, approached from both ends.
+//
+//                       • The create rule REFUSES any document carrying a
+//                         purchase key (keys().hasAny([...])). That list is
+//                         mirrored in abaya-balances.html as SHELF_TASK_FORBIDDEN,
+//                         but THIS is the real guard: if I ever write `{...a}` by
+//                         mistake in a later change — one short, tidy-looking line
+//                         — the server rejects the write instead of quietly
+//                         publishing what we paid and who we bought it from.
+//
+//                       • The kiosk's update is ONE purpose only: ticking the job
+//                         as done (['done','doneAt','doneBy','doneByName']). It
+//                         cannot touch the price, the barcode or the shop. Worst
+//                         case somebody marks a shelf job done that was not done,
+//                         which is visible, reversible and recorded with who and
+//                         when — the same risk posture as abaya_product_moves,
+//                         where the kiosk has been allowed to create since v12.
+//
+//                       • No delete for anyone but the owner: a shelf job is the
+//                         record that a shipment reached a shop floor.
 //
 //  v19  2026-09-24  + ABAYA DETAIL FIELDS. PUBLISH v19 — it contains v16..v18.
 //                     For an ABAYA only: `fabric` (the owner types it on the
@@ -1104,6 +1147,52 @@ service cloud.firestore {
     match /abaya_arrival_images/{arrivalId} {
       allow read: if isAdmin() || isAccountant() || isViewer();
       allow write: if isAdmin() || isViewer();
+    }
+
+    // ---- abaya_shelf_tasks (the shop is told that goods arrived) ------------
+    // One document per DISPATCH. Created by Mrs Fatima's dispatch, read by the
+    // saleswomen of that shop: "new goods arrived — print the barcode and arrange
+    // them on the shelves", with the picture, the name, the fabric, the selling
+    // price, whether an order may be taken, and a gold or silver dot.
+    //
+    // ⚠️⚠️⚠️ THE KIOSK READS AND WRITES HERE, AND THE KIOSK IS ANONYMOUS — that is,
+    // anybody who opens the saleswomen's link. Treat this collection as PUBLIC.
+    // That is precisely why it exists: the owner ordered that the cost price and
+    // the supplier are FORBIDDEN to the saleswomen, and abaya_arrivals (which
+    // holds the dollars, the shipping, the labour and the supplier's name) must
+    // therefore stay refused to the kiosk — see its own rule above. So the
+    // dispatch copies a SAFE SUBSET here instead of widening that rule.
+    //
+    // ⚠️⚠️ THE CREATE CLAUSE IS THE REAL GUARD, not the page that writes it.
+    // hasAny([...]) rejects any document carrying a purchase key. The same list
+    // lives in abaya-balances.html as SHELF_TASK_FORBIDDEN, but a list in a page
+    // only holds until someone writes `{...arrival}` in a hurry — one short line
+    // that looks CLEANER than naming every field, and that would publish our
+    // purchase price and our supplier to everyone holding the link. Here the
+    // server refuses it. Keep the two lists in step; if they ever disagree, this
+    // one wins and a write fails loudly, which is the safe direction.
+    //
+    // ⚠️ THE KIOSK'S UPDATE IS THE DONE-TICK AND NOTHING ELSE: it cannot touch
+    // the price, the barcode, the shop or the count. The worst a stranger with the
+    // link can do is tick (or untick) a shelf job — visible, reversible, and
+    // stamped with which saleswoman and when. That is the same risk already
+    // accepted for abaya_product_moves, where the kiosk may create since v12.
+    //
+    // ⚠️ No update for the accountant (it is not a financial record) and no
+    // delete for anyone but the owner: this is the record that a shipment
+    // actually reached a shop floor.
+    match /abaya_shelf_tasks/{taskId} {
+      allow read: if isAdmin() || isAccountant() || isViewer() || isKiosk();
+      allow create: if (isAdmin() || isViewer())
+        && !request.resource.data.keys().hasAny(
+             ['cost', 'costPerPiece', 'supplier', 'source', 'unitUsd', 'usdRate',
+              'unitQar', 'shipping', 'labour', 'totalQar', 'suggestedPrice',
+              'profit', 'margin', 'marginPct', 'sentBy']);
+      allow update: if isAdmin()
+        || (isKiosk()
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['done', 'doneAt', 'doneBy', 'doneByName']));
+      allow delete: if isAdmin();
     }
 
     // NOTE: the discount-season switch (settings/abaya_discount) needs NO rule of

@@ -333,6 +333,81 @@
         font-size: var(--text-sm);
     }
     .cpsold button { width: auto; min-height: 36px; padding: 0 12px; font-size: 12px; }
+
+    /* ============ «وصلت بضاعة جديدة» — مهمّةُ الرفّ ============
+       ⚠️ كلُّ اسمٍ هنا داخل .sag أو .sait، على نفس قاعدة .cpcard/.cpg أعلاه: لا
+          اسمٌ عامٌّ يتعارض مع تنسيقٍ قائمٍ في هذه الصفحة. */
+    .sag { display: grid; gap: var(--space-3); grid-template-columns: 1fr; margin-top: var(--space-3); }
+    @media (min-width: 620px) { .sag { grid-template-columns: 1fr 1fr; } }
+    /* ⚠️ صفٌّ أفقيٌّ لا بطاقةٌ رأسيّة: الباركودُ يجب أن يُقرأ ويُطبَع، وبطاقةٌ
+       رأسيّةٌ ضيّقةٌ تُصغّره. الصورةُ يسارًا والتفاصيلُ بجانبها كبطاقة .cpcard. */
+    .sait {
+        display: flex; gap: var(--space-3); align-items: flex-start;
+        background: var(--color-surface-2); border: var(--border-hairline) solid var(--color-border);
+        border-inline-start: 3px solid var(--color-brand);
+        border-radius: var(--radius-md); padding: var(--space-3);
+    }
+    /* ⚠️ المنجَزةُ تُميَّز بالحافّة والوسم لا بشفافيّةٍ على الصفّ كلِّه: شفافيّةٌ على
+       الغلاف تُخفت النصَّ فيهبط تباينُه تحت الحدّ المقبول. */
+    .sait.done { border-inline-start-color: var(--color-success); background: var(--color-surface); }
+    .sait .im { position: relative; flex: 0 0 auto; line-height: 0; }
+    .sait .im img, .sait .im .noimg {
+        width: 96px; height: 120px; object-fit: cover; display: block;
+        border-radius: var(--radius-sm); background: var(--color-surface);
+        border: var(--border-hairline) solid var(--color-border);
+    }
+    .sait .im .noimg {
+        display: flex; align-items: center; justify-content: center; text-align: center;
+        font-size: 10.5px; font-weight: 700; color: var(--color-text-muted); line-height: 1.3;
+    }
+    /* ⭐⭐⭐⭐ الدائرةُ الذهبيّة/الفضّيّة — «تظهر أمام الصورة» بنصّ المالك.
+       ⚠️⚠️ حلقتانِ حولها عن ضرورةٍ لا زينة: الدائرةُ تقع على **صورةٍ** لا على
+          سطحٍ معلوم، فقد تكون الصورةُ بيضاءَ أو سوداءَ أو ذهبيّةً هي نفسُها.
+          فحلقةٌ بيضاءُ داخليّةٌ تفصلها عن صورةٍ داكنة، وحلقةٌ سوداءُ خارجيّةٌ
+          تفصلها عن صورةٍ فاتحة — فتُرى على أيِّ صورةٍ كانت.
+       ⚠️⚠️ ولونٌ وحدَه لا يكفي أبدًا: «ذهبي» و«فضي» يتقاربان في التدرّج الرمادي،
+          وبين النساء عمى ألوانٍ كما بين الرجال. فالنصُّ (Gold · ذهبي) مكتوبٌ
+          **دائمًا** بجانب الدائرة في جسم البطاقة، والدائرةُ زيادةٌ سريعةٌ للعين
+          لا المعلومةُ الوحيدة. ولذلك هي aria-hidden: النصُّ يحملها للقارئ الآليّ. */
+    .sait .tdot {
+        position: absolute; inset-block-start: 6px; inset-inline-start: 6px;
+        width: 26px; height: 26px; border-radius: 50%;
+        border: 2px solid #ffffff;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55), 0 1px 4px rgba(0, 0, 0, 0.45);
+    }
+    .sait .tdot.gold   { background: linear-gradient(145deg, #F4DCA4 0%, #C9A961 45%, #8A6E2F 100%); }
+    .sait .tdot.silver { background: linear-gradient(145deg, #FBFCFD 0%, #C4CBD1 45%, #7D858C 100%); }
+    .sait .tx { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; gap: 3px; }
+    /* ⚠️ الباركودُ أكبرُ ما في البطاقة بعد الصورة: المهمّةُ نفسُها «طباعةُ الباركود»،
+       وباركودٌ بحجم 11px يُنسخ خطأً. وLTR دائمًا — رقمٌ معكوسٌ لا يُقرأ. */
+    .sait .bc {
+        direction: ltr; unicode-bidi: embed; font-family: var(--font-mono, ui-monospace, monospace);
+        font-size: 17px; font-weight: 800; letter-spacing: 0.04em; line-height: 1.25;
+        user-select: all; -webkit-user-select: all;
+    }
+    .sait .nm { font-size: var(--text-sm); font-weight: 700; line-height: 1.4; }
+    .sait .ln { font-size: 11.5px; font-weight: 600; color: var(--color-text-muted); line-height: 1.45; }
+    .sait .ln b { color: var(--color-text); font-weight: 800; }
+    .sait .pr { font-size: var(--text-base); font-weight: 800; margin-top: 2px; }
+    .sait .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; }
+    .sait .tag {
+        display: inline-block; border-radius: var(--radius-pill, 999px); padding: 2px 9px;
+        font-size: 10.5px; font-weight: 800; letter-spacing: 0.02em;
+        background: var(--color-surface); border: var(--border-hairline) solid var(--color-border-strong);
+    }
+    /* ⚠️ «الأوردر» أخضرُ نصًّا لا خلفيّةً خضراءَ بنصٍّ أبيض: النصُّ الأبيضُ على
+       أخضرَ فاتحٍ يسقط تحت حدّ التباين، وهذا وسمٌ صغيرُ الخطّ أصلًا. */
+    .sait .tag.order { color: var(--color-success); border-color: var(--color-success); }
+    .sait .tag.tone { display: inline-flex; align-items: center; gap: 5px; }
+    .sait .tag.tone i {
+        width: 11px; height: 11px; border-radius: 50%; display: inline-block;
+        border: 1px solid rgba(0, 0, 0, 0.45);
+    }
+    .sait .tag.tone i.gold   { background: linear-gradient(145deg, #F4DCA4, #C9A961 55%, #8A6E2F); }
+    .sait .tag.tone i.silver { background: linear-gradient(145deg, #FBFCFD, #C4CBD1 55%, #7D858C); }
+    .sait .wr { font-size: 11px; font-weight: 700; color: var(--color-danger); line-height: 1.45; }
+    .sait .ok { font-size: 11px; font-weight: 700; color: var(--color-success); line-height: 1.45; }
+    .sait button { width: auto; min-height: 38px; padding: 0 14px; font-size: 12px; margin-top: var(--space-2); }
     .hidden { display: none !important; }
 </style>
 </head>
@@ -393,6 +468,43 @@
 
     <!-- ================= 3) النموذج ================= -->
     <div class="hidden" id="stepForm">
+
+        <!-- ==================================================================
+             ⭐⭐⭐⭐⭐ «وصلت بضاعة جديدة» — بأمر المالك
+             ------------------------------------------------------------------
+             «لما تضع السيدة فاطمة السعر وكلشي يظهر لهم في البانال أنه وصلت بضاعة
+             جديدة، يجب طباعة الباركود وترتيبها في الرفوف، وتظهر لهم صورة البضاعة
+             واسم البضاعة واسم القماش إن كان متوفّرًا وسعر البيع وإذا يمكن أخذ
+             أوردر، وإذا كانت العباية سيلفر تظهر أمام الصورة دائرة ملوّنة باللون
+             الفضّي وإذا كانت ذهبي تظهر دائرة ملوّنة باللون الذهبي — وممنوع عليهم
+             سعر الكوست والسبلاير».
+
+             ⚠️⚠️ وموضعُها **أوّلَ** ما في الشاشة بعد اختيار المحل، فوق البصمة
+             وفوق كلِّ شيء: هذا عملٌ يجب أن يُرى لحظةَ الدخول لا أن يُبحَث عنه
+             أسفلَ نموذجٍ طويل. وتختفي تمامًا إن لم يكن هناك شيءٌ وصل — لوحةٌ
+             تقول «لا شيء» كلَّ يومٍ على هاتفٍ صغير ضجيجٌ يُدرَّب على تجاهله.
+
+             ⚠️⚠️ وشاشتُها تعرض **محلَّها اليوم وحدَه**: الجهازُ مشترك، والبياعةُ
+             لا تعمل في محلٍّ ثابت (قرار الإدارة). فمهمّةُ رفٍّ في محلٍّ آخر ليست
+             عملَها، وعرضُها يجعلها تطبع باركودًا لبضاعةٍ ليست عندها.
+
+             ⚠️⚠️⚠️ ولا كوستَ ولا مورّدَ في هذا القسم بحال — بنصّ المالك. وهي
+             مقروءةٌ من مجموعةٍ لا تحمل أيًّا منهما أصلًا، **وقاعدةُ فايرستور
+             ترفض** إنشاءَ مستندٍ فيها يحمل حقلًا من حقول الشراء. فالمنعُ في
+             الخادم لا في هذه الصفحة وحدَها.
+             ================================================================== -->
+        <div class="panel hidden" id="saPanel">
+            <h2 id="saTitle">New goods arrived</h2>
+            <p class="ar">Print the barcode and arrange them on the shelves
+                <span dir="rtl">&mdash; اطبعي الباركود ورتّبيها في الرفوف</span></p>
+            <p class="status" id="saMsg" style="margin-top: var(--space-3);"></p>
+            <div class="sag" id="saGrid"></div>
+            <p class="note" id="saNote" style="margin-top: var(--space-3);"></p>
+            <div class="bar" style="margin-top: var(--space-3);">
+                <button class="ghost small" id="saToggleDone" style="width: auto;" aria-pressed="false">Show the ones already done</button>
+                <button class="ghost small" id="saRefresh" style="width: auto;">Refresh</button>
+            </div>
+        </div>
         <!-- ==================================================================
              ⭐⭐ البصمة — بطلب المالك: «يبصمون من نفس شاشة إرسال التقرير»
              ------------------------------------------------------------------
@@ -870,6 +982,38 @@
         const t = ABAYA_TONES.find(x => x.key === String(key || ''));
         return t ? `${t.en} · ${t.ar}` : '';
     }
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ «وصلت بضاعة جديدة» — مهمّةُ الرفّ
+    // ---------------------------------------------------------------------
+    // بأمر المالك: «لما تضع السيدة فاطمة السعر وكلشي يظهر لهم في البانال أنه وصلت
+    // بضاعة جديدة، يجب طباعة الباركود وترتيبها في الرفوف، وتظهر لهم صورة البضاعة
+    // واسم البضاعة واسم القماش إن كان متوفّرًا وسعر البيع وإذا يمكن أخذ أوردر،
+    // وإذا كانت العباية سيلفر تظهر أمام الصورة دائرة ملوّنة باللون الفضّي وإذا كانت
+    // ذهبي تظهر دائرة ملوّنة باللون الذهبي — **وممنوع عليهم سعر الكوست والسبلاير**».
+    //
+    // ⚠️⚠️⚠️ ولماذا مجموعةٌ جديدةٌ ولا تُقرأ `abaya_arrivals`: هذه الصفحة تدخل
+    //   **بحسابٍ مجهول**، أي أنّ كلَّ من يفتح الرابط يقرأ ما تقرؤه. ومستندُ الوصول
+    //   يحمل سعرَ الشراء بالدولار والشحنَ واليدَ العاملة و**اسمَ المورّد**، وفايرستور
+    //   يُعيد المستندَ كلَّه لا بعضَ حقوله. فقراءتُه هنا **هي بعينها** ما منعه
+    //   المالك. والقاعدةُ ترفض الكشكَ على الوصولات بنصٍّ صريح، ولم يُوسَّع.
+    //   فالسيدةُ فاطمة تنسخ عند الإرسال قدرًا آمنًا إلى `abaya_shelf_tasks`.
+    //
+    // ⚠️⚠️ ولا يوجد في هذه المجموعة كوستٌ ولا مورّدٌ ولا دولارٌ ولا شحنٌ ولا يدٌ
+    //   عاملة — **والقاعدةُ ترفض إنشاءَ مستندٍ يحمل أيًّا منها**، فالمنعُ في الخادم
+    //   لا في هذه الصفحة وحدَها.
+    //
+    // ⚠️ والصورةُ تُقرأ من `abaya_product_images` بمعرّف المنتج — وهي المجموعةُ
+    //   نفسُها التي يقرؤها الكتالوجُ سلفًا. فلا محمّلَ صورٍ ثانيًا يُصان، ولا
+    //   مجموعةَ صورٍ ثالثةً تُنسخ إليها الصور.
+    // =====================================================================
+    const ABAYA_SHELF_TASKS_COLL = 'abaya_shelf_tasks';
+    /**
+     * كم يومًا تبقى المهمّةُ **المنجَزةُ** معروضةً عند طلب عرضِ المنجَز.
+     * ⚠️ أمّا غيرُ المنجَزة فتبقى **بلا حدٍّ زمنيّ**: عملٌ لم يُنجَز لا يختفي بمرور
+     *   الوقت — باركودٌ لم يُطبَع بعد أسبوعين ما زال باركودًا لم يُطبَع.
+     */
+    const SHELF_DONE_SHOWN_DAYS = 14;
     // ⚠️ نصيب المحل من مبيعات شانتون، ونسبة رسوم البنك: **ليسا في هذه الصفحة**
     // عن قصد. قرار الإدارة أن البياعة لا ترى ذلك، والصفحة مجهولة الدخول فأي
     // رقم فيها مقروءٌ لكل من يفتح الرابط. مكانهما admin.html وحده.
@@ -1530,6 +1674,9 @@
         // أن ينقص من **محلّها اليوم**. وعبايةٌ وُجدت في محلٍّ سابق لا يجوز أن
         // تبقى مُختارةً بعد الانتقال إلى محلٍّ آخر.
         resetCatalogSell();
+        // ⭐⭐ ومهمّاتُ الرفّ تُصفَّر معه ولنفس السبب بالحرف: الجهازُ مشترك، ومهمّةُ
+        //   محلٍّ سابقٍ تبقى على الشاشة فتُطبع باركوداتُ بضاعةٍ ليست هنا.
+        resetShelfTasks();
         showStep('stepForm');
         // ⭐ حالة البصمة تُقرأ بعد ظهور الشاشة لا قبلها: قراءةٌ من الشبكة لا يجوز
         // أن تُبطئ ظهور النموذج، وهي لا تمنع شيئًا إن تأخّرت.
@@ -1542,6 +1689,11 @@
         // العادي في عزّ الموسم. وهذه قراءةٌ خفيفة (أسماءٌ وأسعارٌ بلا صور) وتُقرأ
         // مرّةً واحدة لهذه الجلسة، ولا تمنع ظهور النموذج لأنها بلا await.
         loadSellerCatalog();
+        // ⭐⭐⭐⭐ «وصلت بضاعة جديدة» — تُقرأ لمحلّها الآن، وبلا await كذلك: تبليغٌ
+        //   لا يجوز أن يُبطئ ظهورَ نموذج التقرير، ولا أن يمنعه إن فشل.
+        // ⚠️ وبـforce دائمًا: هي تُعيد اختيارَ المحلّ في كلّ تقرير، والسيدةُ فاطمة
+        //   قد أرسلت شحنةً قبل دقيقة — فقائمةٌ محفوظةٌ من فتحةٍ سابقةٍ تُخفي عملًا.
+        loadShelfTasks(true);
     }
     el('btnBackShop').addEventListener('click', () => showStep('stepShop'));
 
@@ -1673,6 +1825,11 @@
             // ⚠️ ولا يُعطَّل التقرير بحال: قسمٌ لا يُقرأ لا يمنعها من إرسال يومها.
             setMsg('cpMsg', 'The abaya list could not be read just now. Your daily report still works normally.', 'warn');
         }
+        // ⚠️⚠️ مهمّاتُ الرفّ تُرسم من جديدٍ بعد قراءة الكتالوج: بطاقتُها تُظهر سعرَ
+        //   الكتالوج **الحيّ** (ووسمَ الخصم)، وقبل هذه القراءة لا تعرف إلّا السعرَ
+        //   المحفوظَ على المهمّة. والقراءتان تنطلقان معًا من pickShop بلا await،
+        //   فأيُّهما سبقت الأخرى — ولذلك تُرسم مرّةً هنا ومرّةً هناك.
+        if (saTasks.length) renderShelfTasks();
     }
 
     // ---- البحث بالباركود -------------------------------------------------
@@ -1852,6 +2009,263 @@
         }, { rootMargin: '300px' });
         imgs.forEach(i => { if (i.dataset.cpDone !== '1') obs.observe(i); });
     }
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ «وصلت بضاعة جديدة» — قراءةُ مهمّاتِ الرفّ وعرضُها
+    // ---------------------------------------------------------------------
+    // ⚠️ لا يكتب هذا القسمُ في أيِّ مجموعةٍ غير `abaya_shelf_tasks`، ولا يمسّ
+    //   التقريرَ اليوميَّ بحرف، ولا كميّةَ رفٍّ، ولا ريالًا واحدًا. فلو تعطّل
+    //   كاملًا لأرسلت البياعةُ يومَها كما كانت تفعل بالحرف.
+    // =====================================================================
+    let saTasks = [];
+    let saLoaded = false;
+    let saShowDone = false;
+    let saBusy = '';
+    let saError = '';
+
+    /** يُعيد القسمَ إلى الصفر — يُنادى عند تغيير المحل (الجهاز مشترك). */
+    function resetShelfTasks() {
+        saTasks = [];
+        saLoaded = false;
+        saShowDone = false;
+        saBusy = '';
+        saError = '';
+        const t = el('saToggleDone');
+        if (t) { t.setAttribute('aria-pressed', 'false'); t.textContent = 'Show the ones already done'; }
+        el('saPanel').classList.add('hidden');
+        el('saGrid').innerHTML = '';
+        el('saNote').innerHTML = '';
+        setMsg('saMsg', '', '');
+    }
+
+    /**
+     * ⚠️ ترشيحٌ بالمحل **في الخادم**: مهمّةُ رفٍّ في محلٍّ آخر ليست عملَها، وعرضُها
+     *   يجعلها تطبع باركودًا لبضاعةٍ ليست عندها. وقراءةُ المجموعة كلِّها تُنزّل
+     *   مهمّاتِ أربعةِ محلاتٍ على بيانات هاتفها بلا داعٍ.
+     * ⚠️⚠️ وبلا orderBy: فايرستور **يُسقط بصمتٍ** كلَّ مستندٍ لا يحمل الحقلَ
+     *   المرتَّبَ به — فمهمّةٌ بلا تاريخٍ تختفي ولا يُرمى خطأ. الترتيبُ محليّ.
+     *   (وهذا الدرسُ مكتوبٌ في هذا الملفّ مرّتين سلفًا، فلا يُعاد تعلُّمه.)
+     */
+    async function loadShelfTasks(force) {
+        if (!state.shop) return;
+        if (saLoaded && !force) { renderShelfTasks(); return; }
+        saError = '';
+        try {
+            const snap = await getDocs(query(collection(db, ABAYA_SHELF_TASKS_COLL),
+                                             where('shop', '==', state.shop)));
+            saTasks = [];
+            snap.forEach(d => {
+                const v = d.data() || {};
+                saTasks.push({
+                    id: d.id,
+                    productId: String(v.productId || ''),
+                    code: String(v.code || ''),
+                    name: String(v.name || ''),
+                    type: String(v.type || ''),
+                    size: String(v.size || ''),
+                    fabric: String(v.fabric || ''),
+                    tone: String(v.tone || ''),
+                    canOrder: v.canOrder === true,
+                    price: Number(v.price || 0) || 0,
+                    pieces: Math.floor(Number(v.pieces || 0)) || 0,
+                    hasImage: v.hasImage === true,
+                    sentAt: String(v.sentAt || ''),
+                    // ⚠️ أيُّ قيمةٍ غير true تُقرأ «لم يُنجَز»: عملٌ لم يُنجَز يظهر،
+                    //   وهو الأسلمُ من إخفاء مهمّةٍ مطلوبة.
+                    done: v.done === true,
+                    doneByName: String(v.doneByName || ''),
+                    doneAt: String(v.doneAt || '')
+                });
+            });
+            saTasks.sort((a, b) => String(b.sentAt).localeCompare(String(a.sentAt)));
+            saLoaded = true;
+        } catch (e) {
+            console.error('Could not read the shelf tasks:', e);
+            // ⚠️⚠️ الخطأُ **يُعرض** ولا يُصمت عليه: لو صمت القسمُ لظنّ المالكُ أنّ
+            //   الميزةَ لم تُبنَ، ولظنّت البياعةُ أنّ لا شيءَ وصل. والقسمُ لا يُعطّل
+            //   التقريرَ اليوميَّ بحال — نفسُ قاعدةِ الكتالوج أعلاه بالحرف.
+            saError = /permission/i.test(String(e && e.message))
+                ? 'The new rules (v20) have not been published yet, so "new goods arrived" cannot be read. '
+                  + 'Tell the owner. Your daily report still works normally.'
+                : 'The "new goods arrived" list could not be read just now. Your daily report still works normally.';
+        }
+        renderShelfTasks();
+    }
+
+    /**
+     * أيُّ المهمّاتِ تُعرض.
+     * ⚠️ غيرُ المنجَزة تبقى **بلا حدٍّ زمنيّ**: باركودٌ لم يُطبَع منذ أسبوعين ما
+     *   زال باركودًا لم يُطبَع، وإخفاؤه بمرور الوقت يُخفي عملًا مطلوبًا.
+     * ⚠️ وتاريخٌ لا يُفهم (مستندٌ قديمٌ أو حقلٌ فارغ) **يُعرض** لا يُخفى.
+     */
+    function shelfRows() {
+        const cutoff = Date.now() - SHELF_DONE_SHOWN_DAYS * 86400000;
+        return saTasks.filter(t => {
+            if (!t.done) return true;
+            if (!saShowDone) return false;
+            const at = Date.parse(t.doneAt || t.sentAt || '');
+            return !isFinite(at) || at >= cutoff;
+        });
+    }
+
+    /** بطاقةُ مهمّةٍ واحدة. */
+    function saCard(t) {
+        // ⚠️⚠️ السعرُ المعروضُ هو سعرُ **الكتالوج الحيّ** لا السعرُ المحفوظ على
+        //   المهمّة: لو غيّر المالكُ السعرَ بعد الوصول، فلاصقٌ يُطبع بالسعر القديم
+        //   يعني قطعةً تُباع بأقلَّ مما قُرّر. والمحفوظُ يبقى احتياطًا إن لم يُقرأ
+        //   الكتالوجُ بعد، ويُقال الفرقُ صريحًا إن وُجد.
+        const live = cpLoaded ? cpProducts.find(p => p.id === t.productId) : null;
+        const disc = !!(live && cpSeasonOn && cpHasDiscount(live));
+        const priceNow = live ? cpShownPrice(live) : t.price;
+        const changed = !!(live && Math.abs(Number(live.price || 0) - t.price) > CENT);
+        const gone = cpLoaded && !live;
+        // ⚠️ النغمةُ تُقبل من قائمةٍ مغلقةٍ فقط: قيمةٌ غريبةٌ في المستند لا تُنتج
+        //   صنفَ CSS غيرَ موجودٍ فتظهر دائرةٌ بلا لون.
+        const tone = (t.tone === 'gold' || t.tone === 'silver') ? t.tone : '';
+        const eid = escapeHtml(t.id);
+        const when = String(t.doneAt || '').replace('T', ' ').slice(0, 16);
+
+        let s = `<div class="sait${t.done ? ' done' : ''}">`;
+        s += `<div class="im">`
+            + (t.hasImage
+                // ⚠️⚠️ نفسُ السمة data-cpimg وذاتُ المحمّل: الصورةُ في
+                //   `abaya_product_images` بمعرّف المنتج — وهي التي يقرؤها
+                //   الكتالوجُ سلفًا. فلا محمّلَ صورٍ ثانيًا يُصان، والذاكرةُ
+                //   المؤقّتة (cpImages) مشتركةٌ فلا تُنزّل الصورةُ مرّتين.
+                ? `<img data-cpimg="${escapeHtml(t.productId)}" alt="${escapeHtml(t.name || t.code)}">`
+                : `<span class="noimg">No<br>picture</span>`)
+            + (tone ? `<span class="tdot ${tone}" aria-hidden="true"></span>` : '')
+            + `</div>`;
+        s += `<div class="tx">`;
+        s += `<span class="bc">${escapeHtml(t.code)}</span>`;
+        if (t.name) s += `<span class="nm">${escapeHtml(t.name)}</span>`;
+        if (t.type) s += `<span class="ln">${escapeHtml(cpTypeLabel(t.type))}</span>`;
+        // ⚠️ «اسم القماش إن كان متوفّرًا» بنصّ المالك — ففراغُه حالةٌ صحيحةٌ لا نقص.
+        if (t.fabric) s += `<span class="ln">Fabric &mdash; القماش: <b>${escapeHtml(t.fabric)}</b></span>`;
+        if (t.size) s += `<span class="ln">Sizes: <b dir="ltr">${escapeHtml(t.size)}</b></span>`;
+        s += `<span class="ln"><b>${t.pieces}</b> piece(s) to put on the shelf</span>`;
+        s += `<span class="pr">${money(priceNow)} QAR`
+            + (disc ? ` <span class="ln" style="text-decoration: line-through; font-weight: 600;">${money(live.price)}</span>` : '')
+            + `</span>`;
+        if (changed) {
+            s += `<span class="wr">&#9888; The price changed after it was sent &mdash; print `
+               + `<b>${money(live.price)}</b> QAR, not ${money(t.price)}.</span>`;
+        }
+        if (gone) {
+            s += `<span class="wr">&#9888; This is not in the abaya list right now. `
+               + `Ask the owner before putting it out.</span>`;
+        }
+        s += `<span class="tags">`
+            + (tone ? `<span class="tag tone"><i class="${tone}"></i>${escapeHtml(cpToneLabel(tone))}</span>` : '')
+            + (t.canOrder ? `<span class="tag order">Order can be taken &mdash; يمكن أخذ أوردر</span>` : '')
+            + `</span>`;
+        if (t.done) {
+            s += `<span class="ok">&#10003; Printed and shelved`
+               + (t.doneByName ? ` by ${escapeHtml(t.doneByName)}` : '')
+               + (when ? ` &middot; <span dir="ltr">${escapeHtml(when)}</span>` : '')
+               + `</span>`;
+            // ⚠️ قابلٌ للتراجع: ضغطةٌ بالخطأ تُخفي عملًا لم يُنجَز، والقاعدةُ تسمح
+            //   بإعادته لأنّ المنعَ الحقيقيَّ على السعر والباركود لا على هذا الوسم.
+            s += `<button type="button" class="ghost" data-saundo="${eid}"`
+               + `${saBusy === t.id ? ' disabled' : ''}>`
+               + `${saBusy === t.id ? 'Saving...' : 'Not done after all'}</button>`;
+        } else {
+            s += `<button type="button" data-sadone="${eid}"`
+               + `${saBusy === t.id ? ' disabled' : ''}>`
+               + `${saBusy === t.id ? 'Saving...' : 'Printed &amp; shelved &#10003;'}</button>`;
+        }
+        s += `</div></div>`;
+        return s;
+    }
+
+    function renderShelfTasks() {
+        const panel = el('saPanel');
+        if (!state.shop) { panel.classList.add('hidden'); return; }
+        const waiting = saTasks.filter(t => !t.done).length;
+        const rows = shelfRows();
+
+        // ⚠️⚠️ اللوحةُ تختفي تمامًا إن لم يكن هناك شيءٌ وصل ولا خطأٌ يُقال: لوحةٌ
+        //   تقول «لا شيء» كلَّ يومٍ على هاتفٍ صغير ضجيجٌ يُدرَّب المرءُ على تجاهله،
+        //   ثم يتجاهلها في اليوم الذي تحمل عملًا فعلًا.
+        if (!saTasks.length && !saError) { panel.classList.add('hidden'); return; }
+        panel.classList.remove('hidden');
+
+        if (saError) { setMsg('saMsg', saError, 'warn'); }
+
+        el('saTitle').textContent = waiting
+            ? `New goods arrived (${waiting})`
+            : 'New goods arrived';
+
+        el('saGrid').innerHTML = rows.map(saCard).join('');
+
+        const doneCount = saTasks.length - waiting;
+        el('saNote').innerHTML = waiting
+            ? `<b>${waiting}</b> shipment(s) to print a barcode for and put on the shelf in `
+              + `<b>${escapeHtml(state.shop)}</b>. Press <b>Printed &amp; shelved</b> on each one when it is out.`
+            : (saTasks.length
+                ? `Nothing is waiting &mdash; everything that arrived in `
+                  + `<b>${escapeHtml(state.shop)}</b> has been printed and shelved.`
+                : '');
+        const tgl = el('saToggleDone');
+        if (tgl) tgl.classList.toggle('hidden', doneCount === 0);
+
+        // ⚠️ الصورُ تُقرأ بمحمّل الكتالوج نفسِه — انظر الملاحظة في saCard.
+        cpObserveImages();
+    }
+
+    /**
+     * وسمُ الإنجاز.
+     * ⚠️⚠️⚠️ **أربعةُ حقولٍ بالضبط ولا خامس**: القاعدةُ تسمح للكشك بـhasOnly على
+     *   ['done','doneAt','doneBy','doneByName']. وإضافةُ `updatedAt` — وهي عادةُ
+     *   كلِّ كتابةٍ أخرى في هذا المشروع، فاليدُ تكتبها تلقائيًّا — تجعل الخادمَ
+     *   **يرفض** الكتابةَ كلَّها برسالة «insufficient permissions». فلا تُزَد.
+     */
+    async function saSetDone(id, done) {
+        if (saBusy) return;
+        const t = saTasks.find(x => x.id === id);
+        if (!t) return;
+        if (!state.sellerId) { setMsg('saMsg', 'Sign in first.', 'err'); return; }
+        saBusy = id;
+        renderShelfTasks();
+        const nowIso = new Date().toISOString();
+        try {
+            await updateDoc(doc(db, ABAYA_SHELF_TASKS_COLL, id), {
+                done: !!done,
+                doneAt: done ? nowIso : '',
+                doneBy: done ? (state.sellerId || '') : '',
+                doneByName: done ? (state.sellerName || '') : ''
+            });
+            t.done = !!done;
+            t.doneAt = done ? nowIso : '';
+            t.doneByName = done ? (state.sellerName || '') : '';
+            setMsg('saMsg', done
+                ? `${t.code} is marked as printed and shelved.`
+                : `${t.code} is back on the list.`, 'ok');
+        } catch (e) {
+            console.error('Could not save the shelf task:', e);
+            setMsg('saMsg', /permission/i.test(String(e && e.message))
+                ? 'Not allowed yet — the new rules (v20) have not been published. Tell the owner.'
+                : 'That could not be saved just now. Try again.', 'err');
+        } finally {
+            saBusy = '';
+            renderShelfTasks();
+        }
+    }
+
+    el('saGrid').addEventListener('click', (ev) => {
+        const d = ev.target.closest('button[data-sadone]');
+        if (d && !d.disabled) { saSetDone(d.getAttribute('data-sadone'), true); return; }
+        const u = ev.target.closest('button[data-saundo]');
+        if (u && !u.disabled) saSetDone(u.getAttribute('data-saundo'), false);
+    });
+    el('saToggleDone').addEventListener('click', () => {
+        saShowDone = !saShowDone;
+        el('saToggleDone').setAttribute('aria-pressed', String(saShowDone));
+        el('saToggleDone').textContent = saShowDone
+            ? 'Only the ones waiting' : 'Show the ones already done';
+        renderShelfTasks();
+    });
+    el('saRefresh').addEventListener('click', () => loadShelfTasks(true));
 
     // ---- تأكيد البيع -----------------------------------------------------
     el('cpConfirm').addEventListener('click', async () => {
