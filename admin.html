@@ -16152,8 +16152,14 @@
                                  onclick="createAbayaEmployeeFile('${sid}')">Create employee file</button>` : '');
                     }
                     if (!seller) {
+                        // ⚠️⚠️ ويُقال أنّ مفتاحَ «تستقبل البضاعة أوّلًا» يظهر **بعد**
+                        //   التأكيد: العلَمُ يُكتب على مستند البياعة، ولا مستندَ قبل
+                        //   التأكيد. فبلا هذا السطر يبحث المالكُ عن مفتاحٍ لا يمكن أن
+                        //   يوجد بعد — وقد وقع ذلك فعلًا وسألني «أين أعيّنها؟».
                         return `<b style="color: var(--warning);">Not confirmed yet</b>`
-                            + `<br><small style="color: var(--text-dim);">She cannot sign in to her own screen until you confirm.</small>`
+                            + `<br><small style="color: var(--text-dim);">She cannot sign in to her own screen until you confirm.`
+                            + ` The switch that makes her <b>receive all goods first</b> appears in this box `
+                            + `<b>after</b> you confirm her.</small>`
                             + (editable ? `<br><button class="btn-success btn-sm" style="margin-top:5px;"
                                  onclick="confirmAbayaSeller('${eid}')">Confirm &mdash; she sends the report</button>` : '');
                     }
