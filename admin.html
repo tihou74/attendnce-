@@ -3079,10 +3079,30 @@
             <div class="stat-box money-only"><div class="stat-icon" data-icon="dollar"></div><div><h3>Paid for the goods</h3><p id="arvStatTotal">0 QAR</p></div></div>
         </div>
 
-        <!-- ============ تسجيل وصول ============ -->
-        <div class="card">
-            <h3><span data-icon="edit"></span> <span id="arvFormTitle">Record a new arrival</span></h3>
-            <p class="card-sub" id="arvFormHint">
+        <!-- ============ تسجيل وصول ============
+             ⚠️⚠️ مطويّةٌ افتراضيًّا (details/summary) بأمر المالك: «ضع هاته كلها في
+             زرٍّ واحدٍ لما أضغط يفتح، لماذا مفتوحة على طول تأخذ كل الشاشة».
+             وكان النموذجُ مفتوحًا دائمًا (نحو 700 بكسل: عشرُ خاناتٍ وصفُّ حسابٍ
+             وخانةُ صورة) فيدفع **جدولَ الوصولات** — وهو ما يُفتح التبويبُ لقراءته
+             في الأغلب — إلى ما تحت الشاشة.
+             ⚠️ وهذه نفسُ الشكوى ونفسُ الحلِّ الذي أقرّه سلفًا في بطاقة «أرسل رسالة
+             واتساب للموظف» («لماذا يظهر كل هذا في الشاشة، يأخذ كل المكان») —
+             فالنمطُ متَّبعٌ لا مُختَرع.
+             ⚠️⚠️ وdetails/summary لا JavaScript: الطيُّ من المتصفّح نفسه، فلا حالةٌ
+             تُدار ولا زرٌّ يتعطّل ولا يُنسى تصفيرُه.
+             ⚠️⚠️⚠️ ولـ«تعديل» حارسٌ إلزاميّ: editAbayaArrival تملأ هذه الخاناتِ
+             وتُمرّر إليها الشاشة. فلو بقيت مطويّةً لضغط المالكُ Edit ولم يرَ شيئًا
+             إطلاقًا — فتُفتح البطاقةُ برمجيًّا هناك (card.open = true). -->
+        <details class="card" id="arvFormCard">
+            <summary id="arvFormSummary" style="cursor: pointer; font-size: 13.5px; font-weight: 700;
+                    display: flex; align-items: center; gap: 9px; flex-wrap: wrap; color: var(--text);">
+                <span data-icon="edit"></span> <span id="arvFormTitle">Record a new arrival</span>
+                <!-- ⚠️ السطرُ المطويُّ يحمل ما يجب أن يُرى **بلا فتح**: أنّ هناك
+                     تعديلًا لم يُحفظ بعد. وإلّا طُوِيت البطاقةُ على تعديلٍ ناقصٍ
+                     ونُسي، ثم حُفظ لاحقًا فوق شحنةٍ أخرى. -->
+                <span id="arvFormBadge" style="font-weight: 600; font-size: 11.5px; color: var(--text-dim);"></span>
+            </summary>
+            <p class="card-sub" id="arvFormHint" style="margin-top: 14px;">
                 The <b>total</b> and the <b>cost of one piece</b> are worked out from what you type and cannot be typed
                 over &mdash; a total that disagrees with its own parts is how a wrong cost ends up on a price decision.
             </p>
@@ -3220,7 +3240,7 @@
                 <button class="btn-ghost" id="arvCancelBtn" style="display: none;" onclick="resetArrivalForm()">Cancel the edit</button>
                 <span id="arvFormStatus" style="font-weight: 600; font-size: 13px;"></span>
             </div>
-        </div>
+        </details>
 
         <!-- ============ رقمُ واتساب الورشة ============
              ⚠️⚠️⚠️ رقمٌ **يكتبه المالكُ بيده** ولم أختلق واحدًا: رقمٌ أختلقه أنا
@@ -3228,10 +3248,18 @@
              يُكتب تقول لوحةُ السيدة فاطمة صراحةً إنّ الرقمَ لم يُضبط بعد.
              ⚠️ ومكانُه `settings` التي يقرؤها المشاهدُ بقاعدةٍ **قائمةٍ سلفًا** —
              فلا قاعدةَ جديدةً في هذه الميزة ولا نشرٌ جديدٌ للقواعد. -->
-        <div class="card" id="arvWorkshopCard">
-            <h3><span data-icon="plane"></span> The workshop&rsquo;s WhatsApp number
-                <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">رقم واتساب الورشة</span></h3>
-            <p class="card-sub" style="margin: 0 0 12px;">
+        <!-- ⚠️⚠️ مطويّةٌ كذلك، ولسببٍ أقوى: هذا **إعدادٌ يُكتب مرّةً واحدةً** ثمّ لا
+             يُلمس لشهور، وكان يأخذ ربعَ الشاشة كلَّ يوم.
+             ⚠️ والسطرُ المطويُّ يحمل الرقمَ المحفوظَ أو «لم يُضبط بعد» — فيُعرف
+             الحالُ **بلا فتح**، وهو كلُّ ما يحتاجه في الأغلب. -->
+        <details class="card" id="arvWorkshopCard">
+            <summary id="wsSummary" style="cursor: pointer; font-size: 13.5px; font-weight: 700;
+                    display: flex; align-items: center; gap: 9px; flex-wrap: wrap; color: var(--text);">
+                <span data-icon="plane"></span> The workshop&rsquo;s WhatsApp number
+                <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">رقم واتساب الورشة</span>
+                <span id="wsBadge" style="font-weight: 600; font-size: 11.5px; color: var(--text-dim);"></span>
+            </summary>
+            <p class="card-sub" style="margin: 14px 0 12px;">
                 When a shipment is recorded as coming from <b>our workshop</b>, Mrs Fatima gets a <b>WhatsApp</b> button
                 on that shipment&rsquo;s card with the piece&rsquo;s details ready to send, and she can write whatever she
                 wants with it. <b>This is the number it goes to.</b> Leave it empty and her button still works through
@@ -3252,7 +3280,7 @@
                  — «+974» وحدها كانت تُقبل ثم لا يظهر الزرّ. فالتحقّقُ يُرى قبل الحفظ. -->
             <p class="card-sub" id="wsPreview" style="margin: 10px 0 0; font-size: 12px;"></p>
             <p style="margin: 8px 0 0; font-weight: 600; font-size: 13px;" id="wsStatus"></p>
-        </div>
+        </details>
 
         <!-- ============ الجدول ============ -->
         <div class="card">
@@ -14126,10 +14154,24 @@
         const p = document.getElementById('wsPhone'); if (p) p.value = abayaWorkshop.phone;
         const n = document.getElementById('wsName'); if (n) n.value = abayaWorkshop.name;
         onWorkshopPhoneTyped();
+        renderWorkshopBadge();
         onArrivalSourceChanged();
     }
 
     /** يُظهر الرقمَ **كما سيُستعمل** قبل الحفظ — لا بعد أن يشتكي أحدٌ أنّ الزرَّ لا يعمل. */
+    /**
+     * وسمُ الشريط المطويّ لبطاقة رقم الورشة.
+     * ⚠️ يُقرأ من `abayaWorkshop` **المحفوظة** لا من الخانة: الخانةُ قد تحمل رقمًا
+     *   يكتبه الآن ولم يُحفظ بعد، وشريطٌ يقول «محفوظ» عن رقمٍ لم يُحفظ يكذب.
+     */
+    function renderWorkshopBadge() {
+        const b = document.getElementById('wsBadge');
+        if (!b) return;
+        const num = waNumber(abayaWorkshop.phone);
+        b.textContent = num ? `— +${num}` : '— not set yet';
+        b.style.color = num ? 'var(--success)' : 'var(--warning)';
+    }
+
     window.onWorkshopPhoneTyped = function() {
         const prev = document.getElementById('wsPreview');
         if (!prev) return;
@@ -14183,6 +14225,8 @@
                     : 'Saved as empty. Her button will open the share sheet and she picks the chat herself.';
             }
             onWorkshopPhoneTyped();
+            // ⚠️ الوسمُ يُحدَّث بعد الحفظ لا قبله: قبله يقول رقمًا لم يُحفظ بعد.
+            renderWorkshopBadge();
             onArrivalSourceChanged();
             renderAbayaArrivals();
         } catch (e) {
@@ -14465,6 +14509,9 @@
         onArrivalSourceChanged();
         const code = document.getElementById('arvCode'); if (code) code.disabled = false;
         const t = document.getElementById('arvFormTitle'); if (t) t.textContent = 'Record a new arrival';
+        // ⚠️ ويُمحى وسمُ «تعديلٌ لم يُحفظ» مع التصفير: وسمٌ باقٍ على شريطٍ مطويٍّ
+        //   بعد الحفظ يقول كذبًا إنّ هناك عملًا ناقصًا.
+        const bdg = document.getElementById('arvFormBadge'); if (bdg) bdg.textContent = '';
         const c = document.getElementById('arvCancelBtn'); if (c) c.style.display = 'none';
         const st = document.getElementById('arvFormStatus'); if (st) { st.style.color = ''; st.textContent = ''; }
         showArrivalFormPhoto('');
@@ -14508,6 +14555,14 @@
         const so = document.getElementById('arvSource'); if (so) so.value = arrivalSourceOf(a.source);
         onArrivalSourceChanged();
         const t = document.getElementById('arvFormTitle'); if (t) t.textContent = 'Edit the arrival of ' + a.code;
+        // ⚠️⚠️⚠️ البطاقةُ تُفتح برمجيًّا **إلزامًا**: هي مطويّةٌ افتراضيًّا الآن، فبلا
+        //   هذا السطر يضغط المالكُ «Edit» فتُملأ خاناتٌ لا يراها، ويُمرّر إلى شريطٍ
+        //   مطويّ — أي زرٌّ يبدو معطوبًا تمامًا. وهذا أوّلُ ما ينكسر عند طيِّ نموذج.
+        const card = document.getElementById('arvFormCard'); if (card) card.open = true;
+        // ⚠️ ووسمٌ على الشريط: لو طواها وهو في منتصف تعديلٍ لم يُحفظ، يبقى ذلك
+        //   مكتوبًا أمامه بدل أن يُنسى التعديلُ ويُحفظ لاحقًا فوق شحنةٍ أخرى.
+        const bdg = document.getElementById('arvFormBadge');
+        if (bdg) bdg.textContent = '— editing, not saved yet';
         const c = document.getElementById('arvCancelBtn'); if (c) c.style.display = '';
         const st = document.getElementById('arvFormStatus'); if (st) { st.style.color = ''; st.textContent = ''; }
         showArrivalFormPhoto('');
