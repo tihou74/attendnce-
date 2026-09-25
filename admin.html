@@ -16072,12 +16072,53 @@
     }
 
     /**
+     * ⭐⭐⭐ حالةُ ربط البصمة على مستند البياعة — الحقل employeeId.
+     *
+     * ⚠️⚠️ سببُ وجود هذه الدالة: شاشتُها تقرأ employeeId من مستند البياعة، وبلا
+     * هذا الحقل يكون زرّا الحضور والانصراف **مُعطَّلين** عندها. وكان هذا الجدول
+     * يقول «✔ confirmed» لمجرّد وجود المستند، فيقرأ المالكُ «تمّ» ويراها هي
+     * زرًّا ميتًا — والسببُ لا يظهر في أي شاشة.
+     *
+     * ثلاث حالات لا حالتان:
+     *   ok       الحقل موجود ويطابق معرّف ملفّها → بصمتُها تعمل.
+     *   missing  الحقل غائب (مستندٌ أُضيف يدويًّا بزرّ Add، أو من نسخةٍ قديمة).
+     *   mismatch الحقل موجود لكنه يشير إلى ملفٍّ آخر → بصمتُها تُسجَّل باسم غيرها.
+     */
+    function abayaAttendanceLink(emp, seller) {
+        if (!emp || !seller) return { state: 'no-file', empId: '', linked: '' };
+        const linked = String(seller.employeeId || '');
+        const empId = String(emp.id);
+        if (!linked) return { state: 'missing', empId, linked: '' };
+        if (linked !== empId) return { state: 'mismatch', empId, linked };
+        return { state: 'ok', empId, linked };
+    }
+
+    /**
+     * ⭐⭐ أسماءٌ لها أكثر من مستند بياعةٍ واحد في abaya_sellers.
+     * ⚠️ ولماذا يهمّ: قائمةُ الأسماء في شاشتها تُبنى من هذه المجموعة كلها، فاسمُها
+     * يظهر لها **مرّتين** بلا فرقٍ ظاهر — واحدةٌ مربوطةٌ بملفّها وواحدةٌ لا. فإن
+     * اختارت الثانية بصمَت في الفراغ، ولا تدري هي ولا المالك لماذا.
+     * ⚠️ والمقارنة بـnameKey لا بالنصّ: تكشف اختلاف ترتيب الكلمات، وهي القاعدة
+     * نفسها التي يستعملها زرّ Add لرفض التوأم.
+     */
+    function abayaDupSellerNames() {
+        const seen = new Set(), dup = new Set();
+        (abayaSellers || []).forEach(s => {
+            const k = nameKey(s.name);
+            if (!k) return;
+            if (seen.has(k)) dup.add(k); else seen.add(k);
+        });
+        return dup;
+    }
+
+    /**
      * ⭐⭐⭐ صفّ البياعة: مصدره ملفُّ الموظفة، والتأكيد ضغطةٌ واحدة.
      * ⚠️ ولا يُنشأ شيءٌ تلقائيًّا: التأكيد يُنشئ مستند البياعة بمعرّف الملف نفسه،
      * فالضغطة تُثبّت ما هو موجود ولا تُنشئ شخصًا جديدًا.
      */
     function renderAbayaSellerRows(rows, editable) {
         const body = document.getElementById('abSellersBody');
+        const dupNames = abayaDupSellerNames();
         body.innerHTML = rows.map(({ emp, seller, orphan }) => {
             const key = seller ? String(seller.id) : String(emp.id);
             const name = (emp && emp.name) || (seller && seller.name) || key;
@@ -16086,10 +16127,14 @@
             const sid = escapeJsAttr(key);
             const eid = emp ? escapeJsAttr(emp.id) : '';
             const pin = seller && seller.pin ? String(seller.pin) : '';
+            const twice = !!(seller && dupNames.has(nameKey(seller.name)));
             return `<tr${orphan ? ' style="background: rgba(217,119,6,0.06);"' : ''}>
                 <td><b>${escapeHtml(name)}</b>${emp
                     ? `<br><small style="color: var(--text-dim);">${escapeHtml(emp.branch || '—')}</small>`
-                    : `<br><small style="color: var(--warning); font-weight:700;">&#9888; no employee file</small>`}</td>
+                    : `<br><small style="color: var(--warning); font-weight:700;">&#9888; no employee file</small>`}${
+                    twice ? `<br><small style="color: var(--danger); font-weight:700;">&#9888; this name exists twice `
+                        + `in the saleswomen list, so it appears twice in the list on her own screen &mdash; one of the `
+                        + `two cannot record attendance. Delete the wrong one with the red button on its row.</small>` : ''}</td>
                 <td style="font-family: ui-monospace, monospace;">${escapeHtml(pin || '••••')}</td>
                 <td class="money-col">${mine.length}</td>
                 <td>${last ? escapeHtml(salesDateLabel(last)) : '<span style="color: var(--text-faint);">never</span>'}</td>
@@ -16112,8 +16157,26 @@
                             + (editable ? `<br><button class="btn-success btn-sm" style="margin-top:5px;"
                                  onclick="confirmAbayaSeller('${eid}')">Confirm &mdash; she sends the report</button>` : '');
                     }
-                    return `<b style="color: var(--success);">&#10004; confirmed</b>`
-                        + `<br><small style="color: var(--text-dim);">Signs in with the PIN in her profile.</small>`;
+                    // ⚠️⚠️ «مؤكَّدة» لا تعني أن بصمتها تعمل: الشاشةُ تبصم تحت
+                    // employeeId من مستند البياعة، وغيابُه يُعطّل الزرّين عندها بلا
+                    // أن يظهر شيءٌ هنا. فتُفصَل الحالتان بالحرف.
+                    const lk = abayaAttendanceLink(emp, seller);
+                    if (lk.state === 'ok') {
+                        return `<b style="color: var(--success);">&#10004; confirmed</b>`
+                            + `<br><small style="color: var(--text-dim);">Signs in with the PIN in her profile. `
+                            + `Attendance is linked to her file &mdash; her Check-In and Check-Out work.</small>`;
+                    }
+                    return `<b style="color: var(--warning);">&#9888; confirmed, but her attendance is NOT linked</b>`
+                        + `<br><small style="color: var(--text-dim);">She can sign in and send the daily report, but the `
+                        + `<b>Check-In</b> and <b>Check-Out</b> buttons on her screen are dead`
+                        + (lk.state === 'mismatch'
+                            ? `, because this entry points at file <b>${escapeHtml(lk.linked)}</b> instead of hers `
+                              + `(<b>${escapeHtml(lk.empId)}</b>) &mdash; so her punches were being written under `
+                              + `someone else's file`
+                            : ` &mdash; so she has no attendance and no salary hours for the days she worked`)
+                        + `.</small>`
+                        + (editable ? `<br><button class="btn-success btn-sm" style="margin-top:5px;"
+                             onclick="linkAbayaAttendance('${sid}','${escapeJsAttr(lk.empId)}')">Link her attendance</button>` : '');
                 })()}</td>
                 <td>${emp && seller ? renderAbayaCardCell({ id: key, name, employeeId: emp.id }, editable)
                     : `<span style="color: var(--text-dim); font-size:12px;">${orphan
@@ -16288,6 +16351,53 @@
                   + `<b>Employee Profiles</b>, and check her branch.`
                 : `&#10004; <b>Linked ${escapeHtml(name)} to her existing file</b> &mdash; no second file was created.`,
                 'var(--success)');
+        } catch (e) {
+            show('Could not do it: ' + escapeHtml(e.message), 'var(--danger)');
+        }
+    };
+
+    /**
+     * ⭐⭐⭐ ربطُ بصمة بياعةٍ لها ملفٌّ بالفعل — حقلٌ واحد: employeeId.
+     *
+     * ⚠️ ولماذا زرٌّ مستقلٌّ عن «Create employee file»: ذاك يُنشئ ملفًّا أو يبحث عن
+     * ملفٍّ بالاسم، وهذه لها ملفٌّ معروفٌ بيقين (معرّف مستند البياعة = معرّف ملفّها)
+     * فلا بحثَ ولا إنشاء — الناقصُ حقلٌ واحد. وخلطُ الأمرين كان سيجعل زرَّ الإنشاء
+     * يعمل على مَن لها ملف، وهو أخطرُ طريقٍ إلى ملفٍّ ثانٍ لشخصٍ واحد.
+     *
+     * ⚠️ ولا يُمسّ أي سجلٍّ ماضٍ: البصماتُ القديمة مكتوبةٌ بمعرّفها في حينه، وهذا
+     * الحقلُ يوجّه البصماتَ القادمة وحدها. فإن كان يشير إلى ملفٍّ آخر يُسأل المالكُ
+     * بالاسمين صريحًا — لأنّ ما مضى بقي حيث كُتب.
+     */
+    window.linkAbayaAttendance = async function(sellerId, empId) {
+        const st = document.getElementById('abSellerStatus');
+        const show = (m, c) => { if (st) { st.innerHTML = m; st.style.color = c; } };
+        if (!canEditAbayaSetup()) { show('Only the owner can do this.', 'var(--danger)'); return; }
+        const seller = (abayaSellers || []).find(s => String(s.id) === String(sellerId));
+        if (!seller) { show('That saleswoman no longer exists — press Refresh.', 'var(--danger)'); return; }
+        const emp = (allEmployees || []).find(e => String(e.id) === String(empId));
+        if (!emp) { show('That employee file no longer exists — press Refresh.', 'var(--danger)'); return; }
+        const was = String(seller.employeeId || '');
+        if (was && was !== String(empId)) {
+            const other = (allEmployees || []).find(e => String(e.id) === was);
+            if (!confirm(
+                `This entry is now pointing at the file of ${other ? (other.name || was) : was}.\n\n`
+                + `Point it at ${emp.name || empId} instead?\n\n`
+                + `Her punches from now on are recorded under ${emp.name || empId}.\n`
+                + `Punches already recorded are NOT moved — they stay where they were written.`)) {
+                show('Cancelled — nothing was changed.', 'var(--warning)');
+                return;
+            }
+        }
+        show(`Linking ${emp.name || empId}...`, 'var(--warning)');
+        try {
+            await updateDoc(doc(db, "abaya_sellers", String(sellerId)), { employeeId: String(empId) });
+            seller.employeeId = String(empId);
+            logAudit('Abaya attendance linked', `${emp.name || empId} → ${empId}`
+                + (was ? ` (was ${was})` : ' (was not linked)'));
+            renderAbayaSellers();
+            show(`&#10004; <b>${escapeHtml(emp.name || empId)}</b> can now record attendance. She must `
+                + `<b>close her screen and open it again</b> &mdash; the list of names is read once when the page opens, `
+                + `so the buttons stay dead until she reloads.`, 'var(--success)');
         } catch (e) {
             show('Could not do it: ' + escapeHtml(e.message), 'var(--danger)');
         }
