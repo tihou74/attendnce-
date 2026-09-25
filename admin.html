@@ -3049,10 +3049,18 @@
                     <input type="text" id="arvSearch" placeholder="Type anything" oninput="renderAbayaArrivals()">
                 </div>
                 <div style="width: 190px;"><label for="arvFilterStatus">Show</label>
+                    <!-- ⭐⭐⭐⭐⭐ «أيُّ بضاعةٍ وصلت وتمّ تسعيرُها تختفي أوتوماتيكيًّا من
+                         وصل حديثًا» — بأمر المالك، وهذه **لوحتُه** هو.
+                         ⚠️ كان الافتراضُ «Everything» فتبقى المُرسَلةُ معروضةً إلى
+                         الأبد، وسأل المالكُ: «لماذا للحين تظهر هاته؟». فالافتراضُ
+                         صار «المنتظِرة» — أي ما عليه عملٌ بعد.
+                         ⚠️⚠️ ولا تُحذف ولا تُخفى نهائيًّا: هذه **سجلُّ شرائه**.
+                         الخيارانِ الآخرانِ باقيانِ، وزرُّ «Show everything» يُرجع
+                         الكلَّ بضغطةٍ واحدة، والملاحظةُ أسفل الجدول تقول كم أُخفي. -->
                     <select id="arvFilterStatus" onchange="renderAbayaArrivals()">
-                        <option value="all">Everything</option>
-                        <option value="waiting">Waiting for Mrs Fatima</option>
+                        <option value="waiting" selected>Waiting for Mrs Fatima</option>
                         <option value="sent">Already sent to a shop</option>
+                        <option value="all">Everything (the full purchase record)</option>
                     </select>
                 </div>
                 <div style="width: 180px;"><label for="arvFilterType">Type</label>
@@ -14226,6 +14234,11 @@
         if (note) {
             const hidden = abayaArrivals.length - rows.length;
             const waiting = abayaArrivals.filter(a => a.status === ARRIVAL_WAITING).length;
+            // ⚠️⚠️ القصُّ لا يكون صامتًا أبدًا، **وسببُه يُسمّى**: الجدولُ يبدأ الآن
+            //   على «المنتظِرة»، فمن رأى 4 صفوفٍ وعنده 340 شحنةً يجب أن يعرف في
+            //   السطر نفسِه أنّ 336 مُرسَلةٌ ومحفوظةٌ لا ضائعة، وكيف يراها.
+            const sentCount = abayaArrivals.length - waiting;
+            const onlyWaiting = String((document.getElementById('arvFilterStatus') || {}).value || '') === 'waiting';
             note.innerHTML = abayaArrivals.length === 0
                 ? `Nothing recorded yet. Fill the form above the moment a shipment arrives.`
                 : `<b>${rows.length}</b> of <b>${abayaArrivals.length}</b> shipments shown`
@@ -14234,7 +14247,13 @@
                       ? `<br><b style="color: var(--warning);">${waiting} shipment(s) are still waiting for Mrs Fatima</b>`
                         + ` to choose a shop and set the selling price. Until she does, they are on no shelf and no`
                         + ` saleswoman can see them.`
-                      : `<br>Every shipment has been sent to a shop.`);
+                      : `<br>Every shipment has been sent to a shop.`)
+                  // ⚠️ يُقال صريحًا أنّ المُرسَلةَ **موجودةٌ** لا محذوفة، ويُسمّى الطريقُ إليها.
+                  + (onlyWaiting && sentCount
+                      ? `<br>The <b>${sentCount}</b> shipment(s) already priced and sent are <b>hidden here on purpose</b>`
+                        + ` &mdash; nothing was deleted. Pick <b>Already sent to a shop</b> or`
+                        + ` <b>Everything</b> above, or press <b>Show everything</b>, to see them with all their figures.`
+                      : '');
         }
 
         const body = document.getElementById('arvBody');
@@ -14658,6 +14677,23 @@
     window.exportAbayaArrivalsExcel = function() {
         const rows = arrivalRows();
         if (!rows.length) { alert('Nothing to export.'); return; }
+        /**
+         * ⚠️⚠️⚠️ حرسٌ **أُضيف مع تغيير الافتراض**: الجدولُ يبدأ الآن على «المنتظِرة»،
+         *   والتصديرُ يُصدّر ما يُعرض. فبلا هذا كان المالكُ يضغط «Export Excel»
+         *   ظانًّا أنه يُصدّر سجلَّ شرائه كلَّه فيحصل على **الشحنات المنتظِرة وحدَها**
+         *   — أي ملفٌّ ناقصٌ يبدو كاملًا، وهو أسوأُ من رسالة خطأ.
+         * ⚠️ ولا يُغيَّر معنى الزرّ (يُصدّر المعروض): التصفيةُ ثم التصدير طريقةٌ
+         *   مفيدةٌ. يُسأل فقط حين يكون المخفيُّ حقيقيًّا، ويُسمّى العددان.
+         */
+        const hidden = abayaArrivals.length - rows.length;
+        if (hidden > 0 && !confirm(
+            `You are about to export ${rows.length} shipment(s), not all ${abayaArrivals.length}.\n\n`
+            + `${hidden} are hidden right now by the search or the filters — this table opens on `
+            + `"Waiting for Mrs Fatima" by default.\n\n`
+            + `Press Cancel, then choose "Everything (the full purchase record)" above if you want them all.\n\n`
+            + `Export just these ${rows.length}?`)) {
+            return;
+        }
         const sheet = rows.map(a => {
             const m = arrivalMath(a);
             return {
