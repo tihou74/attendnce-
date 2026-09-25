@@ -354,6 +354,54 @@
     }
     .cpsold button { width: auto; min-height: 36px; padding: 0 12px; font-size: 12px; }
 
+    /* ============ ماسحُ الباركود بالكاميرا ============
+       ⚠️ ملءُ الشاشة: المسحُ يحتاج تقريبَ الهاتف من اللاصقة والنظرَ إلى الصورة،
+          فنافذةٌ صغيرةٌ تجعلها تُصوّب على العماء. */
+    .scan {
+        position: fixed; inset: 0; z-index: 60;
+        background: rgba(11, 18, 38, 0.96);
+        display: flex; align-items: center; justify-content: center;
+        padding: var(--space-4);
+    }
+    .scan .scbox { width: 100%; max-width: 520px; }
+    .scan .sctop {
+        display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+        margin-bottom: var(--space-3);
+    }
+    .scan .sctop h3 { margin: 0; font-size: var(--text-base); font-weight: 800; color: #fff; }
+    .scan .x {
+        width: auto; min-height: 40px; padding: 0 14px;
+        background: transparent; color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.55); border-radius: var(--radius-md);
+        font-family: inherit; font-size: var(--text-sm); font-weight: 700; cursor: pointer;
+    }
+    /* ⚠️ نسبةٌ ثابتةٌ وخلفيّةٌ داكنة: فيديو بلا أبعادٍ يقفز حجمُه لحظةَ وصول الصورة. */
+    .scan .scvid {
+        position: relative; width: 100%; aspect-ratio: 4 / 3;
+        background: #000; border-radius: var(--radius-md); overflow: hidden;
+    }
+    .scan .scvid video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    /* ⚠️ إطارُ التصويب: يدلُّ **أين** تُوضع اللاصقة. بلا دليلٍ تُصوّب على الحافّة. */
+    .scan .scframe {
+        position: absolute; inset-inline: 8%; inset-block: 30%;
+        border: 3px solid var(--color-brand, #A89060); border-radius: 10px;
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35);
+    }
+    .scan .status { color: #fff; margin-top: var(--space-3); }
+    .scan .status.err { color: #FCA5A5; }
+    .scan .status.ok { color: #86EFAC; }
+    /* ⚠️ النصُّ الإرشاديُّ أبيضُ خفيفٌ لا رماديٌّ من الهويّة: الخلفيّةُ كحليّةٌ داكنة. */
+    .scan .schint {
+        color: rgba(255, 255, 255, 0.78); font-size: var(--text-xs);
+        line-height: var(--leading-normal); margin-top: var(--space-2);
+    }
+    .scan .scmanual {
+        width: 100%; min-height: 44px; margin-top: var(--space-4);
+        background: transparent; color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.55); border-radius: var(--radius-md);
+        font-family: inherit; font-size: var(--text-sm); font-weight: 700; cursor: pointer;
+    }
+
     /* ============ شريطُ التنقّل بين الأقسام ============
        ⚠️ لاصقٌ أعلى الشاشة: الجهازُ هاتفٌ والأقسامُ طويلة، فزرُّ الانتقال يجب أن
           يكون في متناولها بلا تمريرٍ إلى الأعلى.
@@ -658,6 +706,9 @@
             <input type="text" id="cpCode" autocomplete="off" spellcheck="false" dir="ltr" placeholder="e.g. AS-1042">
             <div class="bar" style="margin-top: var(--space-3);">
                 <button id="cpFind" style="width: auto;">Find it</button>
+                <!-- ⭐⭐⭐⭐ بأمر المالك: «أضف في البيع زرَّ سكان تعمل سكان للباركود
+                     تطلع لها القطعة». ويعمل على آيفون وأندرويد معًا بنصّه. -->
+                <button class="ghost" id="cpScan" style="width: auto;">&#128247; Scan &mdash; سكان</button>
                 <button class="ghost" id="cpBrowse" style="width: auto;">Show the abayas</button>
             </div>
             <p class="status" id="cpMsg" style="margin-top: var(--space-3);"></p>
@@ -914,6 +965,43 @@
             so please check the figures before sending.
         </p>
         </div><!-- /viewReport -->
+    </div>
+
+    <!-- ==================================================================
+         ⭐⭐⭐⭐⭐ ماسحُ الباركود — بأمر المالك: «أضف في البيع زرَّ سكان»
+         ------------------------------------------------------------------
+         ⚠️⚠️ ويعمل على **الاثنين معًا** بنصّه («فيه آيفون وفيه أندرويد، سوّها
+         عشان تركب مع الاثنين») — ومحرّكانِ لأنّ الجهازَين لا يتساويان:
+           · أندرويد/كروم: `BarcodeDetector` **مدمجٌ في المتصفّح** — بلا أيِّ تنزيل.
+           · آيفون/سفاري: لا يملكه، فتُحمَّل مكتبةٌ من الشبكة **عند الضغط فقط** لا
+             مع كلِّ فتحةٍ للصفحة — وإلّا حمّلنا مئاتَ الكيلوبايتات على بيانات كلِّ
+             بياعةٍ كلَّ يومٍ من أجل زرٍّ قد لا تضغطه.
+         ⚠️⚠️⚠️ وخانةُ الباركود اليدويّةُ **تبقى كما هي دائمًا**: كاميرا ترفض الإذن،
+         أو لاصقةٌ ممسوحةٌ، أو ضوءٌ ضعيف — والبيعُ لا يجوز أن يتوقّف لأجل ذلك. فزرُّ
+         «أكتبه بيدي» داخلَ الماسح نفسِه لا في مكانٍ آخر.
+         ⚠️ والكاميرا تُغلق في **كلِّ** مخرج (الزرّ · Escape · الضغط خارجَه · نجاح
+         المسح · تغييرُ القسم): بثٌّ يبقى مفتوحًا يُبقي ضوءَ الكاميرا مشتعلًا
+         ويستهلك البطاريّة، وهو أوّلُ ما يُنسى في شاشات المسح.
+         ================================================================== -->
+    <div id="scModal" class="scan hidden" role="dialog" aria-modal="true" aria-labelledby="scTitle">
+        <div class="scbox" id="scBox">
+            <div class="sctop">
+                <h3 id="scTitle">Scan the barcode &mdash; امسحي الباركود</h3>
+                <button type="button" class="x" id="scClose" aria-label="Close">&#10005; Close</button>
+            </div>
+            <div class="scvid">
+                <!-- ⚠️⚠️ playsinline و muted **إلزاميّان** على آيفون: بدونهما يفتح
+                     سفاري الفيديو في مشغّلٍ يملأ الشاشة فيخرج من صفحتنا، فلا يعمل
+                     المسحُ إطلاقًا. وهذا أشهرُ فخٍّ في المسح على iOS. -->
+                <video id="scVideo" playsinline muted autoplay></video>
+                <span class="scframe" aria-hidden="true"></span>
+            </div>
+            <p class="status" id="scMsg"></p>
+            <p class="schint" id="scHint">
+                Hold the barcode inside the frame. Good light helps, and holding still helps more.
+            </p>
+            <button type="button" class="scmanual" id="scManual">Type the barcode by hand instead</button>
+        </div>
     </div>
 
     <!-- ================= 4) الملخّص ================= -->
@@ -1317,6 +1405,9 @@
 
     function showSellerView(which) {
         if (!SELLER_VIEWS[which]) which = 'attend';
+        // ⚠️⚠️ الكاميرا تُغلق عند مغادرة القسم: من فتحت الماسحَ ثمّ ضغطت «تقرير
+        //   اليوم» كان بثُّ الكاميرا يبقى شغّالًا وضوءُها مشتعلًا بقيّةَ اليوم.
+        if (typeof scCloseScanner === 'function') scCloseScanner();
         sellerView = which;
         Object.entries(SELLER_VIEWS).forEach(([k, o]) => {
             const v = el(o.view); if (v) v.classList.toggle('hidden', k !== which);
@@ -1328,6 +1419,9 @@
     }
 
     function showStep(which) {
+        // ⚠️ وتُغلق عند تغيير الخطوة كذلك (تغييرُ المحلّ · إرسالُ التقرير · الخروج):
+        //   كلُّ مخرجٍ من الشاشة مخرجٌ من الكاميرا.
+        if (typeof scCloseScanner === 'function') scCloseScanner();
         ['stepLogin', 'stepShop', 'stepForm', 'stepDone'].forEach(id => {
             el(id).classList.toggle('hidden', id !== which);
         });
@@ -2070,6 +2164,170 @@
         //   فأيُّهما سبقت الأخرى — ولذلك تُرسم مرّةً هنا ومرّةً هناك.
         if (saTasks.length) renderShelfTasks();
     }
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ ماسحُ الباركود بالكاميرا — محرّكانِ لجهازَين
+    // ---------------------------------------------------------------------
+    // ⚠️ لا يكتب هذا القسمُ في القاعدة حرفًا: يقرأ رقمًا من صورةٍ ويضعه في الخانة،
+    //   ثمّ يُنادي البحثَ القائمَ نفسَه (cpFindByCode). فلو تعطّل كاملًا لبقي البيعُ
+    //   يعمل بالكتابة اليدويّة كما كان بالحرف.
+    // =====================================================================
+    /** الترميزاتُ المطلوبة. ⚠️ واسعةٌ عن قصد: لاصقاتُهم قد تكون Code128 أو EAN. */
+    const SC_FORMATS = ['code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'itf', 'codabar'];
+    /** مصدرُ المكتبة الاحتياطيّة. ⚠️ jsdelivr مسموحٌ سلفًا في sw.js (يُستعمل لـxlsx). */
+    const SC_ZXING_URL = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/+esm';
+
+    let scStream = null;      // بثُّ الكاميرا الذي أملكه أنا (المسارُ المدمج)
+    let scTimer = 0;          // مؤقّتُ حلقة الفحص
+    let scReader = null;      // قارئُ ZXing (يملك بثَّه بنفسه)
+    let scBusy = false;       // حرسٌ من الضغط المزدوج
+    let scHandled = false;    // حرسٌ من قراءةِ نفسِ الباركود مرّتين
+
+    const scMsg = (t, kind) => {
+        const m = el('scMsg');
+        if (m) { m.textContent = t; m.className = 'status' + (kind ? ' ' + kind : ''); }
+    };
+
+    /** هل المتصفّحُ يملك قارئًا مدمجًا؟ (أندرويد/كروم نعم، آيفون لا) */
+    function scHasNative() {
+        try { return typeof window.BarcodeDetector === 'function'; } catch (e) { return false; }
+    }
+
+    /**
+     * ⚠️⚠️⚠️ إغلاقُ الكاميرا — وهذه أخطرُ دالّةٍ في القسم.
+     *   بثٌّ لا يُغلق يُبقي ضوءَ الكاميرا مشتعلًا وينزف البطاريّة، وتبقى الكاميرا
+     *   محجوزةً فلا يفتحها تطبيقٌ آخر. ولذلك تُنادى من **كلِّ** مخرج، وتُحصَّن
+     *   ضدّ النداء مرّتين.
+     */
+    function scStopCamera() {
+        if (scTimer) { clearInterval(scTimer); scTimer = 0; }
+        if (scReader) {
+            try { scReader.reset(); } catch (e) { /* أُغلق سلفًا */ }
+            scReader = null;
+        }
+        if (scStream) {
+            try { scStream.getTracks().forEach(t => t.stop()); } catch (e) { /* أُغلق سلفًا */ }
+            scStream = null;
+        }
+        const v = el('scVideo');
+        // ⚠️ ويُفرَّغ srcObject كذلك: تركُه يُبقي مرجعًا للبثّ في بعض المتصفّحات.
+        if (v) { try { v.pause(); } catch (e) {} v.srcObject = null; }
+    }
+
+    function scCloseScanner() {
+        scStopCamera();
+        scBusy = false;
+        el('scModal').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    /** نجحَ المسح: تُملأ الخانةُ ويُنادى البحثُ القائم. */
+    function scFound(raw) {
+        if (scHandled) return;
+        scHandled = true;
+        const code = String(raw || '').trim();
+        if (!code) return;
+        // ⚠️ اهتزازةٌ قصيرةٌ إن توفّرت: تأكيدٌ محسوسٌ بلا نظرٍ إلى الشاشة، والبياعةُ
+        //   تكون ناظرةً إلى القطعة لا إلى الهاتف.
+        try { if (navigator.vibrate) navigator.vibrate(60); } catch (e) {}
+        scMsg('Read: ' + code, 'ok');
+        el('cpCode').value = code;
+        scCloseScanner();
+        cpFindByCode(code);
+    }
+
+    async function scOpenScanner() {
+        if (scBusy) return;
+        scBusy = true;
+        scHandled = false;
+        el('scModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        scMsg('Starting the camera...', '');
+
+        // ⚠️ الكاميرا تحتاج HTTPS ولمسةَ مستخدمٍ حقيقيّة (وهي ضغطةُ الزرّ). ولو
+        //   كان المتصفّحُ بلا getUserMedia إطلاقًا يُقال ذلك ولا يُترك معلَّقًا.
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            scMsg('This device cannot open the camera from the browser. Type the barcode by hand.', 'err');
+            return;
+        }
+
+        try {
+            if (scHasNative()) {
+                // ---- المسارُ المدمج: أندرويد/كروم، بلا أيِّ تنزيل
+                scStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: 'environment' } }, audio: false
+                });
+                const v = el('scVideo');
+                v.srcObject = scStream;
+                await v.play();
+                const detector = new window.BarcodeDetector({ formats: SC_FORMATS });
+                scMsg('Point the camera at the barcode.', '');
+                // ⚠️ فحصٌ كلَّ 250ms لا في كلِّ إطار: الفحصُ في كلِّ إطارٍ يُسخّن
+                //   الهاتفَ ويستهلك البطاريّةَ بلا فائدةٍ تُذكر في سرعة القراءة.
+                scTimer = setInterval(async () => {
+                    if (scHandled) return;
+                    try {
+                        const found = await detector.detect(v);
+                        if (found && found.length && found[0].rawValue) scFound(found[0].rawValue);
+                    } catch (e) { /* إطارٌ لم يُقرأ — تُكمل الحلقة */ }
+                }, 250);
+            } else {
+                // ---- المسارُ الاحتياطيّ: آيفون/سفاري، تُحمَّل المكتبةُ الآن فقط
+                scMsg('Preparing the scanner...', '');
+                let zx;
+                try {
+                    zx = await import(SC_ZXING_URL);
+                } catch (e) {
+                    scMsg('The scanner could not be downloaded. Check the internet, or type the barcode by hand.', 'err');
+                    return;
+                }
+                const Reader = zx && (zx.BrowserMultiFormatReader
+                    || (zx.default && zx.default.BrowserMultiFormatReader));
+                if (typeof Reader !== 'function') {
+                    // ⚠️ لا يُقال «فشل» مبهمًا: المكتبةُ نزلت وشكلُها غيرُ متوقَّع،
+                    //   وهذا عطلٌ يُخبَر به المالكُ لا تُلام عليه البياعة.
+                    scMsg('The scanner library loaded but could not start. Tell the owner, and type the barcode by hand.', 'err');
+                    return;
+                }
+                scReader = new Reader();
+                scMsg('Point the camera at the barcode.', '');
+                // ⚠️ ZXing يملك بثَّه بنفسه، ويُغلق بـreset() — ولذلك scStopCamera
+                //   تُغلق الاثنين: ما أملكه أنا وما يملكه هو.
+                scReader.decodeFromConstraints(
+                    { video: { facingMode: { ideal: 'environment' } }, audio: false },
+                    el('scVideo'),
+                    (result) => { if (result && !scHandled) scFound(result.getText()); }
+                ).catch(() => {
+                    scMsg('The camera could not be started. Allow camera access, or type the barcode by hand.', 'err');
+                });
+            }
+        } catch (e) {
+            // ⚠️ رفضُ الإذن يُسمّى بالاسم: «فشل» يجعلها تُعيد المحاولةَ عشرًا،
+            //   و«اسمحي للكاميرا» تُخبرها بما تفعل بالضبط.
+            const nm = String((e && e.name) || '');
+            scMsg(nm === 'NotAllowedError' || nm === 'SecurityError'
+                ? 'Camera access was refused. Allow the camera for this page in your browser settings, or type the barcode by hand.'
+                : nm === 'NotFoundError' || nm === 'OverconstrainedError'
+                    ? 'No camera was found on this device. Type the barcode by hand.'
+                    : 'The camera could not be started. Type the barcode by hand.', 'err');
+        }
+    }
+
+    el('cpScan').addEventListener('click', scOpenScanner);
+    el('scClose').addEventListener('click', scCloseScanner);
+    // ⚠️ «أكتبه بيدي» يُغلق الماسحَ ويُعطي الخانةَ التركيزَ: مخرجٌ في نفس اللحظة
+    //   التي تحتاجه فيها، لا بحثٌ عن الخانة بعد الإغلاق.
+    el('scManual').addEventListener('click', () => {
+        scCloseScanner();
+        const c = el('cpCode');
+        if (c) { c.focus(); try { c.select(); } catch (e) {} }
+    });
+    el('scModal').addEventListener('click', (ev) => {
+        if (!ev.target.closest('#scBox')) scCloseScanner();
+    });
+    document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape' && !el('scModal').classList.contains('hidden')) scCloseScanner();
+    });
 
     // ---- البحث بالباركود -------------------------------------------------
     /**
