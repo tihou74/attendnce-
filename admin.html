@@ -944,6 +944,28 @@
     }
     html.dark-mode thead th { color: var(--wine); }
 
+    /* ⭐⭐⭐⭐ صفُّ عنوانِ الصنف في كتالوج العبايات — «كلُّ صنفٍ بروحه».
+       ⚠️ هو <th> داخلَ <tbody> لا <td>: عنوانُ مجموعةٍ عنوانٌ لا بيانة، وهذا ما
+          يجعل قارئَ الشاشة يقرؤه عنوانًا. و`thead th` أعلاه لا يُطابقه (نطاقُها
+          thead) فيحتاج تنسيقَه بنفسه — وهذا مقصودٌ لا تكرار.
+       ⚠️ ولاصقٌ أعلى الحاوية: الجدولُ طويلٌ ويُمرَّر، وبلا ذلك يضيع أيُّ صنفٍ
+          تُقرأ صفوفُه الآن. */
+    tbody tr.acsec > th {
+        position: sticky; top: 0; z-index: 1;
+        background: var(--surface-2);
+        border-top: 2px solid var(--edge, var(--border));
+        border-bottom: 1px solid var(--border);
+        color: var(--wine);
+        font-size: 12px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+        padding-top: 12px; padding-bottom: 10px;
+        text-align: start;
+    }
+    /* ⚠️ العددُ بخطٍّ عاديٍّ صغيرٍ ولا uppercase: رقمٌ لا عنوان. */
+    tbody tr.acsec > th > span {
+        float: inline-end; font-size: 11px; font-weight: 700;
+        letter-spacing: 0; text-transform: none; color: var(--text-dim);
+    }
+
     /* Mobile card-view fallback for the Payroll table specifically (the
        widest/most-used table). Below 720px, instead of horizontally
        scrolling a cramped table, each row becomes a stacked card with the
@@ -12637,6 +12659,95 @@
         // بسطرها ولا تُخلط بالمجموع.
         { key: 'bags',     en: 'Bags',              ar: 'أكياس', supply: true }
     ];
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ الكتالوج: «كلُّ صنفٍ بروحه، والذي دخل حديثًا هو الأوّل»
+    // ---------------------------------------------------------------------
+    // كلامُ المالك: «والكتالوج يجب أن يكون فيه كلُّ صنفٍ بروحه، والذي دخل إلى
+    // الكتالوج حديثًا يجب أن يكون هو الأوّل».
+    //
+    // ⚠️⚠️ هذه الكتلةُ **مكرَّرةٌ حرفيًّا** في admin.html وabaya-balances.html
+    //   وabaya-seller.html، ويحرس تطابقَها فحصٌ يُقارنها نصًّا: ترتيبٌ يختلف بين
+    //   الشاشات يجعل البياعةَ والسيدةَ فاطمة والمالكَ يقرؤون ثلاثةَ كتالوجاتٍ
+    //   لا كتالوجًا واحدًا، فيتكلّمون عن «الأوّل» ويقصدون ثلاثةَ أشياء.
+    // =====================================================================
+    /** مفتاحُ قسمِ ما لا نوعَ له. ⚠️ نفسُ قيمةِ مُرشِّح «غير محدَّد» القائم سلفًا. */
+    const CAT_NO_TYPE = '__NONE__';
+    /**
+     * طابعُ فايرستور الزمنيُّ إلى ميلي ثانية.
+     *
+     * ⚠️⚠️ ولماذا سلسلةُ احتياطاتٍ ولا `createdAt` وحدَها:
+     *   · `serverTimestamp()` تُقرأ **null** في اللحظة التي تسبق تأكيدَ الخادم،
+     *     فتصميمٌ أُنشئ قبل ثانيةٍ كان سيُقرأ صفرًا فيهبط إلى آخرِ القائمة — وهو
+     *     عكسُ المطلوب بالضبط، وفي أسوأِ لحظةٍ ممكنة.
+     *   · وكلُّ تصميمٍ أُضيف **قبل** وجود هذا الحقل لا يحمله إطلاقًا؛ وصفرُه
+     *     يجعله في الآخر، وهو **صحيحٌ** لأنه أقدمُ ما في الكتالوج فعلًا.
+     * ⚠️ ولا يُرمى خطأٌ بحال: حقلٌ بشكلٍ غير متوقّعٍ يُعيد صفرًا ولا يُعطّل الرسم.
+     */
+    /**
+     * ⚠️⚠️⚠️ الاسمُ `catTsToMillis` لا `tsToMillis`: في admin.html **دالّةٌ قائمةٌ
+     *   باسم `tsToMillis`** تقرأ سجلَّ حضورٍ (serverTime · timestamp · date)
+     *   وتُستعمل في خمسةَ عشرَ موضعًا في حساباتِ الغياب والفترات. وقد كتبتُ
+     *   نسختي باسمها فرفض المحرّكُ الملفَّ كلَّه («already been declared») —
+     *   وهي نجاةٌ بحظٍّ: لو كان التعارضُ في نطاقَين مختلفَين لَمَا ظهر خطأٌ،
+     *   ولَحسبت إحداهما ما تحسبه الأخرى فتُفسد تواريخَ الحضور بصمت.
+     *   والبادئةُ `cat` هنا هي نفسُها في الملفّات الثلاثة كي تبقى الكتلةُ متطابقة.
+     */
+    function catTsToMillis(t) {
+        if (!t) return 0;
+        if (typeof t.toMillis === 'function') { try { return t.toMillis(); } catch (e) { return 0; } }
+        if (typeof t.seconds === 'number') return t.seconds * 1000;
+        if (t instanceof Date) return t.getTime();
+        const d = Date.parse(String(t));
+        return isFinite(d) ? d : 0;
+    }
+    /** «متى دخل الكتالوج»: الإنشاءُ، فإن غاب فآخرُ تعديل، فإن غاب فصفر. */
+    function catCreatedMs(v) {
+        return catTsToMillis(v && v.createdAt) || catTsToMillis(v && v.updatedAt) || 0;
+    }
+    /**
+     * يُقسّم صفوفَ الكتالوج إلى أقسام، قسمٌ لكلِّ صنف.
+     * يُعيد: `[{ key, items, newest }]`
+     *
+     * ⚠️ ترتيبُ الأقسام: القسمُ الذي فيه **أحدثُ** ما دخل الكتالوج يتصدّر — فيكون
+     *   «الذي دخل حديثًا» أوّلَ بطاقةٍ في أوّلِ قسمٍ حرفيًّا كما أمر المالك.
+     * ⚠️ وعند تساوي الأحدثيّة يُرتَّب بترتيب `ABAYA_STOCK_ITEMS` لا أبجديًّا: قائمةٌ
+     *   يتبدّل ترتيبُها بلا سببٍ ظاهرٍ تُفقد القارئَ موضعَه.
+     * ⚠️ و«غيرُ المحدَّد» آخرًا **دائمًا** ولو كان فيه الأحدث: هو تصاميمُ ما قبل
+     *   حقلِ النوع، وليس صنفًا من أصنافِ المحل.
+     * ⚠️ والأقسامُ الفارغةُ لا تُبنى إطلاقًا — عنوانُ قسمٍ بلا بطاقاتٍ يُقرأ عطلًا.
+     */
+    function groupCatalogByType(rows, sortWithin) {
+        const bucket = new Map();
+        rows.forEach(p => {
+            const k = String(p.type || '') || CAT_NO_TYPE;
+            if (!bucket.has(k)) bucket.set(k, []);
+            bucket.get(k).push(p);
+        });
+        const order = ABAYA_STOCK_ITEMS.map(t => t.key);
+        const rank = (k) => {
+            if (k === CAT_NO_TYPE) return 9999;
+            const i = order.indexOf(k);
+            return i < 0 ? 9998 : i;
+        };
+        const out = [];
+        bucket.forEach((items, key) => {
+            if (typeof sortWithin === 'function') items.sort(sortWithin);
+            let newest = 0;
+            items.forEach(p => { const m = Number(p.createdMs || 0); if (m > newest) newest = m; });
+            out.push({ key, items, newest });
+        });
+        out.sort((a, b) => {
+            const na = a.key === CAT_NO_TYPE ? -1 : a.newest;
+            const nb = b.key === CAT_NO_TYPE ? -1 : b.newest;
+            return (nb - na) || (rank(a.key) - rank(b.key));
+        });
+        return out;
+    }
+    /** عنوانُ القسم. ⚠️ ولا يُترك فارغًا لِما لا نوعَ له — قسمٌ بلا عنوانٍ يُقرأ عطلًا. */
+    function catSectionLabel(key) {
+        return key === CAT_NO_TYPE ? 'Not set · غير محدّد' : (abayaTypeLabel(key) || key);
+    }
     // ⚠️ شانتون تعرض عبايتها في محل واحد فقط. مصفوفة لا نصّ حتى يُضاف محل
     // لاحقًا بلا تعديل منطق. وبقية المحلات لا يظهر لها قسمها إطلاقًا، فلا
     // تُسجَّل مبيعات باسمها في محل لا تعرض فيه.
@@ -13103,6 +13214,8 @@
                     discountPrice: Number(v.discountPrice || 0) || 0,
                     qty: abayaQtyMap(v.qty),
                     active: v.active !== false,
+                    // ⭐ «متى دخل الكتالوج» — عليه يُبنى «الذي دخل حديثًا هو الأوّل».
+                    createdMs: catCreatedMs(v),
                     hasImage: v.hasImage === true
                 });
             });
@@ -13286,7 +13399,7 @@
                     + (abayaProducts.length ? 'Nothing matches the search or the filters.' : 'No item yet.')
                     + `</td></tr>`;
             } else {
-                body.innerHTML = rows.map(p => {
+                const acRow = (p) => {
                     const disc = abayaHasDiscount(p);
                     const qtyCell = shop
                         ? `<b>${abayaQtyOf(p, shop)}</b>`
@@ -13324,7 +13437,26 @@
                         + `<button class="btn-ghost btn-sm" onclick="editAbayaProduct('${escapeHtml(p.id)}')">Edit</button> `
                         + `<button class="btn-danger btn-sm" onclick="deleteAbayaProduct('${escapeHtml(p.id)}')">Delete</button>`
                         + `</td></tr>`;
-                }).join('');
+                };
+                /**
+                 * ⭐⭐⭐⭐⭐ «كلُّ صنفٍ بروحه، والذي دخل حديثًا هو الأوّل» — بأمر المالك.
+                 * ⚠️ في الجدول يكون القسمُ **صفَّ عنوانٍ** لا حاوية: `<tbody>` واحدٌ
+                 *   ولا يُقسَّم إلى tbodyات، فصفُّ العنوان أبسطُ ولا يُغيّر بنيةَ
+                 *   الجدول ولا حسابَ أعمدته.
+                 */
+                const acGroups = groupCatalogByType(rows, (a, b) =>
+                    (Number(b.createdMs || 0) - Number(a.createdMs || 0))
+                    || String(a.code).localeCompare(String(b.code)));
+                body.innerHTML = acGroups.map(g =>
+                    // ⚠️⚠️ colspan="12" **بعددِ أعمدةِ الجدول بالضبط**: رقمٌ أقلُّ
+                    //   يترك خلايا فارغةً فتُزيح الصفَّ، ورقمٌ أكثرُ يمدُّ الجدولَ
+                    //   خارج إطاره. والعددُ نفسُه في كلِّ colspan في هذا الجدول
+                    //   (رسائلُ «لا نتائج» و«خطأ») ويحرسه فحص.
+                    `<tr class="acsec"><th colspan="12">`
+                    + `${escapeHtml(catSectionLabel(g.key))}`
+                    + `<span>${g.items.length} design(s)</span>`
+                    + `</th></tr>`
+                    + g.items.map(acRow).join('')).join('');
             }
         }
 

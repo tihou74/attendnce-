@@ -304,6 +304,26 @@
     .cpbd .qt { font-size: 12px; font-weight: 700; }
     .cpbd .qt.zero { color: var(--color-danger); }
 
+    /* ⭐⭐⭐⭐ قسمُ الصنف — «كلُّ صنفٍ بروحه» بأمر المالك.
+       ⚠️ العنوانُ لاصقٌ أعلى الشاشة (sticky) وهي تُمرّر قائمةً طويلة: بلا ذلك
+          تُقلّب عشرين بطاقةً فلا تعرف أيَّ صنفٍ تقرأ الآن. */
+    .cpsec { margin-top: var(--space-5); }
+    .cpsec:first-child { margin-top: 0; }
+    .cpsec > h3 {
+        position: sticky; top: 0; z-index: 2;
+        margin: 0; padding: 7px 0 5px;
+        background: var(--color-surface);
+        border-bottom: 2px solid var(--color-brand);
+        font-size: var(--text-sm); font-weight: 800;
+        letter-spacing: 0.05em; text-transform: uppercase;
+        color: var(--color-brand-text);
+        display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3);
+    }
+    /* ⚠️ العددُ بخطٍّ عاديٍّ صغيرٍ ولا uppercase: هو رقمٌ لا عنوان. */
+    .cpsec > h3 .n {
+        font-size: 11px; font-weight: 700; letter-spacing: 0; text-transform: none;
+        color: var(--color-text-muted); flex: 0 0 auto;
+    }
     .cpg { display: grid; gap: var(--space-3); grid-template-columns: 1fr 1fr; margin-top: var(--space-3); }
     @media (min-width: 620px) { .cpg { grid-template-columns: repeat(3, 1fr); } }
     .cpg .it {
@@ -593,7 +613,10 @@
             <div id="cpList" class="hidden" style="margin-top: var(--space-4);">
                 <label for="cpSearch">Search &mdash; barcode or name</label>
                 <input type="text" id="cpSearch" autocomplete="off" placeholder="Barcode, name, type, fabric or size">
-                <div class="cpg" id="cpGrid"></div>
+                <!-- ⚠️ الغلافُ لم يبقَ شبكةً: صار يحمل أقسامًا، وكلُّ قسمٍ فيه
+                     عنوانُه وشبكتُه (.cpg). عنوانٌ داخلَ شبكةٍ يأخذ خليّةً فيقع
+                     بجانب بطاقةٍ لا فوق قسمه. -->
+                <div id="cpGrid"></div>
                 <p class="ar" id="cpListNote" style="margin-top: var(--space-3);"></p>
             </div>
 
@@ -950,6 +973,95 @@
         // بسطرها ولا تُخلط بالمجموع.
         { key: 'bags',     en: 'Bags',              ar: 'أكياس', supply: true }
     ];
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ الكتالوج: «كلُّ صنفٍ بروحه، والذي دخل حديثًا هو الأوّل»
+    // ---------------------------------------------------------------------
+    // كلامُ المالك: «والكتالوج يجب أن يكون فيه كلُّ صنفٍ بروحه، والذي دخل إلى
+    // الكتالوج حديثًا يجب أن يكون هو الأوّل».
+    //
+    // ⚠️⚠️ هذه الكتلةُ **مكرَّرةٌ حرفيًّا** في admin.html وabaya-balances.html
+    //   وabaya-seller.html، ويحرس تطابقَها فحصٌ يُقارنها نصًّا: ترتيبٌ يختلف بين
+    //   الشاشات يجعل البياعةَ والسيدةَ فاطمة والمالكَ يقرؤون ثلاثةَ كتالوجاتٍ
+    //   لا كتالوجًا واحدًا، فيتكلّمون عن «الأوّل» ويقصدون ثلاثةَ أشياء.
+    // =====================================================================
+    /** مفتاحُ قسمِ ما لا نوعَ له. ⚠️ نفسُ قيمةِ مُرشِّح «غير محدَّد» القائم سلفًا. */
+    const CAT_NO_TYPE = '__NONE__';
+    /**
+     * طابعُ فايرستور الزمنيُّ إلى ميلي ثانية.
+     *
+     * ⚠️⚠️ ولماذا سلسلةُ احتياطاتٍ ولا `createdAt` وحدَها:
+     *   · `serverTimestamp()` تُقرأ **null** في اللحظة التي تسبق تأكيدَ الخادم،
+     *     فتصميمٌ أُنشئ قبل ثانيةٍ كان سيُقرأ صفرًا فيهبط إلى آخرِ القائمة — وهو
+     *     عكسُ المطلوب بالضبط، وفي أسوأِ لحظةٍ ممكنة.
+     *   · وكلُّ تصميمٍ أُضيف **قبل** وجود هذا الحقل لا يحمله إطلاقًا؛ وصفرُه
+     *     يجعله في الآخر، وهو **صحيحٌ** لأنه أقدمُ ما في الكتالوج فعلًا.
+     * ⚠️ ولا يُرمى خطأٌ بحال: حقلٌ بشكلٍ غير متوقّعٍ يُعيد صفرًا ولا يُعطّل الرسم.
+     */
+    /**
+     * ⚠️⚠️⚠️ الاسمُ `catTsToMillis` لا `tsToMillis`: في admin.html **دالّةٌ قائمةٌ
+     *   باسم `tsToMillis`** تقرأ سجلَّ حضورٍ (serverTime · timestamp · date)
+     *   وتُستعمل في خمسةَ عشرَ موضعًا في حساباتِ الغياب والفترات. وقد كتبتُ
+     *   نسختي باسمها فرفض المحرّكُ الملفَّ كلَّه («already been declared») —
+     *   وهي نجاةٌ بحظٍّ: لو كان التعارضُ في نطاقَين مختلفَين لَمَا ظهر خطأٌ،
+     *   ولَحسبت إحداهما ما تحسبه الأخرى فتُفسد تواريخَ الحضور بصمت.
+     *   والبادئةُ `cat` هنا هي نفسُها في الملفّات الثلاثة كي تبقى الكتلةُ متطابقة.
+     */
+    function catTsToMillis(t) {
+        if (!t) return 0;
+        if (typeof t.toMillis === 'function') { try { return t.toMillis(); } catch (e) { return 0; } }
+        if (typeof t.seconds === 'number') return t.seconds * 1000;
+        if (t instanceof Date) return t.getTime();
+        const d = Date.parse(String(t));
+        return isFinite(d) ? d : 0;
+    }
+    /** «متى دخل الكتالوج»: الإنشاءُ، فإن غاب فآخرُ تعديل، فإن غاب فصفر. */
+    function catCreatedMs(v) {
+        return catTsToMillis(v && v.createdAt) || catTsToMillis(v && v.updatedAt) || 0;
+    }
+    /**
+     * يُقسّم صفوفَ الكتالوج إلى أقسام، قسمٌ لكلِّ صنف.
+     * يُعيد: `[{ key, items, newest }]`
+     *
+     * ⚠️ ترتيبُ الأقسام: القسمُ الذي فيه **أحدثُ** ما دخل الكتالوج يتصدّر — فيكون
+     *   «الذي دخل حديثًا» أوّلَ بطاقةٍ في أوّلِ قسمٍ حرفيًّا كما أمر المالك.
+     * ⚠️ وعند تساوي الأحدثيّة يُرتَّب بترتيب `ABAYA_STOCK_ITEMS` لا أبجديًّا: قائمةٌ
+     *   يتبدّل ترتيبُها بلا سببٍ ظاهرٍ تُفقد القارئَ موضعَه.
+     * ⚠️ و«غيرُ المحدَّد» آخرًا **دائمًا** ولو كان فيه الأحدث: هو تصاميمُ ما قبل
+     *   حقلِ النوع، وليس صنفًا من أصنافِ المحل.
+     * ⚠️ والأقسامُ الفارغةُ لا تُبنى إطلاقًا — عنوانُ قسمٍ بلا بطاقاتٍ يُقرأ عطلًا.
+     */
+    function groupCatalogByType(rows, sortWithin) {
+        const bucket = new Map();
+        rows.forEach(p => {
+            const k = String(p.type || '') || CAT_NO_TYPE;
+            if (!bucket.has(k)) bucket.set(k, []);
+            bucket.get(k).push(p);
+        });
+        const order = ABAYA_STOCK_ITEMS.map(t => t.key);
+        const rank = (k) => {
+            if (k === CAT_NO_TYPE) return 9999;
+            const i = order.indexOf(k);
+            return i < 0 ? 9998 : i;
+        };
+        const out = [];
+        bucket.forEach((items, key) => {
+            if (typeof sortWithin === 'function') items.sort(sortWithin);
+            let newest = 0;
+            items.forEach(p => { const m = Number(p.createdMs || 0); if (m > newest) newest = m; });
+            out.push({ key, items, newest });
+        });
+        out.sort((a, b) => {
+            const na = a.key === CAT_NO_TYPE ? -1 : a.newest;
+            const nb = b.key === CAT_NO_TYPE ? -1 : b.newest;
+            return (nb - na) || (rank(a.key) - rank(b.key));
+        });
+        return out;
+    }
+    /** عنوانُ القسم. ⚠️ ولا يُترك فارغًا لِما لا نوعَ له — قسمٌ بلا عنوانٍ يُقرأ عطلًا. */
+    function catSectionLabel(key) {
+        return key === CAT_NO_TYPE ? 'Not set · غير محدّد' : (cpTypeLabel(key) || key);
+    }
     // ⚠️ شانتون تعرض عبايتها في محل واحد فقط. مصفوفة لا نصّ حتى يُضاف محل
     // لاحقًا بلا تعديل منطق. وبقية المحلات لا يظهر لها قسمها إطلاقًا، فلا
     // تُسجَّل مبيعات باسمها في محل لا تعرض فيه.
@@ -1814,6 +1926,8 @@
                     price: Number(v.price || 0) || 0,
                     discountPrice: Number(v.discountPrice || 0) || 0,
                     qty: (v.qty && typeof v.qty === 'object') ? v.qty : {},
+                    // ⭐ «متى دخل الكتالوج» — عليه يُبنى «الذي دخل حديثًا هو الأوّل».
+                    createdMs: catCreatedMs(v),
                     hasImage: v.hasImage === true
                 });
             });
@@ -1869,6 +1983,10 @@
                 price: Number(v.price || 0) || 0,
                 discountPrice: Number(v.discountPrice || 0) || 0,
                 qty: (v.qty && typeof v.qty === 'object') ? v.qty : {},
+                // ⚠️ يُقرأ هنا أيضًا كي يكون شكلُ الكائن واحدًا في الموضعَين: عبايةٌ
+                //   وُجدت بالباركود قد تُمرَّر يومًا إلى الشبكة، وكائنٌ ناقصُ حقلٍ
+                //   يجعلها تُرتَّب كأنّها أقدمُ ما في الكتالوج.
+                createdMs: catCreatedMs(v),
                 hasImage: v.hasImage === true
             });
             setMsg('cpMsg', '', '');
@@ -1959,7 +2077,7 @@
                 : `The owner has not added any abaya to the list yet.`;
             return;
         }
-        el('cpGrid').innerHTML = rows.map(p => {
+        const cpCard = (p) => {
             const left = cpQtyOf(p, state.shop);
             const disc = cpSeasonOn && cpHasDiscount(p);
             return `<button type="button" class="it" data-cpid="${escapeHtml(p.id)}">`
@@ -1974,9 +2092,30 @@
                 + (p.size ? `<span class="q" dir="ltr">${escapeHtml(p.size)}</span>` : '')
                 + `<span class="q">${left} left</span>`
                 + `</span></button>`;
-        }).join('');
+        };
+
+        /**
+         * ⭐⭐⭐⭐⭐ «كلُّ صنفٍ بروحه، والذي دخل حديثًا هو الأوّل» — بأمر المالك.
+         * ⚠️ الترتيبُ داخلَ القسم: الأحدثُ دخولًا إلى الكتالوج أوّلًا، ثم الباركود
+         *   عند التساوي — فتصميمانِ وصلا في اللحظة نفسها لا يتبادلانِ مكانَهما
+         *   في كلِّ رسم.
+         * ⚠️ ولا يُرشَّح الناقصُ هنا: الصفوفُ سلفًا لا تحمل إلّا ما في محلّها بعددٍ
+         *   أكبرَ من صفر (انظر أعلى الدالّة).
+         */
+        const groups = groupCatalogByType(rows, (a, b) =>
+            (Number(b.createdMs || 0) - Number(a.createdMs || 0))
+            || String(a.code).localeCompare(String(b.code)));
+
+        el('cpGrid').innerHTML = groups.map(g =>
+            `<div class="cpsec">`
+            + `<h3>${escapeHtml(catSectionLabel(g.key))}`
+            + `<span class="n">${g.items.length}</span></h3>`
+            + `<div class="cpg">${g.items.map(cpCard).join('')}</div>`
+            + `</div>`).join('');
+
         el('cpListNote').innerHTML = `<b>${rows.length}</b> abaya(s) available in `
-            + `<b>${escapeHtml(state.shop || '')}</b>. Tap one to sell it.`
+            + `<b>${escapeHtml(state.shop || '')}</b> across <b>${groups.length}</b> type(s). Tap one to sell it.`
+            + ` The newest to reach the catalogue is first.`
             + (cpSeasonOn ? ` A &#9733; means the discount price is the one shown.` : '');
         cpObserveImages();
     }
