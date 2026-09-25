@@ -11041,6 +11041,26 @@
             let durationLabel = co ? (co.duration || '-') : 'Open';
             let deviceClaimedMinutes = null;
             let tamperMinutes = null;
+            /**
+             * ⚠️⚠️⚠️ هل ادّعى الجهازُ مدّةً **أصلًا**؟
+             *
+             *   شاشةُ الموظفين (`index.html`) تكتب `workMinutes` على مستند الخروج.
+             *   وشاشةُ البياعات (`abaya-seller.html`) **لا تكتبها إطلاقًا** — تكتب
+             *   طابعَي خادمٍ وتكفي، والمدّةُ تُحسب منهما أدناه.
+             *
+             *   وكان `Number(co.workMinutes) || 0` يُحوّل «لا ادّعاء» إلى «ادّعى صفرًا».
+             *   فيقع الفرقُ (480 − 0) فوق الحدّ (3 دقائق)، فتُوسَم **كلُّ ورديةِ
+             *   بياعةٍ** تلاعبًا بالساعة: «ادّعى الجهازُ 0h وعملت 8h». والنتيجةُ
+             *   اتّهامُ موظفاتٍ بريئاتٍ في جدول «التلاعب»، **ودفنُ التلاعبِ الحقيقيّ**
+             *   تحت ركامٍ من الإنذارات الكاذبة — وهو أخطرُ الأمرَين.
+             *
+             * ⚠️ فلا مقارنةَ بلا ادّعاء: `null` تعني «لم يُكتب رقمٌ» وتختلف عن صفر.
+             *   والمدّةُ نفسُها لا تتأثّر — تبقى محسوبةً من ساعة الخادم كما هي.
+             */
+            const claimedRaw = co ? co.workMinutes : undefined;
+            const claimedMinutes = (claimedRaw === undefined || claimedRaw === null
+                || claimedRaw === '' || !isFinite(Number(claimedRaw)))
+                ? null : Number(claimedRaw);
             // هل المدة محسوبة من ساعة الخادم أم مأخوذة من الجهاز كما هي؟
             // ⚠️ الحالة المختلطة خطر حقيقي: دخولٌ سُجِّل بنسخة قديمة من التطبيق
             // (بلا طابع خادم) وخروجٌ بالنسخة الجديدة — لا يمكن حساب الفرق،
@@ -11052,11 +11072,15 @@
             if (srvIn && srvOut) {
                 durationTrusted = true;
                 const real = Math.max(0, Math.round((srvOut.getTime() - srvIn.getTime()) / 60000));
-                deviceClaimedMinutes = workMinutes;
-                // فارقٌ يتجاوز الحدّ = الجهاز ادّعى غير الحقيقة. الحدّ يسمح
-                // بثوانٍ من تأخّر الشبكة بين لحظة الضغط ولحظة وصول الكتابة.
-                if (Math.abs(real - workMinutes) >= SHIFT_TAMPER_ALERT_MINUTES) {
-                    tamperMinutes = workMinutes - real;
+                // ⚠️ لا تُقارَن إلّا مدّةٌ **ادّعاها** جهازٌ فعلًا — انظر الملاحظة أعلاه.
+                //   وردياتُ البياعات بلا ادّعاءٍ، فلا تُوسَم ولا تدخل جدولَ التلاعب.
+                if (claimedMinutes !== null) {
+                    deviceClaimedMinutes = claimedMinutes;
+                    // فارقٌ يتجاوز الحدّ = الجهاز ادّعى غير الحقيقة. الحدّ يسمح
+                    // بثوانٍ من تأخّر الشبكة بين لحظة الضغط ولحظة وصول الكتابة.
+                    if (Math.abs(real - claimedMinutes) >= SHIFT_TAMPER_ALERT_MINUTES) {
+                        tamperMinutes = claimedMinutes - real;
+                    }
                 }
                 workMinutes = real;
                 durationLabel = `${Math.floor(real / 60)}h ${real % 60}m`;
