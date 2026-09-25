@@ -594,6 +594,12 @@
             <button type="button" id="navAttend" aria-pressed="true" aria-controls="viewAttend">
                 <span class="t">My shift</span><span class="s">بصمتي</span>
             </button>
+            <!-- ⚠️⚠️ قسمُ التوزيع يظهر **لفلوريندا وحدَها** (`isDistributor` على
+                 مستندها) وحين تكون هناك قطعٌ موقوفةٌ عندها فعلًا. وبقيّةُ البياعات
+                 لا يرَينه إطلاقًا — ليس إخفاءَ سرٍّ، بل أنّه ليس عملَهنّ. -->
+            <button type="button" id="navDistribute" class="hidden" aria-pressed="false" aria-controls="viewDistribute">
+                <span class="t">Distribute <span class="badge" id="navDistributeBadge">0</span></span><span class="s">توزيع البضاعة</span>
+            </button>
             <button type="button" id="navSell" aria-pressed="false" aria-controls="viewSell">
                 <span class="t">Sell</span><span class="s">بيع</span>
             </button>
@@ -645,6 +651,44 @@
             </div>
         </div>
         </div><!-- /viewArrivals -->
+
+        <div class="hidden" id="viewDistribute">
+        <!-- ==================================================================
+             ⭐⭐⭐⭐⭐ «فلوريندا تستقبل البضاعة أوّلًا» — بأمر المالك
+             ------------------------------------------------------------------
+             «إذا كانت البضاعة الجديدة موجَّهة إلى جلف مول أو فندوم أو فيستفال
+             فأوّلُ شيءٍ يجب أن يظهر الميساج إلى فلوريندا فقط بأنّ البضاعة جاهزة مع
+             الصورة وكل التفاصيل — اطبعي الباركود والسعر ووزّعيها على المحلات.
+             بعدها لما تخلص يظهر لها زرّ: أنا كلّ شيء جاهز وتمّ إرسال البضاعة إلى
+             المحلات. أوتوماتيكيًّا يظهر زرٌّ عند كل البياعات في المحلات الثلاثة
+             أنها استقبلت البضاعة».
+
+             ⚠️⚠️ والقطعُ **ليست على أيِّ رفٍّ** وهي في هذا القسم: كميّةُ المحلّ
+             لا تُزاد إلّا لحظةَ ضغطها «وزّعت». وهذا هو جوهرُ الحلقة — قطعةٌ لم
+             تصل المحلَّ بعد لا يجوز أن تظهر في كتالوج بياعةٍ فتبيعها.
+
+             ⚠️⚠️ ولا يُرشَّح هذا القسمُ بمحلّها: هي توزّع على المحلات الثلاثة
+             جميعًا، فبضاعةُ فندوم عملُها وهي واقفةٌ في جلف مول. وهذا **عكسُ** قسم
+             «وصلتكم بضاعة» تمامًا، وذاك مرشَّحٌ بالمحلّ عن قصد.
+
+             ⚠️⚠️ ووست ولك **ليس في الحلقة** بنصّ المالك: «الوست ولك بروحه يبقى
+             مثل ما هو». فبضاعتُه تذهب إلى رفّه مباشرةً ولا تمرّ من هنا.
+
+             ⚠️⚠️⚠️ ولا كوستَ ولا مورّدَ هنا كذلك: تُقرأ من نفس المجموعة التي لا
+             تحملهما أصلًا، وقاعدةُ الخادم ترفض إنشاءَ مستندٍ فيها يحمل أيًّا منهما.
+             ================================================================== -->
+        <div class="panel hidden" id="flPanel">
+            <h2 id="flTitle">Goods are ready for you</h2>
+            <p class="ar">Print the encoding and the price, then send each shop its share
+                <span dir="rtl">&mdash; اطبعي الانكودينق والسعر ووزّعيها على المحلات</span></p>
+            <p class="status" id="flMsg" style="margin-top: var(--space-3);"></p>
+            <div class="sag" id="flGrid"></div>
+            <p class="note" id="flNote" style="margin-top: var(--space-3);"></p>
+            <div class="bar" style="margin-top: var(--space-3);">
+                <button class="ghost small" id="flRefresh" style="width: auto;">Refresh</button>
+            </div>
+        </div>
+        </div><!-- /viewDistribute -->
         <!-- ==================================================================
              ⭐⭐ البصمة — بطلب المالك: «يبصمون من نفس شاشة إرسال التقرير»
              ------------------------------------------------------------------
@@ -1396,10 +1440,11 @@
     //   يجب أن تجد نصفَها كما تركته.
     // =====================================================================
     const SELLER_VIEWS = {
-        attend:   { view: 'viewAttend',   nav: 'navAttend' },
-        sell:     { view: 'viewSell',     nav: 'navSell' },
-        report:   { view: 'viewReport',   nav: 'navReport' },
-        arrivals: { view: 'viewArrivals', nav: 'navArrivals' }
+        attend:     { view: 'viewAttend',     nav: 'navAttend' },
+        distribute: { view: 'viewDistribute', nav: 'navDistribute' },
+        sell:       { view: 'viewSell',       nav: 'navSell' },
+        report:     { view: 'viewReport',     nav: 'navReport' },
+        arrivals:   { view: 'viewArrivals',   nav: 'navArrivals' }
     };
     let sellerView = 'attend';
 
@@ -1769,7 +1814,13 @@
                 if (v.active === false) return;   // مَن تركت العمل تُخفى
                 // ⭐ employeeId: رابط ملف الموظفة الذي تُسجَّل البصمة تحته.
                 // يُنشئه المالك من لوحة الإدارة، وغيابُه يُعطّل البصمة وحدها.
-                sellers.push({ id: d.id, name: v.name || d.id, employeeId: v.employeeId || '' });
+                // ⭐ isDistributor: من تستقبل البضاعةَ قبل المحلات (فلوريندا).
+                // ⚠️ أيُّ قيمةٍ غير true تُقرأ «لا»: حقلٌ غائبٌ أو نصٌّ أو 1 لا
+                //   يُفتح به قسمُ التوزيع. والعلَمُ يضعه المالكُ من لوحته وحدَه.
+                sellers.push({
+                    id: d.id, name: v.name || d.id, employeeId: v.employeeId || '',
+                    isDistributor: v.isDistributor === true
+                });
             });
             sellers.sort((a, b) => a.name.localeCompare(b.name));
             const sel = el('sellerSelect');
@@ -2013,6 +2064,11 @@
         // ⚠️ وبـforce دائمًا: هي تُعيد اختيارَ المحلّ في كلّ تقرير، والسيدةُ فاطمة
         //   قد أرسلت شحنةً قبل دقيقة — فقائمةٌ محفوظةٌ من فتحةٍ سابقةٍ تُخفي عملًا.
         loadShelfTasks(true);
+        // ⭐⭐⭐⭐⭐ وقطعُ فلوريندا الموقوفةُ عندها — لها وحدَها، وبلا await كذلك.
+        // ⚠️ وتُقرأ **بعد** loadSellers فقط: العلَمُ يُقرأ من قائمة الأسماء، وقبلها
+        //   تكون sellers فارغةً فتُقرأ فلوريندا «ليست موزّعة» ولا يظهر لها القسم.
+        //   وهذه الدالّةُ تُنادى بعد الدخول واختيار المحلّ، فالقائمةُ محمّلةٌ يقينًا.
+        loadFlorindaTasks(true);
     }
     el('btnBackShop').addEventListener('click', () => showStep('stepShop'));
     // ---- أزرارُ التنقّل بين الأقسام -------------------------------------
@@ -2545,6 +2601,63 @@
     let saBusy = '';
     let saError = '';
 
+    /**
+     * ⭐⭐⭐ مراحلُ مهمّةِ الرفّ — ثلاثٌ، والثالثةُ هي حقلُ `done` القائم.
+     *
+     *   with_florinda → القطعُ عند فلوريندا، **ليست على رفٍّ**، ولا يراها المحلّ.
+     *   at_shops      → وُزّعت، والمحلُّ يراها ويُطالَب بترتيبها.
+     *   (الرفّ)       → `done === true`، وهو الوسمُ القائمُ منذ v20.
+     *
+     * ⚠️⚠️ ولمَ لم تُجعل «الرفّ» مرحلةً ثالثةً في نفس الحقل: وسمُ الرفِّ يكتبه
+     *   الكشكُ بقاعدةٍ منشورةٍ تسمح بأربعة حقولٍ **بالضبط**
+     *   (`done,doneAt,doneBy,doneByName`). فنقلُه إلى `stage` كان يعني تغييرَ تلك
+     *   القاعدة وتعطيلَ زرِّ كلِّ بياعةٍ في كلِّ محلٍّ حتى يُنشر الملفُّ من جديد —
+     *   ثمنٌ باهظٌ لأجل تسميةٍ أجملَ. فبقيت المرحلةُ للتوزيع وحدَه.
+     *
+     * ⚠️⚠️ والغيابُ يُقرأ `at_shops` دائمًا (`shelfStageOf`): كلُّ مهمّةٍ كُتبت قبل
+     *   هذه الميزة بلا حقلِ مرحلة. ولو قُرئ الغيابُ «عند فلوريندا» لاختفت مهمّاتُ
+     *   المحلات القائمةُ كلُّها من شاشاتهنّ في لحظةِ رفعِ هذا الملف.
+     */
+    const SHELF_STAGE_FLORINDA = 'with_florinda';
+    const SHELF_STAGE_SHOPS = 'at_shops';
+
+    function shelfStageOf(v) {
+        const s = String((v && v.stage) || '');
+        return s === SHELF_STAGE_FLORINDA ? SHELF_STAGE_FLORINDA : SHELF_STAGE_SHOPS;
+    }
+
+    /**
+     * قراءةُ مستندِ مهمّةٍ إلى كائنٍ واحد — تُستعملها قائمةُ المحلّ **وقائمةُ
+     * فلوريندا** معًا.
+     * ⚠️ ومصدرٌ واحدٌ لا مصدران: قائمتان تقرآن نفسَ المستند بحقلَين مختلفَين
+     *   تعنيان أنّ حقلًا يُضاف يومًا لإحداهما ويُنسى في الأخرى، فتختلف البطاقتان
+     *   لنفس القطعة بلا سببٍ ظاهر.
+     */
+    function shelfTaskFromDoc(id, v) {
+        return {
+            id: id,
+            productId: String(v.productId || ''),
+            code: String(v.code || ''),
+            name: String(v.name || ''),
+            type: String(v.type || ''),
+            size: String(v.size || ''),
+            fabric: String(v.fabric || ''),
+            tone: String(v.tone || ''),
+            canOrder: v.canOrder === true,
+            price: Number(v.price || 0) || 0,
+            pieces: Math.floor(Number(v.pieces || 0)) || 0,
+            hasImage: v.hasImage === true,
+            shop: String(v.shop || ''),
+            sentAt: String(v.sentAt || ''),
+            stage: shelfStageOf(v),
+            // ⚠️ أيُّ قيمةٍ غير true تُقرأ «لم يُنجَز»: عملٌ لم يُنجَز يظهر،
+            //   وهو الأسلمُ من إخفاء مهمّةٍ مطلوبة.
+            done: v.done === true,
+            doneByName: String(v.doneByName || ''),
+            doneAt: String(v.doneAt || '')
+        };
+    }
+
     /** يُعيد القسمَ إلى الصفر — يُنادى عند تغيير المحل (الجهاز مشترك). */
     function resetShelfTasks() {
         saTasks = [];
@@ -2559,6 +2672,9 @@
         el('saNote').innerHTML = '';
         setMsg('saMsg', '', '');
         renderArrivalsNav();
+        // ⚠️ وقسمُ التوزيع يُصفَّر معه: الجهازُ مشترك، ومن تُسلّم الهاتفَ لبياعةٍ
+        //   أخرى لا يجوز أن تترك لها بضاعةَ فلوريندا على الشاشة ولا زرَّها.
+        resetFlorindaTasks();
     }
 
     /**
@@ -2599,27 +2715,15 @@
                                              where('shop', '==', state.shop)));
             saTasks = [];
             snap.forEach(d => {
-                const v = d.data() || {};
-                saTasks.push({
-                    id: d.id,
-                    productId: String(v.productId || ''),
-                    code: String(v.code || ''),
-                    name: String(v.name || ''),
-                    type: String(v.type || ''),
-                    size: String(v.size || ''),
-                    fabric: String(v.fabric || ''),
-                    tone: String(v.tone || ''),
-                    canOrder: v.canOrder === true,
-                    price: Number(v.price || 0) || 0,
-                    pieces: Math.floor(Number(v.pieces || 0)) || 0,
-                    hasImage: v.hasImage === true,
-                    sentAt: String(v.sentAt || ''),
-                    // ⚠️ أيُّ قيمةٍ غير true تُقرأ «لم يُنجَز»: عملٌ لم يُنجَز يظهر،
-                    //   وهو الأسلمُ من إخفاء مهمّةٍ مطلوبة.
-                    done: v.done === true,
-                    doneByName: String(v.doneByName || ''),
-                    doneAt: String(v.doneAt || '')
-                });
+                const t = shelfTaskFromDoc(d.id, d.data() || {});
+                // ⚠️⚠️⚠️ قطعةٌ ما زالت عند فلوريندا **ليست في هذا المحلّ بعد**.
+                //   مستندُها يحمل اسمَ المحلّ من لحظة توزيع السيدة فاطمة، فلولا هذا
+                //   السطرُ لرأتها بياعةُ المحلّ قبل أن تصلها القطعةُ فعلًا: تطبع
+                //   باركودًا لبضاعةٍ ليست عندها، وتَعُدُّها موجودةً وهي ليست كذلك.
+                //   والمرحلةُ تُقرأ من المستند، فالمهمّاتُ القديمةُ (بلا حقلِ مرحلة)
+                //   تبقى ظاهرةً كما كانت — لا شيءَ يختفي بهذا التغيير.
+                if (t.stage === SHELF_STAGE_FLORINDA) return;
+                saTasks.push(t);
             });
             saTasks.sort((a, b) => String(b.sentAt).localeCompare(String(a.sentAt)));
             saLoaded = true;
@@ -2828,6 +2932,291 @@
         renderShelfTasks();
     });
     el('saRefresh').addEventListener('click', () => loadShelfTasks(true));
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ قسمُ التوزيع — فلوريندا وحدَها
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ هذا القسمُ هو الوحيدُ في هذه الصفحة الذي **يزيد** كميّةَ رفّ. وكلُّ ما
+    //   عداه يُنقص (بيع) أو لا يمسّ الكميّةَ إطلاقًا. فأيُّ خطإٍ هنا يُنتج مخزونًا
+    //   وهميًّا يبيع النظامُ منه ما لا يوجد — ولذلك الحرسُ مضاعَف:
+    //     ١) المرحلةُ تُقرأ من **الخادم** قبل كلِّ زيادة، فمن ضغطت مرّتين لا تزيد
+    //        الكميّةَ مرّتين.
+    //     ٢) المرحلةُ تُكتب **قبل** الكميّة. ولو عُكس الترتيبُ لكان فشلُ كتابةِ
+    //        المرحلةِ بعد نجاحِ الكميّة يُعيد القطعةَ إلى قائمتها، فتضغط ثانيةً
+    //        وتُزاد الكميّةُ **مرّتين بصمت**. وبالترتيب الحاليّ يكون الفشلُ
+    //        «محلٌّ أُبلغ وكميّتُه لم تُزَد» — نقصٌ **يُقال بالرقم واسم المحلّ**،
+    //        وهو أهونُ بكثيرٍ من زيادةٍ خفيّة.
+    // =====================================================================
+    let flTasks = [];
+    let flLoaded = false;
+    let flBusy = '';
+    let flError = '';
+
+    /** هل الداخلةُ هي من تستقبل البضاعةَ أوّلًا؟ */
+    function sellerIsDistributor() {
+        const s = sellers.find(x => x.id === state.sellerId);
+        return !!(s && s.isDistributor === true);
+    }
+
+    function resetFlorindaTasks() {
+        flTasks = [];
+        flLoaded = false;
+        flBusy = '';
+        flError = '';
+        const p = el('flPanel'); if (p) p.classList.add('hidden');
+        const g = el('flGrid'); if (g) g.innerHTML = '';
+        const n = el('flNote'); if (n) n.innerHTML = '';
+        setMsg('flMsg', '', '');
+        renderDistributeNav();
+    }
+
+    /**
+     * زرُّ «توزيع البضاعة» في شريط التنقّل.
+     * ⚠️ لا يظهر لغير فلوريندا بحال، ولا يظهر لها إن لم يكن عندها شيءٌ — إلّا وهي
+     *   واقفةٌ داخلَ القسم، فلا تُخرَج منه قهرًا بعد أن تُفرّغه.
+     */
+    function renderDistributeNav() {
+        const btn = el('navDistribute');
+        if (!btn) return;
+        const waiting = flTasks.length;
+        const show = sellerIsDistributor() && (waiting > 0 || sellerView === 'distribute');
+        btn.classList.toggle('hidden', !show);
+        const b = el('navDistributeBadge');
+        if (b) {
+            b.textContent = String(waiting);
+            b.classList.toggle('hidden', waiting === 0);
+        }
+    }
+
+    /**
+     * القطعُ الموقوفةُ عندها — من المحلات الثلاثة جميعًا.
+     * ⚠️⚠️ **بلا ترشيحٍ بالمحلّ** عن قصد، وهو عكسُ قائمةِ المحلّ تمامًا: هي توزّع
+     *   على جلف وفندوم وفيستفال، فبضاعةُ فندوم عملُها وهي واقفةٌ في جلف مول.
+     * ⚠️ وبلا orderBy — الدرسُ نفسُه: فايرستور يُسقط بصمتٍ كلَّ مستندٍ لا يحمل
+     *   الحقلَ المرتَّبَ به. الترتيبُ محليّ.
+     * ⚠️ ولا تُقرأ إن لم تكن فلوريندا: قراءةٌ بلا داعٍ على بيانات هاتف كلِّ بياعة.
+     */
+    async function loadFlorindaTasks(force) {
+        if (!sellerIsDistributor()) { resetFlorindaTasks(); return; }
+        if (flLoaded && !force) { renderFlorinda(); return; }
+        flError = '';
+        try {
+            const snap = await getDocs(query(collection(db, ABAYA_SHELF_TASKS_COLL),
+                                             where('stage', '==', SHELF_STAGE_FLORINDA)));
+            flTasks = [];
+            snap.forEach(d => flTasks.push(shelfTaskFromDoc(d.id, d.data() || {})));
+            flTasks.sort((a, b) => String(b.sentAt).localeCompare(String(a.sentAt)));
+            flLoaded = true;
+        } catch (e) {
+            console.error('Could not read the goods waiting to be distributed:', e);
+            // ⚠️ خطأُ الصلاحيّة يُقال لها هنا **بخلاف** قسم المحلّ: ذاك يظهر لكلِّ
+            //   بياعةٍ لا تملك الإصلاح، وهذا قسمٌ لشخصٍ واحدٍ يتكلّم المالكَ مباشرةً
+            //   ويحتاج أن يعرف لماذا لا يرى البضاعةَ التي أُخبر أنها وصلت.
+            flError = /permission|insufficient/i.test(String(e && e.message))
+                ? 'Not allowed yet &mdash; the new rules (v22) have not been published. Tell the owner.'
+                : 'The list could not be read just now. Press Refresh.';
+        }
+        renderFlorinda();
+    }
+
+    /**
+     * تجميعُ المهمّاتِ شحنةً شحنة: مهمّةٌ لكلِّ محلٍّ، وهي تطبع الانكودينق **مرّةً
+     * واحدة** للتصميم كلِّه ثمّ تُقسّم. فبطاقةٌ واحدةٌ تحمل حسّةَ كلِّ محلّ.
+     * ⚠️ والمفتاحُ `productId` **مع** `sentAt`: نفسُ التصميم قد يصل شحنتَين في
+     *   يومَين بسعرَين، وجمعُهما في بطاقةٍ واحدةٍ يُخفي أنّ إحداهما وُزّعت.
+     * ⚠️ وزرُّ التوزيع **لكلِّ شحنةٍ لا زرٌّ واحدٌ للكلّ**: من أنهت شحنةً وبقيت
+     *   الثانيةُ على الطاولة لا يجوز أن يُرسل زرُّها الشحنتَين.
+     */
+    function flGroups() {
+        const map = new Map();
+        flTasks.forEach(t => {
+            const k = t.productId + '|' + t.sentAt;
+            let g = map.get(k);
+            if (!g) {
+                g = {
+                    key: k, productId: t.productId, code: t.code, name: t.name,
+                    type: t.type, size: t.size, fabric: t.fabric, tone: t.tone,
+                    canOrder: t.canOrder, price: t.price, hasImage: t.hasImage,
+                    sentAt: t.sentAt, tasks: [], total: 0
+                };
+                map.set(k, g);
+            }
+            g.tasks.push(t);
+            g.total += t.pieces;
+        });
+        const out = [...map.values()];
+        out.forEach(g => g.tasks.sort((a, b) => String(a.shop).localeCompare(String(b.shop))));
+        out.sort((a, b) => String(b.sentAt).localeCompare(String(a.sentAt)));
+        return out;
+    }
+
+    /** بطاقةُ شحنةٍ واحدةٍ أمام فلوريندا. */
+    function flCard(g) {
+        // ⚠️ نفسُ قاعدةِ قسم المحلّ: السعرُ المطبوعُ هو سعرُ الكتالوج **الحيّ**.
+        //   وهي من تطبع الفلاصقَ فعلًا، فالفرقُ عندها أخطرُ منه عند غيرها.
+        const live = cpLoaded ? cpProducts.find(p => p.id === g.productId) : null;
+        const priceNow = live ? Number(live.price || 0) || 0 : g.price;
+        const changed = !!(live && Math.abs(Number(live.price || 0) - g.price) > CENT);
+        const gone = cpLoaded && !live;
+        const tone = (g.tone === 'gold' || g.tone === 'silver') ? g.tone : '';
+        const busy = flBusy === g.key;
+
+        let s = `<div class="sait">`;
+        s += `<div class="im">`
+            + (g.hasImage
+                ? `<img data-cpimg="${escapeHtml(g.productId)}" alt="${escapeHtml(g.name || g.code)}">`
+                : `<span class="noimg">No<br>picture</span>`)
+            + (tone ? `<span class="tdot ${tone}" aria-hidden="true"></span>` : '')
+            + `</div>`;
+        s += `<div class="tx">`;
+        s += `<span class="bc">${escapeHtml(g.code)}</span>`;
+        if (g.name) s += `<span class="nm">${escapeHtml(g.name)}</span>`;
+        if (g.type) s += `<span class="ln">${escapeHtml(cpTypeLabel(g.type))}</span>`;
+        if (g.fabric) s += `<span class="ln">Fabric &mdash; القماش: <b>${escapeHtml(g.fabric)}</b></span>`;
+        if (g.size) s += `<span class="ln">Sizes: <b dir="ltr">${escapeHtml(g.size)}</b></span>`;
+        s += `<span class="pr">${money(priceNow)} QAR</span>`;
+        if (changed) {
+            s += `<span class="wr">&#9888; The price changed after it was sent to you &mdash; print `
+               + `<b>${money(priceNow)}</b> QAR, not ${money(g.price)}.</span>`;
+        }
+        if (gone) {
+            s += `<span class="wr">&#9888; This is not in the abaya list right now. `
+               + `Ask the owner before distributing it.</span>`;
+        }
+        // ⭐⭐ التوزيعُ المطلوب — حسّةُ كلِّ محلّ، وهو أمرُ السيدة فاطمة لا اختيارُها هي.
+        s += `<span class="ln" style="margin-top: 6px;"><b>${g.total}</b> piece(s) in total `
+           + `&mdash; Mrs Fatima's split:</span>`;
+        s += `<span class="tags">`
+            + g.tasks.map(t => `<span class="tag">${escapeHtml(t.shop)} &mdash; <b>${t.pieces}</b></span>`).join('')
+            + `</span>`;
+        s += `<span class="tags">`
+            + (tone ? `<span class="tag tone"><i class="${tone}"></i>${escapeHtml(cpToneLabel(tone))}</span>` : '')
+            + (g.canOrder ? `<span class="tag order">Order can be taken &mdash; يمكن أخذ أوردر</span>` : '')
+            + `</span>`;
+        s += `<button type="button" data-fldist="${escapeHtml(g.key)}"${busy ? ' disabled' : ''}>`
+           + `${busy ? 'Sending...' : 'Everything is ready &mdash; sent to the shops &#10003;'}</button>`;
+        s += `</div></div>`;
+        return s;
+    }
+
+    function renderFlorinda() {
+        const panel = el('flPanel');
+        if (!panel) return;
+        const groups = flGroups();
+        // ⚠️ تختفي تمامًا إن لم يكن عندها شيء — نفسُ قاعدةِ قسم المحلّ: لوحةٌ تقول
+        //   «لا شيء» كلَّ يومٍ يُدرَّب المرءُ على تجاهلها.
+        const show = sellerIsDistributor() && (groups.length > 0 || !!flError || sellerView === 'distribute');
+        panel.classList.toggle('hidden', !show);
+        el('flGrid').innerHTML = groups.map(flCard).join('');
+        const pieces = groups.reduce((a, g) => a + g.total, 0);
+        el('flNote').innerHTML = flError
+            ? `<span style="color:#b45309; font-weight:700;">${flError}</span>`
+            : (groups.length
+                ? `<b>${pieces}</b> piece(s) are with you now, in <b>${groups.length}</b> shipment(s). `
+                  + `They are <b>not</b> on any shelf until you press the button &mdash; that press is what puts `
+                  + `them into each shop's list.`
+                : `Nothing is waiting with you. West Walk goods never come here &mdash; they go straight to the shop.`);
+        // ⚠️ نفسُ محمّلِ الصور الذي يستعمله الكتالوجُ وقسمُ المحلّ: يمسح الصفحةَ
+        //   كلَّها بالسمة data-cpimg ولا يأخذ وسيطًا، والذاكرةُ المؤقّتة مشتركةٌ
+        //   فلا تُنزّل الصورةُ مرّتين على بيانات هاتفها.
+        if (typeof cpObserveImages === 'function') cpObserveImages();
+        renderDistributeNav();
+    }
+
+    /**
+     * ⭐⭐⭐⭐ «كلُّ شيءٍ جاهزٌ وتمّ إرسال البضاعة إلى المحلات».
+     * تُنفَّذ مهمّةً مهمّةً (محلًّا محلًّا) بالترتيب الموصوف في رأس القسم.
+     */
+    async function flDistribute(key) {
+        if (flBusy) return;
+        const g = flGroups().find(x => x.key === key);
+        if (!g) return;
+        if (!state.sellerId) { setMsg('flMsg', 'Sign in first.', 'err'); return; }
+        if (!confirm(
+            `Send ${g.code} to the shops?\n\n`
+            + g.tasks.map(t => `  ${t.shop}: ${t.pieces}`).join('\n')
+            + `\n\nEach shop will see it, and only then do the pieces count as being on its shelf.`)) return;
+
+        flBusy = key;
+        renderFlorinda();
+        setMsg('flMsg', 'Sending...', 'load');
+        const nowIso = new Date().toISOString();
+        const done = [], already = [], shortfall = [], failed = [];
+        try {
+            for (const t of g.tasks) {
+                // ---- ١) المرحلةُ من الخادم: قُفلُ التوزيع المزدوج ------------
+                let fresh;
+                try {
+                    fresh = await getDoc(doc(db, ABAYA_SHELF_TASKS_COLL, t.id));
+                } catch (e) { failed.push(`${t.shop} (could not be read)`); continue; }
+                if (!fresh.exists()) { failed.push(`${t.shop} (no longer there)`); continue; }
+                if (shelfStageOf(fresh.data() || {}) !== SHELF_STAGE_FLORINDA) {
+                    already.push(t.shop);
+                    continue;
+                }
+                // ---- ٢) المرحلةُ أوّلًا، ثمّ الكميّة -------------------------
+                try {
+                    await updateDoc(doc(db, ABAYA_SHELF_TASKS_COLL, t.id), {
+                        stage: SHELF_STAGE_SHOPS,
+                        distributedAt: nowIso,
+                        distributedBy: state.sellerId || '',
+                        distributedByName: state.sellerName || '',
+                        updatedAt: serverTimestamp()
+                    });
+                } catch (e) { failed.push(`${t.shop} (${e.message})`); continue; }
+                // ---- ٣) كميّةُ الرفّ — الآن فقط تصير القطعةُ في المحلّ -------
+                try {
+                    await updateDoc(doc(db, 'abaya_products', t.productId), {
+                        ['qty.' + abayaShopKey(t.shop)]: increment(t.pieces),
+                        updatedAt: serverTimestamp()
+                    });
+                    done.push(`${t.shop} ${t.pieces}`);
+                } catch (e) {
+                    // ⚠️ المحلُّ أُبلغ وكميّتُه لم تُزَد — يُقال بالرقم واسم المحلّ
+                    //   ولا يُبلَع بصمت. وهذا نقصٌ يُصلَح بيدٍ، لا زيادةٌ خفيّة.
+                    console.error('The shop was told but its quantity was not raised:', e);
+                    shortfall.push(`${t.shop} ${t.pieces}`);
+                }
+                // ---- ٤) سطرُ الحركة — لا يُبطل التوزيعَ إن فشل --------------
+                try {
+                    await addDoc(collection(db, 'abaya_product_moves'), {
+                        productId: t.productId, code: t.code, name: t.name || '',
+                        shop: t.shop, change: t.pieces, kind: 'distributed',
+                        by: state.sellerId || '', byName: state.sellerName || '',
+                        at: nowIso, createdAt: serverTimestamp()
+                    });
+                } catch (e) { console.error('The movement line failed:', e); }
+                // القطعةُ خرجت من قائمتها
+                flTasks = flTasks.filter(x => x.id !== t.id);
+            }
+        } finally {
+            flBusy = '';
+        }
+
+        let m = '';
+        if (done.length) m += `Sent &mdash; ${done.join(' &middot; ')}. `;
+        if (already.length) m += `${already.join(', ')} had already been sent. `;
+        if (shortfall.length) {
+            m += `&#9888; ${shortfall.join(' &middot; ')} &mdash; the shop was told but the shelf count was NOT `
+               + `raised. Tell Mrs Fatima these exact numbers so she can correct the quantity. `;
+        }
+        if (failed.length) m += `&#9888; Not sent: ${failed.join(', ')}. `;
+        setMsg('flMsg', m || 'Nothing to send.',
+            (shortfall.length || failed.length) ? 'err' : 'ok');
+        // ⚠️ تُقرأ من الخادم من جديد: ما بقي عندها هو ما يقوله الخادمُ لا ما تظنّه
+        //   الصفحة. وفشلٌ جزئيٌّ يجب أن يُرى بصدقه.
+        await loadFlorindaTasks(true);
+    }
+
+    el('flGrid').addEventListener('click', (ev) => {
+        const b = ev.target.closest('button[data-fldist]');
+        if (b && !b.disabled) flDistribute(b.getAttribute('data-fldist'));
+    });
+    el('flRefresh').addEventListener('click', () => loadFlorindaTasks(true));
+    el('navDistribute').addEventListener('click', () => {
+        showSellerView('distribute');
+        loadFlorindaTasks(true);
+    });
 
     // ---- تأكيد البيع -----------------------------------------------------
     el('cpConfirm').addEventListener('click', async () => {
