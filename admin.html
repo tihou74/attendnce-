@@ -1369,6 +1369,9 @@
             <!-- ⭐⭐⭐ «بضاعة جديدة وصلت» — بعد الكتالوج عن قصد: الوصولُ مرحلةٌ
                  **قبل** الكتالوج، لكنّ الكتالوجَ هو ما يُقرأ كلَّ يوم. -->
             <button class="nav-tab-btn" data-tab="tab-abaya-arrivals" data-biz="abaya" data-group="abaya"><span class="ic-slot" data-icon="plane"></span><span class="tab-label">Abaya &mdash; New Arrivals</span></button>
+            <!-- ⭐⭐⭐⭐⭐ بأمر المالك: «أريد أن أجعل هذا نظام بيع». وأوّلُ ناقصٍ
+                 أنّ لوحتَه **لا ترى الفواتير إطلاقًا** — يملك فواتيرَ لا يقرؤها. -->
+            <button class="nav-tab-btn" data-tab="tab-abaya-invoices" data-biz="abaya" data-group="abaya"><span class="ic-slot" data-icon="fileText"></span><span class="tab-label">Abaya &mdash; Invoices</span></button>
 
             <div class="rail-group" data-group="system">System</div>
             <button class="nav-tab-btn" data-tab="tab-audit" data-biz="both" data-group="system"><span class="ic-slot" data-icon="listChecks"></span><span class="tab-label">Audit Log</span></button>
@@ -3374,6 +3377,73 @@
             <p class="card-sub" style="margin: 12px 0 0; font-size: 11.5px;" id="arvLoadedAt"></p>
         </div>
     </div>
+
+    <!-- ==================================================================
+         ⭐⭐⭐⭐⭐ فواتيرُ البيع — لوحةُ المالك
+         ------------------------------------------------------------------
+         ⚠️⚠️ قراءةٌ محضةٌ لا تكتب حرفًا: لا تمسّ فاتورةً ولا كميّةً ولا ريالًا.
+            فبناؤها لا يُربك بياعةً واحدةً ولا يُغيّر عملَ أحد.
+         ⚠️⚠️ والتقريرُ اليوميُّ **يبقى يدويًّا** بأمر المالك: «أريده أن يبقى
+            يدويًّا إلى غاية ما أُدخل كلَّ الستوك». فهذه الشاشةُ **تُقارن** ولا
+            تستبدل — تُظهر ما تقوله الفواتيرُ بجانب ما أعلنته البياعة، والفرقَ
+            بينهما بالرقم. ولا يُبنى عليها حسابٌ ماليٌّ واحد.
+         ⚠️ والكوستُ والربحُ هنا **للمالك وحدَه**: هذه الصفحةُ محجوبةٌ عن الكشك
+            بالقواعد، وشاشةُ البياعة لا تقرأ الكلفةَ إطلاقًا.
+         ================================================================== -->
+    <div id="tab-abaya-invoices" class="tab-content">
+        <div class="filter-section">
+            <h3><span data-icon="fileText"></span> Invoices &mdash; filter</h3>
+            <div class="date-group">
+                <div><label for="abInvFrom">From</label><input type="date" id="abInvFrom" onchange="renderAbayaInvoices()"></div>
+                <div><label for="abInvTo">To</label><input type="date" id="abInvTo" onchange="renderAbayaInvoices()"></div>
+                <div style="flex:1; min-width:180px;"><label for="abInvShop">Shop</label>
+                    <select id="abInvShop" onchange="renderAbayaInvoices()"></select></div>
+                <div style="width:170px;"><label for="abInvStatus">Status</label>
+                    <select id="abInvStatus" onchange="renderAbayaInvoices()">
+                        <option value="">All</option>
+                        <option value="sold">Sold</option>
+                        <option value="returned">Returned</option>
+                    </select></div>
+                <button class="btn-accent" onclick="loadAbayaInvoices(true)"><span data-icon="refresh"></span> Refresh</button>
+                <button class="btn-success" onclick="exportAbayaInvoicesExcel()"><span data-icon="download"></span> Export Excel</button>
+            </div>
+            <div class="controls" style="margin-top:14px;">
+                <div style="flex:1; min-width:240px;"><input type="text" id="abInvSearch"
+                    placeholder="Invoice number, barcode, product or saleswoman..." onkeyup="renderAbayaInvoices()"></div>
+            </div>
+        </div>
+
+        <div class="stats" id="abInvStats"></div>
+
+        <div class="card">
+            <h3><span data-icon="dollar"></span> What the invoices say, next to what was declared</h3>
+            <p class="card-sub">The daily report the saleswoman types is still the money, by your decision.
+                This only shows the two side by side so a difference cannot hide.</p>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Date</th><th>Shop</th><th class="money-col">Invoices</th>
+                        <th class="money-col">Declared (cash + card)</th><th class="money-col">Difference</th></tr></thead>
+                    <tbody id="abInvReconBody"></tbody>
+                </table>
+            </div>
+            <p class="card-sub" id="abInvReconNote" style="margin-top:14px;"></p>
+        </div>
+
+        <div class="card">
+            <h3><span data-icon="listChecks"></span> Every invoice</h3>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Invoice</th><th>When</th><th>Shop</th><th>Saleswoman</th>
+                        <th>Pieces</th><th class="money-col">Subtotal</th><th class="money-col">Discount</th>
+                        <th class="money-col">Total</th><th class="money-col">Cost</th>
+                        <th class="money-col">Profit</th><th>Status</th></tr></thead>
+                    <tbody id="abInvBody"></tbody>
+                </table>
+            </div>
+            <p class="card-sub" id="abInvNote" style="margin-top:14px;"></p>
+        </div>
+    </div>
+
 
     <!-- التقرير المالي الشهري -->
     <div id="tab-finance" class="tab-content">
@@ -6514,6 +6584,16 @@
         // ⚠️⚠️ ولا يُنتظر loadDocPageSetup هنا بـawait: switchTab ليست async،
         // فـawait داخلها خطأُ بناء. والقياسُ يُطبَّق داخلها على @page عند وصوله.
         if (tabId === 'tab-docs') { renderDocPickers(); loadDocPageSetup(); }
+        // ⭐ الفواتير: تُقرأ عند فتح التبويب لا عند الإقلاع — قراءةٌ لا تُحتاج
+        //   في كلِّ جلسة. وقائمةُ المحلات تُبنى من ABAYA_SHOPS لا بيد.
+        if (tabId === 'tab-abaya-invoices') {
+            const sel = document.getElementById('abInvShop');
+            if (sel && !sel.options.length) {
+                sel.innerHTML = '<option value="">All shops</option>'
+                    + ABAYA_SHOPS.map(x => `<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('');
+            }
+            loadAbayaInvoices();
+        }
         if (tabId === 'tab-payroll') { renderPayrollMonthLabel(); filterEmployeesList(); }
         if (tabId === 'tab-shifts') renderShiftsTable();
         if (tabId === 'tab-warnings') { renderWarningsTable(); loadManagerRequests(); }
@@ -13237,6 +13317,228 @@
         return t ? `${t.en} · ${t.ar}` : k;
     }
 
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ فواتيرُ البيع في لوحة المالك — قراءةٌ محضة
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ لا تكتب حرفًا: لا فاتورةً ولا كميّةً ولا ريالًا. فبناؤها لا يُربك أحدًا.
+    // ⚠️⚠️ **وبلا `orderBy`** — نفسُ الدرسِ الذي أخفى بصماتِ البياعات وتقاريرَهنّ:
+    //   فايرستور يُسقط بصمتًا كلَّ مستندٍ لا يحمل الحقلَ المرتَّبَ به، وفاتورةٌ بلا
+    //   حقلِ `at` كانت ستختفي من لوحةِ المالك ولا يعرف أحدٌ أنها موجودة. محليًّا.
+    // ⚠️ والكلفةُ تُقرأ من `abayaProducts` المحمّلةِ سلفًا (وفيها `cost`): لا قراءةَ
+    //   ثانيةً لمجموعة الكلفة، ولا خطرَ أن تُقرأ في صفحةٍ غيرِ هذه.
+    // =====================================================================
+    const ABAYA_INVOICES_COLL = 'abaya_invoices';
+    let abInvoices = [];
+    let abInvLoaded = false;
+
+    window.loadAbayaInvoices = async function(force) {
+        if (abInvLoaded && !force) { renderAbayaInvoices(); return; }
+        const body = document.getElementById('abInvBody');
+        if (body) body.innerHTML = '<tr><td colspan="11" style="text-align:center;">Loading...</td></tr>';
+        try {
+            const snap = await getDocs(collection(db, ABAYA_INVOICES_COLL));
+            abInvoices = [];
+            snap.forEach(d => abInvoices.push(Object.assign({ no: d.id }, d.data() || {})));
+            abInvoices.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+            abInvLoaded = true;
+            // ⭐ الكتالوجُ لأجل الكلفة — إن لم يُقرأ بعد. وبلا await على الرسم:
+            //   الفواتيرُ تُعرض فورًا، والربحُ يظهر متى وصلت الكلفة.
+            if (!abayaCatalogLoaded && typeof loadAbayaCatalog === 'function') {
+                loadAbayaCatalog().then(() => renderAbayaInvoices()).catch(() => {});
+            }
+            renderAbayaInvoices();
+        } catch (err) {
+            abInvLoaded = true;
+            if (body) {
+                body.innerHTML = `<tr><td colspan="11" style="text-align:center; color: var(--danger);">`
+                    + `Could not read the invoices: ${escapeHtml(String((err && err.message) || err))}`
+                    + (/permission/i.test(String(err && err.message))
+                        ? ' — the rules (v23) are not published yet.' : '')
+                    + `</td></tr>`;
+            }
+        }
+    };
+
+    /** كلفةُ فاتورةٍ — مجموعُ كلفةِ أسطرها. ⚠️ و`null` إن لم تُعرف كلفةُ سطرٍ:
+     *  صفرٌ يُقرأ «جاءت مجّانًا» فيُنتج ربحًا وهميًّا، والفراغُ يقول «لا أعرف». */
+    function abInvCost(v) {
+        if (!abayaCatalogLoaded) return null;
+        let total = 0, known = true;
+        (v.lines || []).forEach(l => {
+            const prod = abayaProducts.find(x => x.id === l.productId);
+            const c = prod ? Number(prod.cost || 0) : 0;
+            if (!prod || !c) known = false;
+            total += c * (Number(l.qty) || 0);
+        });
+        return known ? Math.round(total * 100) / 100 : null;
+    }
+
+    function abInvRows() {
+        const from = (document.getElementById('abInvFrom') || {}).value || '';
+        const to = (document.getElementById('abInvTo') || {}).value || '';
+        const shop = (document.getElementById('abInvShop') || {}).value || '';
+        const st = (document.getElementById('abInvStatus') || {}).value || '';
+        const q = String((document.getElementById('abInvSearch') || {}).value || '').trim().toUpperCase();
+        return abInvoices.filter(v => {
+            const d = String(v.date || '');
+            if (from && d < from) return false;
+            if (to && d > to) return false;
+            if (shop && String(v.shop || '') !== shop) return false;
+            // ⚠️ الغيابُ يُقرأ 'sold': فاتورةٌ كُتبت قبل حقلِ الحالة ليست مُرجَعة.
+            const status = String(v.status || 'sold');
+            if (st && status !== st) return false;
+            if (!q) return true;
+            if (String(v.no || '').toUpperCase().includes(q)) return true;
+            if (String(v.byName || '').toUpperCase().includes(q)) return true;
+            return (v.lines || []).some(l =>
+                String(l.code || '').toUpperCase().includes(q)
+                || String(l.name || '').toUpperCase().includes(q));
+        });
+    }
+
+    window.renderAbayaInvoices = function() {
+        const body = document.getElementById('abInvBody');
+        if (!body) return;
+        const rows = abInvRows();
+        const isRet = (v) => String(v.status || 'sold') === 'returned';
+
+        // ---- الأرقامُ العلوية -------------------------------------------
+        // ⚠️⚠️ المُرجَعةُ **تُستثنى** من المبيعات ومن الربح: فاتورةٌ رُدّ ثمنُها ليست
+        //   بيعًا، وجمعُها يُظهر مبيعاتٍ لم تبقَ في الصندوق. وتُعدّ وحدَها بجانبها.
+        const sold = rows.filter(v => !isRet(v));
+        const sum = (a) => a.reduce((x, v) => x + (Number(v.total) || 0), 0);
+        const pieces = sold.reduce((x, v) => x + (v.lines || []).reduce((y, l) => y + (Number(l.qty) || 0), 0), 0);
+        let cost = 0, costKnown = true;
+        sold.forEach(v => { const c = abInvCost(v); if (c === null) costKnown = false; else cost += c; });
+        const net = sum(sold);
+        const stats = document.getElementById('abInvStats');
+        const card = (label, val, sub) => `<div class="stat-box"><div class="stat-icon" data-icon="dollar"></div>`
+            + `<div><h3>${label}</h3><p>${val}</p>${sub ? `<small>${sub}</small>` : ''}</div></div>`;
+        if (stats) {
+            stats.innerHTML =
+                card('Invoices', String(sold.length), rows.length !== sold.length
+                    ? `${rows.length - sold.length} returned, not counted` : 'in this filter')
+                + card('Pieces sold', String(pieces))
+                + card('Sales', `${money(net)} QAR`)
+                + card('Cost', costKnown ? `${money(cost)} QAR` : '—',
+                       costKnown ? 'of what was sold' : 'some costs are not recorded')
+                + card('Gross profit', costKnown ? `${money(net - cost)} QAR` : '—',
+                       costKnown && net > 0 ? `${(((net - cost) / net) * 100).toFixed(1)}% of sales` : '');
+            if (typeof paintIcons === 'function') paintIcons();
+        }
+
+        // ---- المطابقة: الفواتيرُ مقابلَ ما أُعلن ---------------------------
+        const key = (d, sh) => `${d}|${sh}`;
+        const byDay = new Map();
+        sold.forEach(v => {
+            const k = key(String(v.date || ''), String(v.shop || ''));
+            byDay.set(k, (byDay.get(k) || 0) + (Number(v.total) || 0));
+        });
+        (allAbayaReports || []).forEach(r => {
+            const k = key(String(r.date || ''), String(r.shop || ''));
+            if (!byDay.has(k)) byDay.set(k, 0);
+        });
+        const recon = [...byDay.keys()].map(k => {
+            const [d, sh] = k.split('|');
+            const inv = byDay.get(k) || 0;
+            const rep = (allAbayaReports || []).filter(r => String(r.date || '') === d && String(r.shop || '') === sh);
+            const declared = rep.reduce((a, r) =>
+                a + (Number(r.cashSales != null ? r.cashSales : r.cash) || 0)
+                  + (Number(r.cardSales != null ? r.cardSales : r.card) || 0), 0);
+            return { d, sh, inv, declared, has: rep.length > 0, diff: Math.round((inv - declared) * 100) / 100 };
+        }).filter(x => x.inv > 0 || x.has)
+          .sort((a, b) => (b.d + b.sh).localeCompare(a.d + a.sh))
+          .slice(0, 120);
+        const rb = document.getElementById('abInvReconBody');
+        if (rb) {
+            rb.innerHTML = recon.map(x => {
+                const off = Math.abs(x.diff) >= 0.01;
+                return `<tr>
+                    <td>${escapeHtml(x.d)}</td><td>${escapeHtml(x.sh)}</td>
+                    <td class="money-col">${money(x.inv)}</td>
+                    <td class="money-col">${x.has ? money(x.declared)
+                        : '<span style="color: var(--text-faint);">not sent</span>'}</td>
+                    <td class="money-col"><b style="color: ${off ? 'var(--danger)' : 'var(--success)'};">`
+                    + `${x.has ? (off ? (x.diff > 0 ? '+' : '') + money(x.diff) : 'match') : '—'}</b></td>
+                </tr>`;
+            }).join('') || `<tr><td colspan="5" style="text-align:center;">Nothing in this period.</td></tr>`;
+            const note = document.getElementById('abInvReconNote');
+            if (note) {
+                const off = recon.filter(x => x.has && Math.abs(x.diff) >= 0.01).length;
+                note.innerHTML = `<b>${off}</b> day(s) where the invoices and the declared report do not agree. `
+                    + `A positive difference means the invoices total MORE than she declared; a negative one means `
+                    + `she declared more than the invoices show. `
+                    + `<b>Neither figure is changed by this screen</b> &mdash; the daily report stays hers to type, `
+                    + `and nothing here feeds payroll or the financial report.`;
+            }
+        }
+
+        // ---- الجدول ----------------------------------------------------
+        body.innerHTML = rows.slice(0, 400).map(v => {
+            const ret = isRet(v);
+            const c = abInvCost(v);
+            const pcs = (v.lines || []).reduce((a, l) => a + (Number(l.qty) || 0), 0);
+            const profit = (c === null || ret) ? null : Math.round(((Number(v.total) || 0) - c) * 100) / 100;
+            return `<tr${ret ? ' style="background: rgba(185,28,28,0.05);"' : ''}>
+                <td style="font-family: ui-monospace, monospace;"><b>${escapeHtml(v.no || '')}</b>
+                    <br><small style="color: var(--text-dim);">${(v.lines || []).map(l => escapeHtml(l.code)).join(' · ')}</small></td>
+                <td>${escapeHtml(v.date || '')}<br><small style="color: var(--text-dim);">${escapeHtml(v.time || '')}</small></td>
+                <td>${escapeHtml(v.shop || '')}</td>
+                <td>${escapeHtml(v.byName || '')}</td>
+                <td class="money-col">${pcs}</td>
+                <td class="money-col">${money(v.subtotal)}</td>
+                <td class="money-col">${Number(v.discountAmount || 0) > 0
+                    ? `-${money(v.discountAmount)}<br><small>${escapeHtml(String(v.discountPct || 0))}%</small>` : '—'}</td>
+                <td class="money-col"><b>${money(v.total)}</b></td>
+                <td class="money-col">${c === null ? '—' : money(c)}</td>
+                <td class="money-col">${profit === null ? '—'
+                    : `<b style="color: ${profit >= 0 ? 'var(--success)' : 'var(--danger)'};">${money(profit)}</b>`}</td>
+                <td>${ret ? '<b style="color: var(--danger);">RETURNED</b>' : '<span style="color: var(--success);">Sold</span>'}</td>
+            </tr>`;
+        }).join('') || `<tr><td colspan="11" style="text-align:center;">No invoice matches this filter.</td></tr>`;
+        const n = document.getElementById('abInvNote');
+        if (n) {
+            n.innerHTML = `Showing <b>${Math.min(rows.length, 400)}</b> of <b>${abInvoices.length}</b> invoice(s) on record`
+                + (rows.length > 400 ? ' — narrow the filter to see the rest' : '')
+                + (abayaCatalogLoaded ? '' : '<br>Cost and profit are blank until the catalogue is read — open '
+                    + '<b>Abaya — Catalogue</b> once, or press Refresh.');
+        }
+    };
+
+    window.exportAbayaInvoicesExcel = function() {
+        const rows = abInvRows();
+        if (!rows.length) { alert('Nothing to export in this filter.'); return; }
+        // ⚠️ سطرٌ لكلِّ **قطعة** لا لكلِّ فاتورة: الإكسل يُفتح ليُحلَّل بالباركود
+        //   والصنف، وفاتورةٌ في سطرٍ واحدٍ تُخفي ما بِيع داخلها.
+        const sheet = [];
+        rows.forEach(v => {
+            const ret = String(v.status || 'sold') === 'returned';
+            (v.lines || []).forEach(l => {
+                const prod = abayaProducts.find(x => x.id === l.productId);
+                const unitCost = prod ? Number(prod.cost || 0) : 0;
+                sheet.push({
+                    Invoice: v.no || '', Date: v.date || '', Time: v.time || '',
+                    Shop: v.shop || '', Saleswoman: v.byName || '',
+                    Barcode: l.code || '', Product: l.name || '',
+                    Qty: Number(l.qty) || 0,
+                    'Unit price': Number(l.unitPrice) || 0,
+                    'Line total': Number(l.lineTotal) || 0,
+                    'Invoice subtotal': Number(v.subtotal) || 0,
+                    'Discount %': Number(v.discountPct) || 0,
+                    'Discount amount': Number(v.discountAmount) || 0,
+                    'Invoice total': Number(v.total) || 0,
+                    'Unit cost': unitCost || '',
+                    'Line cost': unitCost ? unitCost * (Number(l.qty) || 0) : '',
+                    Status: ret ? 'RETURNED' : 'Sold'
+                });
+            });
+        });
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet), 'Invoices');
+        XLSX.writeFile(wb, `AlSheikhaStyle_Invoices_${todayISO()}.xlsx`);
+    };
+
     let abayaProducts = [];          // [{ id, code, name, type, size, cost, price, discountPrice, qty{}, active }]
     let abayaProductMoves = [];      // [{ id, ... }]
     let abayaCatalogLoaded = false;
@@ -18616,7 +18918,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v196';
+        const APP_BUILD = 'v197';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
