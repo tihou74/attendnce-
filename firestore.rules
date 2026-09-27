@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v22   (2026-09-25)  <<<
+//   >>>  RULES REVISION: v23   (2026-09-27)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,7 +12,7 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       distributedBy
+//       abaya_invoices
 //
 //   (This exact text exists nowhere in any earlier revision, which is the whole
 //    point of a marker. Every earlier marker is now useless for telling the
@@ -25,10 +25,11 @@ rules_version = '2';
 //      "supervisor_presence"        introduced in v14, still here in v15
 //      "abaya_presence"             introduced in v13, was the marker for v15..v19
 //      "sentPlan"                   introduced in v21, was the marker for v21
+//      "distributedBy"              introduced in v22, was the marker for v22
 //    Always search for the marker named directly above, and when publishing a
 //    new revision, change that name to something introduced by it.)
 //
-//   FOUND     -> v22 is live. Good.
+//   FOUND     -> v23 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -46,6 +47,48 @@ rules_version = '2';
 // exact mistake happened with the "(v4)" label, which never changed across
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
+//
+//  v23  2026-09-27  + abaya_invoices — A REAL INVOICE: MANY PIECES, A DISCOUNT,
+//                     A UNIQUE NUMBER, AND RETURNS.
+//                     PUBLISH v23 — it contains v16..v22 in full.
+//
+//                     The owner: "there must be an invoice feature with an
+//                     unlimited number of pieces or products, and invoices saved
+//                     with a unique number for each one, and a return feature if
+//                     a problem happens and a customer comes back with an
+//                     invoice, and a discount feature by percentage."
+//
+//                     ONE DOCUMENT PER INVOICE, AND THE DOCUMENT ID IS THE
+//                     INVOICE NUMBER. Same reasoning as the catalogue's barcode
+//                     ids: a duplicate number becomes IMPOSSIBLE rather than
+//                     merely unlikely, and looking an invoice up for a return is
+//                     a single getDoc — no query, no composite index.
+//
+//                     THE KIOSK MAY READ, and that is deliberate: a customer
+//                     returns at a shop, so the saleswoman must be able to fetch
+//                     that invoice by its number. The document carries SELLING
+//                     prices only — never cost, never supplier — exactly like
+//                     abaya_products, which the kiosk already reads. The purchase
+//                     secrets stay where they are, in abaya_arrivals and
+//                     abaya_product_costs, both still closed to the kiosk.
+//
+//                     UPDATE IS NARROWED TO THE RETURN FIELDS ONLY:
+//                       ['status','returns','returnedQty','updatedAt']
+//                     so a returned invoice cannot have its lines, its prices,
+//                     its discount or its total rewritten. The sale as it
+//                     happened is not editable by anyone but the owner — a
+//                     correction is a RETURN, which is a new fact recorded on
+//                     top, not an edit that hides the original.
+//
+//                     ⚠️ DELETE IS THE OWNER'S ALONE. An invoice is the money
+//                     record of a sale; letting the shop screen delete one would
+//                     let a sale disappear with its stock movement left behind.
+//
+//                     ⚠️ AND THIS FEEDS NO MONEY TOTAL. The daily report she
+//                     types by hand is still the money, exactly as the owner
+//                     required when the catalogue was built ("I do not want this
+//                     to affect the program"). The invoice prints, records what
+//                     left the shelf, and answers a customer at the counter.
 //
 //  v22  2026-09-25  + distributedBy — FLORINDA RECEIVES THE GOODS FIRST.
 //                     PUBLISH v22 — it contains v16..v21 in full.
@@ -1271,6 +1314,40 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(['stage', 'distributedAt', 'distributedBy',
                            'distributedByName', 'updatedAt']));
+      allow delete: if isAdmin();
+    }
+
+    // ---- abaya_invoices (one document per invoice, id = the invoice number) --
+    // Fields: no, shop, sellerId, byName, date, time, at, createdAt,
+    //         lines[{productId, code, name, qty, unitPrice, lineTotal}],
+    //         subtotal, discountPct, discountAmount, total,
+    //         status ('sold' | 'returned' | 'part_returned'), returns[], returnedQty.
+    //
+    // ⚠️ THE ID IS THE INVOICE NUMBER on purpose — a duplicate number is then
+    // impossible, and a return is one getDoc by the number printed on the paper.
+    //
+    // ⚠️ The kiosk READS because a customer returns at the counter and the
+    // saleswoman must fetch that invoice. Selling prices only — no cost, no
+    // supplier. Those live in abaya_arrivals and abaya_product_costs, which stay
+    // closed to the kiosk, and that is not relaxed here.
+    //
+    // ⚠️⚠️ UPDATE IS NARROWED TO THE RETURN FIELDS. The lines, the prices, the
+    // discount and the total of a sale that already happened are NOT rewritable
+    // from the shop screen — a correction is a return recorded on top, never an
+    // edit that hides what was sold. (The page signs in anonymously, so "the
+    // kiosk" is anyone with the link; this is the same posture as everywhere.)
+    //
+    // ⚠️ Delete is the owner's alone: an invoice is the record of money taken.
+    match /abaya_invoices/{invoiceNo} {
+      allow read: if isAdmin() || isAccountant() || isViewer() || isKiosk();
+      allow create: if (isAdmin() || isViewer() || isKiosk())
+        && !request.resource.data.keys().hasAny(
+             ['cost', 'costPerPiece', 'supplier', 'unitUsd', 'usdRate', 'unitQar',
+              'shipping', 'labour', 'totalQar', 'profit', 'margin', 'marginPct']);
+      allow update: if isAdmin()
+        || ((isViewer() || isKiosk())
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['status', 'returns', 'returnedQty', 'updatedAt']));
       allow delete: if isAdmin();
     }
 

@@ -944,16 +944,47 @@
                 </div>
                 <div class="two" style="margin-top: var(--space-4);">
                     <div>
-                        <label for="cpQty">How many are you selling</label>
+                        <label for="cpQty">How many</label>
                         <input type="number" id="cpQty" inputmode="numeric" step="1" min="1" value="1">
                     </div>
                     <div style="display: flex; align-items: flex-end;">
-                        <button id="cpConfirm" style="background: #16a34a;">Confirm the sale</button>
+                        <!-- ⚠️⚠️ «أضِف إلى الفاتورة» لا «أكّد البيعة»: الفاتورةُ تحمل
+                             عددًا غير محدودٍ من القطع بأمر المالك، فهذه الضغطةُ تضع
+                             القطعةَ في السلّة و**لا تُنقص الرفَّ ولا تكتب شيئًا**.
+                             والنقصُ كلُّه يقع مرّةً واحدةً عند «أكمل الفاتورة». -->
+                        <button id="cpAdd" style="background: #0f172a;">Add to the invoice</button>
                     </div>
                 </div>
             </div>
 
-            <!-- كل العبايات بالصور -->
+            <!-- ==============================================================
+                 ⭐⭐⭐⭐⭐ السلّة — فاتورةٌ واحدةٌ بعددٍ غير محدودٍ من القطع
+                 --------------------------------------------------------------
+                 ⚠️⚠️ ولا شيءَ يُكتب في القاعدة حتى تُضغط «Finish the invoice»:
+                    فمن تُضيف خمسَ قطعٍ ثم تتراجع لا تترك أثرًا، والرفُّ لا يهبط
+                    إلّا مع فاتورةٍ صارت حقيقة.
+                 ⚠️ والخصمُ **بالنسبة** بنصّ المالك، وعلى المجموع لا على سطرٍ بعينه.
+                 ============================================================== -->
+            <div id="cpCartWrap" class="hidden" style="margin-top: var(--space-5);">
+                <h3 style="font-size: 15px; margin: 0 0 var(--space-2);">The invoice</h3>
+                <div id="cpCartList"></div>
+                <div class="two" style="margin-top: var(--space-3);">
+                    <div>
+                        <label for="cpDisc">Discount %</label>
+                        <input type="number" id="cpDisc" inputmode="decimal" step="1" min="0" max="100"
+                               value="" placeholder="0">
+                    </div>
+                    <div style="display: flex; align-items: flex-end;">
+                        <button class="ghost" id="cpClear" style="width: auto;">Empty the invoice</button>
+                    </div>
+                </div>
+                <div id="cpTotals" style="margin-top: var(--space-3);"></div>
+                <button id="cpFinish" style="background: #16a34a; margin-top: var(--space-3);">
+                    Finish the invoice &amp; print</button>
+                <p class="status" id="cpFinMsg" style="margin-top: var(--space-3);"></p>
+            </div>
+
+            <!-- كل العبايات بالصور -->            <!-- كل العبايات بالصور -->
             <div id="cpList" class="hidden" style="margin-top: var(--space-4);">
                 <label for="cpSearch">Search &mdash; barcode or name</label>
                 <input type="text" id="cpSearch" autocomplete="off" placeholder="Barcode, name, type, fabric or size">
@@ -965,14 +996,36 @@
             </div>
 
             <!-- ما بِعتِه من هذه الشاشة اليوم — مع تصحيحٍ لضغطةٍ خطأ -->
+            <!-- ==============================================================
+                 ⭐⭐⭐⭐⭐ الإرجاع — «إذا حدث مشكل وزبونة ترجع فاتورة»
+                 --------------------------------------------------------------
+                 ⚠️ يُبحَث **بالرقم المطبوع** على الورقة ومن الخادم: الزبونةُ تعود
+                    بعد أسبوعٍ وعلى جهازٍ آخر، وقائمةُ الجلسة لا تحمل إلّا اليوم.
+                 ============================================================== -->
+            <div style="margin-top: var(--space-5); border-top: 1px solid var(--color-border); padding-top: var(--space-4);">
+                <h3 style="font-size: 15px; margin: 0 0 var(--space-2);">Take an invoice back</h3>
+                <label for="cpRetNo">Invoice number</label>
+                <input type="text" id="cpRetNo" autocomplete="off" spellcheck="false" dir="ltr"
+                       placeholder="e.g. GM-260927-191304">
+                <div class="bar" style="margin-top: var(--space-3);">
+                    <button class="ghost" id="cpRetFind" style="width: auto;">Find the invoice</button>
+                </div>
+                <p class="status" id="cpRetMsg" style="margin-top: var(--space-3);"></p>
+                <div id="cpRetBox" class="hidden" style="margin-top: var(--space-3);"></div>
+            </div>
+
+            <!-- فواتيرُ هذه الجلسة -->
             <div id="cpSoldWrap" class="hidden" style="margin-top: var(--space-5);">
                 <p class="sect" style="font-size: var(--text-sm); font-weight: 700; margin: 0 0 var(--space-3);">
                     What you took off the shelf from this screen
                 </p>
                 <div id="cpSoldList"></div>
+                <!-- ⚠️ نُزع شرحُ «Put it back»: الإرجاعُ صار بالرقم في قسمه أعلاه
+                     فيعمل للزبونة التي تعود غدًا كذلك، لا لفواتير هذه الجلسة وحدها.
+                     وسطرٌ يشرح زرًّا لم يبقَ موجودًا أسوأُ من لا سطر. -->
                 <p class="ar" style="margin-top: var(--space-3);">
-                    Pressed one by mistake? <b>Put it back</b> returns the piece to the shop and leaves an honest line in
-                    the owner's log &mdash; nothing is ever erased.
+                    A slip that jammed or came out faint? <b>Print again</b> prints the same invoice number.
+                    To take an invoice back, use <b>Take an invoice back</b> above.
                 </p>
             </div>
         </div>
@@ -2358,13 +2411,24 @@
     function resetCatalogSell() {
         cpSelected = null;
         cpSoldHere = [];
+        // ⚠️⚠️ والسلّةُ تُفرَّغ معها: الجهازُ مشترك، ومن تُسلّم الهاتفَ لبياعةٍ أخرى
+        //   لا يجوز أن تترك لها فاتورةً نصفَ مبنيّة — فتُكمَل باسمها وعلى محلّها.
+        //   والخصمُ كذلك: نسبةٌ منسيّةٌ من زبونةٍ سابقةٍ تُطبَّق على فاتورةٍ ليست لها.
+        cpCart = [];
+        cpRet = null;
         el('cpCode').value = '';
         el('cpQty').value = '1';
+        if (el('cpDisc')) el('cpDisc').value = '';
+        if (el('cpRetNo')) el('cpRetNo').value = '';
         if (el('cpSearch')) el('cpSearch').value = '';
         el('cpFound').classList.add('hidden');
         el('cpList').classList.add('hidden');
         el('cpSoldWrap').classList.add('hidden');
+        if (typeof cpRenderCart === 'function') cpRenderCart();
+        if (typeof cpRenderRet === 'function') cpRenderRet();
         setMsg('cpMsg', '', '');
+        setMsg('cpFinMsg', '', '');
+        setMsg('cpRetMsg', '', '');
     }
 
     /**
@@ -2656,7 +2720,10 @@
             : `${left} piece(s) left in ${state.shop}`;
         el('cpQty').value = '1';
         el('cpQty').max = String(Math.max(1, left));
-        el('cpConfirm').disabled = left <= 0;
+        // ⚠️ الزرُّ صار «Add to the invoice» (`cpAdd`): بقاءُ `cpConfirm` هنا كان
+        //   يعني `el(...)` تُعيد null فيرمي السطرُ خطأً **فتتوقّف دالّةُ الاختيار
+        //   كلُّها** — فلا تظهر العباية ولا سعرُها. وفحصُ المعرّفات كشفه.
+        el('cpAdd').disabled = left <= 0;
         // الصورة: تُقرأ مرّةً واحدة وتُحفظ لهذه الجلسة
         const img = el('cpImg');
         img.className = 'ph' + (p.hasImage ? '' : ' none');
@@ -3493,107 +3560,248 @@
         loadFlorindaTasks(true);
     });
 
-    // ---- تأكيد البيع -----------------------------------------------------
-    el('cpConfirm').addEventListener('click', async () => {
-        if (cpBusy) return;                       // حمايةٌ من الضغط المزدوج
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ السلّة والفاتورة — بأمر المالك: «عدد غير محدود من القطع»
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️⚠️ الفرقُ الجوهريُّ عن ما كان: «أضِف» **لا تكتب في القاعدة شيئًا**، و«أكمل
+    //   الفاتورة» تكتب كلَّ شيءٍ مرّةً واحدة. وكان كلُّ ضغطةٍ تُنقص الرفَّ فورًا،
+    //   فبياعةٌ تبيع ثلاثَ قطعٍ لزبونةٍ واحدةٍ كانت تُنتج ثلاثَ فواتير.
+    // ⚠️ والرقمُ يُولَد **عند الإكمال** لا عند أوّل إضافة: سلّةٌ تُبنى في عشر دقائق
+    //   كانت ستحمل رقمًا بتوقيت بدايتها، فيختلف عن وقت البيع الحقيقيّ على الورقة.
+    // =====================================================================
+    const ABAYA_INVOICES_COLL = 'abaya_invoices';
+    let cpCart = [];              // [{ id, code, name, qty, price }]
+
+    /** المجاميع — مصدرٌ واحدٌ تقرؤه الشاشةُ والورقةُ والمستند معًا. */
+    function cpCartTotals() {
+        const subtotal = cpCart.reduce((a, l) => a + (Number(l.price) || 0) * (Number(l.qty) || 0), 0);
+        const el2 = el('cpDisc');
+        // ⚠️ النسبةُ تُحصر بين 0 و100: «‎-5» تزيد المبلغ، و«150» تُخرج مجموعًا سالبًا.
+        //   والفراغُ صفرٌ (لا خصم) — نفسُ قاعدةِ خاناتِ الأعداد عند السيدة فاطمة.
+        let pct = Number(el2 ? el2.value : 0);
+        if (!isFinite(pct) || pct < 0) pct = 0;
+        if (pct > 100) pct = 100;
+        // ⚠️ التقريبُ إلى الهللة **مرّةً واحدةً هنا**: لو قُرِّب في الشاشة وحدها
+        //   لاختلف مجموعُ الورقة عن مجموع المستند بهللةٍ لا يُعرف من أين جاءت.
+        const discountAmount = Math.round(subtotal * pct) / 100;
+        const total = Math.round((subtotal - discountAmount) * 100) / 100;
+        const pieces = cpCart.reduce((a, l) => a + (Number(l.qty) || 0), 0);
+        return { subtotal, pct, discountAmount, total, pieces };
+    }
+
+    function cpRenderCart() {
+        const wrap = el('cpCartWrap');
+        if (!wrap) return;
+        if (!cpCart.length) {
+            wrap.classList.add('hidden');
+            el('cpCartList').innerHTML = '';
+            el('cpTotals').innerHTML = '';
+            setMsg('cpFinMsg', '', '');
+            return;
+        }
+        wrap.classList.remove('hidden');
+        el('cpCartList').innerHTML = cpCart.map((l, i) => `
+            <div class="cpsold">
+                <span><b dir="ltr">${escapeHtml(l.code)}</b>${l.name ? ' &mdash; ' + escapeHtml(l.name) : ''}
+                    <br><small style="color: var(--color-text-muted);" dir="ltr">${l.qty} &times; ${money(l.price)} QAR
+                    = ${money((Number(l.price) || 0) * (Number(l.qty) || 0))} QAR</small></span>
+                <button type="button" class="ghost" data-cpdel="${i}">Remove</button>
+            </div>`).join('');
+        const t = cpCartTotals();
+        const row = (k, v, big) => `<div style="display:flex; justify-content:space-between; gap:12px;`
+            + `${big ? ' font-weight:800; font-size:16px; margin-top:4px;' : ' font-size:13px;'}">`
+            + `<span>${k}</span><span dir="ltr">${v}</span></div>`;
+        el('cpTotals').innerHTML =
+            row(`Subtotal &mdash; ${t.pieces} piece(s)`, `${money(t.subtotal)} QAR`)
+            + (t.pct > 0 ? row(`Discount ${t.pct}%`, `- ${money(t.discountAmount)} QAR`) : '')
+            + row('Total', `${money(t.total)} QAR`, true);
+    }
+
+    /** ⚠️ لا تكتب في القاعدة بحال — سلّةٌ في الذاكرة وحدها. */
+    function cpAddToCart() {
         if (!cpSelected) { setMsg('cpMsg', 'Find the abaya first.', 'err'); return; }
         if (!state.shop) { setMsg('cpMsg', 'Pick your shop first.', 'err'); return; }
         const n = Math.floor(Number(el('cpQty').value || 0));
-        if (!isFinite(n) || n < 1) { setMsg('cpMsg', 'How many are you selling? At least one.', 'err'); return; }
+        if (!isFinite(n) || n < 1) { setMsg('cpMsg', 'How many? At least one.', 'err'); return; }
         const key = abayaShopKey(state.shop);
-        const id = cpSelected.id;
+        const left = Number((cpSelected.qty || {})[key] || 0) || 0;
+        // ⚠️⚠️ ما في السلّة يُحسب مع الجديد: ثلاثُ قطعٍ في السلّة وواحدةٌ على الرفّ
+        //   كانت تمرّ لأنّ كلَّ إضافةٍ تُقارن وحدَها. والقراءةُ هنا محليّة، والقراءةُ
+        //   من الخادم تقع عند الإكمال — فهذا تحذيرٌ مبكّرٌ لا الحارسَ الأخير.
+        const already = cpCart.filter(l => l.id === cpSelected.id)
+                              .reduce((a, l) => a + (Number(l.qty) || 0), 0);
+        if (already + n > left) {
+            setMsg('cpMsg', `Only ${left} of ${cpSelected.code} in ${state.shop}`
+                + (already ? `, and ${already} are already on this invoice.` : '.'), 'err');
+            return;
+        }
+        const price = cpShownPrice(cpSelected);
+        // نفسُ التصميم بنفس السعر يُجمع في سطرٍ واحد — ورقةٌ فيها سطرانِ متطابقان تُربك.
+        const same = cpCart.find(l => l.id === cpSelected.id && Number(l.price) === Number(price));
+        if (same) same.qty = (Number(same.qty) || 0) + n;
+        else cpCart.push({ id: cpSelected.id, code: cpSelected.code, name: cpSelected.name || '', qty: n, price });
+        cpRenderCart();
+        setMsg('cpMsg', `${n} × ${cpSelected.code} added. Scan the next piece, or finish the invoice.`, 'ok');
+        el('cpCode').value = '';
+        el('cpQty').value = '1';
+    }
+
+    el('cpAdd').addEventListener('click', cpAddToCart);
+    el('cpDisc').addEventListener('input', cpRenderCart);
+    el('cpCartList').addEventListener('click', (ev) => {
+        const b = ev.target.closest('button[data-cpdel]');
+        if (!b || cpBusy) return;
+        cpCart.splice(Number(b.getAttribute('data-cpdel')), 1);
+        cpRenderCart();
+    });
+    el('cpClear').addEventListener('click', () => {
+        if (!cpCart.length || cpBusy) return;
+        if (!confirm('Empty this invoice? Nothing has been saved yet, so nothing is lost.')) return;
+        cpCart = [];
+        if (el('cpDisc')) el('cpDisc').value = '';
+        cpRenderCart();
+        setMsg('cpMsg', '', '');
+    });
+
+    /**
+     * ⭐⭐⭐⭐⭐ إكمالُ الفاتورة — هنا وحدَه يُكتب كلُّ شيء.
+     *
+     * والترتيبُ مقصودٌ سطرًا سطرًا:
+     *   ١) تُقرأ كميّةُ **كلِّ** سطرٍ من الخادم أوّلًا، وتُرفض الفاتورةُ كلُّها إن
+     *      نقص أيُّ سطر. ⚠️ ولا يُنقص شيءٌ قبل فحص الكلّ: فاتورةٌ من خمسة أسطرٍ
+     *      تفشل في الخامس كانت ستترك أربعةً منقوصةً بلا فاتورة.
+     *   ٢) ثمّ يُنقص كلُّ سطرٍ، ويُكتب سطرُ حركةٍ لكلِّ تصميم.
+     *   ٣) ثمّ مستندُ الفاتورة بمعرّفٍ = رقمها، فرقمٌ مكرّرٌ مستحيل.
+     *   ٤) ثمّ الطباعة — آخرَ شيءٍ وفي try خاصّ.
+     *
+     * ⚠️⚠️ ومستندُ الفاتورة يُكتب **بعد** النقص: مستندٌ يقول «بِيعت» ولم تنقص
+     *   الكميّةُ يكذب في وجه الجرد، وأهونُ منه نقصٌ بلا مستند — والنقصُ هو ما
+     *   يراه المالك على أيِّ حال، ويُقال لها صريحًا إن لم تُحفظ الفاتورة.
+     */
+    async function cpFinishInvoice() {
+        if (cpBusy) return;
+        if (!cpCart.length) { setMsg('cpFinMsg', 'The invoice is empty.', 'err'); return; }
+        if (!state.shop) { setMsg('cpFinMsg', 'Pick your shop first.', 'err'); return; }
+        const key = abayaShopKey(state.shop);
+        const t = cpCartTotals();
+        if (t.total < 0) { setMsg('cpFinMsg', 'The discount cannot be more than the total.', 'err'); return; }
 
         cpBusy = true;
-        el('cpConfirm').disabled = true;
-        setMsg('cpMsg', 'Saving...', 'load');
+        el('cpFinish').disabled = true;
+        setMsg('cpFinMsg', 'Saving...', 'load');
         try {
-            // ⚠️⚠️ يُقرأ العدد من الخادم **الآن** لا من القائمة المحفوظة: القائمة
-            // قد تكون عمرها دقائق وبياعةٌ أخرى في نفس المحل باعت منها. وبلا هذه
-            // القراءة كان العدد يهبط تحت الصفر ويظهر للمالك سالبًا بلا تفسير.
-            const fresh = await getDoc(doc(db, 'abaya_products', id));
-            if (!fresh.exists()) throw new Error('That abaya is no longer in the list.');
-            const fv = fresh.data() || {};
-            const left = Number((fv.qty || {})[key] || 0) || 0;
-            if (left < n) {
-                cpSelected.qty = (fv.qty && typeof fv.qty === 'object') ? fv.qty : {};
-                await cpSelect(cpSelected);
-                setMsg('cpMsg', left <= 0
-                    ? `There are none of these left in ${state.shop}. Tell the owner if one is still on the shelf.`
-                    : `Only ${left} left in ${state.shop} — you asked for ${n}.`, 'err');
-                return;
+            // ---- ١) فحصُ كلِّ الأسطر من الخادم قبل نقصِ أيِّ شيء --------------
+            const fresh = [];
+            for (const l of cpCart) {
+                const snap = await getDoc(doc(db, 'abaya_products', l.id));
+                if (!snap.exists()) throw new Error(`${l.code} is no longer in the list.`);
+                const fv = snap.data() || {};
+                const left = Number((fv.qty || {})[key] || 0) || 0;
+                if (left < l.qty) {
+                    setMsg('cpFinMsg', left <= 0
+                        ? `${l.code}: none left in ${state.shop}. Remove it from the invoice.`
+                        : `${l.code}: only ${left} left in ${state.shop}, the invoice asks for ${l.qty}.`, 'err');
+                    return;                       // ⚠️ ولم يُنقص شيءٌ بعد
+                }
+                fresh.push({ line: l, left });
             }
 
-            // ⚠️ increment لا كتابةُ رقمٍ ثابت: عمليّةٌ ذرّيّة في الخادم، فبيعتان
-            // في اللحظة نفسها تُنقصان قطعتين ولا تُلغي إحداهما الأخرى.
-            // ⚠️ ولا حقلَ غير qty وupdatedAt: القاعدة ترفض أي حقلٍ آخر من هذه
-            // الصفحة، وهذا مقصود — فلا تستطيع شاشةٌ معدَّلةٌ تغيير سعر.
-            await updateDoc(doc(db, 'abaya_products', id), {
-                ['qty.' + key]: increment(-n),
-                updatedAt: serverTimestamp()
-            });
-
-            // ⚠️ السجل **بعد** النقص لا قبله: سطرٌ يقول «بيعت» ولم تنقص يكذب،
-            // وأهونُ منه نقصٌ بلا سطر — والنقص هو ما يراه المالك على أي حال.
-            // ⭐ رقمُ الفاتورة يُولَد **مرّةً واحدة** هنا: يُكتب على السجلّ ويُطبع على
-            //   الورقة، فيُطابق المالكُ بينهما. ولو وُلد مرّتين لاختلف الرقمان بالثانية.
+            // ---- ٢) النقص وسطرُ الحركة لكلِّ تصميم -------------------------
             const soldAt = new Date();
-            const receiptNo = rcptNumber(state.shop, soldAt);
-            const unitPrice = cpShownPrice(cpSelected);
-            let moveId = '';
+            const invoiceNo = rcptNumber(state.shop, soldAt);
+            const failedMoves = [];
+            for (const { line, left } of fresh) {
+                await updateDoc(doc(db, 'abaya_products', line.id), {
+                    ['qty.' + key]: increment(-line.qty),
+                    updatedAt: serverTimestamp()
+                });
+                const after = left - line.qty;
+                const localP = cpProducts.find(x => x.id === line.id);
+                if (localP) localP.qty = Object.assign({}, localP.qty, { [key]: after });
+                if (cpSelected && cpSelected.id === line.id) {
+                    cpSelected.qty = Object.assign({}, cpSelected.qty, { [key]: after });
+                }
+                try {
+                    await addDoc(collection(db, 'abaya_product_moves'), {
+                        productId: line.id, code: line.code, name: line.name || '',
+                        shop: state.shop, change: -line.qty, after,
+                        kind: 'sold',
+                        by: state.sellerId || '', byName: state.sellerName || '',
+                        receiptNo: invoiceNo,
+                        at: soldAt.toISOString(), createdAt: serverTimestamp()
+                    });
+                } catch (e) { console.error('Movement line failed (the quantity did go down):', e); failedMoves.push(line.code); }
+            }
+
+            // ---- ٣) مستندُ الفاتورة، ومعرّفُه رقمُها ------------------------
+            // ⚠️ ولا حقلَ شراءٍ فيه بحال — والقاعدةُ ترفضه كذلك (حرسٌ من طرفَين).
+            const lines = cpCart.map(l => ({
+                productId: String(l.id), code: String(l.code), name: String(l.name || ''),
+                qty: Math.floor(Number(l.qty)) || 0,
+                unitPrice: Number(l.price) || 0,
+                lineTotal: Math.round((Number(l.price) || 0) * (Number(l.qty) || 0) * 100) / 100
+            }));
+            let saved = true;
             try {
-                const ref = await addDoc(collection(db, 'abaya_product_moves'), {
-                    productId: id,
-                    code: cpSelected.code,
-                    name: cpSelected.name || '',
-                    shop: state.shop,
-                    change: -n,
-                    after: left - n,
-                    kind: 'sold',
-                    by: state.sellerId || '',
-                    byName: state.sellerName || '',
-                    // ⭐ رقمُ الورقة المطبوعة — به يُوصَل الإيصالُ إلى سجلّه.
-                    receiptNo: receiptNo,
+                await setDoc(doc(db, ABAYA_INVOICES_COLL, invoiceNo), {
+                    no: invoiceNo,
+                    shop: String(state.shop),
+                    sellerId: String(state.sellerId || ''),
+                    byName: String(state.sellerName || ''),
+                    date: todayISO(),
+                    time: qatarTimeLabel(soldAt),
+                    lines,
+                    subtotal: Math.round(t.subtotal * 100) / 100,
+                    discountPct: t.pct,
+                    discountAmount: t.discountAmount,
+                    total: t.total,
+                    // ⚠️ حالةُ الإرجاع تُولد مكتوبةً لا غائبة — حقلٌ غائبٌ يُقرأ
+                    //   بطرقٍ مختلفةٍ في شاشتَين، والصريحُ لا يُختلف فيه.
+                    status: 'sold',
+                    returns: [],
+                    returnedQty: 0,
                     at: soldAt.toISOString(),
                     createdAt: serverTimestamp()
                 });
-                moveId = ref.id;
-            } catch (e) { console.error('Movement line failed (the quantity did go down):', e); }
+            } catch (e) {
+                saved = false;
+                console.error('The invoice document failed (the stock DID go down):', e);
+            }
 
-            // القائمة المحفوظة تُحدَّث محليًّا كي يظهر العدد الجديد فورًا
-            const localP = cpProducts.find(x => x.id === id);
-            const after = left - n;
-            if (localP) { localP.qty = Object.assign({}, localP.qty, { [key]: after }); }
-            cpSelected.qty = Object.assign({}, cpSelected.qty, { [key]: after });
-
-            // ⚠️ بياناتُ الفاتورة تُحفظ مع البيعة: `cpSelected` قد يتغيّر بعد قليل
-            //   (تُفرَّغ الخانة، أو تختار عبايةً أخرى)، وإعادةُ الطباعة بعدها كانت
-            //   ستطبع القطعةَ الخطأ. فالورقةُ تُبنى من نسخةٍ مجمَّدةٍ لا من الشاشة.
+            // ---- ٤) الورقة ------------------------------------------------
             const sale = {
-                id, code: cpSelected.code, name: cpSelected.name || '', qty: n,
-                price: unitPrice, shop: state.shop, byName: state.sellerName || '',
-                when: soldAt, no: receiptNo, moveId
+                no: invoiceNo, shop: state.shop, byName: state.sellerName || '',
+                when: soldAt, lines,
+                subtotal: t.subtotal, pct: t.pct, discountAmount: t.discountAmount, total: t.total
             };
             cpSoldHere.unshift(sale);
+            cpCart = [];
+            if (el('cpDisc')) el('cpDisc').value = '';
+            cpRenderCart();
             cpRenderSold();
-            await cpSelect(cpSelected);
+            if (cpSelected) await cpSelect(cpSelected);
             if (!el('cpList').classList.contains('hidden')) cpRenderGrid();
-            setMsg('cpMsg', `Done — ${n} × ${cpSelected.code} taken off ${state.shop}. `
-                + `${after} left. Receipt <b class="ltr">${escapeHtml(receiptNo)}</b> is printing. `
-                + `Remember the money still goes in your daily report below.`, 'ok');
-            el('cpCode').value = '';
-            // ⭐⭐ الفاتورةُ **آخرَ شيء**: البيعةُ محفوظةٌ والرسالةُ ظهرت، فأيُّ تعذّرٍ
-            //   في الطباعة لا يُفهم أنه فشلُ بيع. وهي بلا await ولا ترمي شيئًا.
+            setMsg('cpMsg', '', '');
+            setMsg('cpFinMsg',
+                `Invoice <b class="ltr">${escapeHtml(invoiceNo)}</b> &mdash; ${t.pieces} piece(s), `
+                + `<b>${money(t.total)} QAR</b>. Printing.`
+                + (saved ? '' : `<br><b>&#9888; The stock went down but the invoice was NOT saved.</b> `
+                    + `A return will not find it. Tell the owner this number.`)
+                + (failedMoves.length ? `<br><b>&#9888; No movement line for: ${escapeHtml(failedMoves.join(', '))}.</b>` : '')
+                + `<br>Remember the money still goes in your daily report below.`,
+                (saved && !failedMoves.length) ? 'ok' : 'err');
             rcptPrint(sale);
         } catch (e) {
-            console.error('Could not record the sale:', e);
-            setMsg('cpMsg', /permission/i.test(String(e && e.message))
-                ? 'Not allowed yet — ask the owner to publish the new rules.'
+            console.error('Could not finish the invoice:', e);
+            setMsg('cpFinMsg', /permission/i.test(String(e && e.message))
+                ? 'Not allowed yet — ask the owner to publish the new rules (v23).'
                 : `Could not save it: ${e.message}`, 'err');
         } finally {
             cpBusy = false;
-            el('cpConfirm').disabled = false;
+            el('cpFinish').disabled = false;
         }
-    });
+    }
+    el('cpFinish').addEventListener('click', cpFinishInvoice);
 
     // =====================================================================
     // ⭐⭐⭐⭐⭐ فاتورةُ 80mm عند كلِّ بيعة
@@ -3633,12 +3841,33 @@
         return `${code}-${p.year.slice(2)}${p.month}${p.day}-${p.hour}${p.minute}${p.second}`;
     }
 
-    /** يُعبّئ الفاتورةَ من بيعةٍ واحدة. */
+    /**
+     * يُعبّئ الفاتورة.
+     * ⚠️⚠️ تقبل **أسطرًا متعدّدة** (`sale.lines`) وتقبل الشكلَ القديمَ ذا القطعةِ
+     *   الواحدة: بياناتُ جلسةٍ قديمةٍ في الذاكرة لا يجوز أن تُفشل إعادةَ الطباعة.
+     * ⚠️ والخصمُ يُعرض **فقط إن وُجد**: سطرُ «Discount 0%» على ورقةٍ حراريّةٍ ضجيج.
+     * ⚠️ وسطرُ الإرجاع يُكتب على الورقة صريحًا: ورقةُ إرجاعٍ تُشبه ورقةَ بيعٍ
+     *   تُقدَّم لزبونةٍ فتظنّها فاتورةَ شراءٍ جديدة.
+     */
     function rcptFill(sale) {
         if (!sale) return false;
         const when = sale.when instanceof Date ? sale.when : new Date();
-        const total = (Number(sale.price) || 0) * (Number(sale.qty) || 0);
         const money2 = (n) => `${money(n)} QR`;
+        // الشكلُ القديم: قطعةٌ واحدةٌ بلا مصفوفة أسطر
+        const lines = Array.isArray(sale.lines) && sale.lines.length
+            ? sale.lines
+            : [{ code: sale.code, name: sale.name, qty: sale.qty,
+                 unitPrice: sale.price,
+                 lineTotal: (Number(sale.price) || 0) * (Number(sale.qty) || 0) }];
+        const subtotal = (sale.subtotal !== undefined && sale.subtotal !== null)
+            ? Number(sale.subtotal)
+            : lines.reduce((a, l) => a + (Number(l.lineTotal) || 0), 0);
+        const pct = Number(sale.pct || 0) || 0;
+        const disc = Number(sale.discountAmount || 0) || 0;
+        const total = (sale.total !== undefined && sale.total !== null)
+            ? Number(sale.total) : (subtotal - disc);
+        const isReturn = sale.kind === 'return';
+
         // ⚠️⚠️ التاريخُ يُبنى من `qatarParts` مباشرةً: كتبتُ أوّلًا `qatarDateISO`
         //   وهي موجودةٌ في `admin.html` **ولا وجودَ لها في هذا الملفّ** — فكانت
         //   الطباعةُ ترمي ReferenceError وتخرج الورقةُ فارغةً. و`todayISO` لا تصلح
@@ -3650,20 +3879,30 @@
             + `<br>Served by: ${escapeHtml(sale.byName || '—')}`;
         el('rcNo').textContent = sale.no || '—';
         // ⚠️ «Receipt» لا «Pro forma receipt»: تلك كلمةُ أودو لإيصالٍ قبل تأكيد
-        //   الدفع، وهذه بيعةٌ وقعت فعلًا ونقصت من الرفّ. ونسخُ الكلمةِ بلا معناها
-        //   يجعل ورقةً نهائيّةً تقول عن نفسها إنها غيرُ نهائيّة.
-        el('rcKind').textContent = 'Receipt';
-        el('rcItems').innerHTML =
-            `<tr>
-                <td class="q ltr">${Number(sale.qty) || 0}</td>
-                <td>${escapeHtml(sale.name || sale.code || '')}
-                    <br><span class="sub ltr">${escapeHtml(sale.code || '')}</span>
-                    <br><span class="sub ltr">${escapeHtml(money2(sale.price))} / Unit</span></td>
-                <td class="a ltr">${escapeHtml(money2(total))}</td>
-            </tr>`;
-        el('rcTotal').textContent = money2(total);
+        //   الدفع، وهذه بيعةٌ وقعت فعلًا ونقصت من الرفّ.
+        el('rcKind').textContent = isReturn ? 'RETURN — refund' : 'Receipt';
+
+        let html = lines.map(l => `
+            <tr>
+                <td class="q ltr">${Number(l.qty) || 0}</td>
+                <td>${escapeHtml(l.name || l.code || '')}
+                    <br><span class="sub ltr">${escapeHtml(l.code || '')}</span>
+                    <br><span class="sub ltr">${escapeHtml(money2(l.unitPrice))} / Unit</span></td>
+                <td class="a ltr">${escapeHtml(money2(l.lineTotal))}</td>
+            </tr>`).join('');
+        // ⚠️ المجموعُ قبل الخصم يُعرض **فقط** إن كان هناك خصم: بلا خصمٍ يكون
+        //   الرقمُ نفسَه مرّتين على ورقةٍ صغيرة، وهو ما أمر المالكُ بنزعه من قبل.
+        if (disc > 0) {
+            html += `<tr><td colspan="2">Subtotal</td>`
+                 + `<td class="a ltr">${escapeHtml(money2(subtotal))}</td></tr>`
+                 + `<tr><td colspan="2">Discount ${escapeHtml(String(pct))}%</td>`
+                 + `<td class="a ltr">- ${escapeHtml(money2(disc))}</td></tr>`;
+        }
+        el('rcItems').innerHTML = html;
+        el('rcTotal').textContent = (isReturn ? '- ' : '') + money2(total);
         el('rcFoot').innerHTML =
-            `${escapeHtml(sale.shop || '')}`
+            (isReturn ? `<b>Returned against invoice ${escapeHtml(sale.no || '')}</b><br>` : '')
+            + `${escapeHtml(sale.shop || '')}`
             + `<br>Tel: <span class="ltr">${escapeHtml(RCPT_TEL)}</span>`
             + `<br><span class="ltr">${escapeHtml(RCPT_MAIL)}</span>`;
         return true;
@@ -3682,84 +3921,200 @@
         }
     }
 
-    // ---- تصحيح ضغطةٍ خطأ: تُعاد القطعة ولا يُمحى شيء ----------------------
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ الإرجاع — «إذا حدث مشكل وزبونة ترجع فاتورة»
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ يُبحَث بالرقم المطبوع على الورقة، **من الخادم**: الزبونةُ قد تعود بعد
+    //   أسبوعٍ وعلى جهازٍ آخر، وقائمةُ الجلسة لا تحمل إلّا فواتيرَ اليوم. ومعرّفُ
+    //   المستند هو الرقمُ نفسُه، فالبحثُ قراءةُ مستندٍ واحدٍ بلا استعلام.
+    // ⚠️⚠️ ولا يُحذف شيءٌ ولا يُعدَّل بيعٌ: الإرجاعُ **حقيقةٌ تُكتب فوق** الفاتورة
+    //   (حالتُها + سطرُ إرجاع)، والقاعدةُ لا تسمح بتغيير الأسطر ولا الأسعار ولا
+    //   المجموع. فالفاتورةُ كما صدرت تبقى مقروءةً إلى الأبد.
+    // ⚠️ والقطعُ تعود إلى **رفِّ المحلّ الذي تقف فيه الآن** لا إلى محلّ الفاتورة:
+    //   القطعةُ في يدها هنا. ويُقال ذلك على الشاشة إن اختلف المحلّان.
+    // =====================================================================
+    let cpRet = null;             // الفاتورةُ المعروضةُ للإرجاع
+
+    function cpRenderRet() {
+        const box = el('cpRetBox');
+        if (!box) return;
+        if (!cpRet) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+        box.classList.remove('hidden');
+        const done = String(cpRet.status || '') === 'returned';
+        const other = String(cpRet.shop || '') !== String(state.shop || '');
+        box.innerHTML =
+            `<div class="cpsold" style="display:block;">`
+            + `<b dir="ltr">${escapeHtml(cpRet.no || '')}</b>`
+            + `<br><small style="color: var(--color-text-muted);">`
+            + `${escapeHtml(cpRet.date || '')} &middot; ${escapeHtml(cpRet.time || '')}`
+            + ` &middot; ${escapeHtml(cpRet.shop || '')}`
+            + ` &middot; by ${escapeHtml(cpRet.byName || '')}</small>`
+            + `<div style="margin-top:8px;">`
+            + (cpRet.lines || []).map(l =>
+                `<div dir="ltr" style="font-size:13px;">${Number(l.qty) || 0} &times; `
+                + `${escapeHtml(l.code)}${l.name ? ' — ' + escapeHtml(l.name) : ''} `
+                + `= ${money(l.lineTotal)} QAR</div>`).join('')
+            + `</div>`
+            + (Number(cpRet.discountAmount || 0) > 0
+                ? `<div style="font-size:13px; margin-top:4px;">Discount ${escapeHtml(String(cpRet.discountPct || 0))}% `
+                  + `= - ${money(cpRet.discountAmount)} QAR</div>` : '')
+            + `<div style="font-weight:800; margin-top:6px;" dir="ltr">Total ${money(cpRet.total)} QAR</div>`
+            + (done
+                ? `<p class="status err" style="margin-top:8px;">This invoice was already returned`
+                  + `${cpRet.returnedAt ? ' on ' + escapeHtml(String(cpRet.returnedAt).slice(0, 10)) : ''}. `
+                  + `Nothing further is taken back.</p>`
+                : (other
+                    ? `<p class="status" style="margin-top:8px; color:#b45309; font-weight:700;">`
+                      + `&#9888; This invoice was sold in <b>${escapeHtml(cpRet.shop || '')}</b> and you are in `
+                      + `<b>${escapeHtml(state.shop || '')}</b>. The pieces go back on <b>${escapeHtml(state.shop || '')}</b>&rsquo;s shelf.</p>`
+                    : '')
+                  + `<button id="cpRetGo" style="background:#b91c1c; margin-top:8px;">`
+                  + `Take the whole invoice back</button>`)
+            + `</div>`;
+    }
+
+    async function cpRetFind() {
+        const no = String(el('cpRetNo').value || '').trim().toUpperCase();
+        cpRet = null; cpRenderRet();
+        if (!no) { setMsg('cpRetMsg', 'Type the number printed on the invoice.', 'err'); return; }
+        setMsg('cpRetMsg', 'Looking...', 'load');
+        try {
+            const snap = await getDoc(doc(db, ABAYA_INVOICES_COLL, no));
+            if (!snap.exists()) {
+                setMsg('cpRetMsg', `No invoice with the number ${no}. Check it letter by letter — `
+                    + `it is printed under the shop logo.`, 'err');
+                return;
+            }
+            cpRet = Object.assign({ no }, snap.data() || {});
+            setMsg('cpRetMsg', '', '');
+            cpRenderRet();
+        } catch (e) {
+            console.error('Could not read the invoice:', e);
+            setMsg('cpRetMsg', /permission/i.test(String(e && e.message))
+                ? 'Not allowed yet — ask the owner to publish the new rules (v23).'
+                : 'Could not read it just now. Try again.', 'err');
+        }
+    }
+
+    /**
+     * ⚠️ الترتيبُ: تُعاد الكميّاتُ أوّلًا ثمّ تُوسَم الفاتورةُ مُرجَعة. فلو فشل الوسمُ
+     *   بقيت القطعُ على الرفّ (وهي في يدها فعلًا) ويُقال إنّ الوسمَ لم يُكتب —
+     *   وهو أهونُ من فاتورةٍ مُوسَمةٍ مُرجَعةً وقطعٍ لم تعد إلى أيِّ رفّ فتضيع.
+     */
+    async function cpRetDo() {
+        if (cpBusy || !cpRet) return;
+        if (String(cpRet.status || '') === 'returned') return;
+        const lines = Array.isArray(cpRet.lines) ? cpRet.lines : [];
+        if (!lines.length) { setMsg('cpRetMsg', 'This invoice has no lines to take back.', 'err'); return; }
+        if (!state.shop) { setMsg('cpRetMsg', 'Pick your shop first.', 'err'); return; }
+        if (!confirm(`Take the whole invoice ${cpRet.no} back?\n\n`
+            + lines.map(l => `  ${l.qty} × ${l.code}`).join('\n')
+            + `\n\nRefund: ${money(cpRet.total)} QAR\n`
+            + `The pieces go back on ${state.shop}'s shelf.`)) return;
+
+        cpBusy = true;
+        setMsg('cpRetMsg', 'Taking it back...', 'load');
+        const key = abayaShopKey(state.shop);
+        const at = new Date();
+        const back = [], failed = [];
+        try {
+            for (const l of lines) {
+                const n = Math.floor(Number(l.qty)) || 0;
+                if (n <= 0) continue;
+                try {
+                    await updateDoc(doc(db, 'abaya_products', l.productId), {
+                        ['qty.' + key]: increment(n),
+                        updatedAt: serverTimestamp()
+                    });
+                    back.push(`${n} × ${l.code}`);
+                    const localP = cpProducts.find(x => x.id === l.productId);
+                    if (localP) {
+                        localP.qty = Object.assign({}, localP.qty,
+                            { [key]: (Number(localP.qty[key] || 0) || 0) + n });
+                    }
+                } catch (e) { console.error(e); failed.push(l.code); continue; }
+                // ⚠️ سطرٌ في الاتّجاه المعاكس — ولا يُحذف سطرُ البيع إطلاقًا.
+                try {
+                    await addDoc(collection(db, 'abaya_product_moves'), {
+                        productId: l.productId, code: l.code, name: l.name || '',
+                        shop: state.shop, change: n, kind: 'returned',
+                        receiptNo: cpRet.no,
+                        by: state.sellerId || '', byName: state.sellerName || '',
+                        at: at.toISOString(), createdAt: serverTimestamp()
+                    });
+                } catch (e) { console.error('Movement line failed (the pieces did go back):', e); }
+            }
+            let stamped = true;
+            try {
+                await updateDoc(doc(db, ABAYA_INVOICES_COLL, cpRet.no), {
+                    status: 'returned',
+                    returnedQty: lines.reduce((a, l) => a + (Math.floor(Number(l.qty)) || 0), 0),
+                    returns: [{
+                        at: at.toISOString(), shop: String(state.shop),
+                        by: String(state.sellerId || ''), byName: String(state.sellerName || ''),
+                        amount: Number(cpRet.total) || 0
+                    }],
+                    updatedAt: serverTimestamp()
+                });
+                cpRet.status = 'returned';
+            } catch (e) { stamped = false; console.error('The invoice could not be stamped returned:', e); }
+
+            if (!el('cpList').classList.contains('hidden')) cpRenderGrid();
+            cpRenderRet();
+            setMsg('cpRetMsg',
+                `Taken back &mdash; ${escapeHtml(back.join(' · '))} back on ${escapeHtml(state.shop)}. `
+                + `Refund <b>${money(cpRet.total)} QAR</b>.`
+                + (failed.length ? `<br><b>&#9888; NOT put back: ${escapeHtml(failed.join(', '))}.</b> Tell the owner.` : '')
+                + (stamped ? '' : `<br><b>&#9888; The pieces went back but the invoice is not marked returned</b> — `
+                    + `it could be returned a second time. Tell the owner this number.`)
+                + `<br>Remember to take the refund out of your daily report as well.`,
+                (failed.length || !stamped) ? 'err' : 'ok');
+            // ورقةُ إرجاعٍ تُقال صريحةً على الورقة
+            rcptPrint({
+                no: cpRet.no, shop: state.shop, byName: state.sellerName || '', when: at,
+                lines, subtotal: cpRet.subtotal, pct: cpRet.discountPct,
+                discountAmount: cpRet.discountAmount, total: cpRet.total, kind: 'return'
+            });
+        } finally {
+            cpBusy = false;
+        }
+    }
+
+    el('cpRetFind').addEventListener('click', cpRetFind);
+    el('cpRetNo').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') cpRetFind(); });
+    el('cpRetBox').addEventListener('click', (ev) => {
+        if (ev.target.closest('#cpRetGo')) cpRetDo();
+    });
+
+    // ---- فواتيرُ هذه الجلسة: إعادةُ طباعةٍ بلا إعادةِ بيع -------------------
     function cpRenderSold() {
         const wrap = el('cpSoldWrap');
         if (!cpSoldHere.length) { wrap.classList.add('hidden'); return; }
         wrap.classList.remove('hidden');
-        // ⭐ زرُّ إعادة الطباعة: ورقةٌ انحشرت أو خرجت باهتةً تُعاد بلا إعادةِ البيع.
-        // ⚠️ ولا يُنقص شيئًا ولا يكتب في القاعدة — طباعةٌ فقط، ونفسُ الرقم.
-        el('cpSoldList').innerHTML = cpSoldHere.map((s, i) => `
-            <div class="cpsold">
-                <span><b dir="ltr">${escapeHtml(s.code)}</b>${s.name ? ' &mdash; ' + escapeHtml(s.name) : ''}
-                    &nbsp;&middot;&nbsp; ${s.qty} piece(s)${s.no
-                        ? `<br><small dir="ltr" style="color: var(--color-text-muted);">${escapeHtml(s.no)}</small>` : ''}</span>
-                <span style="display:flex; gap:6px; flex-wrap:wrap;">
-                    ${s.no ? `<button type="button" class="ghost" data-cprint="${i}">Print again</button>` : ''}
-                    <button type="button" class="ghost" data-cpback="${i}">Put it back</button>
-                </span>
-            </div>`).join('');
+        // ⚠️ ولا زرَّ «Put it back» هنا بعد اليوم: الإرجاعُ صار بالرقم في قسمه،
+        //   فيعمل للزبونة التي تعود غدًا كذلك — لا لفواتير هذه الجلسة وحدها.
+        el('cpSoldList').innerHTML = cpSoldHere.map((s, i) => {
+            const lines = Array.isArray(s.lines) ? s.lines : [];
+            const pieces = lines.length
+                ? lines.reduce((a, l) => a + (Number(l.qty) || 0), 0)
+                : (Number(s.qty) || 0);
+            const total = (s.total !== undefined && s.total !== null)
+                ? Number(s.total) : (Number(s.price) || 0) * (Number(s.qty) || 0);
+            return `<div class="cpsold">
+                <span><b dir="ltr">${escapeHtml(s.no || s.code || '')}</b>
+                    <br><small style="color: var(--color-text-muted);" dir="ltr">${pieces} piece(s) &middot; ${money(total)} QAR</small></span>
+                <button type="button" class="ghost" data-cprint="${i}">Print again</button>
+            </div>`;
+        }).join('');
     }
 
-    el('cpSoldList').addEventListener('click', async (ev) => {
-        // ⭐ إعادةُ الطباعة أوّلًا، و**لا تُمنع بـcpBusy**: هي لا تكتب في القاعدة
-        //   ولا تنتظر شبكةً، فمنعُها أثناء عمليةٍ أخرى منعٌ بلا سبب.
+    el('cpSoldList').addEventListener('click', (ev) => {
         const pr = ev.target.closest('button[data-cprint]');
-        if (pr) {
-            const s = cpSoldHere[Number(pr.getAttribute('data-cprint'))];
-            if (s) rcptPrint(s);
-            return;
-        }
-        const b = ev.target.closest('button[data-cpback]');
-        if (!b || cpBusy) return;
-        const i = Number(b.getAttribute('data-cpback'));
-        const s = cpSoldHere[i];
-        if (!s) return;
-        if (!confirm(`Put ${s.qty} × ${s.code} back on the shelf?`)) return;
-        cpBusy = true;
-        b.disabled = true;
-        const key = abayaShopKey(state.shop);
-        try {
-            await updateDoc(doc(db, 'abaya_products', s.id), {
-                ['qty.' + key]: increment(s.qty),
-                updatedAt: serverTimestamp()
-            });
-            // ⚠️ سطرٌ جديدٌ في الاتجاه المعاكس — ولا يُحذف السطر الأول إطلاقًا.
-            // السجل غير قابل للتعديل بقواعده، وهذا مقصود: التصحيح يُرى ولا يُخفى.
-            try {
-                await addDoc(collection(db, 'abaya_product_moves'), {
-                    productId: s.id, code: s.code, name: s.name || '',
-                    shop: state.shop, change: s.qty, kind: 'returned',
-                    undoOf: s.moveId || '',
-                    by: state.sellerId || '', byName: state.sellerName || '',
-                    at: new Date().toISOString(), createdAt: serverTimestamp()
-                });
-            } catch (e) { console.error(e); }
-            const localP = cpProducts.find(x => x.id === s.id);
-            if (localP) {
-                localP.qty = Object.assign({}, localP.qty,
-                    { [key]: (Number(localP.qty[key] || 0) || 0) + s.qty });
-            }
-            cpSoldHere.splice(i, 1);
-            cpRenderSold();
-            if (cpSelected && cpSelected.id === s.id) {
-                cpSelected.qty = Object.assign({}, cpSelected.qty,
-                    { [key]: (Number(cpSelected.qty[key] || 0) || 0) + s.qty });
-                await cpSelect(cpSelected);
-            }
-            if (!el('cpList').classList.contains('hidden')) cpRenderGrid();
-            setMsg('cpMsg', `${s.qty} × ${s.code} is back on the shelf.`, 'ok');
-        } catch (e) {
-            b.disabled = false;
-            setMsg('cpMsg', `Could not put it back: ${e.message}`, 'err');
-        } finally {
-            cpBusy = false;
-        }
+        if (!pr) return;
+        const s = cpSoldHere[Number(pr.getAttribute('data-cprint'))];
+        if (s) rcptPrint(s);
     });
 
-    // =====================================================================
-    // الإرسال
-    // =====================================================================
     el('btnSubmit').addEventListener('click', async () => {
         if (isSubmitting) return;   // حماية من الضغط المزدوج مثل صفحة الحضور
         showStatus('', '');
