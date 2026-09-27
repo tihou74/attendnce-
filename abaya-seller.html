@@ -581,6 +581,53 @@
     .nwlater:hover { color: var(--dark-text, #E8EDF6); border-color: var(--gold-600, #A89060); }
 
     .hidden { display: none !important; }
+
+    /* =====================================================================
+       ⭐⭐⭐⭐⭐ فاتورةُ 80mm — بأمر المالك: «نوع البرينتر reciept printer 80mm،
+       أريد عندما أيُّ بياعةٍ تبيع أيَّ قطعةٍ تطلع فاتورة مثل هاي»
+       ---------------------------------------------------------------------
+       ⚠️⚠️ صفحةُ ويبٍ **لا تستطيع** إرسال ESC/POS إلى طابعةٍ مباشرةً بلا WebUSB
+          وإذنٍ وتعريف. فالطريقُ العمليُّ الذي يعمل على كلِّ جهازٍ اليوم هو نافذةُ
+          الطباعة مع `@page` بعرض 80mm — والطابعةُ مثبَّتةٌ في النظام. وهذا يُقال
+          للمالك صريحًا ولا يُوهَم بغيره.
+       ⚠️ والعرضُ **72mm** لا 80: ورقُ 80mm عرضُ **الورق**، ومنطقةُ الطباعة فيه
+          72mm تقريبًا (4mm هامشٌ فيزيائيٌّ من كلِّ جهة). ولو كُتب 80 لقُطعت
+          الحروفُ من الحاشية اليمنى — وهو أشهرُ خطإٍ في فواتير الحرارية.
+       ⚠️ ولا لونَ ولا خلفيّاتٍ ولا ظِلال: الطابعةُ الحرارية أبيضُ وأسودُ فقط،
+          والرماديُّ يخرج بقعًا. وحدودٌ متقطّعةٌ بدل الخطوط الرقيقة.
+       ===================================================================== */
+    #rcpt { display: none; }
+    @media print {
+        /* كلُّ شيءٍ يُخفى إلّا الفاتورة — وهي ابنةُ body مباشرةً لهذا السبب. */
+        body > *:not(#rcpt) { display: none !important; }
+        html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+        #rcpt {
+            display: block !important;
+            width: 72mm; margin: 0; padding: 2mm 0 6mm;
+            color: #000; background: #fff;
+            font-family: ui-monospace, "Courier New", monospace;
+            font-size: 11.5px; line-height: 1.45;
+            -webkit-print-color-adjust: exact; print-color-adjust: exact;
+        }
+        #rcpt .c { text-align: center; }
+        #rcpt .logo { width: 26mm; height: auto; display: block; margin: 0 auto 1.5mm; }
+        #rcpt .biz { font-size: 13px; font-weight: 700; letter-spacing: .12em; margin: 0 0 2mm; }
+        #rcpt .meta { font-size: 10px; line-height: 1.6; margin: 0; }
+        /* ⭐ رقمُ الفاتورة كبيرٌ كما في فاتورته — هو ما يُنادى به عند الاستبدال. */
+        #rcpt .no { font-size: 19px; font-weight: 700; margin: 2mm 0 1mm; letter-spacing: .04em; }
+        #rcpt .kind { font-size: 11px; margin: 0 0 2mm; }
+        #rcpt hr { border: 0; border-top: 1px dashed #000; margin: 2mm 0; }
+        #rcpt table { width: 100%; border-collapse: collapse; }
+        #rcpt td { vertical-align: top; padding: 0 0 1.5mm; font-size: 11.5px; }
+        #rcpt .q { width: 7mm; }
+        #rcpt .a { text-align: right; white-space: nowrap; }
+        #rcpt .sub { font-size: 10px; }
+        #rcpt .tot td { font-size: 13px; font-weight: 700; padding-top: 1mm; }
+        #rcpt .foot { font-size: 10px; line-height: 1.6; margin: 2mm 0 0; }
+        /* ⚠️ الاتّجاهُ ltr على الأرقام والباركود دائمًا: اسمٌ عربيٌّ في السطر
+           يقلب موضعَ الرقم في بعض المحرّكات فيُقرأ سعرٌ خطأ. */
+        #rcpt .ltr { direction: ltr; unicode-bidi: isolate; }
+    }
 </style>
 </head>
 <body>
@@ -616,6 +663,35 @@
             <button type="button" class="nwlater" id="nwLater">Later</button>
         </div>
     </div>
+</div>
+
+<!-- ==================================================================
+     ⭐⭐⭐⭐⭐ فاتورةُ البيع — تُطبع على طابعةِ إيصالاتٍ 80mm
+     ------------------------------------------------------------------
+     ⚠️ ابنةُ `body` **مباشرةً** عن قصد: قاعدةُ الطباعة تُخفي
+        `body > *:not(#rcpt)`، فلو كانت داخلَ `.wrap` لاختفت معه.
+     ⚠️ وتُعبَّأ من آخرِ بيعةٍ وقعت فعلًا — لا من الخانات المعروضة على
+        الشاشة: الخانةُ قد تكون تغيّرت بعد البيع (فُرّغ الباركود، أو
+        اختيرت عبايةٌ أخرى)، فالفاتورةُ يجب أن تحمل ما بِيع لا ما هو معروض.
+     ================================================================== -->
+<div id="rcpt" aria-hidden="true">
+    <div class="c">
+        <img class="logo" id="rcLogo" src="./brand/al-sheikha-style-logo.png" alt="">
+        <p class="biz">AL SHEIKHA STYLE</p>
+        <p class="meta" id="rcMeta">&mdash;</p>
+        <p class="no ltr" id="rcNo">&mdash;</p>
+        <p class="kind" id="rcKind">Receipt</p>
+    </div>
+    <hr>
+    <table>
+        <tbody id="rcItems"></tbody>
+        <tr class="tot">
+            <td colspan="2">Total</td>
+            <td class="a ltr" id="rcTotal">&mdash;</td>
+        </tr>
+    </table>
+    <hr>
+    <p class="foot" id="rcFoot">&mdash;</p>
 </div>
 
 <div class="wrap">
@@ -3458,6 +3534,11 @@
 
             // ⚠️ السجل **بعد** النقص لا قبله: سطرٌ يقول «بيعت» ولم تنقص يكذب،
             // وأهونُ منه نقصٌ بلا سطر — والنقص هو ما يراه المالك على أي حال.
+            // ⭐ رقمُ الفاتورة يُولَد **مرّةً واحدة** هنا: يُكتب على السجلّ ويُطبع على
+            //   الورقة، فيُطابق المالكُ بينهما. ولو وُلد مرّتين لاختلف الرقمان بالثانية.
+            const soldAt = new Date();
+            const receiptNo = rcptNumber(state.shop, soldAt);
+            const unitPrice = cpShownPrice(cpSelected);
             let moveId = '';
             try {
                 const ref = await addDoc(collection(db, 'abaya_product_moves'), {
@@ -3470,7 +3551,9 @@
                     kind: 'sold',
                     by: state.sellerId || '',
                     byName: state.sellerName || '',
-                    at: new Date().toISOString(),
+                    // ⭐ رقمُ الورقة المطبوعة — به يُوصَل الإيصالُ إلى سجلّه.
+                    receiptNo: receiptNo,
+                    at: soldAt.toISOString(),
                     createdAt: serverTimestamp()
                 });
                 moveId = ref.id;
@@ -3482,13 +3565,25 @@
             if (localP) { localP.qty = Object.assign({}, localP.qty, { [key]: after }); }
             cpSelected.qty = Object.assign({}, cpSelected.qty, { [key]: after });
 
-            cpSoldHere.unshift({ id, code: cpSelected.code, name: cpSelected.name || '', qty: n, moveId });
+            // ⚠️ بياناتُ الفاتورة تُحفظ مع البيعة: `cpSelected` قد يتغيّر بعد قليل
+            //   (تُفرَّغ الخانة، أو تختار عبايةً أخرى)، وإعادةُ الطباعة بعدها كانت
+            //   ستطبع القطعةَ الخطأ. فالورقةُ تُبنى من نسخةٍ مجمَّدةٍ لا من الشاشة.
+            const sale = {
+                id, code: cpSelected.code, name: cpSelected.name || '', qty: n,
+                price: unitPrice, shop: state.shop, byName: state.sellerName || '',
+                when: soldAt, no: receiptNo, moveId
+            };
+            cpSoldHere.unshift(sale);
             cpRenderSold();
             await cpSelect(cpSelected);
             if (!el('cpList').classList.contains('hidden')) cpRenderGrid();
             setMsg('cpMsg', `Done — ${n} × ${cpSelected.code} taken off ${state.shop}. `
-                + `${after} left. Remember the money still goes in your daily report below.`, 'ok');
+                + `${after} left. Receipt <b class="ltr">${escapeHtml(receiptNo)}</b> is printing. `
+                + `Remember the money still goes in your daily report below.`, 'ok');
             el('cpCode').value = '';
+            // ⭐⭐ الفاتورةُ **آخرَ شيء**: البيعةُ محفوظةٌ والرسالةُ ظهرت، فأيُّ تعذّرٍ
+            //   في الطباعة لا يُفهم أنه فشلُ بيع. وهي بلا await ولا ترمي شيئًا.
+            rcptPrint(sale);
         } catch (e) {
             console.error('Could not record the sale:', e);
             setMsg('cpMsg', /permission/i.test(String(e && e.message))
@@ -3500,20 +3595,121 @@
         }
     });
 
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ فاتورةُ 80mm عند كلِّ بيعة
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ الطباعةُ تُنادى **بعد** نجاح البيع ونجاح رسالته، وفي try/catch خاصّ:
+    //   البيعُ هو ما يُنقص الرفَّ ويُحاسَب عليه، والفاتورةُ ورقةٌ. فلو تعذّرت
+    //   الطباعةُ لأيِّ سبب (نافذةٌ مُنعت، طابعةٌ مفقودة) يجب أن تبقى البيعةُ
+    //   محفوظةً وأن ترى «Done» — لا رسالةَ خطأٍ تُفهم أنها لم تُبَع فتبيع مرّتين.
+    // ⚠️ ورقمُ الفاتورة يُكتب على سطر الحركة (`receiptNo`) كي يُطابق المالكُ
+    //   ورقةً مطبوعةً بسجلٍّ في القاعدة. وقاعدةُ الإنشاء بلا `hasOnly` فالحقلُ
+    //   الإضافيُّ مسموح — فُحص قبل إضافته.
+    // =====================================================================
+    /**
+     * ⚠️ بياناتُ التواصل من فاتورة المالك نفسها (لا مُختلَقة). وموضعُ تغييرها
+     *   هذان الثابتان — ولم تُوضع في `settings` لأنّ ذلك يحتاج شاشةً في لوحته
+     *   ولم يطلبها؛ ومرفوعٌ في `open-issues.md` إن أرادها.
+     */
+    const RCPT_TEL = '74079000';
+    const RCPT_MAIL = 'INFO@SHEIKHASTYLE.COM';
+
+    /** آخرُ بيعةٍ طُبعت — لإعادة الطباعة بلا إعادة البيع. */
+    let rcptLast = null;
+
+    /**
+     * رقمُ الفاتورة.
+     * ⚠️⚠️ **ليس رقمًا متسلسلًا** ولا يُدّعى ذلك: العدّادُ المتسلسل يحتاج مستندَ
+     *   عدّادٍ ومعاملةً على الخادم وقاعدةً جديدة، والكشكُ لا يملك الكتابةَ في
+     *   `settings`. وهذا الرقمُ **فريدٌ ومقروءٌ ويُرتَّب زمنيًّا**: رمزُ المحلّ +
+     *   التاريخ + الساعة بالثانية. فيُميّز كلَّ فاتورةٍ ويُقال للمالك ما هو بصدق.
+     * ⚠️ وبتوقيت قطر لا بتوقيت الجهاز: فاتورتانِ في محلَّين بساعتَي جهازٍ مختلفتَين
+     *   كانتا تحملان تاريخَين مختلفَين لنفس اللحظة.
+     */
+    function rcptNumber(shop, when) {
+        const p = qatarParts(when);
+        const code = String(shop || '').trim().toUpperCase()
+            .split(/[^A-Z0-9]+/).filter(Boolean).map(w => w[0]).join('').slice(0, 3) || 'AS';
+        return `${code}-${p.year.slice(2)}${p.month}${p.day}-${p.hour}${p.minute}${p.second}`;
+    }
+
+    /** يُعبّئ الفاتورةَ من بيعةٍ واحدة. */
+    function rcptFill(sale) {
+        if (!sale) return false;
+        const when = sale.when instanceof Date ? sale.when : new Date();
+        const total = (Number(sale.price) || 0) * (Number(sale.qty) || 0);
+        const money2 = (n) => `${money(n)} QR`;
+        // ⚠️⚠️ التاريخُ يُبنى من `qatarParts` مباشرةً: كتبتُ أوّلًا `qatarDateISO`
+        //   وهي موجودةٌ في `admin.html` **ولا وجودَ لها في هذا الملفّ** — فكانت
+        //   الطباعةُ ترمي ReferenceError وتخرج الورقةُ فارغةً. و`todayISO` لا تصلح
+        //   بديلًا: تُعيد **اليوم** لا تاريخَ البيعة، فتُطبع فاتورةٌ قديمةٌ بتاريخ
+        //   اليوم عند إعادة الطباعة. والدرسُ مكتوبٌ عندي: يُبحَث عن الاسم قبل نداءه.
+        const dp = qatarParts(when);
+        el('rcMeta').innerHTML =
+            `${escapeHtml(`${dp.year}-${dp.month}-${dp.day}`)} &nbsp; ${escapeHtml(qatarTimeLabel(when))}`
+            + `<br>Served by: ${escapeHtml(sale.byName || '—')}`;
+        el('rcNo').textContent = sale.no || '—';
+        // ⚠️ «Receipt» لا «Pro forma receipt»: تلك كلمةُ أودو لإيصالٍ قبل تأكيد
+        //   الدفع، وهذه بيعةٌ وقعت فعلًا ونقصت من الرفّ. ونسخُ الكلمةِ بلا معناها
+        //   يجعل ورقةً نهائيّةً تقول عن نفسها إنها غيرُ نهائيّة.
+        el('rcKind').textContent = 'Receipt';
+        el('rcItems').innerHTML =
+            `<tr>
+                <td class="q ltr">${Number(sale.qty) || 0}</td>
+                <td>${escapeHtml(sale.name || sale.code || '')}
+                    <br><span class="sub ltr">${escapeHtml(sale.code || '')}</span>
+                    <br><span class="sub ltr">${escapeHtml(money2(sale.price))} / Unit</span></td>
+                <td class="a ltr">${escapeHtml(money2(total))}</td>
+            </tr>`;
+        el('rcTotal').textContent = money2(total);
+        el('rcFoot').innerHTML =
+            `${escapeHtml(sale.shop || '')}`
+            + `<br>Tel: <span class="ltr">${escapeHtml(RCPT_TEL)}</span>`
+            + `<br><span class="ltr">${escapeHtml(RCPT_MAIL)}</span>`;
+        return true;
+    }
+
+    /** يُعبّئ ثم يفتح نافذةَ الطباعة. ولا يرمي شيئًا بحال. */
+    function rcptPrint(sale) {
+        try {
+            if (!rcptFill(sale)) return;
+            rcptLast = sale;
+            // ⚠️ تأخيرٌ قصيرٌ قبل الطباعة: الشعارُ صورةٌ، و`print()` الفوريّة تُطبع
+            //   أحيانًا قبل رسمه فتخرج الفاتورةُ بلا شعار.
+            setTimeout(() => { try { window.print(); } catch (e) { console.error(e); } }, 120);
+        } catch (e) {
+            console.error('The receipt could not be prepared (the sale itself is saved):', e);
+        }
+    }
+
     // ---- تصحيح ضغطةٍ خطأ: تُعاد القطعة ولا يُمحى شيء ----------------------
     function cpRenderSold() {
         const wrap = el('cpSoldWrap');
         if (!cpSoldHere.length) { wrap.classList.add('hidden'); return; }
         wrap.classList.remove('hidden');
+        // ⭐ زرُّ إعادة الطباعة: ورقةٌ انحشرت أو خرجت باهتةً تُعاد بلا إعادةِ البيع.
+        // ⚠️ ولا يُنقص شيئًا ولا يكتب في القاعدة — طباعةٌ فقط، ونفسُ الرقم.
         el('cpSoldList').innerHTML = cpSoldHere.map((s, i) => `
             <div class="cpsold">
                 <span><b dir="ltr">${escapeHtml(s.code)}</b>${s.name ? ' &mdash; ' + escapeHtml(s.name) : ''}
-                    &nbsp;&middot;&nbsp; ${s.qty} piece(s)</span>
-                <button type="button" class="ghost" data-cpback="${i}">Put it back</button>
+                    &nbsp;&middot;&nbsp; ${s.qty} piece(s)${s.no
+                        ? `<br><small dir="ltr" style="color: var(--color-text-muted);">${escapeHtml(s.no)}</small>` : ''}</span>
+                <span style="display:flex; gap:6px; flex-wrap:wrap;">
+                    ${s.no ? `<button type="button" class="ghost" data-cprint="${i}">Print again</button>` : ''}
+                    <button type="button" class="ghost" data-cpback="${i}">Put it back</button>
+                </span>
             </div>`).join('');
     }
 
     el('cpSoldList').addEventListener('click', async (ev) => {
+        // ⭐ إعادةُ الطباعة أوّلًا، و**لا تُمنع بـcpBusy**: هي لا تكتب في القاعدة
+        //   ولا تنتظر شبكةً، فمنعُها أثناء عمليةٍ أخرى منعٌ بلا سبب.
+        const pr = ev.target.closest('button[data-cprint]');
+        if (pr) {
+            const s = cpSoldHere[Number(pr.getAttribute('data-cprint'))];
+            if (s) rcptPrint(s);
+            return;
+        }
         const b = ev.target.closest('button[data-cpback]');
         if (!b || cpBusy) return;
         const i = Number(b.getAttribute('data-cpback'));
