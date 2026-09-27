@@ -981,6 +981,28 @@
                 <div id="cpTotals" style="margin-top: var(--space-3);"></div>
 
                 <!-- ==========================================================
+                     ⭐⭐⭐⭐⭐ الزبونة — بأمر المالك: «ابنِ سجلَّ الزبونات»
+                     ----------------------------------------------------------
+                     ⚠️⚠️ **اختياريّةٌ تمامًا**: بيعةٌ بلا رقمٍ بيعةٌ عاديّة، والفاتورةُ
+                        تُحفظ بلا زبونة وتُقرأ «walk-in». ولا رقمَ يُختلق بحال —
+                        رقمٌ مُختلَقٌ يَنسب شراءً إلى امرأةٍ لم تشترِه.
+                     ⚠️ والرقمُ هو المفتاح (معرّفُ المستند): فزبونةٌ واحدةٌ لا تصير
+                        اثنتَين لأنّ اسمَها كُتب بحرفٍ مختلف.
+                     ========================================================== -->
+                <div style="margin-top: var(--space-4);">
+                    <span class="alabel" style="font-size: var(--text-xs); font-weight: 700;
+                          text-transform: uppercase; letter-spacing: .5px;">Customer &mdash; optional</span>
+                    <div class="two" style="margin-top: 6px;">
+                        <div><label for="cpCustPhone">Phone</label>
+                            <input type="tel" id="cpCustPhone" inputmode="tel" autocomplete="off"
+                                   dir="ltr" placeholder="e.g. 33445566"></div>
+                        <div><label for="cpCustName">Name</label>
+                            <input type="text" id="cpCustName" autocomplete="off" placeholder="Her name"></div>
+                    </div>
+                    <p class="note" id="cpCustNote" style="margin-top: var(--space-2);"></p>
+                </div>
+
+                <!-- ==========================================================
                      ⭐⭐⭐⭐⭐ طريقةُ الدفع — بأمر المالك: «كاش أو كارد أو كاش وكارد»
                      ----------------------------------------------------------
                      ⚠️ ثلاثةُ أزرارٍ لا قائمةٌ منسدلة: هذا اختيارٌ يُضغط مئةَ مرّةٍ
@@ -2486,6 +2508,9 @@
         cpCart = [];
         cpRet = null;
         cpPay = '';
+        cpCust = null;
+        if (el('cpCustPhone')) el('cpCustPhone').value = '';
+        if (el('cpCustName')) el('cpCustName').value = '';
         if (el('cpPayCash')) el('cpPayCash').value = '';
         if (el('cpPayCard')) el('cpPayCard').value = '';
         if (el('cpFixBox')) { el('cpFixBox').classList.add('hidden'); el('cpFixBox').innerHTML = ''; }
@@ -3726,6 +3751,79 @@
     }
 
     // =====================================================================
+    // ⭐⭐⭐⭐⭐ سجلُّ الزبونات
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ الرقمُ هو معرّفُ المستند، فالبحثُ قراءةُ مستندٍ واحدٍ بلا استعلام — وزبونةٌ
+    //   مكرّرةٌ مستحيلة. وهو نفسُ منطقِ الباركود ورقمِ الفاتورة.
+    // ⚠️⚠️ ولا يُخزَّن تاريخُ شرائها هنا: يُحسب من الفواتير التي تحمل رقمَها.
+    //   ورقمٌ محفوظٌ في موضعٍ ثانٍ يختلف عن الفواتير يومًا.
+    // ⚠️ والقاعدةُ تفصل `get` عن `list`: تُقرأ زبونةٌ برقمها، ولا يُنزَّل الدفترُ.
+    // =====================================================================
+    const ABAYA_CUSTOMERS_COLL = 'abaya_customers';
+    let cpCust = null;            // الزبونةُ المعروفةُ الآن (أو null)
+
+    /**
+     * الرقمُ مفتاحًا — أرقامٌ فقط، وبلا مقدّمةِ الدولة.
+     * ⚠️ «+974 3344 5566» و«33445566» و«97433445566» امرأةٌ واحدة. وبلا تطبيعٍ
+     *   تصير ثلاثَ زبوناتٍ في الدفتر ولا يجتمع تاريخُ شرائها.
+     * ⚠️ ويُقبل 8 أرقامٍ على الأقلّ: رقمٌ ناقصٌ مفتاحٌ خطأ، وأفضلُ منه لا زبونة.
+     */
+    function cpPhoneKey(raw) {
+        let d = String(raw || '').replace(/\D+/g, '');
+        // ⚠️⚠️ تُنزع المقدّمةُ **بالبادئة لا بالطول**: كتبتُ أوّلًا `length === 12`
+        //   لـ«00974» وطولُها الحقيقيُّ 13، فكان «0097433445566» يصير مفتاحًا ثالثًا
+        //   لنفس المرأة. وحسابُ الأطوالِ بيدٍ خطأٌ يتكرّر؛ والبادئةُ لا تُخطئ.
+        if (d.startsWith('00')) d = d.slice(2);
+        // ⚠️ وشرطُ الطول يحمي رقمًا محلّيًّا يبدأ بـ974 صدفةً من أن يُقصّ.
+        //   (وأرقامُ قطر لا تبدأ بـ9 أصلًا، فهذا حرسٌ زائدٌ لا ضرر منه.)
+        if (d.startsWith('974') && d.length > 8) d = d.slice(3);
+        return d.length >= 8 ? d : '';
+    }
+
+    function cpRenderCust() {
+        const note = el('cpCustNote');
+        if (!note) return;
+        const raw = String((el('cpCustPhone') || {}).value || '').trim();
+        const key = cpPhoneKey(raw);
+        if (!raw) { note.innerHTML = 'Leave both empty for a walk-in customer.'; return; }
+        if (!key) { note.innerHTML = `<b style="color:#b45309;">That phone looks short &mdash; `
+            + `8 digits at least, or leave it empty.</b>`; return; }
+        if (cpCust && cpCust.phone === key) {
+            note.innerHTML = `<b style="color: var(--color-success);">&#10004; Known customer</b>`
+                + (cpCust.name ? ` &mdash; ${escapeHtml(cpCust.name)}` : '')
+                + (cpCust.lastSeen ? `<br><small>Last seen ${escapeHtml(String(cpCust.lastSeen).slice(0, 10))}`
+                    + (cpCust.lastShop ? ` at ${escapeHtml(cpCust.lastShop)}` : '') + `</small>` : '');
+            return;
+        }
+        note.innerHTML = `New customer &mdash; she will be added to the book as <b dir="ltr">${escapeHtml(key)}</b>.`;
+    }
+
+    /** يبحث عنها برقمها. ⚠️ ولا يُعطّل البيعَ إن فشل: الفاتورةُ تُحفظ بلا زبونة. */
+    async function cpCustFind() {
+        const key = cpPhoneKey((el('cpCustPhone') || {}).value);
+        cpCust = null;
+        if (!key) { cpRenderCust(); return; }
+        try {
+            const snap = await getDoc(doc(db, ABAYA_CUSTOMERS_COLL, key));
+            if (snap.exists()) {
+                cpCust = Object.assign({ phone: key }, snap.data() || {});
+                // ⚠️ الاسمُ المحفوظُ يُملأ **فقط إن كانت الخانةُ فارغة**: من كتبت
+                //   تصحيحًا للاسم لا يُمحى ما كتبته، والتصحيحُ يُحفظ أدناه.
+                const nEl = el('cpCustName');
+                if (nEl && !String(nEl.value || '').trim() && cpCust.name) nEl.value = cpCust.name;
+            }
+        } catch (e) {
+            console.error('Could not look the customer up:', e);
+        }
+        cpRenderCust();
+    }
+
+    el('cpCustPhone').addEventListener('input', cpRenderCust);
+    el('cpCustPhone').addEventListener('change', cpCustFind);
+    el('cpCustPhone').addEventListener('blur', cpCustFind);
+    el('cpCustName').addEventListener('input', cpRenderCust);
+
+    // =====================================================================
     // ⭐⭐⭐⭐⭐ طريقةُ الدفع
     // ---------------------------------------------------------------------
     // ⚠️ لا افتراضَ صامتٌ: لا تُختار طريقةٌ نيابةً عنها. فافتراضُ «كاش» يجعل كلَّ
@@ -3858,6 +3956,16 @@
         //   فلا تبقى قطعٌ منقوصةً لأجل خانةِ دفعٍ ناقصة. ولا افتراضَ «كاش» صامتًا.
         const pay = cpPayParts(t.total);
         if (!pay.ok) { setMsg('cpFinMsg', pay.why || 'Choose how it was paid.', 'err'); return; }
+        // ⚠️ الزبونةُ تُقرأ مرّةً هنا وتُجمَّد: الخاناتُ قد تتغيّر بعد الإكمال،
+        //   والورقةُ والمستندُ يجب أن يحملا ما كان وقتَ البيع.
+        const custKey = cpPhoneKey((el('cpCustPhone') || {}).value);
+        const custName = String((el('cpCustName') || {}).value || '').trim();
+        // ⚠️⚠️ رقمٌ كُتب ناقصًا **يُوقف الفاتورة**: حفظُها بلا زبونةٍ بصمتٍ يُفقد
+        //   الرابطَ الذي كتبته البياعةُ بيدها وتظنّه محفوظًا.
+        if (!custKey && String((el('cpCustPhone') || {}).value || '').trim()) {
+            setMsg('cpFinMsg', 'That phone is too short. Complete it, or clear it for a walk-in sale.', 'err');
+            return;
+        }
 
         cpBusy = true;
         el('cpFinish').disabled = true;
@@ -3937,6 +4045,12 @@
                     //   «كارد» وحدَه: قارئٌ يجمع `payment.cash` عبر اليوم يجد الرقمَ
                     //   صحيحًا بلا أن يُفرّق بين الطرق أوّلًا.
                     payment: { method: pay.method, cash: pay.cash, card: pay.card },
+                    // ⭐⭐ الزبونةُ **منسوخةٌ** على الفاتورة لا مرجعًا وحده: الفاتورةُ
+                    //   ورقةٌ تُقرأ بعد سنةٍ، ومرجعٌ إلى مستندٍ قد يُغيَّر اسمُه يجعل
+                    //   فاتورةً قديمةً تقول اسمًا غيرَ الذي طُبع عليها.
+                    // ⚠️ والفراغُ حالةٌ صحيحة: بيعةٌ بلا زبونةٍ تُقرأ «walk-in».
+                    customerPhone: custKey,
+                    customerName: custName,
                     // ⚠️ تُولد مصفوفةً فارغةً لا غائبة: التصحيحُ يُضيف إليها،
                     //   و`arrayUnion` على حقلٍ غائبٍ يعمل، لكن قارئًا يقرأ الغيابَ
                     //   قد يُظهر «undefined تصحيح». والصريحُ لا يُختلف فيه.
@@ -3954,12 +4068,37 @@
                 console.error('The invoice document failed (the stock DID go down):', e);
             }
 
+            // ---- ٣ب) دفترُ الزبونات — بعد الفاتورة وفي try خاصّ -------------
+            // ⚠️⚠️ آخرَ كتابةٍ وفي حارسٍ مستقلّ: الفاتورةُ والمخزونُ هما العمل،
+            //   والدفترُ راحةٌ. فلو رُفضت هذه (قواعدُ v25 لم تُنشر) تبقى الفاتورةُ
+            //   محفوظةً وتحمل رقمَ الزبونة واسمَها على أي حال — فلا يُفقد شيء.
+            if (custKey) {
+                try {
+                    const known = cpCust && cpCust.phone === custKey;
+                    if (known) {
+                        // ⚠️ الاسمُ يُحدَّث فقط إن كُتب: خانةٌ فارغةٌ لا تمحو اسمًا محفوظًا.
+                        const patch = { lastSeen: soldAt.toISOString(), lastShop: String(state.shop), updatedAt: serverTimestamp() };
+                        if (custName) patch.name = custName;
+                        await updateDoc(doc(db, ABAYA_CUSTOMERS_COLL, custKey), patch);
+                    } else {
+                        await setDoc(doc(db, ABAYA_CUSTOMERS_COLL, custKey), {
+                            phone: custKey, name: custName,
+                            firstShop: String(state.shop),
+                            lastSeen: soldAt.toISOString(), lastShop: String(state.shop),
+                            createdBy: String(state.sellerId || ''), createdByName: String(state.sellerName || ''),
+                            createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+                        }, { merge: true });
+                    }
+                } catch (e) { console.error('The customer book was not updated (the invoice IS saved):', e); }
+            }
+
             // ---- ٤) الورقة ------------------------------------------------
             const sale = {
                 no: invoiceNo, shop: state.shop, byName: state.sellerName || '',
                 when: soldAt, lines,
                 subtotal: t.subtotal, pct: t.pct, discountAmount: t.discountAmount, total: t.total,
-                payment: { method: pay.method, cash: pay.cash, card: pay.card }
+                payment: { method: pay.method, cash: pay.cash, card: pay.card },
+                customerPhone: custKey, customerName: custName
             };
             cpSoldHere.unshift(sale);
             cpCart = [];
@@ -3969,8 +4108,14 @@
             cpPay = '';
             if (el('cpPayCash')) el('cpPayCash').value = '';
             if (el('cpPayCard')) el('cpPayCard').value = '';
+            // ⚠️⚠️ والزبونةُ تُصفَّر: نسيانُها يَنسب فاتورةَ الزبونة التالية إلى
+            //   السابقة — خطأٌ في سجلٍّ شخصيٍّ لا في العرض.
+            cpCust = null;
+            if (el('cpCustPhone')) el('cpCustPhone').value = '';
+            if (el('cpCustName')) el('cpCustName').value = '';
             cpRenderCart();
             cpRenderPay();
+            cpRenderCust();
             cpRenderSold();
             if (cpSelected) await cpSelect(cpSelected);
             if (!el('cpList').classList.contains('hidden')) cpRenderGrid();
@@ -4096,6 +4241,13 @@
         // ⭐⭐ طريقةُ الدفع على الورقة: الزبونةُ تُراجعها، والمالكُ يُطابق الصندوق.
         // ⚠️ وتُقال «not recorded» إن غابت — فاتورةٌ قديمةٌ قبل هذه الميزة لا
         //   تُنسب إلى كاشٍ لم يُعرف. ولا تُقال على ورقةِ الإرجاع: المبلغُ يُردّ.
+        // ⭐ الزبونةُ على الورقة إن وُجدت — بها تُراجع، وبها يُطابق الإرجاعُ لاحقًا.
+        const cu = String(sale.customerName || '').trim();
+        const cp = String(sale.customerPhone || '').trim();
+        if (cu || cp) {
+            el('rcMeta').innerHTML += `<br>Customer: ${escapeHtml(cu || '—')}`
+                + (cp ? ` <span class="ltr">${escapeHtml(cp)}</span>` : '');
+        }
         const pm = sale.payment || {};
         const pmTxt = !isReturn && pm.method
             ? (pm.method === 'split'
