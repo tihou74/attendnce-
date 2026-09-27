@@ -911,10 +911,49 @@
     }
     .catwa .towho b { font-weight: 800; }
     .catwa .towho .num { font-family: var(--font-mono); direction: ltr; unicode-bidi: embed; }
+    /* =====================================================================
+       ⭐⭐⭐⭐⭐ ملصقُ الباركود — Zebra ZD220 · 50mm × 25mm · 203 DPI
+       ---------------------------------------------------------------------
+       ⚠️⚠️ 203 DPI تعني 8 نقاطٍ في الملّيمتر: فالملصقُ 400 × 200 نقطة. والقياسُ
+          يُكتب بالملّيمتر لا بالبكسل — البكسلُ يختلف بين الشاشة والطابعة، والملّيمترُ
+          واحدٌ عند الاثنين.
+       ⚠️⚠️ ولا هوامشَ: `@page margin: 0` وإلّا أضاف المتصفّحُ هامشَه فانزلق
+          الباركودُ عن الملصق — وهو أشهرُ عطلٍ في طباعة الملصقات.
+       ⚠️ ولا رماديَّ ولا لون: رأسٌ حراريٌّ أسودُ أو لا شيء. والباركودُ **أسودُ
+          خالصٌ على أبيضَ خالص** ولا شيءَ غيرَه في مساره — أيُّ تدرّجٍ يُفسد القراءة.
+       ⚠️ والهامشُ الهادئ (quiet zone) محفوظٌ يمينًا ويسارًا: باركودٌ يلتصق بالحرف
+          لا يُقرأ بالماسح، وهذا أكثرُ ما يُنسى.
+       ===================================================================== */
+    #lbl { display: none; }
+    @media print {
+        body.lblprint > *:not(#lbl) { display: none !important; }
+        body.lblprint { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+        body.lblprint #lbl { display: block !important; }
+        #lbl .lb {
+            width: 50mm; height: 25mm; box-sizing: border-box;
+            padding: 1.2mm 3mm; overflow: hidden;
+            display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+            background: #fff; color: #000;
+            font-family: Arial, Helvetica, sans-serif;
+            page-break-after: always; break-after: page;
+        }
+        #lbl .lb:last-child { page-break-after: auto; break-after: auto; }
+        /* الاسمُ سطرٌ واحدٌ يُقصّ: سطرانِ يدفعان الباركودَ خارجَ الملصق. */
+        #lbl .lb .n {
+            font-size: 2.4mm; font-weight: 700; line-height: 1.1; max-width: 44mm;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
+        }
+        #lbl .lb svg { display: block; }
+        /* الرقمُ مقروءًا تحت الشُّرَط — تُقرأ بالعين إن تعطّل الماسح. */
+        #lbl .lb .c { font-size: 2.2mm; letter-spacing: .3mm; line-height: 1; font-family: ui-monospace, monospace; }
+        #lbl .lb .p { font-size: 3.6mm; font-weight: 800; line-height: 1; }
+    }
     .hidden { display: none !important; }
 </style>
 </head>
 <body>
+
+<div id="lbl" aria-hidden="true"></div>
 
 <div class="wrap">
     <header>
@@ -2187,6 +2226,113 @@
      *   وهو بعينه ما بُنيت الحلقةُ لمنعه. سطرٌ **بجانبه**، لا رقمٌ داخلَه.
      * ⚠️ ولا `orderBy` ولا ترشيحٌ بالمنتج: استعلامٌ واحدٌ بالمرحلة، والتجميعُ محليّ.
      */
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ Code 128-B — مُولَّدٌ هنا بلا أيِّ مكتبة
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ ولماذا Code 128 لا EAN-13: باركوداتُنا مثل `QSS-030926-1` فيها **حروفٌ
+    //   وشُرَط**، وEAN-13 يُشفّر **أرقامًا فقط** و13 خانةً بالضبط. فاختيارُه كان
+    //   يعني تغييرَ كلِّ باركودٍ في المحلّ — وهو ما لا يُطلب من أحد.
+    // ⚠️ وبلا مكتبةٍ من الإنترنت: الملصقاتُ تُطبع في المحلّ وقد تنقطع الشبكة،
+    //   ومكتبةٌ تُحمَّل عند الطلب تُعطّل الطباعةَ في أسوأ لحظة. و107 أنماطٍ في سطر.
+    // ⚠️ والتحقّقُ برقم التحقّق (checksum) شرطُ قراءةٍ لا تجميل: ماسحٌ يقرأ باركودًا
+    //   برقم تحقّقٍ خطأٍ **يرفضه صامتًا** — فتبدو الطابعةُ سليمةً والملصقُ ميتًا.
+    // =====================================================================
+    const C128 = ('212222 222122 222221 121223 121322 131222 122213 122312 132212 221213 221312 231212 '
+        + '112232 122132 122231 113222 123122 123221 223211 221132 221231 213212 223112 312131 311222 '
+        + '321122 321221 312212 322112 322211 212123 212321 232121 111323 131123 131321 112313 132113 '
+        + '132311 211313 231113 231311 112133 112331 132131 113123 113321 133121 313121 211331 231131 '
+        + '213113 213311 213131 311123 311321 331121 312113 312311 332111 314111 221411 431111 111224 '
+        + '111422 121124 121421 141122 141221 112214 112412 122114 122411 142112 142211 241211 221114 '
+        + '413111 241112 134111 111242 121142 121241 114212 124112 124211 411212 421112 421211 212141 '
+        + '214121 412121 111143 111341 131141 114113 114311 411113 411311 113141 114131 311141 411131 '
+        + '211412 211214 211232 2331112').split(/\s+/);
+
+    /**
+     * يُحوّل نصًّا إلى قيم Code 128-B مع رقم التحقّق ورمزَي البداية والنهاية.
+     * ⚠️ المحارفُ المقبولةُ 32..126 وحدَها؛ وغيرُها يُستبدل بـ'-' ولا يُرمى خطأ:
+     *   باركودٌ بحرفٍ غريبٍ يُطبع مقروءًا أفضلُ من ملصقٍ لا يُطبع إطلاقًا.
+     */
+    function c128values(text) {
+        const chars = String(text || '').split('').map(ch => {
+            const v = ch.charCodeAt(0);
+            return (v >= 32 && v <= 126) ? v - 32 : ('-'.charCodeAt(0) - 32);
+        });
+        // START B = 104، والمجموعُ موزونٌ بالموضع (الأوّلُ وزنُه 1)
+        let sum = 104;
+        chars.forEach((v, i) => { sum += v * (i + 1); });
+        return [104].concat(chars, [sum % 103], [106]);
+    }
+
+    /**
+     * يرسم الباركودَ SVG بعرضٍ ثابتٍ بالملّيمتر.
+     * ⚠️⚠️ عرضُ الوحدة (module) يُحسب من عرضِ المتاح ÷ عدد الوحدات — لا يُثبَّت.
+     *   باركودٌ طويلٌ بوحدةٍ ثابتةٍ يخرج عن الملصق، وقصيرٌ بها يترك فراغًا.
+     * ⚠️ و`shape-rendering: crispEdges` ضروريّة: التنعيمُ يجعل حدَّ الشريطة رماديًّا
+     *   والرماديُّ على رأسٍ حراريٍّ يخرج غيرَ محدَّد فيرفضه الماسح.
+     */
+    function c128svg(text, widthMm, heightMm) {
+        const vals = c128values(text);
+        const widths = vals.map(v => C128[v]).join('');
+        let modules = 0;
+        for (const d of widths) modules += Number(d);
+        const unit = widthMm / modules;
+        let x = 0, bars = '', bar = true;
+        for (const d of widths) {
+            const w = Number(d) * unit;
+            if (bar) bars += `<rect x="${x.toFixed(4)}" y="0" width="${w.toFixed(4)}" height="${heightMm}"/>`;
+            x += w; bar = !bar;
+        }
+        return `<svg width="${widthMm}mm" height="${heightMm}mm" viewBox="0 0 ${widthMm} ${heightMm}"`
+            + ` shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">`
+            + `<rect x="0" y="0" width="${widthMm}" height="${heightMm}" fill="#fff"/>`
+            + `<g fill="#000">${bars}</g></svg>`;
+    }
+
+    /**
+     * ⭐⭐⭐⭐⭐ يطبع ملصقاتٍ — Zebra ZD220، 50×25mm.
+     * ⚠️ العرضُ المتاحُ للشُّرَط 44mm لا 50: 3mm هامشٌ هادئٌ من كلِّ جهة، وبلا هذا
+     *   الهامش **لا يقرأ الماسحُ الباركودَ** ولو طُبع مثاليًّا.
+     * ⚠️ وعددُ النسخِ يُحدّ بـ100: خطأٌ في خانةٍ («500» بدل «50») يُفرّغ بكرةَ ملصقات.
+     */
+    function lblPrint(items) {
+        try {
+            const box = el('lbl');
+            if (!box) return;
+            const list = (items || []).filter(x => x && x.code);
+            if (!list.length) return;
+            box.innerHTML = list.map(it => {
+                const code = String(it.code);
+                // ⚠️ الطولُ يُراقب: 44mm مقسومةً على وحداتٍ كثيرةٍ تُنتج وحدةً أنحفَ
+                //   من 0.19mm وهي حدُّ القراءةِ العمليّ. فيُقال ولا يُطبع سرًّا ميتًا.
+                return `<div class="lb">`
+                    + `<span class="n">${escapeHtml(it.name || code)}</span>`
+                    + c128svg(code, 44, 9)
+                    + `<span class="c">${escapeHtml(code)}</span>`
+                    + `<span class="p">${escapeHtml(money(it.price))} QAR</span>`
+                    + `</div>`;
+            }).join('');
+            document.body.classList.add('lblprint');
+            // ⚠️ الصنفُ يُنزع بعد الطباعة دائمًا — وإلّا بقيت الصفحةُ تُخفي نفسَها
+            //   في كلِّ طباعةٍ تالية (فاتورةٌ أو تقرير) وهو عطلٌ يصعب ربطُه بسببه.
+            const done = () => document.body.classList.remove('lblprint');
+            if (window.onafterprint !== undefined) window.addEventListener('afterprint', done, { once: true });
+            setTimeout(() => { try { window.print(); } catch (e) { console.error(e); } }, 80);
+            setTimeout(done, 4000);
+        } catch (e) {
+            console.error('The labels could not be prepared:', e);
+        }
+    }
+
+    /** يسأل عن العدد ثم يطبع — نسخةٌ لكلِّ قطعةٍ على الرفّ عادةً. */
+    function lblAsk(code, name, price, suggest) {
+        const n = Math.floor(Number(prompt(
+            `How many labels for ${code}?\n\n(50mm × 25mm — Zebra ZD220)`,
+            String(Math.max(1, Math.min(100, Math.floor(Number(suggest) || 1))))) || 0));
+        if (!isFinite(n) || n < 1) return;
+        if (n > 100) { alert('100 labels at a time is the limit, so a typo cannot empty the roll.'); return; }
+        lblPrint(Array.from({ length: n }, () => ({ code, name, price })));
+    }
+
     let flHold = new Map();          // productId -> { total, byShop: { shop: n } }
     let flHoldLoaded = false;
 
@@ -2235,6 +2381,16 @@
 
     function catQtyOf(p, shop) { return Number((p.qty || {})[abayaShopKey(shop)] || 0) || 0; }
     function catQtyTotal(p) { return ABAYA_SHOPS.reduce((s, sh) => s + catQtyOf(p, sh), 0); }
+    /**
+     * السعرُ **المأخوذُ الآن**: المخفَّضُ إن كان الموسمُ مفتوحًا، وإلّا العاديّ.
+     * ⚠️ أُضيفت لأجل ملصق الباركود، ومصدرًا **واحدًا** للحساب: كان المنطقُ مكتوبًا
+     *   داخلَ بطاقتَين (`const active = hasDisc && catSeasonOn`)، ولو حسبه الملصقُ
+     *   بنفسه لاختلف المطبوعُ عن المعروضِ يومًا يُغيَّر فيه أحدُهما.
+     * ⚠️ ونظيرُها في شاشة البياعة اسمُها `cpShownPrice` — نفسُ المنطق بالحرف.
+     */
+    function catShownPrice(p) {
+        return (catSeasonOn && catHasDiscount(p)) ? Number(p.discountPrice) || 0 : Number(p.price) || 0;
+    }
     function catHasDiscount(p) {
         const d = Number(p.discountPrice || 0), pr = Number(p.price || 0);
         return isFinite(d) && d > 0 && d < pr;
@@ -2543,6 +2699,15 @@
                 + holdLine
                 + `<span class="tap">Tap to see the whole abaya &rarr;</span>`
                 + `</span></button>`
+                // ⭐⭐⭐⭐ طباعةُ الملصق — بأمر المالك: «أختار من الكتالوج أيَّ برودكت
+                //   أضغط عليه ويعطيني اطبع الباركود».
+                // ⚠️ والسعرُ المطبوعُ هو **المأخوذُ الآن** (المخفَّضُ إن كان الموسمُ
+                //   مفتوحًا): ملصقٌ بالسعر العاديِّ في عزّ الموسم يبيع بأكثرَ مما قُرّر،
+                //   والزبونةُ ترى الرقمَين فتختلف. وهو نفسُ منطقِ `cpShownPrice`.
+                + `<button type="button" class="cwa" data-catlbl="${escapeHtml(p.id)}"`
+                + ` aria-label="Print the barcode label for ${escapeHtml(p.code)}"`
+                + ` style="background: var(--ink-800, #0F172A);">`
+                + `&#9638; Label</button>`
                 + `<button type="button" class="cwa" data-catwa="${escapeHtml(p.id)}"`
                 + ` aria-label="Send a WhatsApp request about ${escapeHtml(p.code)}">`
                 + `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2c-5.5 0-9.94 4.44-9.94 9.92 0 1.75.46 3.45 1.32 4.95L2 22l5.27-1.38a9.9 9.9 0 0 0 4.77 1.22h.01c5.48 0 9.93-4.44 9.93-9.92C21.98 6.44 17.53 2 12.04 2zm5.8 14.02c-.24.68-1.4 1.3-1.93 1.35-.53.05-1.03.2-3.52-.85-2.99-1.27-4.86-4.4-5-4.6-.15-.2-1.2-1.63-1.2-3.1 0-1.48.77-2.2 1.05-2.5.27-.3.6-.37.8-.37.2 0 .4 0 .58.01.19.01.44-.07.68.52.25.6.85 2.08.92 2.23.08.15.13.32.03.52-.1.2-.15.32-.3.5-.15.17-.31.38-.44.51-.15.15-.3.31-.13.6.17.3.76 1.26 1.63 2.04 1.12 1 2.06 1.31 2.35 1.46.3.15.47.13.64-.08.17-.2.74-.86.94-1.16.2-.3.4-.25.66-.15.27.1 1.7.8 2 .95.3.15.5.22.57.35.07.13.07.75-.17 1.43z"/></svg>`
@@ -2688,6 +2853,14 @@
     }
 
     el('catGrid').addEventListener('click', (ev) => {
+        // ⭐ الملصق: يُقرأ السعرُ المأخوذُ الآن من نفس الدالّة التي تعرضه على الشاشة،
+        //   فلا يفترق المطبوعُ عن المعروض.
+        const lb = ev.target.closest('button[data-catlbl]');
+        if (lb) {
+            const p = catProducts.find(x => x.id === lb.getAttribute('data-catlbl'));
+            if (p) lblAsk(p.code, p.name || p.code, catShownPrice(p), catQtyTotal(p) || 1);
+            return;
+        }
         const b = ev.target.closest('button[data-catopen]');
         if (b) { catOpenModal(b.getAttribute('data-catopen')); return; }
         const w = ev.target.closest('button[data-catwa]');
@@ -4164,6 +4337,13 @@
                                    workshop, so it does <b>not</b> come off the shop's shelf.
                                </p>
                            </div>` : ''}
+                           <!-- ⭐⭐⭐⭐ ملصقُ الوصول: تطبعه قبل الإرسال أو بعده.
+                                ⚠️ والسعرُ هو المكتوبُ في الخانة إن كان تصميمًا جديدًا،
+                                   وسعرُ الكتالوج إن كان موجودًا سلفًا — فلا يُطبع سعرٌ
+                                   لن يُطبَّق. وإن لم يُكتب سعرٌ بعد يُقال ولا يُطبع صفرًا. -->
+                           <button type="button" class="asend" data-arvlbl="${eid}"
+                                   style="background: var(--ink-800, #0F172A); margin-bottom: var(--space-2);">
+                               &#9638; Print the barcode label</button>
                            <button type="button" class="asend" data-arvsend="${eid}"
                                    ${arvBusy === a.id ? 'disabled' : ''}>
                                ${arvBusy === a.id ? 'Sending...' : 'Send to the shop'}
@@ -5023,6 +5203,28 @@
                         String(btn.getAttribute('data-tonekey') === hidden.value));
                 });
             }
+            return;
+        }
+        const lb = ev.target.closest('button[data-arvlbl]');
+        if (lb) {
+            const id = lb.getAttribute('data-arvlbl');
+            const a = arrivals.find(x => x.id === id);
+            if (!a) return;
+            // ⚠️ السعرُ من الكتالوج إن كان التصميمُ موجودًا، وإلّا من الخانة. ولا
+            //   يُطبع صفرٌ: ملصقٌ بسعرِ صفرٍ يُلصق على عبايةٍ فتُباع بلا ثمن.
+            const inCat = catProducts.find(x => x.id === a.productId);
+            const typed = Number((el('arvPrice_' + id) || {}).value) || 0;
+            const price = inCat ? catShownPrice(inCat) : typed;
+            if (!(price > 0)) {
+                const m = el('arvMsg_' + id);
+                if (m) {
+                    m.innerHTML = 'Type the selling price first &mdash; a label with no price '
+                        + 'would be put on an abaya.';
+                    m.style.color = 'var(--danger-600, #B91C1C)';
+                }
+                return;
+            }
+            lblAsk(a.code, a.name || a.code, price, a.pieces || 1);
             return;
         }
         const b = ev.target.closest('button[data-arvsend]');
