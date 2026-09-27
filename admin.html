@@ -1057,6 +1057,45 @@
         color: var(--text-dim); font-weight: 600;
     }
 
+    /* =====================================================================
+       ⭐⭐⭐⭐⭐ ملصقُ الباركود — Zebra ZD220 · 50mm × 25mm · 203 DPI
+       ---------------------------------------------------------------------
+       ⚠️⚠️ نسخةٌ **مطابقةٌ** لما في `abaya-balances.html`: الملصقُ الواحدُ يجب أن
+          يخرج بنفس المقاس من الشاشتَين، فاختلافُ ملّيمترٍ بينهما يعني ملصقًا لا
+          يُقرأ من إحداهما. ومن يُعدّل هنا يُعدّل هناك.
+       ⚠️ 203 DPI = 8 نقاطٍ في الملّيمتر → 400 × 200 نقطة. والقياسُ بالملّيمتر لا
+          بالبكسل، و`@page margin: 0` وإلّا انزلق الباركودُ عن الملصق.
+       ⚠️ والهامشُ الهادئ 3mm من كلِّ جهة: بلا هذا لا يقرأ الماسحُ باركودًا مطبوعًا
+          مثاليًّا. والشُّرَطُ أسودُ خالصٌ على أبيضَ خالصٍ بلا تنعيم.
+       ===================================================================== */
+    #lbl { display: none; }
+    @media print {
+        body.lblprint > *:not(#lbl) { display: none !important; }
+        body.lblprint { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+        body.lblprint #lbl { display: block !important; }
+        #lbl .lb {
+            width: 50mm; height: 25mm; box-sizing: border-box;
+            padding: 1.2mm 3mm; overflow: hidden;
+            display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+            background: #fff; color: #000;
+            font-family: Arial, Helvetica, sans-serif;
+            page-break-after: always; break-after: page;
+        }
+        #lbl .lb:last-child { page-break-after: auto; break-after: auto; }
+        #lbl .lb .n {
+            font-size: 2.4mm; font-weight: 700; line-height: 1.1; max-width: 44mm;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
+        }
+        #lbl .lb svg { display: block; }
+        #lbl .lb .c { font-size: 2.2mm; letter-spacing: .3mm; line-height: 1; font-family: ui-monospace, monospace; }
+        #lbl .lb .p { font-size: 3.6mm; font-weight: 800; line-height: 1; }
+    }
+
+    /* جدولُ اختيار الملصقات */
+    .lblpick { max-height: 420px; overflow-y: auto; }
+    .lblpick td, .lblpick th { padding: 8px 10px; }
+    .lblpick input[type="number"] { width: 90px; margin: 0; }
+
     /* Modal */
     .modal-overlay { position: fixed; inset: 0; background: var(--scrim); backdrop-filter: blur(6px); display: none; justify-content: center; align-items: center; z-index: 10000; overflow-y: auto; padding: 24px; box-sizing: border-box; }
     .modal-card { background: var(--surface); border-radius: 20px; width: 100%; max-width: 1050px; padding: 32px; max-height: 92vh; overflow-y: auto; box-shadow: var(--shadow); border: 1px solid var(--border); }
@@ -1372,6 +1411,7 @@
             <!-- ⭐⭐⭐⭐⭐ بأمر المالك: «أريد أن أجعل هذا نظام بيع». وأوّلُ ناقصٍ
                  أنّ لوحتَه **لا ترى الفواتير إطلاقًا** — يملك فواتيرَ لا يقرؤها. -->
             <button class="nav-tab-btn" data-tab="tab-abaya-invoices" data-biz="abaya" data-group="abaya"><span class="ic-slot" data-icon="fileText"></span><span class="tab-label">Abaya &mdash; Invoices</span></button>
+            <button class="nav-tab-btn" data-tab="tab-abaya-labels" data-biz="abaya" data-group="abaya"><span class="ic-slot" data-icon="inbox"></span><span class="tab-label">Abaya &mdash; Barcode Labels</span></button>
 
             <div class="rail-group" data-group="system">System</div>
             <button class="nav-tab-btn" data-tab="tab-audit" data-biz="both" data-group="system"><span class="ic-slot" data-icon="listChecks"></span><span class="tab-label">Audit Log</span></button>
@@ -1400,6 +1440,8 @@
          موضعها هنا، بعد أزرار التبويبات وقبل محتواها، يجعلها ظاهرة في كل
          تبويب مهما كان المفتوح. رسالةُ فشلٍ لا تُرى ليست رسالة.
          ================================================================== -->
+    <div id="lbl" aria-hidden="true"></div>
+
     <div id="loadErrorBanner" style="display: none; background: #fef2f2; border: 2px solid var(--danger); border-left: 6px solid var(--danger); border-radius: 10px; padding: 16px 18px; margin: 0 0 20px; color: #7f1d1d; font-size: 13.5px; line-height: 1.85;"></div>
 
     <!-- ⭐⭐ الشريط الصغير: سطرٌ واحد لِما لا يُوقف العمل، ويُفتح بلمسة ويُغلق بضغطة.
@@ -3390,6 +3432,56 @@
          ⚠️ والكوستُ والربحُ هنا **للمالك وحدَه**: هذه الصفحةُ محجوبةٌ عن الكشك
             بالقواعد، وشاشةُ البياعة لا تقرأ الكلفةَ إطلاقًا.
          ================================================================== -->
+    <!-- ==================================================================
+         ⭐⭐⭐⭐⭐ طباعةُ ملصقات الباركود — بأمر المالك
+         ------------------------------------------------------------------
+         «يجب أن أختار وأطبع الباركود من شاشة الأدمن نفسه، وأختار مثلًا 5 أنواع
+          من العبايات في نفس الوقت، وبعدها أختار الكميّة وأطبع».
+         ⚠️⚠️ فاختيارٌ متعدّدٌ **وكميّةٌ لكلِّ صنفٍ على حِدة**: خمسةُ تصاميمَ لا
+            تحتاج نفسَ عددِ الملصقات، وكميّةٌ واحدةٌ للجميع تُهدر البكرةَ أو تُنقص.
+         ⚠️ والعددُ يُقترح من **المخزون الحقيقيّ** لكلِّ تصميم: ملصقٌ لكلِّ قطعةٍ على
+            الرفّ هو الحالةُ الغالبة، ولها تغييرُه.
+         ================================================================== -->
+    <div id="tab-abaya-labels" class="tab-content">
+        <div class="filter-section">
+            <h3><span data-icon="inbox"></span> Print barcode labels &mdash; Zebra ZD220, 50&times;25mm</h3>
+            <p class="card-sub">Tick the designs you want, set how many labels for each, then print.
+                The price on the label is the one being charged now.</p>
+            <div class="date-group">
+                <div style="flex:1; min-width:240px;"><label for="lblSearch">Search</label>
+                    <input type="text" id="lblSearch" placeholder="Barcode, name, type, fabric or size"
+                           onkeyup="renderLabelPicker()"></div>
+                <div style="width:190px;"><label for="lblShop">In stock at</label>
+                    <select id="lblShop" onchange="renderLabelPicker()"></select></div>
+                <button class="btn-ghost" onclick="lblPickAll(true)"><span data-icon="check"></span> Tick all shown</button>
+                <button class="btn-ghost" onclick="lblPickAll(false)"><span data-icon="x"></span> Clear</button>
+                <button class="btn-accent" onclick="loadAbayaCatalog(true).then(renderLabelPicker)"><span data-icon="refresh"></span> Refresh</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="table-container lblpick">
+                <table>
+                    <thead><tr><th style="width:44px;"></th><th>Barcode</th><th>Name</th>
+                        <th class="money-col">Price</th><th class="money-col">In stock</th>
+                        <th>Labels to print</th></tr></thead>
+                    <tbody id="lblBody"></tbody>
+                </table>
+            </div>
+            <p class="card-sub" id="lblNote" style="margin-top:14px;"></p>
+            <div class="controls" style="margin-top:14px;">
+                <button class="btn-success" onclick="lblPrintPicked()"><span data-icon="download"></span>
+                    Print the labels</button>
+            </div>
+            <p class="card-sub" style="margin-top:14px;">
+                <b>Before the first print:</b> install the ZD220 driver, set its stock size to
+                <b>50mm &times; 25mm</b>, press the feed button once so it calibrates, and in the browser's
+                print window choose the ZD220 with <b>Margins: None</b> and <b>no headers or footers</b>
+                &mdash; a header pushes the barcode off the sticker.
+            </p>
+        </div>
+    </div>
+
     <div id="tab-abaya-invoices" class="tab-content">
         <div class="filter-section">
             <h3><span data-icon="fileText"></span> Invoices &mdash; filter</h3>
@@ -6586,6 +6678,11 @@
         if (tabId === 'tab-docs') { renderDocPickers(); loadDocPageSetup(); }
         // ⭐ الفواتير: تُقرأ عند فتح التبويب لا عند الإقلاع — قراءةٌ لا تُحتاج
         //   في كلِّ جلسة. وقائمةُ المحلات تُبنى من ABAYA_SHOPS لا بيد.
+        // ⭐ الملصقات: تحتاج الكتالوجَ — يُقرأ إن لم يُقرأ، ثم يُرسم الجدول.
+        if (tabId === 'tab-abaya-labels') {
+            if (!abayaCatalogLoaded) loadAbayaCatalog().then(renderLabelPicker).catch(() => {});
+            renderLabelPicker();
+        }
         if (tabId === 'tab-abaya-invoices') {
             const sel = document.getElementById('abInvShop');
             if (sel && !sel.options.length) {
@@ -13328,6 +13425,190 @@
     // ⚠️ والكلفةُ تُقرأ من `abayaProducts` المحمّلةِ سلفًا (وفيها `cost`): لا قراءةَ
     //   ثانيةً لمجموعة الكلفة، ولا خطرَ أن تُقرأ في صفحةٍ غيرِ هذه.
     // =====================================================================
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ ملصقاتُ الباركود من لوحة المالك — اختيارٌ متعدّدٌ وكميّةٌ لكلِّ صنف
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ جدولُ الأنماط والمولّدُ **نسخةٌ مطابقةٌ** لما في `abaya-balances.html`:
+    //   الملصقُ الواحدُ يجب أن يخرج بنفس الشُّرَط من الشاشتَين، واختلافُ حرفٍ في
+    //   الجدولِ يُنتج باركودًا يقرؤه ماسحٌ ويرفضه آخر. ومن يُعدّل هنا يُعدّل هناك.
+    // ⚠️ ولماذا لا مكتبةٌ من الإنترنت: الملصقاتُ تُطبع في المحلِّ وقد تنقطع الشبكة.
+    // ⚠️ ولماذا Code 128 لا EAN-13: باركوداتُنا فيها حروفٌ وشُرَط، وEAN-13 أرقامٌ
+    //   فقط و13 خانةً بالضبط — فاختيارُه كان يعني إعادةَ ترقيم المحلِّ كلِّه.
+    // =====================================================================
+    const C128 = ('212222 222122 222221 121223 121322 131222 122213 122312 132212 221213 221312 231212 '
+        + '112232 122132 122231 113222 123122 123221 223211 221132 221231 213212 223112 312131 311222 '
+        + '321122 321221 312212 322112 322211 212123 212321 232121 111323 131123 131321 112313 132113 '
+        + '132311 211313 231113 231311 112133 112331 132131 113123 113321 133121 313121 211331 231131 '
+        + '213113 213311 213131 311123 311321 331121 312113 312311 332111 314111 221411 431111 111224 '
+        + '111422 121124 121421 141122 141221 112214 112412 122114 122411 142112 142211 241211 221114 '
+        + '413111 241112 134111 111242 121142 121241 114212 124112 124211 411212 421112 421211 212141 '
+        + '214121 412121 111143 111341 131141 114113 114311 411113 411311 113141 114131 311141 411131 '
+        + '211412 211214 211232 2331112').split(/\s+/);
+
+    /** ⚠️ رقمُ التحقّق شرطُ قراءةٍ: ماسحٌ يقرأ باركودًا برقمٍ خطأٍ يرفضه **صامتًا**. */
+    function c128values(text) {
+        const chars = String(text || '').split('').map(ch => {
+            const v = ch.charCodeAt(0);
+            return (v >= 32 && v <= 126) ? v - 32 : ('-'.charCodeAt(0) - 32);
+        });
+        let sum = 104;
+        chars.forEach((v, i) => { sum += v * (i + 1); });
+        return [104].concat(chars, [sum % 103], [106]);
+    }
+
+    /** ⚠️ عرضُ الوحدة يُحسب من العرض ÷ عدد الوحدات، و`crispEdges` تمنع حدًّا رماديًّا. */
+    function c128svg(text, widthMm, heightMm) {
+        const vals = c128values(text);
+        const widths = vals.map(v => C128[v]).join('');
+        let modules = 0;
+        for (const d of widths) modules += Number(d);
+        const unit = widthMm / modules;
+        let x = 0, bars = '', bar = true;
+        for (const d of widths) {
+            const w = Number(d) * unit;
+            if (bar) bars += `<rect x="${x.toFixed(4)}" y="0" width="${w.toFixed(4)}" height="${heightMm}"/>`;
+            x += w; bar = !bar;
+        }
+        return `<svg width="${widthMm}mm" height="${heightMm}mm" viewBox="0 0 ${widthMm} ${heightMm}"`
+            + ` shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">`
+            + `<rect x="0" y="0" width="${widthMm}" height="${heightMm}" fill="#fff"/>`
+            + `<g fill="#000">${bars}</g></svg>`;
+    }
+
+    /** السعرُ المأخوذُ الآن — المخفَّضُ إن كان الموسمُ مفتوحًا. نظيرُ catShownPrice. */
+    function lblShownPrice(p) {
+        const d = Number(p.discountPrice) || 0;
+        return (abayaDiscountSeason && d > 0 && d < (Number(p.price) || 0)) ? d : (Number(p.price) || 0);
+    }
+
+    function lblStock(p) {
+        return ABAYA_SHOPS.reduce((a, sh) => a + (Number((p.qty || {})[abayaShopKey(sh)] || 0) || 0), 0);
+    }
+
+    /** الصفوفُ المعروضةُ بعد البحث والمحلّ. */
+    function lblRows() {
+        const q = String((document.getElementById('lblSearch') || {}).value || '').trim().toUpperCase();
+        const shop = (document.getElementById('lblShop') || {}).value || '';
+        return (abayaProducts || []).filter(p => {
+            if (p.active === false) return false;
+            if (shop && !(Number((p.qty || {})[abayaShopKey(shop)] || 0) > 0)) return false;
+            if (!q) return true;
+            return [p.code, p.name, p.type, p.fabric, p.size]
+                .some(x => String(x || '').toUpperCase().includes(q));
+        });
+    }
+
+    window.renderLabelPicker = function() {
+        const body = document.getElementById('lblBody');
+        if (!body) return;
+        const sel = document.getElementById('lblShop');
+        if (sel && !sel.options.length) {
+            sel.innerHTML = '<option value="">Any shop</option>'
+                + ABAYA_SHOPS.map(x => `<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('');
+        }
+        const rows = lblRows();
+        // ⚠️⚠️ ما اختارَه المالكُ وما كتبه من أعدادٍ **لا يُمسح عند إعادة الرسم**:
+        //   يكتب عددًا ثم يبحث عن تصميمٍ آخرَ فيعود فيجد ما كتبه كما تركه. ولذلك
+        //   تُقرأ الحالةُ من العناصر القائمةِ قبل استبدال الجدول.
+        const keep = {};
+        body.querySelectorAll('tr[data-lblid]').forEach(tr => {
+            const id = tr.getAttribute('data-lblid');
+            const cb = tr.querySelector('input[type="checkbox"]');
+            const qty = tr.querySelector('input[type="number"]');
+            keep[id] = { on: !!(cb && cb.checked), n: qty ? qty.value : '' };
+        });
+        body.innerHTML = rows.map(p => {
+            const st = lblStock(p);
+            const k = keep[p.id] || {};
+            // العددُ المقترحُ = المخزون، وأدناه 1: تصميمٌ نفد ما زال يُطبع له ملصق.
+            const n = (k.n !== undefined && k.n !== '') ? k.n : String(Math.max(1, st));
+            return `<tr data-lblid="${escapeHtml(p.id)}">
+                <td><input type="checkbox" ${k.on ? 'checked' : ''}
+                     style="width:18px; height:18px; cursor:pointer;" onchange="renderLabelCount()"></td>
+                <td style="font-family: ui-monospace, monospace;"><b>${escapeHtml(p.code)}</b></td>
+                <td>${escapeHtml(p.name || '—')}<br><small style="color: var(--text-dim);">${escapeHtml(abayaTypeLabelEn(p.type))}</small></td>
+                <td class="money-col">${money(lblShownPrice(p))}</td>
+                <td class="money-col">${st}</td>
+                <td><input type="number" min="1" max="100" step="1" inputmode="numeric"
+                     value="${escapeHtml(String(n))}" onchange="renderLabelCount()"></td>
+            </tr>`;
+        }).join('') || `<tr><td colspan="6" style="text-align:center;">`
+            + (abayaCatalogLoaded ? 'No design matches that.' : 'Press Refresh to read the catalogue.')
+            + `</td></tr>`;
+        renderLabelCount();
+    };
+
+    /** اسمُ الصنف بالإنجليزية وحدَها — لا عربيّةَ على شاشةٍ يقرؤها أجنبيٌّ هنا. */
+    function abayaTypeLabelEn(key) {
+        const t = (ABAYA_STOCK_ITEMS || []).find(x => x.key === String(key || ''));
+        return t ? t.en : String(key || '');
+    }
+
+    window.renderLabelCount = function() {
+        const note = document.getElementById('lblNote');
+        if (!note) return;
+        const picked = lblPicked();
+        const total = picked.reduce((a, x) => a + x.n, 0);
+        note.innerHTML = picked.length
+            ? `<b>${picked.length}</b> design(s) ticked &mdash; <b>${total}</b> label(s) will print.`
+              + (total > 200 ? ` <b style="color: var(--danger);">That is a lot of stickers — check the numbers.</b>` : '')
+            : `Nothing ticked yet.`;
+    };
+
+    /** ما اختاره، بعدده. ⚠️ ويُحدّ كلُّ صنفٍ بـ100 فخطأٌ في خانةٍ لا يُفرّغ البكرة. */
+    function lblPicked() {
+        const out = [];
+        const body = document.getElementById('lblBody');
+        if (!body) return out;
+        body.querySelectorAll('tr[data-lblid]').forEach(tr => {
+            const cb = tr.querySelector('input[type="checkbox"]');
+            if (!cb || !cb.checked) return;
+            const p = (abayaProducts || []).find(x => x.id === tr.getAttribute('data-lblid'));
+            if (!p) return;
+            let n = Math.floor(Number(tr.querySelector('input[type="number"]').value) || 0);
+            if (!isFinite(n) || n < 1) n = 1;
+            if (n > 100) n = 100;
+            out.push({ code: p.code, name: p.name || p.code, price: lblShownPrice(p), n });
+        });
+        return out;
+    }
+
+    window.lblPickAll = function(on) {
+        const body = document.getElementById('lblBody');
+        if (!body) return;
+        body.querySelectorAll('tr[data-lblid] input[type="checkbox"]').forEach(cb => { cb.checked = !!on; });
+        renderLabelCount();
+    };
+
+    /**
+     * ⭐ الطباعة — كلُّ الملصقاتِ المختارةِ في دفعةٍ واحدة.
+     * ⚠️ والصنفُ `lblprint` يُنزع بعدها دائمًا، وإلّا بقيت الصفحةُ تُخفي نفسَها في
+     *   كلِّ طباعةٍ تالية (تقريرٌ أو كشفُ راتب) — عطلٌ يصعب ربطُه بسببه.
+     */
+    window.lblPrintPicked = function() {
+        const picked = lblPicked();
+        if (!picked.length) { alert('Tick at least one design first.'); return; }
+        const total = picked.reduce((a, x) => a + x.n, 0);
+        if (total > 200 && !confirm(`${total} labels will print. Continue?`)) return;
+        const box = document.getElementById('lbl');
+        if (!box) return;
+        const items = [];
+        picked.forEach(x => { for (let i = 0; i < x.n; i++) items.push(x); });
+        box.innerHTML = items.map(it =>
+            `<div class="lb">`
+            + `<span class="n">${escapeHtml(it.name)}</span>`
+            + c128svg(it.code, 44, 9)
+            + `<span class="c">${escapeHtml(it.code)}</span>`
+            + `<span class="p">${escapeHtml(money(it.price))} QAR</span>`
+            + `</div>`).join('');
+        document.body.classList.add('lblprint');
+        const done = () => document.body.classList.remove('lblprint');
+        window.addEventListener('afterprint', done, { once: true });
+        setTimeout(() => { try { window.print(); } catch (e) { console.error(e); } }, 80);
+        setTimeout(done, 5000);
+    };
+
     const ABAYA_INVOICES_COLL = 'abaya_invoices';
     let abInvoices = [];
     let abInvLoaded = false;
@@ -18962,7 +19243,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v200';
+        const APP_BUILD = 'v201';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
