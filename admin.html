@@ -2408,7 +2408,7 @@
                         </tr>
                     </thead>
                     <tbody id="salesReportsTableBody">
-                        <tr><td colspan="11" style="text-align: center;">Loading daily reports...</td></tr>
+                        <tr><td colspan="12" style="text-align: center;">Loading daily reports...</td></tr>
                     </tbody>
                     <tfoot id="salesReportsTableFoot"></tfoot>
                 </table>
@@ -3435,7 +3435,7 @@
                 <table>
                     <thead><tr><th>Invoice</th><th>When</th><th>Shop</th><th>Saleswoman</th>
                         <th>Pieces</th><th class="money-col">Subtotal</th><th class="money-col">Discount</th>
-                        <th class="money-col">Total</th><th class="money-col">Cost</th>
+                        <th class="money-col">Total</th><th>Paid</th><th class="money-col">Cost</th>
                         <th class="money-col">Profit</th><th>Status</th></tr></thead>
                     <tbody id="abInvBody"></tbody>
                 </table>
@@ -12252,7 +12252,7 @@
     window.loadSalesReports = async function() {
         const body = document.getElementById("salesReportsTableBody");
         if (!body) return;
-        body.innerHTML = `<tr><td colspan="11" style="text-align: center;">Loading daily reports...</td></tr>`;
+        body.innerHTML = `<tr><td colspan="12" style="text-align: center;">Loading daily reports...</td></tr>`;
         try {
             const q = query(collection(db, "sales_reports"), orderBy("timestamp", "desc"), limit(1000));
             const snap = await getDocs(q);
@@ -12269,7 +12269,7 @@
                 allSalesReports.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
             } catch (err) {
                 console.error("Error loading sales reports:", err);
-                body.innerHTML = `<tr><td colspan="11" style="text-align: center; color: var(--danger);">Error loading reports: ${escapeHtml(err.message)}</td></tr>`;
+                body.innerHTML = `<tr><td colspan="12" style="text-align: center; color: var(--danger);">Error loading reports: ${escapeHtml(err.message)}</td></tr>`;
                 return;
             }
         }
@@ -12312,7 +12312,7 @@
         if (avgEl) avgEl.innerText = `${dailyAverage.toFixed(2)} QAR`;
 
         if (!rows.length) {
-            body.innerHTML = `<tr><td colspan="11" style="text-align: center;">No daily reports found for this period/branch.</td></tr>`;
+            body.innerHTML = `<tr><td colspan="12" style="text-align: center;">No daily reports found for this period/branch.</td></tr>`;
             if (foot) foot.innerHTML = "";
             return;
         }
@@ -13335,7 +13335,7 @@
     window.loadAbayaInvoices = async function(force) {
         if (abInvLoaded && !force) { renderAbayaInvoices(); return; }
         const body = document.getElementById('abInvBody');
-        if (body) body.innerHTML = '<tr><td colspan="11" style="text-align:center;">Loading...</td></tr>';
+        if (body) body.innerHTML = '<tr><td colspan="12" style="text-align:center;">Loading...</td></tr>';
         try {
             const snap = await getDocs(collection(db, ABAYA_INVOICES_COLL));
             abInvoices = [];
@@ -13351,7 +13351,7 @@
         } catch (err) {
             abInvLoaded = true;
             if (body) {
-                body.innerHTML = `<tr><td colspan="11" style="text-align:center; color: var(--danger);">`
+                body.innerHTML = `<tr><td colspan="12" style="text-align:center; color: var(--danger);">`
                     + `Could not read the invoices: ${escapeHtml(String((err && err.message) || err))}`
                     + (/permission/i.test(String(err && err.message))
                         ? ' — the rules (v23) are not published yet.' : '')
@@ -13372,6 +13372,26 @@
             total += c * (Number(l.qty) || 0);
         });
         return known ? Math.round(total * 100) / 100 : null;
+    }
+
+    /**
+     * كيف دُفعت الفاتورة — نصًّا للجدول.
+     * ⚠️ والغيابُ يُقال «not recorded» لا «كاش»: فواتيرُ ما قبل هذه الميزة لا
+     *   تُنسب إلى طريقةٍ لم تُسجَّل، ونسبتُها تُفسد مطابقةَ الصندوق.
+     * ⚠️ والمُصحَّحةُ تُوسَم: صندوقٌ يُخالف الفاتورةَ بلا تفسيرٍ هو ما تمنعه هذه
+     *   العلامة — فيُعرف أنّ الرقمَ الأوّلَ كان غيرَ هذا.
+     */
+    function abInvPaid(v) {
+        const pm = v.payment || {};
+        const m = String(pm.method || '');
+        const fixes = Array.isArray(v.paymentCorrections) ? v.paymentCorrections.length : 0;
+        const mark = fixes
+            ? ` <span title="Corrected ${fixes} time(s) — the first value is kept on the invoice" `
+              + `style="color: var(--warning); font-weight:800;">&#9888;</span>` : '';
+        if (m === 'cash') return `Cash${mark}`;
+        if (m === 'card') return `Card${mark}`;
+        if (m === 'split') return `<span style="white-space:nowrap;">Cash ${money(pm.cash)}<br>Card ${money(pm.card)}</span>${mark}`;
+        return `<span style="color: var(--text-faint);">not recorded</span>`;
     }
 
     function abInvRows() {
@@ -13424,7 +13444,15 @@
                 + card('Cost', costKnown ? `${money(cost)} QAR` : '—',
                        costKnown ? 'of what was sold' : 'some costs are not recorded')
                 + card('Gross profit', costKnown ? `${money(net - cost)} QAR` : '—',
-                       costKnown && net > 0 ? `${(((net - cost) / net) * 100).toFixed(1)}% of sales` : '');
+                       costKnown && net > 0 ? `${(((net - cost) / net) * 100).toFixed(1)}% of sales` : '')
+                // ⭐⭐ الكاشُ والشبكةُ منفصلان: بهما يُطابق الصندوقَ وكشفَ البنك.
+                // ⚠️ ويُجمعان من `payment.cash` و`payment.card` معًا في كلِّ
+                //   الطرق — حتى «كاش» وحدَه يكتب card: 0 — فلا حاجةَ لتفريقٍ هنا.
+                //   وفاتورةٌ بلا طريقةٍ مسجّلةٍ تُعدّ وتُقال، ولا تُنسب إلى أيٍّ منهما.
+                + card('Cash', `${money(sold.reduce((x, v) => x + (Number((v.payment || {}).cash) || 0), 0))} QAR`)
+                + card('Card', `${money(sold.reduce((x, v) => x + (Number((v.payment || {}).card) || 0), 0))} QAR`,
+                       (() => { const n = sold.filter(v => !String((v.payment || {}).method || '')).length;
+                                return n ? `${n} invoice(s) have no payment recorded` : ''; })());
             if (typeof paintIcons === 'function') paintIcons();
         }
 
@@ -13491,12 +13519,13 @@
                 <td class="money-col">${Number(v.discountAmount || 0) > 0
                     ? `-${money(v.discountAmount)}<br><small>${escapeHtml(String(v.discountPct || 0))}%</small>` : '—'}</td>
                 <td class="money-col"><b>${money(v.total)}</b></td>
+                <td>${abInvPaid(v)}</td>
                 <td class="money-col">${c === null ? '—' : money(c)}</td>
                 <td class="money-col">${profit === null ? '—'
                     : `<b style="color: ${profit >= 0 ? 'var(--success)' : 'var(--danger)'};">${money(profit)}</b>`}</td>
                 <td>${ret ? '<b style="color: var(--danger);">RETURNED</b>' : '<span style="color: var(--success);">Sold</span>'}</td>
             </tr>`;
-        }).join('') || `<tr><td colspan="11" style="text-align:center;">No invoice matches this filter.</td></tr>`;
+        }).join('') || `<tr><td colspan="12" style="text-align:center;">No invoice matches this filter.</td></tr>`;
         const n = document.getElementById('abInvNote');
         if (n) {
             n.innerHTML = `Showing <b>${Math.min(rows.length, 400)}</b> of <b>${abInvoices.length}</b> invoice(s) on record`
@@ -13530,6 +13559,10 @@
                     'Invoice total': Number(v.total) || 0,
                     'Unit cost': unitCost || '',
                     'Line cost': unitCost ? unitCost * (Number(l.qty) || 0) : '',
+                    'Paid by': String((v.payment || {}).method || 'not recorded'),
+                    'Paid cash': Number((v.payment || {}).cash) || 0,
+                    'Paid card': Number((v.payment || {}).card) || 0,
+                    'Payment corrected': Array.isArray(v.paymentCorrections) ? v.paymentCorrections.length : 0,
                     Status: ret ? 'RETURNED' : 'Sold'
                 });
             });
@@ -18918,7 +18951,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v197';
+        const APP_BUILD = 'v198';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;

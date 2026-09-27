@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v23   (2026-09-27)  <<<
+//   >>>  RULES REVISION: v24   (2026-09-28)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,7 +12,7 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       abaya_invoices
+//       paymentCorrections
 //
 //   (This exact text exists nowhere in any earlier revision, which is the whole
 //    point of a marker. Every earlier marker is now useless for telling the
@@ -26,10 +26,11 @@ rules_version = '2';
 //      "abaya_presence"             introduced in v13, was the marker for v15..v19
 //      "sentPlan"                   introduced in v21, was the marker for v21
 //      "distributedBy"              introduced in v22, was the marker for v22
+//      "abaya_invoices"             introduced in v23, was the marker for v23
 //    Always search for the marker named directly above, and when publishing a
 //    new revision, change that name to something introduced by it.)
 //
-//   FOUND     -> v23 is live. Good.
+//   FOUND     -> v24 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -47,6 +48,41 @@ rules_version = '2';
 // exact mistake happened with the "(v4)" label, which never changed across
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
+//
+//  v24  2026-09-28  + paymentCorrections — HOW IT WAS PAID, AND PUTTING A
+//                     MISTYPED PAYMENT RIGHT.
+//                     PUBLISH v24 — it contains v16..v23 in full.
+//
+//                     The owner: "I want the payment method, cash or card or
+//                     cash and card, and the ability to correct it if the
+//                     saleswoman gets it wrong."
+//
+//                     `payment` on the invoice: { method, cash, card } where
+//                     method is 'cash' | 'card' | 'split'. On a split both
+//                     figures are kept, because "she paid 500 cash and 700 card"
+//                     is the fact, and one combined number cannot be split back.
+//
+//                     ⚠️⚠️ CORRECTION IS AN APPEND, NOT AN EDIT. A correction
+//                     rewrites `payment` and PUSHES the old value onto
+//                     `paymentCorrections` with who did it and when. So the
+//                     original is never lost and the screen can show that this
+//                     invoice was corrected. The alternative — a silent edit —
+//                     makes a till that disagrees with the cash drawer
+//                     unexplainable after the fact.
+//
+//                     ⚠️⚠️ AND ONLY THE PAYMENT IS CORRECTABLE. The lines, the
+//                     quantities, the prices, the discount and the total stay
+//                     unwritable, exactly as v23 left them. Those move STOCK,
+//                     and a wrong piece or a wrong quantity is corrected by a
+//                     RETURN plus a new invoice — two honest records — never by
+//                     editing a sale that already came off the shelf. This is the
+//                     same reasoning as attendance: a correction is a new fact.
+//
+//                     THE GRANT IS A THIRD SEPARATE SHAPE, not merged with the
+//                     return one:
+//                       ['payment','paymentCorrections','updatedAt']
+//                     Merged, a payment correction could also flip `status` and
+//                     mark an invoice returned without any stock going back.
 //
 //  v23  2026-09-27  + abaya_invoices — A REAL INVOICE: MANY PIECES, A DISCOUNT,
 //                     A UNIQUE NUMBER, AND RETURNS.
@@ -1344,10 +1380,20 @@ service cloud.firestore {
         && !request.resource.data.keys().hasAny(
              ['cost', 'costPerPiece', 'supplier', 'unitUsd', 'usdRate', 'unitQar',
               'shipping', 'labour', 'totalQar', 'profit', 'margin', 'marginPct']);
+      // TWO separate kiosk shapes, never merged into one list:
+      //   1) a return            -> status / returns / returnedQty / updatedAt
+      //   2) a payment correction -> payment / paymentCorrections / updatedAt
+      // Merged, a payment correction could also flip `status` and mark an
+      // invoice returned with no stock going back. Apart, each press may write
+      // only the fields belonging to it, and NEITHER can touch the lines, the
+      // prices, the discount or the total.
       allow update: if isAdmin()
         || ((isViewer() || isKiosk())
             && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['status', 'returns', 'returnedQty', 'updatedAt']));
+                 .hasOnly(['status', 'returns', 'returnedQty', 'updatedAt']))
+        || ((isViewer() || isKiosk())
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['payment', 'paymentCorrections', 'updatedAt']));
       allow delete: if isAdmin();
     }
 

@@ -979,6 +979,32 @@
                     </div>
                 </div>
                 <div id="cpTotals" style="margin-top: var(--space-3);"></div>
+
+                <!-- ==========================================================
+                     ⭐⭐⭐⭐⭐ طريقةُ الدفع — بأمر المالك: «كاش أو كارد أو كاش وكارد»
+                     ----------------------------------------------------------
+                     ⚠️ ثلاثةُ أزرارٍ لا قائمةٌ منسدلة: هذا اختيارٌ يُضغط مئةَ مرّةٍ
+                        في اليوم على هاتف، والمنسدلةُ ضغطتانِ وقراءةٌ في كلِّ مرّة.
+                     ⚠️⚠️ و«مقسوم» يحفظ **المبلغَين معًا**: «دفعت 500 كاش و700 شبكة»
+                        هي الحقيقة، ورقمٌ واحدٌ مجموعٌ لا يُقسَم إلى أصله بعد ذلك.
+                     ========================================================== -->
+                <div style="margin-top: var(--space-4);">
+                    <span class="alabel" style="font-size: var(--text-xs); font-weight: 700;
+                          text-transform: uppercase; letter-spacing: .5px;">How was it paid</span>
+                    <div class="bar" id="cpPayBar" style="margin-top: 6px;">
+                        <button type="button" class="ghost" data-cppay="cash"  aria-pressed="false" style="width:auto;">Cash</button>
+                        <button type="button" class="ghost" data-cppay="card"  aria-pressed="false" style="width:auto;">Card</button>
+                        <button type="button" class="ghost" data-cppay="split" aria-pressed="false" style="width:auto;">Cash + Card</button>
+                    </div>
+                    <div id="cpSplitWrap" class="hidden two" style="margin-top: var(--space-3);">
+                        <div><label for="cpPayCash">Cash part</label>
+                            <input type="number" id="cpPayCash" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+                        <div><label for="cpPayCard">Card part</label>
+                            <input type="number" id="cpPayCard" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+                    </div>
+                    <p class="note" id="cpPayNote" style="margin-top: var(--space-2);"></p>
+                </div>
+
                 <button id="cpFinish" style="background: #16a34a; margin-top: var(--space-3);">
                     Finish the invoice &amp; print</button>
             </div>
@@ -1031,6 +1057,15 @@
                 </div>
                 <p class="status" id="cpRetMsg" style="margin-top: var(--space-3);"></p>
                 <div id="cpRetBox" class="hidden" style="margin-top: var(--space-3);"></div>
+                <!-- ⭐⭐⭐⭐ تصحيحُ طريقة الدفع — بأمر المالك: «وإمكانية التصحيح إذا
+                     غلطت البياعة».
+                     ⚠️⚠️ والقابلُ للتصحيح **طريقةُ الدفع وحدَها**: الأسطرُ والكميّاتُ
+                        والأسعارُ والخصمُ والمجموع تُحرّك **مخزونًا**، وقطعةٌ خطأٌ أو
+                        عددٌ خطأٌ يُصحَّح بالإرجاع ثمّ فاتورةٍ جديدة — سجلّانِ صادقان —
+                        لا بتعديلِ بيعةٍ خرجت من الرفّ فعلًا.
+                     ⚠️ والتصحيحُ **إضافةٌ لا محو**: القيمةُ القديمةُ تُحفظ باسم من
+                        صحّحها ووقتِه، فتبقى الحقيقةُ الأولى مقروءةً إلى الأبد. -->
+                <div id="cpFixBox" class="hidden" style="margin-top: var(--space-3);"></div>
             </div>
 
             <!-- فواتيرُ هذه الجلسة -->
@@ -2450,6 +2485,10 @@
         //   والخصمُ كذلك: نسبةٌ منسيّةٌ من زبونةٍ سابقةٍ تُطبَّق على فاتورةٍ ليست لها.
         cpCart = [];
         cpRet = null;
+        cpPay = '';
+        if (el('cpPayCash')) el('cpPayCash').value = '';
+        if (el('cpPayCard')) el('cpPayCard').value = '';
+        if (el('cpFixBox')) { el('cpFixBox').classList.add('hidden'); el('cpFixBox').innerHTML = ''; }
         el('cpCode').value = '';
         el('cpQty').value = '1';
         if (el('cpDisc')) el('cpDisc').value = '';
@@ -3652,6 +3691,9 @@
             row(`Subtotal &mdash; ${t.pieces} piece(s)`, `${money(t.subtotal)} QAR`)
             + (t.pct > 0 ? row(`Discount ${t.pct}%`, `- ${money(t.discountAmount)} QAR`) : '')
             + row('Total', `${money(t.total)} QAR`, true);
+        // ⚠️ سطرُ الدفع يتبع المجموع: تغييرُ الخصم أو إضافةُ قطعةٍ يُغيّر المبلغَ
+        //   المطلوب، فتقسيمٌ كان صحيحًا يصير ناقصًا — ويجب أن تُخبَر في الحال.
+        if (typeof cpRenderPay === 'function') cpRenderPay();
     }
 
     /** ⚠️ لا تكتب في القاعدة بحال — سلّةٌ في الذاكرة وحدها. */
@@ -3682,6 +3724,96 @@
         el('cpCode').value = '';
         el('cpQty').value = '1';
     }
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ طريقةُ الدفع
+    // ---------------------------------------------------------------------
+    // ⚠️ لا افتراضَ صامتٌ: لا تُختار طريقةٌ نيابةً عنها. فافتراضُ «كاش» يجعل كلَّ
+    //   فاتورةٍ نسيت فيها الضغطَ تُسجَّل كاشًا — ورقمٌ مُختلَقٌ في خانةِ مالٍ أسوأُ
+    //   من خانةٍ فارغةٍ تُطالِب بالملء. فالإكمالُ يُرفض حتى تختار.
+    // =====================================================================
+    let cpPay = '';               // '' | 'cash' | 'card' | 'split'
+
+    /**
+     * ⭐⭐⭐⭐⭐ المالُ يُقارَن **بالهللات الصحيحة** لا بالكسور العشرية.
+     *
+     * ⚠️⚠️ وهذا إصلاحُ عطلٍ حقيقيٍّ كشفه الفحصُ وكان سيمرّ إلى الصندوق:
+     *   كنتُ أكتب `Math.abs(sum - total) >= 0.01`. و333.33 + 666.66 = 999.99،
+     *   والفرقُ عن 1000 يُحسب في العائم **0.009999999999990905** — أي **أقلَّ**
+     *   من هللة. فكانت فاتورةُ 1000 تُقبل بدفعٍ مجموعُه 999.99: **هللةٌ ناقصةٌ
+     *   في كلِّ فاتورةٍ كهذه**، وهي بعينها ما يجعل الصندوقَ يُخالف النظامَ بلا
+     *   تفسيرٍ بعد شهر.
+     * ⚠️ والمقارنةُ بعدد صحيحٍ **لا تحتاج هامشًا** (epsilon) ولا تُخطئ إطلاقًا:
+     *   99999 !== 100000. وكلُّ مقارنةِ مالٍ في هذه الصفحة تمرّ من هنا.
+     */
+    const fils = (n) => Math.round((Number(n) || 0) * 100);
+
+    /** المبلغانِ النهائيّان لطريقةٍ ومجموع. ⚠️ مصدرٌ واحدٌ تقرؤه الشاشةُ والمستند. */
+    function cpPayParts(total) {
+        const t = Math.round((Number(total) || 0) * 100) / 100;
+        if (cpPay === 'cash') return { method: 'cash', cash: t, card: 0, ok: true };
+        if (cpPay === 'card') return { method: 'card', cash: 0, card: t, ok: true };
+        if (cpPay !== 'split') return { method: '', cash: 0, card: 0, ok: false, why: 'Choose how it was paid.' };
+        const cash = Math.round((Number((el('cpPayCash') || {}).value) || 0) * 100) / 100;
+        const card = Math.round((Number((el('cpPayCard') || {}).value) || 0) * 100) / 100;
+        if (cash < 0 || card < 0) return { method: 'split', cash, card, ok: false, why: 'A part cannot be negative.' };
+        // ⚠️⚠️ المجموعُ يجب أن يساوي الفاتورةَ **بالضبط**: أقلُّ = مالٌ لم يُقبض
+        //   ويظهر كأنه قُبض، وأكثرُ = مالٌ لم يدخل الصندوق. ويُقال **الفرقُ بالرقم**
+        //   لا «خطأ في المجموع» — فتعرف كم تُضيف أو تُنقص.
+        // ⚠️⚠️⚠️ والمقارنةُ بالهللات الصحيحة لا بالكسور — انظر `fils` أعلاه.
+        if (fils(cash) + fils(card) !== fils(t)) {
+            const d = (fils(t) - fils(cash) - fils(card)) / 100;
+            return { method: 'split', cash, card, ok: false,
+                     why: d > 0 ? `${money(d)} QAR still not covered.` : `${money(-d)} QAR too much.` };
+        }
+        return { method: 'split', cash, card, ok: true };
+    }
+
+    function cpRenderPay() {
+        const t = cpCartTotals();
+        document.querySelectorAll('#cpPayBar button[data-cppay]').forEach(b => {
+            const on = b.getAttribute('data-cppay') === cpPay;
+            b.setAttribute('aria-pressed', String(on));
+            // ⚠️ ولونٌ وحدَه لا يكفي على شاشةٍ صغيرة: المختارُ يثقُل خطُّه ويُحدَّد.
+            b.style.borderColor = on ? '#0f172a' : '';
+            b.style.borderWidth = on ? '2px' : '';
+            b.style.fontWeight = on ? '800' : '';
+        });
+        const sw = el('cpSplitWrap');
+        if (sw) sw.classList.toggle('hidden', cpPay !== 'split');
+        const p = cpPayParts(t.total);
+        const note = el('cpPayNote');
+        if (note) {
+            note.innerHTML = !cpPay
+                ? `Choose <b>Cash</b>, <b>Card</b> or <b>Cash + Card</b> before finishing.`
+                : (p.ok
+                    ? (cpPay === 'split'
+                        ? `<b>${money(p.cash)}</b> cash + <b>${money(p.card)}</b> card = <b>${money(t.total)} QAR</b>`
+                        : `<b>${money(t.total)} QAR</b> by ${escapeHtml(cpPay)}`)
+                    : `<b style="color:#b45309;">${escapeHtml(p.why || '')}</b>`);
+        }
+    }
+
+    el('cpPayBar').addEventListener('click', (ev) => {
+        const b = ev.target.closest('button[data-cppay]');
+        if (!b) return;
+        const k = b.getAttribute('data-cppay');
+        // ضغطةٌ ثانيةٌ على نفس الزرّ تُلغي الاختيار — كدائرتَي الذهبيِّ والفضّيّ.
+        cpPay = (cpPay === k) ? '' : k;
+        if (cpPay === 'split') {
+            // ⚠️ تُقترح الشبكةُ بكامل المبلغ والكاشُ صفرًا كي لا تبدأ من فراغَين،
+            //   ولها تغييرُهما. ولا يُفرض شيءٌ — المجموعُ يُفحَص على أي حال.
+            const t = cpCartTotals();
+            if (!String((el('cpPayCash') || {}).value || '').trim()
+                && !String((el('cpPayCard') || {}).value || '').trim()) {
+                el('cpPayCard').value = String(t.total);
+                el('cpPayCash').value = '0';
+            }
+        }
+        cpRenderPay();
+    });
+    el('cpPayCash').addEventListener('input', cpRenderPay);
+    el('cpPayCard').addEventListener('input', cpRenderPay);
 
     el('cpAdd').addEventListener('click', cpAddToCart);
     el('cpDisc').addEventListener('input', cpRenderCart);
@@ -3722,6 +3854,10 @@
         const key = abayaShopKey(state.shop);
         const t = cpCartTotals();
         if (t.total < 0) { setMsg('cpFinMsg', 'The discount cannot be more than the total.', 'err'); return; }
+        // ⚠️⚠️ ولا فاتورةَ بلا طريقةِ دفعٍ صحيحة: تُفحَص **قبل** أن يُنقص أيُّ رفّ،
+        //   فلا تبقى قطعٌ منقوصةً لأجل خانةِ دفعٍ ناقصة. ولا افتراضَ «كاش» صامتًا.
+        const pay = cpPayParts(t.total);
+        if (!pay.ok) { setMsg('cpFinMsg', pay.why || 'Choose how it was paid.', 'err'); return; }
 
         cpBusy = true;
         el('cpFinish').disabled = true;
@@ -3797,6 +3933,14 @@
                     status: 'sold',
                     returns: [],
                     returnedQty: 0,
+                    // ⭐⭐ طريقةُ الدفع — والمبلغانِ معًا دائمًا حتى في «كاش» أو
+                    //   «كارد» وحدَه: قارئٌ يجمع `payment.cash` عبر اليوم يجد الرقمَ
+                    //   صحيحًا بلا أن يُفرّق بين الطرق أوّلًا.
+                    payment: { method: pay.method, cash: pay.cash, card: pay.card },
+                    // ⚠️ تُولد مصفوفةً فارغةً لا غائبة: التصحيحُ يُضيف إليها،
+                    //   و`arrayUnion` على حقلٍ غائبٍ يعمل، لكن قارئًا يقرأ الغيابَ
+                    //   قد يُظهر «undefined تصحيح». والصريحُ لا يُختلف فيه.
+                    paymentCorrections: [],
                     at: soldAt.toISOString(),
                     createdAt: serverTimestamp()
                 });
@@ -3814,12 +3958,19 @@
             const sale = {
                 no: invoiceNo, shop: state.shop, byName: state.sellerName || '',
                 when: soldAt, lines,
-                subtotal: t.subtotal, pct: t.pct, discountAmount: t.discountAmount, total: t.total
+                subtotal: t.subtotal, pct: t.pct, discountAmount: t.discountAmount, total: t.total,
+                payment: { method: pay.method, cash: pay.cash, card: pay.card }
             };
             cpSoldHere.unshift(sale);
             cpCart = [];
             if (el('cpDisc')) el('cpDisc').value = '';
+            // ⚠️⚠️ وطريقةُ الدفع تُصفَّر: نسيانُها يجعل فاتورةَ الزبونةِ التالية
+            //   تُسجَّل بطريقةِ دفعِ السابقة — وهو خطأٌ في المال لا في العرض.
+            cpPay = '';
+            if (el('cpPayCash')) el('cpPayCash').value = '';
+            if (el('cpPayCard')) el('cpPayCard').value = '';
             cpRenderCart();
+            cpRenderPay();
             cpRenderSold();
             if (cpSelected) await cpSelect(cpSelected);
             if (!el('cpList').classList.contains('hidden')) cpRenderGrid();
@@ -3942,6 +4093,19 @@
         }
         el('rcItems').innerHTML = html;
         el('rcTotal').textContent = (isReturn ? '- ' : '') + money2(total);
+        // ⭐⭐ طريقةُ الدفع على الورقة: الزبونةُ تُراجعها، والمالكُ يُطابق الصندوق.
+        // ⚠️ وتُقال «not recorded» إن غابت — فاتورةٌ قديمةٌ قبل هذه الميزة لا
+        //   تُنسب إلى كاشٍ لم يُعرف. ولا تُقال على ورقةِ الإرجاع: المبلغُ يُردّ.
+        const pm = sale.payment || {};
+        const pmTxt = !isReturn && pm.method
+            ? (pm.method === 'split'
+                ? `Paid: cash ${money(pm.cash)} + card ${money(pm.card)}`
+                : `Paid: ${pm.method === 'cash' ? 'CASH' : 'CARD'}`)
+            : '';
+        if (pmTxt) {
+            el('rcItems').innerHTML += `<tr><td colspan="3" class="sub" `
+                + `style="padding-top:1.5mm;">${escapeHtml(pmTxt)}</td></tr>`;
+        }
         el('rcFoot').innerHTML =
             (isReturn ? `<b>Returned against invoice ${escapeHtml(sale.no || '')}</b><br>` : '')
             + `${escapeHtml(sale.shop || '')}`
@@ -4015,9 +4179,140 @@
             + `</div>`;
     }
 
+    /**
+     * ⭐⭐⭐⭐⭐ تصحيحُ طريقة الدفع — «إمكانية التصحيح إذا غلطت البياعة».
+     *
+     * ⚠️⚠️ **إضافةٌ لا محو**: `payment` يُكتب من جديد، والقيمةُ القديمةُ تُدفع إلى
+     *   `paymentCorrections` باسم من صحّحها ووقتِه. فالحقيقةُ الأولى تبقى مقروءةً،
+     *   والشاشةُ تقول إنّ هذه الفاتورةَ صُحِّحت. والتعديلُ الصامتُ يجعل صندوقًا
+     *   يُخالف الفاتورةَ غيرَ قابلٍ للتفسير بعد أسبوع.
+     * ⚠️⚠️ والقابلُ للتصحيح **طريقةُ الدفع وحدَها**: الأسطرُ والكميّاتُ والأسعارُ
+     *   والخصمُ والمجموع تُحرّك مخزونًا، وتُصحَّح بالإرجاع ثمّ فاتورةٍ جديدة.
+     *   والقاعدةُ تمنع غيرَها من الطرف الثاني، فلو أخطأتُ أنا رفض الخادمُ.
+     */
+    function cpPayLabel(pm) {
+        const m = String((pm || {}).method || '');
+        if (m === 'cash') return `Cash ${money((pm || {}).cash)} QAR`;
+        if (m === 'card') return `Card ${money((pm || {}).card)} QAR`;
+        if (m === 'split') return `Cash ${money((pm || {}).cash)} + Card ${money((pm || {}).card)} QAR`;
+        return 'not recorded';
+    }
+
+    function cpRenderFix() {
+        const box = el('cpFixBox');
+        if (!box) return;
+        if (!cpRet) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+        box.classList.remove('hidden');
+        const pm = cpRet.payment || {};
+        const fixes = Array.isArray(cpRet.paymentCorrections) ? cpRet.paymentCorrections : [];
+        const t = Number(cpRet.total) || 0;
+        box.innerHTML =
+            `<div class="cpsold" style="display:block;">`
+            + `<b>How it was paid</b><br><span dir="ltr">${escapeHtml(cpPayLabel(pm))}</span>`
+            + (fixes.length
+                ? `<br><small style="color: var(--color-text-muted);">&#9888; Corrected `
+                  + `${fixes.length} time(s). First recorded as: `
+                  + escapeHtml(cpPayLabel(fixes[0].from)) + `</small>` : '')
+            + `<div class="bar" id="cpFixBar" style="margin-top:8px;">`
+            + `<button type="button" class="ghost" data-cpfix="cash" style="width:auto;">Cash</button>`
+            + `<button type="button" class="ghost" data-cpfix="card" style="width:auto;">Card</button>`
+            + `<button type="button" class="ghost" data-cpfix="split" style="width:auto;">Cash + Card</button>`
+            + `</div>`
+            + `<div id="cpFixSplit" class="hidden two" style="margin-top:8px;">`
+            + `<div><label for="cpFixCash">Cash part</label>`
+            + `<input type="number" id="cpFixCash" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>`
+            + `<div><label for="cpFixCard">Card part</label>`
+            + `<input type="number" id="cpFixCard" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>`
+            + `</div>`
+            + `<p class="note" style="margin-top:6px;">The invoice total is `
+            + `<b dir="ltr">${money(t)} QAR</b> and cannot be changed here. `
+            + `A wrong piece or a wrong quantity is put right by taking the invoice back and making a new one.</p>`
+            + `<p class="status" id="cpFixMsg" style="margin-top:6px;"></p>`
+            + `</div>`;
+    }
+
+    let cpFixPick = '';
+    async function cpFixDo() {
+        if (cpBusy || !cpRet) return;
+        const t = Math.round((Number(cpRet.total) || 0) * 100) / 100;
+        let cash = 0, card = 0;
+        if (cpFixPick === 'cash') { cash = t; card = 0; }
+        else if (cpFixPick === 'card') { cash = 0; card = t; }
+        else if (cpFixPick === 'split') {
+            cash = Math.round((Number((el('cpFixCash') || {}).value) || 0) * 100) / 100;
+            card = Math.round((Number((el('cpFixCard') || {}).value) || 0) * 100) / 100;
+            if (cash < 0 || card < 0) { setMsg('cpFixMsg', 'A part cannot be negative.', 'err'); return; }
+            // ⚠️ نفسُ المقارنةِ الصحيحةِ هنا: تصحيحٌ يقبل هللةً ناقصةً يُنتج نفسَ
+            //   الفرقِ في الصندوق الذي جاء التصحيحُ ليُزيله.
+            if (fils(cash) + fils(card) !== fils(t)) {
+                const d = (fils(t) - fils(cash) - fils(card)) / 100;
+                setMsg('cpFixMsg', d > 0 ? `${money(d)} QAR still not covered.` : `${money(-d)} QAR too much.`, 'err');
+                return;
+            }
+        } else { setMsg('cpFixMsg', 'Choose the correct way it was paid.', 'err'); return; }
+
+        const from = cpRet.payment || {};
+        if (String(from.method || '') === cpFixPick
+            && fils(from.cash) === fils(cash) && fils(from.card) === fils(card)) {
+            setMsg('cpFixMsg', 'That is already what is recorded — nothing to correct.', 'ok');
+            return;
+        }
+        if (!confirm(`Correct how invoice ${cpRet.no} was paid?\n\n`
+            + `Recorded now: ${cpPayLabel(from)}\n`
+            + `Correct to:   ${cpPayLabel({ method: cpFixPick, cash, card })}\n\n`
+            + `The old value is kept on the invoice with your name — nothing is erased.`)) return;
+
+        cpBusy = true;
+        setMsg('cpFixMsg', 'Correcting...', 'load');
+        try {
+            const fixes = (Array.isArray(cpRet.paymentCorrections) ? cpRet.paymentCorrections : []).concat([{
+                at: new Date().toISOString(),
+                by: String(state.sellerId || ''), byName: String(state.sellerName || ''),
+                from: { method: String(from.method || ''), cash: Number(from.cash) || 0, card: Number(from.card) || 0 },
+                to: { method: cpFixPick, cash, card }
+            }]);
+            await updateDoc(doc(db, ABAYA_INVOICES_COLL, cpRet.no), {
+                payment: { method: cpFixPick, cash, card },
+                paymentCorrections: fixes,
+                updatedAt: serverTimestamp()
+            });
+            cpRet.payment = { method: cpFixPick, cash, card };
+            cpRet.paymentCorrections = fixes;
+            cpRenderFix();
+            setMsg('cpFixMsg', `Corrected to <b dir="ltr">${escapeHtml(cpPayLabel(cpRet.payment))}</b>. `
+                + `The first value is kept on the invoice.`, 'ok');
+            cpInvLoaded = false;          // القائمةُ تُقرأ من جديدٍ فتُظهر الصحيح
+        } catch (e) {
+            console.error('Could not correct the payment:', e);
+            setMsg('cpFixMsg', `Could not correct it: ${escapeHtml(String((e && e.message) || e))}`
+                + (/permission/i.test(String(e && e.message))
+                    ? ' — the rules (v24) are not published yet.' : ''), 'err');
+        } finally { cpBusy = false; }
+    }
+
+    el('cpFixBox').addEventListener('click', (ev) => {
+        const b = ev.target.closest('button[data-cpfix]');
+        if (!b) return;
+        cpFixPick = b.getAttribute('data-cpfix');
+        el('cpFixBox').querySelectorAll('button[data-cpfix]').forEach(x => {
+            const on = x.getAttribute('data-cpfix') === cpFixPick;
+            x.style.borderColor = on ? '#0f172a' : '';
+            x.style.borderWidth = on ? '2px' : '';
+            x.style.fontWeight = on ? '800' : '';
+        });
+        const sp = el('cpFixSplit');
+        if (sp) sp.classList.toggle('hidden', cpFixPick !== 'split');
+        if (cpFixPick === 'split' && el('cpFixCard') && !el('cpFixCard').value) {
+            el('cpFixCard').value = String(Math.round((Number(cpRet.total) || 0) * 100) / 100);
+            el('cpFixCash').value = '0';
+        }
+        if (cpFixPick !== 'split') cpFixDo();
+        else setMsg('cpFixMsg', 'Type the two parts, then press Cash + Card again.', '');
+    });
+
     async function cpRetFind() {
         const no = String(el('cpRetNo').value || '').trim().toUpperCase();
-        cpRet = null; cpRenderRet();
+        cpRet = null; cpRenderRet(); cpRenderFix();
         if (!no) { setMsg('cpRetMsg', 'Type the number printed on the invoice.', 'err'); return; }
         setMsg('cpRetMsg', 'Looking...', 'load');
         try {
@@ -4029,7 +4324,9 @@
             }
             cpRet = Object.assign({ no }, snap.data() || {});
             setMsg('cpRetMsg', '', '');
+            cpFixPick = '';
             cpRenderRet();
+            cpRenderFix();
         } catch (e) {
             console.error('Could not read the invoice:', e);
             setMsg('cpRetMsg', /permission/i.test(String(e && e.message))
