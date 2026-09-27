@@ -3787,6 +3787,11 @@
                 });
             } catch (e) {
                 saved = false;
+                // ⚠️⚠️ تُحفظ **كلمةُ الخادم نفسُها** لا تخمينٌ: كنتُ أقول «غالبًا لأنّ
+                //   القواعدَ لم تُنشر» — وهو صحيحٌ في الأغلب، لكنّ «غالبًا» تُخفي
+                //   السببَ الحقيقيَّ في الحالة التي يكون فيها غيرَ ذلك. ورسالةُ
+                //   فايرستور تُسمّي العلّةَ بلا وسيط.
+                cpLastSaveError = String((e && e.message) || e || 'unknown');
                 console.error('The invoice document failed (the stock DID go down):', e);
             }
 
@@ -4117,6 +4122,8 @@
     // =====================================================================
     let cpInv = [];
     let cpInvLoaded = false;
+    /** آخرُ سببٍ رفض به الخادمُ حفظَ فاتورة — بنصّه، لا بتخميني. */
+    let cpLastSaveError = '';
 
     function cpInvRows() {
         const q = String((el('cpInvSearch') || {}).value || '').trim().toUpperCase();
@@ -4173,10 +4180,17 @@
             //   وأشهرُ سببٍ أنّ القواعدَ لم تُنشر. فيُقال ذلك صريحًا بدل «لا فواتير»
             //   التي تُقرأ «لم تبيعي شيئًا» — وهو كذبٌ يُضيّع السبب.
             if (!cpInv.length && cpSoldHere.length) {
+                const why = cpLastSaveError
+                    ? `<br>The server refused it with these words: <b>&ldquo;${escapeHtml(cpLastSaveError)}&rdquo;</b>`
+                      + (/permission|insufficient/i.test(cpLastSaveError)
+                          ? `<br>That message means one thing only: <b>the rules (v23) are not published</b>. `
+                            + `Nothing on this screen can fix it &mdash; the owner publishes them once.`
+                          : '')
+                    : `<br>The stock went down but the invoices were refused. The commonest cause is that the new `
+                      + `rules (v23) have not been published.`;
                 el('cpInvNote').innerHTML = `<b style="color: var(--color-danger);">&#9888; You sold `
-                    + `${cpSoldHere.length} invoice(s) on this screen and NONE of them is saved.</b> `
-                    + `The stock went down but the invoices were refused &mdash; almost always because the new `
-                    + `rules (v23) have not been published yet. Tell the owner.`;
+                    + `${cpSoldHere.length} invoice(s) on this screen and NONE of them is saved.</b>`
+                    + why + `<br>Tell the owner.`;
             }
         } catch (e) {
             console.error('Could not read the invoices:', e);
