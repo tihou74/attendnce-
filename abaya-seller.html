@@ -981,8 +981,15 @@
                 <div id="cpTotals" style="margin-top: var(--space-3);"></div>
                 <button id="cpFinish" style="background: #16a34a; margin-top: var(--space-3);">
                     Finish the invoice &amp; print</button>
-                <p class="status" id="cpFinMsg" style="margin-top: var(--space-3);"></p>
             </div>
+            <!-- ⚠️⚠️⚠️ رسالةُ نتيجة الفاتورة **خارج** غلاف السلّة — وهذا إصلاحُ عطلٍ
+                 صنعتُه: كانت داخلَه، والغلافُ يُخفى لحظةَ تفريغ السلّة بعد كلِّ
+                 فاتورةٍ ناجحة. فكانت الرسالةُ تُكتب ثم **تُخفى في نفس اللحظة** —
+                 ومعها التحذيرُ الحرج «نقصت الكميّةُ ولم تُحفظ الفاتورة». فباع
+                 المالكُ فاتورتين، ونقصت القطعُ، ولم تُحفظ الفاتورتان، ولم يرَ
+                 السببَ إطلاقًا — ثم بحث عنهما فلم يجدهما.
+                 ورسالةٌ في حاويةٍ تُخفى = لا رسالة. -->
+            <p class="status" id="cpFinMsg" style="margin-top: var(--space-4);"></p>
 
             <!-- كل العبايات بالصور -->            <!-- كل العبايات بالصور -->
             <div id="cpList" class="hidden" style="margin-top: var(--space-4);">
@@ -1009,6 +1016,18 @@
                        placeholder="e.g. GM-260927-191304">
                 <div class="bar" style="margin-top: var(--space-3);">
                     <button class="ghost" id="cpRetFind" style="width: auto;">Find the invoice</button>
+                    <!-- ⭐⭐⭐⭐ بأمر المالك: «زرٌّ تضغط عليه تظهر كلُّ الفواتير التي
+                         بِيعت مع محرّك بحثٍ تكتب فيه الرقم تظهر الفاتورة». -->
+                    <button class="ghost" id="cpInvAll" style="width: auto;">All invoices</button>
+                </div>
+                <!-- ⚠️ قائمةُ الفواتير تُقرأ عند الطلب لا عند فتح الشاشة: قراءةٌ
+                     تُنزّل فواتيرَ المحلّ كلَّها على بيانات هاتفها، ولا تحتاجها
+                     في كلِّ بيعة. -->
+                <div id="cpInvWrap" class="hidden" style="margin-top: var(--space-3);">
+                    <label for="cpInvSearch">Search &mdash; number, barcode or name</label>
+                    <input type="text" id="cpInvSearch" autocomplete="off" placeholder="Type any part of it">
+                    <p class="note" id="cpInvNote" style="margin-top: var(--space-2);"></p>
+                    <div id="cpInvList"></div>
                 </div>
                 <p class="status" id="cpRetMsg" style="margin-top: var(--space-3);"></p>
                 <div id="cpRetBox" class="hidden" style="margin-top: var(--space-3);"></div>
@@ -3596,7 +3615,10 @@
             wrap.classList.add('hidden');
             el('cpCartList').innerHTML = '';
             el('cpTotals').innerHTML = '';
-            setMsg('cpFinMsg', '', '');
+            // ⚠️⚠️ ولا تُمحى `cpFinMsg` هنا بحال: هذه الدالّةُ تُنادى **بعد** كلِّ
+            //   فاتورةٍ ناجحةٍ لتفريغ السلّة، فمحوُها كان يمسح رقمَ الفاتورة
+            //   والتحذيرَ الحرجَ معه قبل أن يُقرآ. تُمحى في `resetCatalogSell`
+            //   (تغييرُ المحلّ) وعند بدء فاتورةٍ جديدةٍ وحدَهما.
             return;
         }
         wrap.classList.remove('hidden');
@@ -4067,6 +4089,9 @@
                 + (failed.length ? `<br><b>&#9888; NOT put back: ${escapeHtml(failed.join(', '))}.</b> Tell the owner.` : '')
                 + (stamped ? '' : `<br><b>&#9888; The pieces went back but the invoice is not marked returned</b> — `
                     + `it could be returned a second time. Tell the owner this number.`)
+                + `<br><b>Swapping for something else?</b> The pieces are back on the shelf now &mdash; `
+                + `build the new invoice above and take the difference. `
+                + `The refund and the new sale are two honest records, not one edited sale.`
                 + `<br>Remember to take the refund out of your daily report as well.`,
                 (failed.length || !stamped) ? 'err' : 'ok');
             // ورقةُ إرجاعٍ تُقال صريحةً على الورقة
@@ -4079,6 +4104,101 @@
             cpBusy = false;
         }
     }
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ كلُّ الفواتير + بحثٌ — بأمر المالك
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ **بلا `orderBy`** — نفسُ الدرسِ الذي أخفى بصماتِ البياعات: فايرستور
+    //   يُسقط بصمتًا كلَّ مستندٍ لا يحمل الحقلَ المرتَّبَ به، وفاتورةٌ قديمةٌ بلا
+    //   حقلِ `at` كانت ستختفي من القائمة ولا يعرف أحدٌ أنها موجودة. الترتيبُ محليّ.
+    // ⚠️ وترشيحٌ بالمحلّ في الخادم: فواتيرُ محلٍّ آخر ليست عملَها، وتنزيلُها
+    //   هدرٌ لبياناتها. والبحثُ بالرقم يبقى يقرأ المستندَ مباشرةً، فيجد فاتورةَ
+    //   أيِّ محلٍّ — وهو المطلوبُ حين تعود زبونةٌ إلى محلٍّ غير الذي اشترت منه.
+    // =====================================================================
+    let cpInv = [];
+    let cpInvLoaded = false;
+
+    function cpInvRows() {
+        const q = String((el('cpInvSearch') || {}).value || '').trim().toUpperCase();
+        if (!q) return cpInv;
+        // ⚠️ يُبحَث في الرقم **وفي أسطر الفاتورة**: الزبونةُ تأتي بلا ورقةٍ أحيانًا
+        //   وتقول «العباية السوداء» — فالبحثُ بالاسم والباركود يجدها.
+        return cpInv.filter(v => {
+            if (String(v.no || '').toUpperCase().includes(q)) return true;
+            return (v.lines || []).some(l =>
+                String(l.code || '').toUpperCase().includes(q)
+                || String(l.name || '').toUpperCase().includes(q));
+        });
+    }
+
+    function cpRenderInv() {
+        const wrap = el('cpInvWrap');
+        if (!wrap || wrap.classList.contains('hidden')) return;
+        const rows = cpInvRows();
+        el('cpInvNote').innerHTML = cpInvLoaded
+            ? `<b>${rows.length}</b> of <b>${cpInv.length}</b> invoice(s) in ${escapeHtml(state.shop || '')}`
+              + (cpInv.length ? ' &mdash; newest first. Tap one to take it back.' : '')
+            : 'Loading...';
+        el('cpInvList').innerHTML = rows.slice(0, 200).map(v => {
+            const pieces = (v.lines || []).reduce((a, l) => a + (Number(l.qty) || 0), 0);
+            const ret = String(v.status || '') === 'returned';
+            return `<div class="cpsold">
+                <span><b dir="ltr">${escapeHtml(v.no || '')}</b>
+                    ${ret ? ' <b style="color: var(--color-danger);">&mdash; RETURNED</b>' : ''}
+                    <br><small style="color: var(--color-text-muted);" dir="ltr">${escapeHtml(v.date || '')} `
+                    + `${escapeHtml(v.time || '')} &middot; ${pieces} piece(s) &middot; ${money(v.total)} QAR`
+                    + `${Number(v.discountAmount || 0) > 0 ? ` &middot; -${escapeHtml(String(v.discountPct || 0))}%` : ''}</small>
+                    <br><small style="color: var(--color-text-muted);">`
+                    + (v.lines || []).map(l => escapeHtml(l.code)).join(' · ') + `</small></span>
+                <button type="button" class="ghost" data-cpopen="${escapeHtml(v.no || '')}">Open</button>
+            </div>`;
+        }).join('') || `<p class="note">Nothing matches that.</p>`;
+    }
+
+    async function cpLoadInvoices(force) {
+        const wrap = el('cpInvWrap');
+        if (!state.shop) { setMsg('cpRetMsg', 'Pick your shop first.', 'err'); return; }
+        wrap.classList.remove('hidden');
+        if (cpInvLoaded && !force) { cpRenderInv(); return; }
+        cpRenderInv();
+        try {
+            const snap = await getDocs(query(collection(db, ABAYA_INVOICES_COLL),
+                                             where('shop', '==', state.shop)));
+            cpInv = [];
+            snap.forEach(d => cpInv.push(Object.assign({ no: d.id }, d.data() || {})));
+            cpInv.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+            cpInvLoaded = true;
+            cpRenderInv();
+            // ⚠️⚠️ صفرُ فواتيرَ **مع وجودِ بيعاتٍ في هذه الجلسة** = المستندُ لا يُحفظ،
+            //   وأشهرُ سببٍ أنّ القواعدَ لم تُنشر. فيُقال ذلك صريحًا بدل «لا فواتير»
+            //   التي تُقرأ «لم تبيعي شيئًا» — وهو كذبٌ يُضيّع السبب.
+            if (!cpInv.length && cpSoldHere.length) {
+                el('cpInvNote').innerHTML = `<b style="color: var(--color-danger);">&#9888; You sold `
+                    + `${cpSoldHere.length} invoice(s) on this screen and NONE of them is saved.</b> `
+                    + `The stock went down but the invoices were refused &mdash; almost always because the new `
+                    + `rules (v23) have not been published yet. Tell the owner.`;
+            }
+        } catch (e) {
+            console.error('Could not read the invoices:', e);
+            cpInvLoaded = true;
+            el('cpInvNote').innerHTML = /permission/i.test(String(e && e.message))
+                ? `<b style="color: var(--color-danger);">Not allowed yet &mdash; the new rules (v23) have not been `
+                  + `published. Tell the owner.</b>`
+                : 'Could not read them just now. Press All invoices again.';
+            el('cpInvList').innerHTML = '';
+        }
+    }
+
+    el('cpInvAll').addEventListener('click', () => cpLoadInvoices(true));
+    el('cpInvSearch').addEventListener('input', cpRenderInv);
+    el('cpInvList').addEventListener('click', (ev) => {
+        const b = ev.target.closest('button[data-cpopen]');
+        if (!b) return;
+        // ⚠️ تُفتح في صندوق الإرجاع نفسِه لا في صندوقٍ ثانٍ: مكانٌ واحدٌ تُقرأ فيه
+        //   الفاتورةُ ويُضغط فيه الإرجاع، فلا يختلف ما تراه عمّا تُرجعه.
+        el('cpRetNo').value = b.getAttribute('data-cpopen');
+        cpRetFind();
+    });
 
     el('cpRetFind').addEventListener('click', cpRetFind);
     el('cpRetNo').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') cpRetFind(); });
