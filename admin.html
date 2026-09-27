@@ -1141,6 +1141,18 @@
 </head>
 <body>
 
+<!-- ==================================================================
+     ⭐⭐ حاويةُ ملصقات الباركود
+     ------------------------------------------------------------------
+     ⚠️⚠️⚠️ ابنةٌ **مباشرةٌ** لـ`body` ولا يجوز أن تُنقل داخلَ أيِّ عنصر: قاعدةُ
+        الطباعة `body.lblprint > *:not(#lbl)` تُخفي كلَّ أبناء body سواها. ولمّا
+        وضعتُها أوّلًا داخلَ الصفحة أُخفي **أبوها** ومعه هي — فخرجت شاشةُ الطباعة
+        **بيضاءَ تمامًا**، وهو ما رآه المالك. و`display:block !important` عليها لا
+        يُفيد شيئًا وأبوها مخفيّ.
+     ================================================================== -->
+<div id="lbl" aria-hidden="true"></div>
+
+
 <div id="loginOverlay">
     <div class="login-card">
         <img class="login-logo" src="https://raw.githubusercontent.com/tihou74/alsheikha-attendance-admin/main/al-sheikha-group-logo.png.png" alt="Al Sheikha Group">
@@ -1440,9 +1452,7 @@
          موضعها هنا، بعد أزرار التبويبات وقبل محتواها، يجعلها ظاهرة في كل
          تبويب مهما كان المفتوح. رسالةُ فشلٍ لا تُرى ليست رسالة.
          ================================================================== -->
-    <div id="lbl" aria-hidden="true"></div>
-
-    <div id="loadErrorBanner" style="display: none; background: #fef2f2; border: 2px solid var(--danger); border-left: 6px solid var(--danger); border-radius: 10px; padding: 16px 18px; margin: 0 0 20px; color: #7f1d1d; font-size: 13.5px; line-height: 1.85;"></div>
+        <div id="loadErrorBanner" style="display: none; background: #fef2f2; border: 2px solid var(--danger); border-left: 6px solid var(--danger); border-radius: 10px; padding: 16px 18px; margin: 0 0 20px; color: #7f1d1d; font-size: 13.5px; line-height: 1.85;"></div>
 
     <!-- ⭐⭐ الشريط الصغير: سطرٌ واحد لِما لا يُوقف العمل، ويُفتح بلمسة ويُغلق بضغطة.
          ⚠️ طلبه المالك بعد أن رأى لافتةً حمراء تملأ شاشة هاتفه وتحتها 105 موظفًا
@@ -13436,6 +13446,34 @@
     // ⚠️ ولماذا Code 128 لا EAN-13: باركوداتُنا فيها حروفٌ وشُرَط، وEAN-13 أرقامٌ
     //   فقط و13 خانةً بالضبط — فاختيارُه كان يعني إعادةَ ترقيم المحلِّ كلِّه.
     // =====================================================================
+
+    /**
+     * ⭐⭐⭐⭐⭐ مقاسُ صفحةِ الملصق — يُحقن عند الطباعة ويُنزع بعدها.
+     *
+     * ⚠️⚠️ ولماذا يُحقن ولا يُكتب في التنسيق الثابت: `@page` **لا تُخصَّص بصنف**،
+     *   فقاعدةٌ ثابتةٌ بمقاس 50×25 كانت ستُطبَّق على **كلِّ** طباعةٍ في الصفحة —
+     *   كشفُ الراتب والمستنداتُ وتقاريرُ A4 معها. وهذا الملفُّ فيه قواعدُ `@page`
+     *   أخرى قائمةٌ سلفًا، فالأخيرةُ في التتالي تغلب — أي أنّ الأمرَ كان سيعتمد
+     *   على ترتيبٍ لا أحدَ يراه.
+     * ⚠️ وبلا `@page` إطلاقًا يطبع المتصفّحُ على A4 بهوامشه، فيخرج الملصقُ في
+     *   زاوية ورقةٍ كبيرةٍ ولا يُقرأ بالماسح. وهذا ما كان يقع.
+     * ⚠️ والنزعُ بعد الطباعة شرطٌ: قاعدةٌ باقيةٌ تُصغّر كلَّ طباعةٍ تالية إلى 50mm.
+     */
+    const LBL_PAGE_CSS = '@page { size: 50mm 25mm; margin: 0; }';
+    function lblPageOn() {
+        let st = document.getElementById('lblPageStyle');
+        if (!st) {
+            st = document.createElement('style');
+            st.id = 'lblPageStyle';
+            st.textContent = LBL_PAGE_CSS;
+            document.head.appendChild(st);
+        }
+    }
+    function lblPageOff() {
+        const st = document.getElementById('lblPageStyle');
+        if (st && st.parentNode) st.parentNode.removeChild(st);
+    }
+
     const C128 = ('212222 222122 222221 121223 121322 131222 122213 122312 132212 221213 221312 231212 '
         + '112232 122132 122231 113222 123122 123221 223211 221132 221231 213212 223112 312131 311222 '
         + '321122 321221 312212 322112 322211 212123 212321 232121 111323 131123 131321 112313 132113 '
@@ -13602,8 +13640,9 @@
             + `<span class="c">${escapeHtml(it.code)}</span>`
             + `<span class="p">${escapeHtml(money(it.price))} QAR</span>`
             + `</div>`).join('');
+        lblPageOn();
         document.body.classList.add('lblprint');
-        const done = () => document.body.classList.remove('lblprint');
+        const done = () => { document.body.classList.remove('lblprint'); lblPageOff(); };
         window.addEventListener('afterprint', done, { once: true });
         setTimeout(() => { try { window.print(); } catch (e) { console.error(e); } }, 80);
         setTimeout(done, 5000);
@@ -19243,7 +19282,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v201';
+        const APP_BUILD = 'v202';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;

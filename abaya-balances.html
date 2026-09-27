@@ -2237,6 +2237,34 @@
     // ⚠️ والتحقّقُ برقم التحقّق (checksum) شرطُ قراءةٍ لا تجميل: ماسحٌ يقرأ باركودًا
     //   برقم تحقّقٍ خطأٍ **يرفضه صامتًا** — فتبدو الطابعةُ سليمةً والملصقُ ميتًا.
     // =====================================================================
+
+    /**
+     * ⭐⭐⭐⭐⭐ مقاسُ صفحةِ الملصق — يُحقن عند الطباعة ويُنزع بعدها.
+     *
+     * ⚠️⚠️ ولماذا يُحقن ولا يُكتب في التنسيق الثابت: `@page` **لا تُخصَّص بصنف**،
+     *   فقاعدةٌ ثابتةٌ بمقاس 50×25 كانت ستُطبَّق على **كلِّ** طباعةٍ في الصفحة —
+     *   كشفُ الراتب والمستنداتُ وتقاريرُ A4 معها. وهذا الملفُّ فيه قواعدُ `@page`
+     *   أخرى قائمةٌ سلفًا، فالأخيرةُ في التتالي تغلب — أي أنّ الأمرَ كان سيعتمد
+     *   على ترتيبٍ لا أحدَ يراه.
+     * ⚠️ وبلا `@page` إطلاقًا يطبع المتصفّحُ على A4 بهوامشه، فيخرج الملصقُ في
+     *   زاوية ورقةٍ كبيرةٍ ولا يُقرأ بالماسح. وهذا ما كان يقع.
+     * ⚠️ والنزعُ بعد الطباعة شرطٌ: قاعدةٌ باقيةٌ تُصغّر كلَّ طباعةٍ تالية إلى 50mm.
+     */
+    const LBL_PAGE_CSS = '@page { size: 50mm 25mm; margin: 0; }';
+    function lblPageOn() {
+        let st = document.getElementById('lblPageStyle');
+        if (!st) {
+            st = document.createElement('style');
+            st.id = 'lblPageStyle';
+            st.textContent = LBL_PAGE_CSS;
+            document.head.appendChild(st);
+        }
+    }
+    function lblPageOff() {
+        const st = document.getElementById('lblPageStyle');
+        if (st && st.parentNode) st.parentNode.removeChild(st);
+    }
+
     const C128 = ('212222 222122 222221 121223 121322 131222 122213 122312 132212 221213 221312 231212 '
         + '112232 122132 122231 113222 123122 123221 223211 221132 221231 213212 223112 312131 311222 '
         + '321122 321221 312212 322112 322211 212123 212321 232121 111323 131123 131321 112313 132113 '
@@ -2311,10 +2339,11 @@
                     + `<span class="p">${escapeHtml(money(it.price))} QAR</span>`
                     + `</div>`;
             }).join('');
-            document.body.classList.add('lblprint');
+            lblPageOn();
+        document.body.classList.add('lblprint');
             // ⚠️ الصنفُ يُنزع بعد الطباعة دائمًا — وإلّا بقيت الصفحةُ تُخفي نفسَها
             //   في كلِّ طباعةٍ تالية (فاتورةٌ أو تقرير) وهو عطلٌ يصعب ربطُه بسببه.
-            const done = () => document.body.classList.remove('lblprint');
+            const done = () => { document.body.classList.remove('lblprint'); lblPageOff(); };
             if (window.onafterprint !== undefined) window.addEventListener('afterprint', done, { once: true });
             setTimeout(() => { try { window.print(); } catch (e) { console.error(e); } }, 80);
             setTimeout(done, 4000);
