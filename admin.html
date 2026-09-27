@@ -3482,7 +3482,19 @@
             <div class="controls" style="margin-top:14px;">
                 <button class="btn-success" onclick="lblPrintPicked()"><span data-icon="download"></span>
                     Print the labels</button>
+                <!-- ⭐⭐⭐⭐ تصديرُ ZPL — بأمر المالك. لغةُ الطابعة الأصليّة، تُرسل
+                     إليها مباشرةً بلا متصفّحٍ ولا تعريفٍ ولا هوامشَ تُضبط. -->
+                <button class="btn-accent" onclick="lblExportZpl()"><span data-icon="download"></span>
+                    Export ZPL file</button>
             </div>
+            <p class="card-sub" style="margin-top:14px;">
+                <b>The ZPL file</b> is the printer's own language &mdash; exact to the dot, with no browser
+                margins to set. Send it straight to the ZD220: copy it onto the printer in
+                <b>Zebra Setup Utilities &rarr; Open Communication With Printer</b>, or on Windows
+                <code>copy /b labels.zpl \\localhost\ZD220</code>. One design becomes one label
+                block with <b>^PQ</b> carrying its quantity, so a hundred stickers is a few lines, not a
+                hundred copies.
+            </p>
             <p class="card-sub" style="margin-top:14px;">
                 <b>Before the first print:</b> install the ZD220 driver, set its stock size to
                 <b>50mm &times; 25mm</b>, press the feed button once so it calibrates, and in the browser's
@@ -13624,6 +13636,96 @@
      * ⚠️ والصنفُ `lblprint` يُنزع بعدها دائمًا، وإلّا بقيت الصفحةُ تُخفي نفسَها في
      *   كلِّ طباعةٍ تالية (تقريرٌ أو كشفُ راتب) — عطلٌ يصعب ربطُه بسببه.
      */
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ تصديرُ ZPL — لغةُ الطابعة نفسِها
+    // ---------------------------------------------------------------------
+    // ⚠️ ولماذا هي أدقُّ من الطباعة بالمتصفّح: المتصفّحُ يرسم صورةً ثم يُرسلها،
+    //   فتتدخّل هوامشُه ومقاسُ صفحته وتحجيمُه. وZPL تُخبر الطابعةَ بالنقطة: «شريطةٌ
+    //   بعرض نقطتَين هنا». فلا انزلاقَ ولا قصَّ ولا إعداداتَ تُنسى.
+    // ⚠️ 203 DPI → 8 نقاطٍ في الملّيمتر. فالملصقُ 50×25mm = **400 × 200 نقطة**.
+    // =====================================================================
+    const ZPL_W = 400;            // 50mm × 8 نقاط/مم
+    const ZPL_H = 200;            // 25mm × 8
+    const ZPL_QUIET = 24;         // هامشٌ هادئٌ 3mm من كلِّ جهة
+
+    /**
+     * ⚠️⚠️ `^` و`~` بادئتا أوامرَ في ZPL: تركُهما في نصِّ البيانات يجعل الطابعةَ
+     *   تقرأ نصفَ الاسم أمرًا فتخرج ملصقاتٌ مشوّهةٌ أو لا تخرج. فتُستبدلان.
+     * ⚠️ وتُنزع مفاتيحُ التحكّم كذلك: سطرٌ جديدٌ داخل `^FD` يُنهي الحقلَ.
+     */
+    function zplSafe(t) {
+        return String(t || '').replace(/[\^~]/g, '-').replace(/[\r\n\t]+/g, ' ').trim();
+    }
+
+    /**
+     * عرضُ وحدةِ الباركود بالنقاط (`^BY`).
+     * ⚠️⚠️ يُحسب من طول الباركود لا يُثبَّت: باركودٌ طويلٌ بوحدةٍ ثابتةٍ يخرج عن
+     *   الملصق، وقصيرٌ بها يترك فراغًا. والمساحةُ المتاحةُ = العرضُ ناقصَ الهامشَين.
+     * ⚠️ ولا أقلَّ من نقطةٍ واحدة، ويُبلَّغ إن نزلت عن نقطتَين: نقطةٌ = 0.125mm،
+     *   وهي تحت حدِّ القراءة العمليِّ 0.19mm — فيُقال ولا يُطبع سرًّا ميتًا.
+     */
+    function zplModuleDots(code) {
+        const vals = c128values(code);
+        let modules = 0;
+        for (const d of vals.map(v => C128[v]).join('')) modules += Number(d);
+        const avail = ZPL_W - ZPL_QUIET * 2;
+        return { by: Math.max(1, Math.floor(avail / modules)), modules };
+    }
+
+    /** ملصقٌ واحدٌ بعدده — `^PQ` تُكرّره في الطابعة لا في الملفّ. */
+    function zplLabel(it) {
+        const code = zplSafe(it.code);
+        const name = zplSafe(it.name || code).slice(0, 34);
+        const price = `${money(it.price)} QAR`;
+        const { by, modules } = zplModuleDots(code);
+        const barW = modules * by;
+        const x = Math.max(0, Math.round((ZPL_W - barW) / 2));
+        return [
+            '^XA',
+            '^CI28',                                  // UTF-8
+            `^PW${ZPL_W}`, `^LL${ZPL_H}`, '^LH0,0',
+            '^MTT',                                   // نقلٌ حراريٌّ مباشر/حرارة
+            // الاسمُ في الأعلى، موسَّطًا بـ^FB
+            `^FO0,10^FB${ZPL_W},1,0,C,0^A0N,24,24^FD${name}^FS`,
+            // الباركود: `^BY` عرضُ الوحدة، و`^BCN,h,Y` تطبع الرقمَ مقروءًا تحته
+            `^BY${by},3,52`,
+            `^FO${x},44^BCN,52,Y,N,N^FD${code}^FS`,
+            // السعرُ في الأسفل
+            `^FO0,152^FB${ZPL_W},1,0,C,0^A0N,34,34^FD${price}^FS`,
+            `^PQ${Math.max(1, Math.min(100, Math.floor(Number(it.n) || 1)))}`,
+            '^XZ'
+        ].join('\n');
+    }
+
+    window.lblExportZpl = function() {
+        const picked = lblPicked();
+        if (!picked.length) { alert('Tick at least one design first.'); return; }
+        // ⚠️ يُبلَّغ عن أيِّ باركودٍ وحدتُه أنحفُ من نقطتَين قبل التصدير، لا بعد أن
+        //   تخرج مئةُ ملصقٍ لا تُقرأ.
+        const thin = picked.filter(x => zplModuleDots(zplSafe(x.code)).by < 2).map(x => x.code);
+        if (thin.length && !confirm(
+            `These barcodes are long, so their bars come out very thin and a scanner may struggle:\n\n`
+            + thin.join('\n')
+            + `\n\nExport anyway?`)) return;
+        const body = picked.map(zplLabel).join('\n');
+        const total = picked.reduce((a, x) => a + x.n, 0);
+        // ⚠️ CRLF لا LF: ملفُّ ZPL يُنسخ غالبًا من ويندوز إلى منفذ الطابعة،
+        //   وبعضُ المنافذ لا تفهم LF وحدَه فتُلصَق الأوامرُ في سطرٍ واحد.
+        const text = body.replace(/\n/g, '\r\n') + '\r\n';
+        const blob = new Blob([text], { type: 'application/octet-stream' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `AlSheikhaStyle_labels_${todayISO()}.zpl`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+        const note = document.getElementById('lblNote');
+        if (note) {
+            note.innerHTML = `&#10004; ZPL file saved &mdash; <b>${picked.length}</b> design(s), `
+                + `<b>${total}</b> label(s). Send it to the ZD220 as it is; the quantity is inside the file.`;
+        }
+    };
+
     window.lblPrintPicked = function() {
         const picked = lblPicked();
         if (!picked.length) { alert('Tick at least one design first.'); return; }
@@ -19282,7 +19384,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v202';
+        const APP_BUILD = 'v203';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
