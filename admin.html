@@ -3561,6 +3561,30 @@
             <p class="card-sub" id="abInvReconNote" style="margin-top:14px;"></p>
         </div>
 
+        <!-- ⭐⭐⭐⭐⭐ «opening and closing with Z report» — بأمر المالك.
+             ⚠️ وموضعُها **قبل** جدول الفواتير: «كم كان في الدرج وكم وُجد» سؤالٌ
+                يُسأل قبل «ما بِيع بالتفصيل». -->
+        <div class="card">
+            <h3><span data-icon="dollar"></span> Till openings and closings &mdash; the Z reports</h3>
+            <p class="card-sub">One line per till session. <b>Over / short</b> is what she counted in the drawer
+                minus what the invoices say should be there. The figures are <b>frozen</b> at closing &mdash; a
+                return recorded later cannot change a Z report that was already printed and counted.</p>
+            <div id="abShiftWarn" style="margin-bottom:14px;"></div>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Z number</th><th>Shop</th><th>Opened</th><th>Closed</th>
+                        <th class="money-col">Invoices</th><th class="money-col">Net sales</th>
+                        <th class="money-col">Cash</th><th class="money-col">Card</th>
+                        <th class="money-col">Refunds</th>
+                        <th class="money-col">Float</th><th class="money-col">Expected</th>
+                        <th class="money-col">Counted</th><th class="money-col">Over / short</th>
+                        <th>Note</th></tr></thead>
+                    <tbody id="abShiftBody"></tbody>
+                </table>
+            </div>
+            <p class="card-sub" id="abShiftNote" style="margin-top:14px;"></p>
+        </div>
+
         <div class="card">
             <h3><span data-icon="listChecks"></span> Every invoice</h3>
             <div class="table-container">
@@ -13934,6 +13958,9 @@
                 loadAbayaCatalog().then(() => renderAbayaInvoices()).catch(() => {});
             }
             renderAbayaInvoices();
+            // ⭐ الورديات مع الفواتير: نفسُ المصفاة ونفسُ السؤال. وبلا await على
+            //   الرسم — الفواتيرُ تظهر فورًا والورديات تلحق.
+            loadAbayaShifts(true);
         } catch (err) {
             abInvLoaded = true;
             if (body) {
@@ -14010,6 +14037,9 @@
     window.renderAbayaInvoices = function() {
         const body = document.getElementById('abInvBody');
         if (!body) return;
+        // ⚠️ تُعاد الورديات مع كلِّ تغييرِ مصفاة: جدولٌ يقول عن شهرٍ وجدولٌ فوقه
+        //   يقول عن يومٍ على نفس الشاشة يُقرأ أحدُهما مكانَ الآخر.
+        if (abShiftsLoaded && typeof renderAbayaShifts === 'function') renderAbayaShifts();
         const rows = abInvRows();
         const isRet = (v) => String(v.status || 'sold') === 'returned';
 
@@ -14127,6 +14157,162 @@
                 + (rows.length > 400 ? ' — narrow the filter to see the rest' : '')
                 + (abayaCatalogLoaded ? '' : '<br>Cost and profit are blank until the catalogue is read — open '
                     + '<b>Abaya — Catalogue</b> once, or press Refresh.');
+        }
+    };
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ الورديات — فتحُ الصندوق وإغلاقُه وتقريرُ Z
+    // ---------------------------------------------------------------------
+    // ⚠️ تُقرأ المجموعةُ كلُّها بلا orderBy ولا limit، وتُرتَّب محليًّا — نفسُ القاعدة
+    //   التي أُقرّت بعد عطل `orderBy`: فايرستور **يُسقط بصمتٍ** كلَّ مستندٍ لا يحمل
+    //   الحقلَ المرتَّبَ به، فوردية بلا `openedAt` كانت ستختفي من اللوحة بلا خطأ.
+    // =====================================================================
+    const ABAYA_SHIFTS_COLL = 'abaya_shifts';
+    let abShifts = [];
+    let abShiftsLoaded = false;
+
+    window.loadAbayaShifts = async function(force) {
+        if (abShiftsLoaded && !force) { renderAbayaShifts(); return; }
+        const body = document.getElementById('abShiftBody');
+        if (body) body.innerHTML = '<tr><td colspan="14" style="text-align:center;">Loading...</td></tr>';
+        try {
+            const snap = await getDocs(collection(db, ABAYA_SHIFTS_COLL));
+            abShifts = [];
+            snap.forEach(d => abShifts.push(Object.assign({ id: d.id }, d.data() || {})));
+            abShifts.sort((a, b) => String(b.openedAt || '').localeCompare(String(a.openedAt || '')));
+            abShiftsLoaded = true;
+            renderAbayaShifts();
+        } catch (err) {
+            abShiftsLoaded = true;
+            if (body) {
+                body.innerHTML = `<tr><td colspan="14" style="text-align:center; color: var(--danger);">`
+                    + `Could not read the tills: ${escapeHtml(String((err && err.message) || err))}`
+                    + (/permission/i.test(String(err && err.message))
+                        ? ' — the rules (v27) are not published yet.' : '')
+                    + `</td></tr>`;
+            }
+        }
+    };
+
+    /** يُرشَّح بنفس مصفاةِ الفواتير — التاريخُ والمحلّ — فالشاشتان تقولان عن مدّةٍ واحدة. */
+    function abShiftRows() {
+        const from = (document.getElementById('abInvFrom') || {}).value || '';
+        const to = (document.getElementById('abInvTo') || {}).value || '';
+        const shop = (document.getElementById('abInvShop') || {}).value || '';
+        return abShifts.filter(v => {
+            const d = String(v.date || '');
+            if (from && d < from) return false;
+            if (to && d > to) return false;
+            if (shop && String(v.shop || '') !== shop) return false;
+            return true;
+        });
+    }
+
+    window.renderAbayaShifts = function() {
+        const body = document.getElementById('abShiftBody');
+        if (!body) return;
+        const rows = abShiftRows();
+        const openOnes = rows.filter(v => String(v.status || '') === 'open');
+
+        // ---- التحذيرات: ما يجب أن يُرى قبل الأرقام ----------------------
+        const warn = [];
+        // ⚠️⚠️ صندوقان مفتوحان في محلٍّ واحد: الشاشةُ تُعيد القراءةَ قبل الفتح، لكن
+        //   بلا معاملةٍ على الخادم لا سبيلَ لإغلاق النافذة تمامًا — فيُقال هنا
+        //   صريحًا بدل أن يُفترض أنه لا يقع.
+        const byShop = new Map();
+        openOnes.forEach(v => {
+            const k = String(v.shop || '');
+            byShop.set(k, (byShop.get(k) || 0) + 1);
+        });
+        [...byShop.entries()].filter(([, n]) => n > 1).forEach(([sh, n]) => {
+            warn.push(`<b style="color: var(--danger);">${escapeHtml(sh)}: ${n} tills are open at the same time.</b> `
+                + `The day's money is split between them and neither will match the drawer. `
+                + `Have her close both and open one.`);
+        });
+        // ⚠️ ورديةٌ نُسي إغلاقُها: تظلّ تجمع فواتيرَ أيّامٍ تالية في تقريرٍ واحد.
+        const stale = openOnes.filter(v => String(v.date || '') < todayISO());
+        if (stale.length) {
+            warn.push(`<b style="color: var(--warning);">${stale.length} till(s) left open from an earlier day:</b> `
+                + stale.map(v => `${escapeHtml(v.shop || '')} (${escapeHtml(v.date || '')})`).join(' · ')
+                + `. Everything sold since is landing in that one Z report.`);
+        }
+        // ⚠️⚠️ الفرقُ لا يُخفى ولا يُلوَّن أخضرَ إن كان صغيرًا: نقصٌ متكرّرٌ صغيرٌ هو
+        //   ما يُقرأ «عاديًّا» ثم يصير عادةً.
+        const closed = rows.filter(v => String(v.status || '') === 'closed');
+        const off = closed.filter(v => Math.round(Number((v.z || {}).difference || 0) * 100) !== 0);
+        if (off.length) {
+            const shortSum = off.reduce((a, v) => a + Math.min(0, Number((v.z || {}).difference) || 0), 0);
+            const overSum = off.reduce((a, v) => a + Math.max(0, Number((v.z || {}).difference) || 0), 0);
+            warn.push(`<b>${off.length} of ${closed.length} closings did not balance.</b> `
+                + `Short in total: <b style="color: var(--danger);">${money(Math.abs(shortSum))} QAR</b> &middot; `
+                + `over in total: <b style="color: var(--warning);">${money(overSum)} QAR</b>.`);
+        }
+        // ⚠️⚠️⚠️ بيعٌ خارج وردية — وهذا هو ثمنُ قرارِ «نُحذّر ولا نمنع»، فيُقاس
+        //   ويُعرض بدل أن يُنسى.
+        //   ⚠️ ولا تُحسب فيه فواتيرُ ما قبل الميزة: تلك لم يكن لها صندوقٌ بحال،
+        //     وعدُّها يُنتج رقمًا مرتفعًا بلا معنى يُدرَّب المالكُ على تجاهله.
+        //     فيُقاس من تاريخ **أوّلِ وردية فُتحت قطّ**.
+        const firstEver = abShifts.reduce((a, v) => {
+            const d = String(v.date || '');
+            return (d && (!a || d < a)) ? d : a;
+        }, '');
+        if (firstEver && typeof abInvRows === 'function') {
+            const loose = abInvRows().filter(v => String(v.date || '') >= firstEver
+                && !String(v.shiftId || ''));
+            if (loose.length) {
+                warn.push(`<b style="color: var(--warning);">${loose.length} invoice(s) were made with no till open</b> `
+                    + `(since ${escapeHtml(firstEver)}, when tills started). They are real sales and the stock did go `
+                    + `down, but they are on <b>no Z report</b>, so no drawer was ever reconciled against them: `
+                    + loose.slice(0, 8).map(v => `${escapeHtml(v.no || '')}`).join(' · ')
+                    + (loose.length > 8 ? ` &hellip;` : '')
+                    + `. Selling is deliberately NOT blocked when the till is shut &mdash; a forgotten opening would `
+                    + `otherwise stop a whole shop &mdash; so this line is how you see it instead.`);
+            }
+        }
+        const w = document.getElementById('abShiftWarn');
+        if (w) w.innerHTML = warn.length ? warn.join('<br><br>') : '';
+
+        // ---- الجدول ----------------------------------------------------
+        body.innerHTML = rows.slice(0, 200).map(v => {
+            const z = v.z || {};
+            const isOpen = String(v.status || '') === 'open';
+            const diff = Math.round((Number(z.difference) || 0) * 100) / 100;
+            const balanced = Math.round(diff * 100) === 0;
+            const num = (n) => (n === undefined || n === null || n === '') ? '—' : money(n);
+            return `<tr${isOpen ? ' style="background: rgba(180,83,9,0.06);"' : ''}>
+                <td style="font-family: ui-monospace, monospace;"><b>${escapeHtml(v.id || '')}</b>
+                    ${isOpen ? '<br><b style="color: var(--warning);">STILL OPEN</b>' : ''}</td>
+                <td>${escapeHtml(v.shop || '')}</td>
+                <td>${escapeHtml(v.date || '')}<br><small style="color: var(--text-dim);">`
+                + `${escapeHtml(v.openedTime || '')} &middot; ${escapeHtml(v.openedByName || '')}</small></td>
+                <td>${isOpen ? '<span style="color: var(--text-faint);">not yet</span>'
+                    : `${escapeHtml(v.closedTime || '')}<br><small style="color: var(--text-dim);">`
+                      + `${escapeHtml(v.closedByName || '')}</small>`}</td>
+                <td class="money-col">${isOpen ? '—' : String(z.invoices || 0)}</td>
+                <td class="money-col"><b>${isOpen ? '—' : num(z.netSales)}</b></td>
+                <td class="money-col">${isOpen ? '—' : num(z.cashSales)}</td>
+                <td class="money-col">${isOpen ? '—' : num(z.cardSales)}</td>
+                <td class="money-col">${isOpen ? '—' : (Number(z.refunds || 0) > 0
+                    ? `<span style="color: var(--danger);">-${money(z.refunds)}</span>` : '—')}</td>
+                <td class="money-col">${num(v.openingFloat)}</td>
+                <td class="money-col">${isOpen ? '—' : num(z.expectedCash)}</td>
+                <td class="money-col">${isOpen ? '—' : num(z.countedCash != null ? z.countedCash : v.countedCash)}</td>
+                <td class="money-col">${isOpen ? '—'
+                    : (balanced
+                        ? '<b style="color: var(--success);">balanced</b>'
+                        : `<b style="color: ${diff < 0 ? 'var(--danger)' : 'var(--warning)'};">`
+                          + `${diff > 0 ? '+' : ''}${money(diff)}</b>`)}</td>
+                <td>${v.note ? escapeHtml(String(v.note)) : '<span style="color: var(--text-faint);">&mdash;</span>'}</td>
+            </tr>`;
+        }).join('') || `<tr><td colspan="14" style="text-align:center;">No till session in this period.</td></tr>`;
+
+        const n = document.getElementById('abShiftNote');
+        if (n) {
+            n.innerHTML = `Showing <b>${Math.min(rows.length, 200)}</b> of <b>${abShifts.length}</b> till session(s) on record`
+                + (rows.length > 200 ? ' — narrow the filter to see the rest' : '')
+                + `.<br><b>Expected</b> = opening float + cash sales &minus; cash refunds. `
+                + `Card money is deliberately <b>not</b> in it &mdash; it never enters the drawer. `
+                + `<br>A closed till cannot be reopened from the shop screen; correcting one is yours alone.`;
         }
     };
 
@@ -19725,7 +19911,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v204';
+        const APP_BUILD = 'v205';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;

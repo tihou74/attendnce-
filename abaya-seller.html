@@ -686,7 +686,7 @@
     <table>
         <tbody id="rcItems"></tbody>
         <tr class="tot">
-            <td colspan="2">Total</td>
+            <td colspan="2" id="rcTotLabel">Total</td>
             <td class="a ltr" id="rcTotal">&mdash;</td>
         </tr>
     </table>
@@ -775,6 +775,14 @@
                  لا يرَينه إطلاقًا — ليس إخفاءَ سرٍّ، بل أنّه ليس عملَهنّ. -->
             <button type="button" id="navDistribute" class="hidden" aria-pressed="false" aria-controls="viewDistribute">
                 <span class="t">Distribute <span class="badge" id="navDistributeBadge">0</span></span>
+            </button>
+            <!-- ⭐⭐⭐⭐⭐ «opening and closing with Z report» — بأمر المالك.
+                 ⚠️ وموضعُه **قبل** «البيع» لا بعده: فتحُ الصندوق أوّلُ ما يُفعل،
+                    وزرٌّ بعد البيع يُقرأ كأنه شيءٌ يُفعل في النهاية وحدها.
+                 ⚠️ والوسمُ يقول الحالةَ بلا فتحِ القسم: «مفتوح» أو «مغلق». وبلا
+                    ذلك تبيع البياعةُ ساعتَين قبل أن تكتشف أنّ الصندوقَ لم يُفتح. -->
+            <button type="button" id="navTill" aria-pressed="false" aria-controls="viewTill">
+                <span class="t">Till <span class="badge" id="navTillBadge">&mdash;</span></span>
             </button>
             <button type="button" id="navSell" aria-pressed="false" aria-controls="viewSell">
                 <span class="t">Sell</span>
@@ -915,7 +923,83 @@
              ⚠️ وموضعُه بعد اختيار المحل عن قصد: النقص يجب أن يقع على **محلّها
              اليوم**، والجهاز مشترك ولا تعمل في محل ثابت (قرار الإدارة).
              ================================================================== -->
+        <!-- ==================================================================
+             ⭐⭐⭐⭐⭐ الصندوق: فتحٌ وإغلاقٌ وتقريرُ Z — بأمر المالك
+             ------------------------------------------------------------------
+             «opening and closing with Z report».
+             ⚠️⚠️ والوردية **للمحلّ لا للبياعة**: الصندوقُ صندوقُ المحلّ، وقد تعمل
+                فيه ثلاثُ بياعاتٍ في يومٍ واحدٍ على نفس الجهاز. فمن فتحته يُسجَّل
+                اسمُها ومن أغلقته يُسجَّل اسمُها، والمالُ مالُ الصندوق.
+             ⚠️⚠️⚠️ ولا يُمنع البيعُ إن لم يُفتح الصندوق — قرارٌ متعمَّدٌ ومعلَنٌ
+                للمالك: بياعةٌ نسيت الفتحَ كان المنعُ سيُوقف محلًّا كاملًا عن
+                البيع. فيُحذَّر بصوتٍ عالٍ، وتُوسَم البيعةُ بلا ورديةٍ فتظهر
+                للمالك في لوحته. والتحذيرُ لا يُخفي شيئًا؛ المنعُ يُوقف عملًا.
+             ⚠️ و«X» تُطبع بلا كتابةٍ إطلاقًا: بلا هذا الزرِّ تُغلق البياعةُ
+                الصندوقَ في منتصف اليوم لمجرّد أن ترى المجموع — فتُقسم ورديّتُها.
+             ================================================================== -->
+        <div class="hidden" id="viewTill">
+        <div class="panel">
+            <h2>The till &mdash; opening and closing</h2>
+            <p class="ar">Open it when you start your shift. Close it when you finish and the <b>Z report</b> prints.</p>
+            <div style="display:flex; flex-wrap:wrap; gap:var(--space-3); align-items:center; margin-bottom:var(--space-4);">
+                <span class="chip" id="tillChipShop">&mdash;</span>
+                <span class="chip" id="tillChipSeller">&mdash;</span>
+            </div>
+            <p class="status" id="tillState">&mdash;</p>
+
+            <!-- ---- الفتح ---- -->
+            <div id="tillOpenBox">
+                <label for="tillFloat">Cash in the till right now
+                    <span style="text-transform:none; font-weight:400;">&mdash; what you are starting with</span></label>
+                <input type="number" id="tillFloat" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+                <!-- ⚠️ الرقمُ **لا يُملأ تلقائيًّا** من إغلاقِ أمس ولو كان معروفًا:
+                     مبلغُ البداية يجب أن يكون **معدودًا** الآن. ورقمٌ مُقترَحٌ
+                     يُضغط عليه Enter بلا عدٍّ يجعل «الفرق» كذبةً مريحة. فيُعرض
+                     إغلاقُ أمس **خبرًا** بجانبه ولا يُكتب في الخانة. -->
+                <p class="ar" id="tillLastNote" style="margin-top: var(--space-2);"></p>
+                <div style="height: var(--space-4);"></div>
+                <button id="tillOpen">Open the till</button>
+            </div>
+
+            <!-- ---- مفتوح: الأرقامُ الجارية، ثمّ الإغلاق ---- -->
+            <div class="hidden" id="tillOpenedBox">
+                <div id="tillLiveBox" style="margin-bottom: var(--space-4);"></div>
+                <div class="bar">
+                    <button class="ghost" id="tillRefresh" style="width:auto;">Refresh the figures</button>
+                    <button class="ghost" id="tillX" style="width:auto;">&#128424; Print an X report</button>
+                </div>
+                <p class="ar" style="margin-top: var(--space-3);">
+                    An <b>X report</b> only prints what has happened so far. It changes nothing and does
+                    <b>not</b> close the till.
+                </p>
+
+                <div style="height: var(--space-5);"></div>
+                <h2>Closing</h2>
+                <label for="tillCounted">Count the cash in the till and type it here</label>
+                <input type="number" id="tillCounted" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+                <p class="status" id="tillDiff" style="margin-top: var(--space-3);"></p>
+                <div style="height: var(--space-3);"></div>
+                <label for="tillNote">Note <span style="text-transform:none; font-weight:400;">&mdash; if something needs explaining</span></label>
+                <input type="text" id="tillNote" maxlength="200" placeholder="e.g. 20 QAR taken for a taxi, receipt in the till">
+                <div style="height: var(--space-4);"></div>
+                <button id="tillClose" style="background:#b91c1c;">Close the till &amp; print the Z report</button>
+            </div>
+
+            <p class="status" id="tillMsg" style="margin-top: var(--space-4);"></p>
+
+            <!-- ---- ما أُغلق اليوم: إعادةُ طباعةِ Z بلا إعادةِ إغلاق ---- -->
+            <div class="hidden" id="tillDoneWrap" style="margin-top: var(--space-5);">
+                <h2>Closed today</h2>
+                <p class="ar">The figures are frozen. Printing again prints the same paper.</p>
+                <div id="tillDoneList"></div>
+            </div>
+        </div>
+        </div><!-- /viewTill -->
+
         <div class="hidden" id="viewSell">
+        <!-- ⚠️⚠️ سطرُ حالةِ الصندوق فوق البيع مباشرةً: هنا تقف البياعةُ وتبيع،
+             وهنا يجب أن تقرأ أنّ الصندوقَ لم يُفتح — لا في قسمٍ آخر لا تدخله. -->
+        <div id="cpTillBar" class="status" style="margin-bottom: var(--space-4); display:none;"></div>
         <div class="panel" id="cpPanel">
             <h2>Sell an abaya</h2>
             <p class="ar">Type the barcode, or press <b>Show the abayas</b> and tap the picture</p>
@@ -1743,6 +1827,25 @@
         s.innerText = msg || '';
         s.className = 'status' + (kind ? ' ' + kind : '');
     }
+    /**
+     * 🔴 رسالةٌ فيها **ترميز** — ولها دالّةٌ خاصّةٌ بها عن قصد.
+     *
+     * ⚠️⚠️ وسببُ وجودها عطلٌ من عندي كان شغّالًا: `setMsg` تكتب `innerText`، وكنتُ
+     *   أبني بها ثلاثَ رسائلَ بـHTML (إكمالُ الفاتورة، الإرجاع، تصحيحُ الدفع).
+     *   فكانت البياعةُ ترى `<b>` و`<br>` و`&#9888;` **مكتوبةً حرفيًّا**، وأخطرُ ما
+     *   في ذلك أنّ `<br>` لا تنكسر — فسطرُ «نقصت الكميّة ولم تُحفظ الفاتورة» يذوب
+     *   داخل سطرٍ واحدٍ طويلٍ بدل أن يقف وحدَه.
+     * ⚠️ ولم تُبدَّل `setMsg` إلى `innerHTML`: نحو خمسين موضعًا تُمرّر إليها نصًّا
+     *   خامًّا، وبعضُه رسائلُ خطإٍ من الخادم. توسيعُها كلِّها لأجل ثلاثةٍ يفتح بابًا
+     *   بلا حاجة. والاسمُ الصريحُ يجعل الفرقَ مقروءًا في موضع النداء.
+     * ⚠️ وكلُّ قيمةٍ تُحقن هنا تمرّ بـ`escapeHtml` في موضع النداء — كما هي أصلًا.
+     */
+    function setMsgHtml(id, html, kind) {
+        const s = el(id);
+        if (!s) return;
+        s.innerHTML = html || '';
+        s.className = 'status' + (kind ? ' ' + kind : '');
+    }
     /** رقم غير سالب، والفراغ صفر. يُعيد null إن كان غير صالح. */
     function num(id, integer) {
         const raw = (el(id) && el(id).value || '').trim();
@@ -1765,6 +1868,7 @@
     const SELLER_VIEWS = {
         attend:     { view: 'viewAttend',     nav: 'navAttend' },
         distribute: { view: 'viewDistribute', nav: 'navDistribute' },
+        till:       { view: 'viewTill',       nav: 'navTill' },
         sell:       { view: 'viewSell',       nav: 'navSell' },
         report:     { view: 'viewReport',     nav: 'navReport' },
         arrivals:   { view: 'viewArrivals',   nav: 'navArrivals' }
@@ -2385,6 +2489,17 @@
         // ⭐⭐ ومهمّاتُ الرفّ تُصفَّر معه ولنفس السبب بالحرف: الجهازُ مشترك، ومهمّةُ
         //   محلٍّ سابقٍ تبقى على الشاشة فتُطبع باركوداتُ بضاعةٍ ليست هنا.
         resetShelfTasks();
+        // ⭐⭐⭐⭐⭐ والصندوقُ يُصفَّر ويُعاد قراءتُه لنفس السبب بالحرف: الوردية
+        //   **للمحلّ**، فوردية «جلف مول» المفتوحةُ على الشاشة بعد الانتقال إلى
+        //   «وست ووك» كانت ستُوسَم بها فواتيرُ محلٍّ آخر — أي مالُ محلٍّ يُحسب في
+        //   صندوق محلٍّ غيرِه، وهو أسوأُ خطإٍ ممكنٍ في هذه الميزة.
+        tillShift = null; tillRecent = []; tillFig = null; tillKnown = false;
+        if (el('tillFloat')) el('tillFloat').value = '';
+        if (el('tillCounted')) el('tillCounted').value = '';
+        if (el('tillNote')) el('tillNote').value = '';
+        setMsg('tillMsg', '', '');
+        tillPaint();
+        tillLoad(true);
         showStep('stepForm');
         // ⚠️ تبدأ على «بصمتي»: أوّلُ ما تفعله في يومها. والزرُّ الآخر بضغطةٍ واحدة.
         showSellerView('attend');
@@ -2413,6 +2528,12 @@
     el('btnBackShop').addEventListener('click', () => showStep('stepShop'));
     // ---- أزرارُ التنقّل بين الأقسام -------------------------------------
     el('navAttend').addEventListener('click', () => showSellerView('attend'));
+    el('navTill').addEventListener('click', () => {
+        showSellerView('till');
+        // ⚠️ تُقرأ الحالةُ من الخادم في كلِّ فتحة: جهازٌ ثانٍ في نفس المحلّ قد فتح
+        //   الصندوقَ أو أغلقه، وشاشةٌ تقول «مغلق» وهو مفتوحٌ تُنتج ورديةً ثانية.
+        tillLoad(true);
+    });
     el('navSell').addEventListener('click', () => {
         showSellerView('sell');
         // ⚠️ الكتالوجُ يُقرأ عند فتح القسم أيضًا: قد تكون الشحنةُ وصلت بعد دخولها.
@@ -4043,6 +4164,20 @@
                     byName: String(state.sellerName || ''),
                     date: todayISO(),
                     time: qatarTimeLabel(soldAt),
+                    /**
+                     * ⭐⭐⭐⭐⭐ الوردية التي بِيعت فيها — وعليها يُبنى تقريرُ Z.
+                     *
+                     * ⚠️⚠️⚠️ ويُوسَم الوسمُ **هنا لحظةَ البيع** ولا يُحسب لاحقًا
+                     *   بنافذةٍ زمنيّةٍ («الفواتيرُ بين الفتح والإغلاق»). والسببُ
+                     *   ليس أناقةً: محلٌّ له ورديتان في يومٍ واحدٍ تحتاج حدودًا
+                     *   بالثانية، وفاتورةٌ وقعت على الحدّ تُحسب في الوردية الخطأ —
+                     *   أي مالٌ يظهر في صندوقٍ لم يدخله. والوسمُ المكتوبُ لا يُختلف
+                     *   فيه ولا يعتمد على ساعةِ جهاز.
+                     * ⚠️ والفراغُ حالةٌ صريحةٌ لا خطأ: بيعةٌ وقعت والصندوقُ لم يُفتح.
+                     *   وهي **لا تُمنع** (قرارٌ معلَنٌ للمالك) بل تُوسَم فراغًا فتظهر
+                     *   له في لوحته باسمها: «بيعٌ خارج وردية».
+                     */
+                    shiftId: tillShiftId(),
                     lines,
                     subtotal: Math.round(t.subtotal * 100) / 100,
                     discountPct: t.pct,
@@ -4132,7 +4267,7 @@
             if (cpSelected) await cpSelect(cpSelected);
             if (!el('cpList').classList.contains('hidden')) cpRenderGrid();
             setMsg('cpMsg', '', '');
-            setMsg('cpFinMsg',
+            setMsgHtml('cpFinMsg',
                 `Invoice <b class="ltr">${escapeHtml(invoiceNo)}</b> &mdash; ${t.pieces} piece(s), `
                 + `<b>${money(t.total)} QAR</b>. Printing.`
                 + (saved ? '' : `<br><b>&#9888; The stock went down but the invoice was NOT saved.</b> `
@@ -4228,6 +4363,10 @@
             `${escapeHtml(`${dp.year}-${dp.month}-${dp.day}`)} &nbsp; ${escapeHtml(qatarTimeLabel(when))}`
             + `<br>Served by: ${escapeHtml(sale.byName || '—')}`;
         el('rcNo').textContent = sale.no || '—';
+        // ⚠️ يُعاد إلى «Total» صريحًا: تقريرُ Z يستعمل نفسَ الورقةِ ويُبدّل هذا
+        //   العنوانَ إلى «OVER / SHORT»، فبلا إعادته تخرج فاتورةُ بيعٍ تالية
+        //   ومجموعُها موسومٌ «SHORT».
+        el('rcTotLabel').textContent = 'Total';
         // ⚠️ «Receipt» لا «Pro forma receipt»: تلك كلمةُ أودو لإيصالٍ قبل تأكيد
         //   الدفع، وهذه بيعةٌ وقعت فعلًا ونقصت من الرفّ.
         el('rcKind').textContent = isReturn ? 'RETURN — refund' : 'Receipt';
@@ -4290,6 +4429,560 @@
             console.error('The receipt could not be prepared (the sale itself is saved):', e);
         }
     }
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ الصندوق: فتحٌ وإغلاقٌ وتقريرُ Z — «opening and closing with Z report»
+    // ---------------------------------------------------------------------
+    // الوردية = جلسةُ صندوقٍ واحدة: من لحظة الفتح إلى لحظة الإغلاق.
+    //
+    // ⚠️⚠️ وهي **للمحلّ لا للبياعة**: الصندوقُ صندوقُ المحلّ، وقد تعمل فيه ثلاثُ
+    //   بياعاتٍ في يومٍ واحدٍ على نفس الجهاز. فمن فتحته يُسجَّل اسمُها، ومن أغلقته
+    //   يُسجَّل اسمُها، والمالُ مالُ الصندوق. ولو رُبطت الورديةُ بالبياعة لصار في
+    //   المحلّ ثلاثةُ صناديقَ وهميّةٍ وصندوقٌ واحدٌ حقيقيٌّ لا يُطابق أيًّا منها.
+    //
+    // ⚠️⚠️⚠️ والأرقامُ تُجمَّد على المستند لحظةَ الإغلاق (`z`) ولا تُحسب من جديدٍ
+    //   عند كلِّ قراءة. والسببُ مالٌ: إرجاعٌ يُسجَّل غدًا على فاتورةٍ بِيعت اليومَ
+    //   كان سيُغيّر تقريرًا **طُبع وعُدّ عليه الصندوقُ ووُقّع**. وتقريرُ Z يتغيّر
+    //   بعد طباعته ليس تقريرَ Z — ولا يصلح لإيجاد نقصٍ في صندوق.
+    // =====================================================================
+    const ABAYA_SHIFTS_COLL = 'abaya_shifts';
+    let tillShift = null;      // الوردية المفتوحة الآن لهذا المحلّ، أو null
+    let tillRecent = [];       // ورديات هذا المحلّ (أمس واليوم)
+    let tillFig = null;        // آخرُ أرقامٍ حُسبت — تُعرض وتُطبع
+    let tillKnown = false;     // هل قرأنا الحالةَ من الخادم فعلًا؟
+    let tillBusy = false;
+
+    /**
+     * أمس بتوقيت قطر.
+     * ⚠️ ولماذا يُقرأ أمسُ مع اليوم: ورديةٌ فُتحت العاشرةَ مساءً ونُسي إغلاقُها
+     *   تُقرأ في الصباح فتُغلق. وبلا ذلك تبقى مفتوحةً إلى الأبد وتُفتح فوقها
+     *   ورديةٌ ثانيةٌ كلَّ يوم.
+     */
+    function yesterdayISO() {
+        const p = qatarParts(new Date(Date.now() - 24 * 3600 * 1000));
+        return `${p.year}-${p.month}-${p.day}`;
+    }
+
+    /**
+     * رقمُ الوردية — وهو نفسُه رقمُ تقرير Z المطبوع ومعرّفُ المستند.
+     * ⚠️ وبنفس الحدِّ المعلَنِ لرقم الفاتورة بالحرف: **ليس عدّادًا متسلسلًا**.
+     *   العدّادُ يحتاج مستندَ عدٍّ ومعاملةً على الخادم، والكشكُ لا يملك الكتابةَ في
+     *   `settings`. وهذا فريدٌ ومقروءٌ ويُرتَّب زمنيًّا — ويُقال ما هو بصدق.
+     */
+    function tillIdFor(shop, when) { return 'Z-' + rcptNumber(shop, when); }
+
+    /** معرّفُ الوردية المفتوحة أو '' — يُوسَم به كلُّ بيعٍ وكلُّ إرجاع. */
+    function tillShiftId() { return tillShift ? String(tillShift.id || '') : ''; }
+
+    /** الفرقُ بين المعدودِ والمتوقَّع — بالهللات الصحيحة لا بالكسور (انظر `fils`). */
+    function tillDiffOf(expected, counted) {
+        const d = (fils(counted) - fils(expected)) / 100;
+        if (fils(counted) === fils(expected)) return { word: 'BALANCED', amount: 0, kind: 'ok' };
+        if (d > 0) return { word: 'OVER', amount: d, kind: 'warn' };
+        return { word: 'SHORT', amount: -d, kind: 'err' };
+    }
+
+    async function tillLoad(force) {
+        if (!state.shop) { tillShift = null; tillRecent = []; tillKnown = false; tillPaint(); return; }
+        try {
+            // ⚠️ الترشيحُ بحقلٍ واحدٍ بـ`in` ثمّ المحلُّ والحالةُ **محليًّا**: لا فهرسَ
+            //   مركّبَ في هذا المشروع بحال، واستعلامٌ يحتاج فهرسًا يرمي خطأً على
+            //   شاشةِ بياعةٍ في وقت الزحمة.
+            const snap = await getDocs(query(collection(db, ABAYA_SHIFTS_COLL),
+                where('date', 'in', [yesterdayISO(), todayISO()])));
+            const rows = [];
+            snap.forEach(d => rows.push(Object.assign({ id: d.id }, d.data() || {})));
+            tillRecent = rows
+                .filter(r => String(r.shop || '') === String(state.shop))
+                .sort((a, b) => String(b.openedAt || '').localeCompare(String(a.openedAt || '')));
+            tillShift = tillRecent.find(r => String(r.status || '') === 'open') || null;
+            tillKnown = true;
+            tillFig = null;
+            tillPaint();
+            if (tillShift) await tillRefreshFigures();
+            return;
+        } catch (e) {
+            console.error('Could not read the till:', e);
+            // ⚠️⚠️ ولا تُخترع حالة: «لا أعرف» أصدقُ من «مغلق». فـ«مغلق» تدفعها إلى
+            //   فتح ورديةٍ ثانيةٍ فوق واحدةٍ مفتوحةٍ فعلًا — فينقسم مالُ اليوم على
+            //   صندوقَين وهميَّين ولا يُطابق أحدُهما ما في الدرج.
+            tillShift = null; tillRecent = []; tillKnown = false;
+            setMsgHtml('tillMsg', `Could not read the till: ${escapeHtml(String((e && e.message) || e))}`
+                + (/permission/i.test(String(e && e.message))
+                    ? ` &mdash; the owner has not published the new rules (v27) yet.` : '')
+                + `<br><b>Do not open a till until this line clears</b> &mdash; there may already be one open.`, 'err');
+        }
+        tillPaint();
+    }
+
+    /**
+     * ⭐⭐⭐⭐⭐ أرقامُ الوردية — وهذا قلبُ الميزة.
+     *
+     * استعلامان، وكلاهما **تساوٍ على حقلٍ واحد** فلا يحتاج فهرسًا مركّبًا:
+     *   ١) `shiftId == id`        ما بِيع في هذه الوردية.
+     *   ٢) `refundShiftId == id`  ما رُدّ ثمنُه فيها — ولو بِيع في ورديةٍ أخرى.
+     *
+     * ⚠️⚠️ وفاتورةٌ بِيعت في هذه الوردية ثمّ أُرجعت في ورديةٍ **لاحقة** تبقى مبيعًا
+     *   هنا: المالُ دخل الدرجَ في هذه الوردية فعلًا، وخرج في تلك. وهكذا تعمل
+     *   الصناديقُ الحقيقيّة — لا يُصحَّح ماضٍ عُدّ ووُقّع عليه.
+     * ⚠️ والمردودُ يُحسب بطريقةِ دفعِ الفاتورة: ما دُفع بالشبكة يعود إلى الشبكة ولا
+     *   يخرج من الدرج. وخصمُه من الكاش كان سيُظهر نقصًا لا وجودَ له.
+     * ⚠️ وفاتورةٌ بلا طريقةِ دفعٍ مسجّلةٍ تُعدّ وتُقال على الورقة، ولا تُنسب إلى
+     *   كاشٍ ولا إلى شبكة: نسبتُها تُفسد مطابقةَ الدرج.
+     */
+    async function tillFigures(shift) {
+        const id = String((shift || {}).id || '');
+        const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+        const z = {
+            invoices: 0, pieces: 0, subtotal: 0, discountAmount: 0, netSales: 0,
+            cashSales: 0, cardSales: 0, noMethod: 0,
+            refundCount: 0, refunds: 0, refundCash: 0, refundCard: 0,
+            openingFloat: r2((shift || {}).openingFloat)
+        };
+        if (!id) return z;
+
+        const soldSnap = await getDocs(query(collection(db, ABAYA_INVOICES_COLL), where('shiftId', '==', id)));
+        soldSnap.forEach(d => {
+            const v = d.data() || {};
+            z.invoices += 1;
+            z.pieces += (v.lines || []).reduce((a, l) => a + (Math.floor(Number(l.qty)) || 0), 0);
+            z.subtotal += Number(v.subtotal) || 0;
+            z.discountAmount += Number(v.discountAmount) || 0;
+            z.netSales += Number(v.total) || 0;
+            const pm = v.payment || {};
+            z.cashSales += Number(pm.cash) || 0;
+            z.cardSales += Number(pm.card) || 0;
+            if (!String(pm.method || '')) z.noMethod += 1;
+        });
+
+        const refSnap = await getDocs(query(collection(db, ABAYA_INVOICES_COLL), where('refundShiftId', '==', id)));
+        refSnap.forEach(d => {
+            const v = d.data() || {};
+            z.refundCount += 1;
+            z.refunds += Number(v.total) || 0;
+            const pm = v.payment || {};
+            z.refundCash += Number(pm.cash) || 0;
+            z.refundCard += Number(pm.card) || 0;
+        });
+
+        ['subtotal', 'discountAmount', 'netSales', 'cashSales', 'cardSales',
+         'refunds', 'refundCash', 'refundCard'].forEach(k => { z[k] = r2(z[k]); });
+        // ⚠️ المتوقَّعُ في الدرج: ما بدأتِ به + كاشُ البيع − كاشُ المردود. والشبكةُ
+        //   ليست فيه بحال — مالُها في البنك لا في الدرج.
+        z.expectedCash = r2(z.openingFloat + z.cashSales - z.refundCash);
+        return z;
+    }
+
+    async function tillRefreshFigures() {
+        if (!tillShift) { tillFig = null; tillRenderLive(); return; }
+        try {
+            tillFig = await tillFigures(tillShift);
+        } catch (e) {
+            console.error('Could not add up the till:', e);
+            tillFig = null;
+            setMsgHtml('tillMsg', `Could not add up the till: ${escapeHtml(String((e && e.message) || e))}`
+                + `<br><b>Do not close it on a figure you cannot see.</b> Press Refresh again.`, 'err');
+        }
+        tillRenderLive();
+    }
+
+    function tillRenderLive() {
+        const box = el('tillLiveBox');
+        if (!box) return;
+        if (!tillShift) { box.innerHTML = ''; return; }
+        if (!tillFig) { box.innerHTML = `<p class="ar">Adding up...</p>`; tillRenderDiff(); return; }
+        const z = tillFig;
+        const m = (n) => `${money(n)} QAR`;
+        const row = (k, v, big) => `<div style="display:flex; justify-content:space-between; gap:12px;`
+            + `${big ? ' font-weight:800; font-size:16px; margin-top:4px;' : ' font-size:13px;'}">`
+            + `<span>${k}</span><span dir="ltr">${v}</span></div>`;
+        box.innerHTML =
+            row(`Invoices &mdash; ${z.pieces} piece(s)`, String(z.invoices))
+            + (z.discountAmount > 0 ? row('Gross', m(z.subtotal)) + row('Discounts', `- ${m(z.discountAmount)}`) : '')
+            + row('Net sales', m(z.netSales), true)
+            + `<div style="height:8px;"></div>`
+            + row('Cash', m(z.cashSales))
+            + row('Card', m(z.cardSales))
+            + (z.noMethod ? row('<b style="color:#b45309;">No payment recorded</b>',
+                                `${z.noMethod} invoice(s)`) : '')
+            + (z.refundCount ? `<div style="height:8px;"></div>`
+                + row(`Refunds (${z.refundCount})`, `- ${m(z.refunds)}`)
+                + (z.refundCash > 0 ? row('&nbsp;&nbsp;out of the till', `- ${m(z.refundCash)}`) : '')
+                + (z.refundCard > 0 ? row('&nbsp;&nbsp;back on the card', `- ${m(z.refundCard)}`) : '') : '')
+            + `<div style="height:10px; border-top:1px dashed var(--color-border, #ccc); margin-top:10px;"></div>`
+            + row('Opening float', m(z.openingFloat))
+            + row('Expected in the till now', m(z.expectedCash), true)
+            + `<p class="ar" style="margin-top:8px;">Card money is <b>not</b> in the till &mdash; it is in the bank.</p>`;
+        tillRenderDiff();
+    }
+
+    /** سطرُ الفرق — يتغيّر مع كلِّ رقمٍ تكتبه، فتعرف قبل أن تُغلق. */
+    function tillRenderDiff() {
+        const out = el('tillDiff');
+        if (!out) return;
+        if (!tillShift || !tillFig) { setMsg('tillDiff', '', ''); return; }
+        const raw = String((el('tillCounted') || {}).value || '').trim();
+        if (raw === '') {
+            setMsgHtml('tillDiff', `Expected in the till: <b dir="ltr">${money(tillFig.expectedCash)} QAR</b>. `
+                + `Count what is actually there and type it above.`, '');
+            return;
+        }
+        const c = Number(raw);
+        if (!isFinite(c) || c < 0) { setMsg('tillDiff', 'That must be a number of zero or more.', 'err'); return; }
+        const d = tillDiffOf(tillFig.expectedCash, c);
+        setMsgHtml('tillDiff',
+            `Expected <b dir="ltr">${money(tillFig.expectedCash)}</b> &middot; `
+            + `counted <b dir="ltr">${money(c)}</b> &rArr; `
+            + `<b>${d.word}${d.amount ? ' ' + money(d.amount) + ' QAR' : ''}</b>`
+            + (d.kind === 'err' ? `<br>Count again before closing. If it is really missing, write why in the note.` : ''),
+            d.kind);
+    }
+
+    function tillPaint() {
+        const badge = el('navTillBadge');
+        const openBox = el('tillOpenBox');
+        const openedBox = el('tillOpenedBox');
+        const bar = el('cpTillBar');
+        if (el('tillChipShop')) el('tillChipShop').innerText = state.shop || '—';
+        if (el('tillChipSeller')) el('tillChipSeller').innerText = state.sellerName || '';
+
+        // ⚠️ ثلاثُ حالاتٍ لا اثنتان: مفتوحٌ · مغلقٌ · **لم نعرف**. وخلطُ الثالثة
+        //   بالثانية هو ما يُنتج ورديةً ثانيةً فوق واحدةٍ مفتوحة.
+        if (!tillKnown) {
+            if (badge) badge.innerText = '?';
+            setMsgHtml('tillState', `<b>The till state is not known yet.</b> Press <b>Till</b> again to read it.`, 'warn');
+            if (openBox) openBox.classList.add('hidden');
+            if (openedBox) openedBox.classList.add('hidden');
+            if (bar) { bar.style.display = 'block'; bar.className = 'status warn';
+                       bar.innerHTML = `The till state is not known &mdash; open the <b>Till</b> section.`; }
+            tillRenderDone();
+            return;
+        }
+        if (tillShift) {
+            const old = String(tillShift.date || '') !== todayISO();
+            if (badge) badge.innerText = 'OPEN';
+            setMsgHtml('tillState',
+                `<b>The till is OPEN</b> &mdash; <span class="ltr">${escapeHtml(tillShift.id || '')}</span>`
+                + `<br>Opened at ${escapeHtml(tillShift.openedTime || '—')} by `
+                + `${escapeHtml(tillShift.openedByName || '—')} with `
+                + `<b dir="ltr">${money(tillShift.openingFloat)} QAR</b> in it.`
+                // ⚠️ ورديةُ أمسِ المنسيّةُ تُقال صريحًا: إغلاقُها اليومَ يُنتج تقريرًا
+                //   يحمل بيعَ يومَين، وهذا يجب أن يُعرف لا أن يُكتشف من ورقة.
+                + (old ? `<br><b style="color:#b45309;">&#9888; This till was opened on `
+                    + `${escapeHtml(tillShift.date || '')}, not today.</b> Closing it now produces one Z report `
+                    + `covering both days. Close it, then open a new one for today.` : ''), old ? 'warn' : 'ok');
+            if (openBox) openBox.classList.add('hidden');
+            if (openedBox) openedBox.classList.remove('hidden');
+            if (bar) { bar.style.display = 'block'; bar.className = 'status ok';
+                       bar.innerHTML = `Till <span class="ltr">${escapeHtml(tillShift.id || '')}</span> is open &mdash; `
+                           + `this invoice will belong to it.`; }
+        } else {
+            if (badge) badge.innerText = 'CLOSED';
+            setMsgHtml('tillState', `<b>The till is closed.</b> Open it before you start selling.`, 'warn');
+            if (openBox) openBox.classList.remove('hidden');
+            if (openedBox) openedBox.classList.add('hidden');
+            // ⚠️⚠️ تحذيرٌ لا منعٌ — قرارٌ متعمَّدٌ ومعلَنٌ للمالك: بياعةٌ نسيت الفتحَ
+            //   كان المنعُ سيُوقف محلًّا كاملًا عن البيع. فتُبَع البيعةُ وتُوسَم
+            //   «خارج وردية» وتظهر للمالك في لوحته باسمها.
+            if (bar) { bar.style.display = 'block'; bar.className = 'status err';
+                       bar.innerHTML = `&#9888; <b>The till is not open.</b> You can still sell, but the sale will `
+                           + `not be on any Z report. Open the <b>Till</b> first.`; }
+            // آخرُ إغلاقٍ معروفٍ — خبرًا بجانب الخانة، ولا يُكتب فيها.
+            const last = tillRecent.find(r => String(r.status || '') === 'closed');
+            const note = el('tillLastNote');
+            if (note) {
+                note.innerHTML = last
+                    ? `The last closing here (${escapeHtml(last.closedTime || '—')}) counted `
+                      + `<b dir="ltr">${money((last.z || {}).countedCash != null ? last.z.countedCash : last.countedCash)} QAR</b>. `
+                      + `<b>Count the till now</b> and type what is really there &mdash; this figure is only for you to compare.`
+                    : `Count the cash in the till and type it. If it is empty, type 0.`;
+            }
+        }
+        tillRenderDone();
+    }
+
+    /** ما أُغلق اليومَ — لإعادة طباعة نفس الورقة بلا إعادة إغلاق. */
+    function tillRenderDone() {
+        const wrap = el('tillDoneWrap');
+        const list = el('tillDoneList');
+        if (!wrap || !list) return;
+        const done = tillRecent.filter(r => String(r.status || '') === 'closed'
+            && String(r.date || '') === todayISO());
+        if (!done.length) { wrap.classList.add('hidden'); list.innerHTML = ''; return; }
+        wrap.classList.remove('hidden');
+        list.innerHTML = done.map(r => {
+            const z = r.z || {};
+            const d = tillDiffOf(Number(z.expectedCash) || 0,
+                                 Number(z.countedCash != null ? z.countedCash : r.countedCash) || 0);
+            return `<div class="cpsold">
+                <span><b dir="ltr">${escapeHtml(r.id || '')}</b>
+                    <br><small style="color: var(--color-text-muted);" dir="ltr">`
+                + `${escapeHtml(r.openedTime || '')} &rarr; ${escapeHtml(r.closedTime || '')} &middot; `
+                + `${money(z.netSales)} QAR &middot; ${escapeHtml(d.word)}`
+                + `${d.amount ? ' ' + money(d.amount) : ''}</small></span>
+                <button type="button" class="ghost" data-tillz="${escapeHtml(r.id || '')}">Print again</button>
+            </div>`;
+        }).join('');
+    }
+
+    async function tillOpenDo() {
+        if (tillBusy) return;
+        if (!state.sellerId) { setMsg('tillMsg', 'Sign in first.', 'err'); return; }
+        if (!state.shop) { setMsg('tillMsg', 'Pick your shop first.', 'err'); return; }
+        const raw = String((el('tillFloat') || {}).value || '').trim();
+        // ⚠️ الفراغُ **لا يُقرأ صفرًا** هنا: صندوقٌ بدأ بصفرٍ حقيقيٍّ حالةٌ صحيحةٌ
+        //   تُكتب 0، أمّا الفراغُ فيعني «لم أعُدّ» — وقبولُه يُنتج فرقًا وهميًّا في
+        //   الإغلاق لا أحدَ يعرف أصلَه.
+        if (raw === '') { setMsg('tillMsg', 'Count the cash in the till first. If it is empty, type 0.', 'err'); return; }
+        const f = Number(raw);
+        if (!isFinite(f) || f < 0) { setMsg('tillMsg', 'The opening cash must be a number of zero or more.', 'err'); return; }
+
+        tillBusy = true;
+        if (el('tillOpen')) el('tillOpen').disabled = true;
+        setMsg('tillMsg', 'Opening...', 'load');
+        try {
+            // ⚠️⚠️ تُقرأ الحالةُ من الخادم **مرّةً أخرى الآن**: جهازٌ ثانٍ في نفس
+            //   المحلّ قد فتح الصندوقَ قبل دقيقة، وشاشةٌ قديمةٌ كانت ستفتح ورديةً
+            //   ثانيةً فينقسم مالُ اليوم على صندوقَين. وهذا يُضيّق النافذةَ ولا
+            //   يُغلقها — بلا معاملةٍ على الخادم لا سبيلَ لإغلاقها، ولوحةُ المالك
+            //   تُظهر «صندوقان مفتوحان في محلٍّ واحد» صريحًا لهذا السبب.
+            await tillLoad(true);
+            if (!tillKnown) { setMsg('tillMsg', 'The till could not be read — not opening on a guess.', 'err'); return; }
+            if (tillShift) {
+                setMsgHtml('tillMsg', `The till in <b>${escapeHtml(state.shop)}</b> is <b>ALREADY open</b> `
+                    + `(<span class="ltr">${escapeHtml(tillShift.id || '')}</span>, opened by `
+                    + `${escapeHtml(tillShift.openedByName || '—')} at ${escapeHtml(tillShift.openedTime || '—')}). `
+                    + `Close that one before opening another.`, 'err');
+                return;
+            }
+            const now = new Date();
+            const id = tillIdFor(state.shop, now);
+            await setDoc(doc(db, ABAYA_SHIFTS_COLL, id), {
+                id: id,
+                shop: String(state.shop),
+                date: todayISO(),
+                openedAt: now.toISOString(),
+                openedTime: qatarTimeLabel(now),
+                openedBy: String(state.sellerId || ''),
+                openedByName: String(state.sellerName || ''),
+                openingFloat: Math.round(f * 100) / 100,
+                status: 'open',
+                createdAt: serverTimestamp()
+            });
+            if (el('tillFloat')) el('tillFloat').value = '';
+            await tillLoad(true);
+            setMsgHtml('tillMsg', `The till is open &mdash; <b class="ltr">${escapeHtml(id)}</b>. `
+                + `Every invoice from now until you close belongs to it.`, 'ok');
+        } catch (e) {
+            console.error('Could not open the till:', e);
+            // ⚠️ كلمةُ الخادم بنصّها: تخمينُ «القواعدُ لم تُنشر» أخفى عليّ عطلًا
+            //   حقيقيًّا من قبل وكلّف المالكَ ثلاثَ نشراتٍ بلا فائدة.
+            setMsgHtml('tillMsg', `Could not open the till: ${escapeHtml(String((e && e.message) || e))}`
+                + (/permission/i.test(String(e && e.message))
+                    ? `<br>Ask the owner to publish the new rules (v27).` : ''), 'err');
+        } finally {
+            tillBusy = false;
+            if (el('tillOpen')) el('tillOpen').disabled = false;
+        }
+    }
+
+    async function tillCloseDo() {
+        if (tillBusy) return;
+        if (!tillShift) { setMsg('tillMsg', 'No till is open.', 'err'); return; }
+        const raw = String((el('tillCounted') || {}).value || '').trim();
+        if (raw === '') { setMsg('tillMsg', 'Count the cash in the till and type it. If it is empty, type 0.', 'err'); return; }
+        const counted = Number(raw);
+        if (!isFinite(counted) || counted < 0) { setMsg('tillMsg', 'The counted cash must be a number of zero or more.', 'err'); return; }
+        const shownNet = tillFig ? tillFig.netSales : null;
+
+        tillBusy = true;
+        if (el('tillClose')) el('tillClose').disabled = true;
+        setMsg('tillMsg', 'Adding the till up...', 'load');
+        try {
+            // ⚠️⚠️ تُحسب الأرقامُ **من جديدٍ الآن** لا تُؤخذ من الشاشة: بياعةٌ على
+            //   جهازٍ ثانٍ قد باعت بينما هذه تعدّ النقود. والورقةُ يجب أن تحمل ما في
+            //   القاعدة لحظةَ الإغلاق.
+            const z = await tillFigures(tillShift);
+            // ⚠️ وإن تغيّر المبيعُ عمّا رأته: **لا يُغلق** ويُقال لها. لأنّ النقودَ
+            //   التي عدّتها كانت مقابلَ رقمٍ آخر — والفرقُ الذي سيُطبع كذبٌ مريح.
+            if (shownNet !== null && fils(z.netSales) !== fils(shownNet)) {
+                tillFig = z;
+                tillRenderLive();
+                setMsgHtml('tillMsg', `<b>A sale happened while you were counting.</b> `
+                    + `Net sales moved from <b dir="ltr">${money(shownNet)}</b> to `
+                    + `<b dir="ltr">${money(z.netSales)} QAR</b>. `
+                    + `The figures above are updated &mdash; count the till again, then close.`, 'warn');
+                return;
+            }
+            z.countedCash = Math.round(counted * 100) / 100;
+            const d = tillDiffOf(z.expectedCash, z.countedCash);
+            // ⚠️ الفرقُ يُخزَّن موقَّعًا: زائدٌ = في الدرج أكثرُ من المتوقَّع،
+            //   وناقصٌ = أقلّ. وكلمةٌ («SHORT») بلا إشارةٍ تمنع أيَّ جمعٍ لاحق.
+            z.difference = Math.round((z.countedCash - z.expectedCash) * 100) / 100;
+            const note = String((el('tillNote') || {}).value || '').trim().slice(0, 200);
+
+            if (!confirm(`Close the till ${tillShift.id}?\n\n`
+                + `Net sales:   ${money(z.netSales)} QAR\n`
+                + `Cash:        ${money(z.cashSales)} QAR\n`
+                + `Card:        ${money(z.cardSales)} QAR\n`
+                + (z.refundCount ? `Refunds:     -${money(z.refunds)} QAR\n` : '')
+                + `\nExpected in the till: ${money(z.expectedCash)} QAR\n`
+                + `You counted:         ${money(z.countedCash)} QAR\n`
+                + `=> ${d.word}${d.amount ? ' ' + money(d.amount) + ' QAR' : ''}\n\n`
+                + `A closed till CANNOT be reopened from this screen, and the Z report `
+                + `is frozen exactly as printed. Only the owner can correct it.`)) {
+                setMsg('tillMsg', 'Not closed. Nothing was saved.', '');
+                return;
+            }
+
+            const now = new Date();
+            // ⚠️ المفاتيحُ التسعةُ هنا هي بالحرف ما تسمح به القاعدة (`hasOnly`)،
+            //   ومفتاحٌ زائدٌ واحدٌ يُرفض معه الإغلاقُ كلُّه. فُحص العدد.
+            await updateDoc(doc(db, ABAYA_SHIFTS_COLL, tillShift.id), {
+                status: 'closed',
+                closedAt: now.toISOString(),
+                closedTime: qatarTimeLabel(now),
+                closedBy: String(state.sellerId || ''),
+                closedByName: String(state.sellerName || ''),
+                countedCash: z.countedCash,
+                note: note,
+                z: z,
+                updatedAt: serverTimestamp()
+            });
+
+            const closed = Object.assign({}, tillShift, {
+                status: 'closed', closedAt: now.toISOString(), closedTime: qatarTimeLabel(now),
+                closedByName: String(state.sellerName || ''), countedCash: z.countedCash, note: note, z: z
+            });
+            if (el('tillCounted')) el('tillCounted').value = '';
+            if (el('tillNote')) el('tillNote').value = '';
+            await tillLoad(true);
+            setMsgHtml('tillMsg', `Closed &mdash; <b class="ltr">${escapeHtml(closed.id)}</b>. `
+                + `<b>${escapeHtml(d.word)}${d.amount ? ' ' + money(d.amount) + ' QAR' : ''}</b>. `
+                + `The Z report is printing, and its figures can no longer change.`
+                + `<br>Remember the money still goes in your daily report as well.`, d.kind);
+            // ⚠️ الطباعةُ **آخرَ شيءٍ وفي حارسٍ خاصّ**: الإغلاقُ هو السجلّ، والورقةُ
+            //   ورقة. فطابعةٌ مفقودةٌ لا يجوز أن تُفهم أنّ الصندوقَ لم يُغلق فتُغلقه
+            //   مرّةً ثانية — والقاعدةُ ترفض الثانية، فتظهر لها رسالةُ صلاحيّاتٍ
+            //   لا معنى لها.
+            tillPrint(closed, z, true);
+        } catch (e) {
+            console.error('Could not close the till:', e);
+            setMsgHtml('tillMsg', `<b>The till was NOT closed:</b> ${escapeHtml(String((e && e.message) || e))}`
+                + (/permission/i.test(String(e && e.message))
+                    ? `<br>Ask the owner to publish the new rules (v27).` : '')
+                + `<br>Nothing was saved. The till is still open.`, 'err');
+        } finally {
+            tillBusy = false;
+            if (el('tillClose')) el('tillClose').disabled = false;
+        }
+    }
+
+    /**
+     * ⭐⭐⭐⭐⭐ ورقةُ التقرير — Z عند الإغلاق، وX أثناء العمل.
+     *
+     * ⚠️⚠️ وتُطبع على **نفس ورقةِ الفاتورة** (`#rcpt`) ولا تُبنى كتلةٌ ثانية: قاعدةُ
+     *   الطباعة تُخفي `body > *:not(#rcpt)`، فكتلةٌ ثانيةٌ كانت ستُخفى بها وتخرج
+     *   الورقةُ **فارغة** — وهو بالحرف العطلُ الذي أخرج ورقةَ الملصقات فارغةً من
+     *   قبل. فالطابعةُ واحدةٌ، والمحتوى والعنوانُ يتغيّران.
+     * ⚠️ والفرقُ هو السطرُ الأخيرُ في Z لا المجموع: هذا ما يُقرأ أوّلًا على ورقةِ
+     *   إغلاقٍ ويُبحث عنه.
+     */
+    function tillPrint(sh, z, closing) {
+        try {
+            const m = (n) => `${money(n)} QR`;
+            const row = (label, val, strong) =>
+                `<tr><td colspan="2"${strong ? ' style="font-weight:700;"' : ''}>${label}</td>`
+                + `<td class="a ltr"${strong ? ' style="font-weight:700;"' : ''}>${val}</td></tr>`;
+            const head = (t) => `<tr><td colspan="3" style="font-weight:700; padding-top:2.5mm;">${t}</td></tr>`;
+            const d = closing ? tillDiffOf(z.expectedCash, z.countedCash) : null;
+
+            el('rcNo').textContent = sh.id || '—';
+            el('rcKind').textContent = closing ? 'Z REPORT — till closed' : 'X REPORT — till still open';
+            el('rcMeta').innerHTML =
+                `${escapeHtml(sh.date || '')} &nbsp; ${escapeHtml(sh.shop || '')}`
+                + `<br>Opened ${escapeHtml(sh.openedTime || '—')} by ${escapeHtml(sh.openedByName || '—')}`
+                + (closing
+                    ? `<br>Closed ${escapeHtml(sh.closedTime || '—')} by ${escapeHtml(sh.closedByName || '—')}`
+                    // ⚠️ ووقتُ طباعةِ X يُكتب: ورقتانِ متشابهتان بلا وقتٍ لا يُعرف أيُّهما الأحدث.
+                    : `<br>Printed ${escapeHtml(qatarTimeLabel(new Date()))} — NOT a closing`);
+
+            el('rcItems').innerHTML =
+                head('SALES')
+                + row('Invoices', String(z.invoices))
+                + row('Pieces', String(z.pieces))
+                + row('Gross', m(z.subtotal))
+                + (z.discountAmount > 0 ? row('Discounts', `- ${m(z.discountAmount)}`) : '')
+                + row('NET SALES', m(z.netSales), true)
+                + head('HOW IT WAS PAID')
+                + row('Cash', m(z.cashSales))
+                + row('Card', m(z.cardSales))
+                + (z.noMethod ? row('Not recorded', `${z.noMethod} invoice(s)`) : '')
+                + (z.refundCount
+                    ? head('REFUNDS')
+                      + row(`Refunds (${z.refundCount})`, `- ${m(z.refunds)}`)
+                      + row('out of the till', `- ${m(z.refundCash)}`)
+                      + row('back on the card', `- ${m(z.refundCard)}`)
+                    : '')
+                + head('THE TILL')
+                + row('Opening float', m(z.openingFloat))
+                + row('+ Cash sales', m(z.cashSales))
+                + (z.refundCash > 0 ? row('- Cash refunds', `- ${m(z.refundCash)}`) : '')
+                + row('EXPECTED IN TILL', m(z.expectedCash), true)
+                + (closing ? row('COUNTED', m(z.countedCash), true) : '');
+
+            el('rcTotLabel').textContent = closing ? d.word : 'EXPECTED IN TILL';
+            el('rcTotal').textContent = closing
+                ? (d.amount ? m(d.amount) : m(0))
+                : m(z.expectedCash);
+
+            el('rcFoot').innerHTML =
+                `${escapeHtml(sh.shop || '')}`
+                + `<br>Card money is not in this till &mdash; it is in the bank.`
+                + (sh.note ? `<br>Note: ${escapeHtml(String(sh.note))}` : '')
+                + (closing ? '' : `<br><b>This is an X report. The till is still open.</b>`)
+                + `<br>Tel: <span class="ltr">${escapeHtml(RCPT_TEL)}</span>`
+                + `<br><span class="ltr">${escapeHtml(RCPT_MAIL)}</span>`;
+
+            setTimeout(() => { try { window.print(); } catch (e) { console.error(e); } }, 120);
+        } catch (e) {
+            console.error('The till report could not be prepared (the closing itself is saved):', e);
+        }
+    }
+
+    // ---- أزرارُ الصندوق ---------------------------------------------------
+    el('tillOpen').addEventListener('click', tillOpenDo);
+    el('tillClose').addEventListener('click', tillCloseDo);
+    el('tillRefresh').addEventListener('click', () => {
+        setMsg('tillMsg', '', '');
+        tillLoad(true);
+    });
+    el('tillX').addEventListener('click', async () => {
+        if (!tillShift) { setMsg('tillMsg', 'No till is open.', 'err'); return; }
+        setMsg('tillMsg', 'Adding up...', 'load');
+        try {
+            // ⚠️ تُحسب من جديدٍ لا تُطبع من الشاشة: ورقةٌ تحمل رقمًا قديمًا أسوأُ من
+            //   لا ورقة. و**لا كتابةَ واحدةً** هنا — X تقرأ فقط.
+            const z = await tillFigures(tillShift);
+            tillFig = z;
+            tillRenderLive();
+            setMsg('tillMsg', 'X report printing. Nothing was changed and the till is still open.', 'ok');
+            tillPrint(tillShift, z, false);
+        } catch (e) {
+            setMsgHtml('tillMsg', `Could not add the till up: ${escapeHtml(String((e && e.message) || e))}`, 'err');
+        }
+    });
+    el('tillCounted').addEventListener('input', tillRenderDiff);
+    el('tillDoneList').addEventListener('click', (ev) => {
+        const b = ev.target.closest('button[data-tillz]');
+        if (!b) return;
+        const sh = tillRecent.find(r => String(r.id || '') === b.getAttribute('data-tillz'));
+        // ⚠️ تُطبع من `z` المجمَّدة على المستند لا بحسابٍ جديد: إعادةُ الطباعة يجب
+        //   أن تُخرج **نفسَ الورقة** حرفًا بحرف، وإرجاعٌ وقع بعد الإغلاق كان
+        //   سيُغيّرها لو حُسبت من جديد.
+        if (sh && sh.z) tillPrint(sh, sh.z, true);
+        else setMsg('tillMsg', 'That closing has no frozen figures to print.', 'err');
+    });
 
     // =====================================================================
     // ⭐⭐⭐⭐⭐ الإرجاع — «إذا حدث مشكل وزبونة ترجع فاتورة»
@@ -4443,7 +5136,7 @@
             cpRet.payment = { method: cpFixPick, cash, card };
             cpRet.paymentCorrections = fixes;
             cpRenderFix();
-            setMsg('cpFixMsg', `Corrected to <b dir="ltr">${escapeHtml(cpPayLabel(cpRet.payment))}</b>. `
+            setMsgHtml('cpFixMsg', `Corrected to <b dir="ltr">${escapeHtml(cpPayLabel(cpRet.payment))}</b>. `
                 + `The first value is kept on the invoice.`, 'ok');
             cpInvLoaded = false;          // القائمةُ تُقرأ من جديدٍ فتُظهر الصحيح
         } catch (e) {
@@ -4552,10 +5245,27 @@
                 await updateDoc(doc(db, ABAYA_INVOICES_COLL, cpRet.no), {
                     status: 'returned',
                     returnedQty: lines.reduce((a, l) => a + (Math.floor(Number(l.qty)) || 0), 0),
+                    /**
+                     * ⭐⭐⭐⭐⭐ الإرجاعُ يُنسب إلى الوردية التي **دُفع فيها المالُ
+                     *   خارجًا**، لا إلى الوردية التي بِيعت فيها القطعة.
+                     *
+                     * ⚠️⚠️ والفرقُ مالٌ حقيقيٌّ: عبايةٌ بِيعت الأسبوعَ الماضي وتُرجَع
+                     *   اليومَ تُخرج المالَ من صندوق **اليوم**. فلو نُسبت إلى وردية
+                     *   البيع لظهر صندوقُ اليوم ناقصًا بلا سبب، وظهرت ورديةٌ قديمةٌ
+                     *   مُغلقةٌ وقد تغيّرت أرقامُها بعد طباعة تقريرها — وهو ما
+                     *   تمنعه هذه الميزةُ من أصلها.
+                     * ⚠️ وحقلٌ في **أعلى** المستند لا داخلَ المصفوفة: فايرستور لا
+                     *   يستعلم عن حقلٍ داخل عناصر مصفوفةٍ بحال، وتقريرُ Z يجب أن
+                     *   يجد مردوداتِه باستعلامٍ واحدٍ على حقلٍ واحد.
+                     */
+                    refundShiftId: tillShiftId(),
                     returns: [{
                         at: at.toISOString(), shop: String(state.shop),
                         by: String(state.sellerId || ''), byName: String(state.sellerName || ''),
-                        amount: Number(cpRet.total) || 0
+                        amount: Number(cpRet.total) || 0,
+                        // ⚠️ ويُكرَّر داخل العنصر كذلك: المستندُ يصير واصفًا لنفسه،
+                        //   ويوم يُبنى «إرجاعٌ جزئيّ» تكون كلُّ عمليّةٍ موسومةً بورديّتها.
+                        shiftId: tillShiftId()
                     }],
                     updatedAt: serverTimestamp()
                 });
@@ -4564,7 +5274,7 @@
 
             if (!el('cpList').classList.contains('hidden')) cpRenderGrid();
             cpRenderRet();
-            setMsg('cpRetMsg',
+            setMsgHtml('cpRetMsg',
                 `Taken back &mdash; ${escapeHtml(back.join(' · '))} back on ${escapeHtml(state.shop)}. `
                 + `Refund <b>${money(cpRet.total)} QAR</b>.`
                 + (failed.length ? `<br><b>&#9888; NOT put back: ${escapeHtml(failed.join(', '))}.</b> Tell the owner.` : '')

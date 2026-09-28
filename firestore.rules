@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v26   (2026-09-28)  <<<
+//   >>>  RULES REVISION: v27   (2026-09-28)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,7 +12,7 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       'fabric', 'colour'
+//       abaya_shifts
 //
 //   (This exact text exists nowhere in any earlier revision, which is the whole
 //    point of a marker. Every earlier marker is now useless for telling the
@@ -29,10 +29,11 @@ rules_version = '2';
 //      "abaya_invoices"             introduced in v23, was the marker for v23
 //      "paymentCorrections"         introduced in v24, was the marker for v24
 //      "abaya_customers"            introduced in v25, was the marker for v25
+//      "'fabric', 'colour'"        introduced in v26, was the marker for v26
 //    Always search for the marker named directly above, and when publishing a
 //    new revision, change that name to something introduced by it.)
 //
-//   FOUND     -> v26 is live. Good.
+//   FOUND     -> v27 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -50,6 +51,46 @@ rules_version = '2';
 // exact mistake happened with the "(v4)" label, which never changed across
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
+//
+//  v27  2026-09-28  + abaya_shifts — OPENING AND CLOSING THE TILL, AND THE
+//                     Z REPORT. PUBLISH v27 — it contains v16..v26 in full.
+//
+//                     The owner: "opening and closing with Z report".
+//
+//                     ONE DOCUMENT PER SHIFT. Id = 'Z-' + shop initials + date +
+//                     the time it was opened, Qatar time — the same scheme as the
+//                     invoice number, and the SAME HONEST LIMIT: it is unique,
+//                     readable and sorts by time, but it is NOT a sequential Z
+//                     counter. A true sequence needs a counter document and a
+//                     transaction, and the kiosk cannot write settings.
+//
+//                     WHY THE KIOSK MAY READ THIS ONE (unlike the daily report,
+//                     which is submit-blind): after a reload the screen has to
+//                     know whether the till is already open, and the closing
+//                     figures have to be shown before they are printed. It holds
+//                     no purchase cost, no supplier and no margin — the blacklist
+//                     below refuses those keys outright.
+//
+//                     ⚠️⚠️ THE CLOSING TOTALS ARE FROZEN ON THE DOCUMENT, in `z`.
+//                     They are NOT recomputed when the Z report is read again.
+//                     A return recorded tomorrow against an invoice sold today
+//                     would otherwise silently change a Z report that was already
+//                     printed, signed and counted against the cash in the drawer.
+//                     A Z report that can change is not a Z report.
+//
+//                     ⚠️ UPDATE IS ONE SHAPE ONLY: closing. There is no rule that
+//                     lets the shop reopen a closed till or rewrite `z`,
+//                     `openingFloat` or `countedCash`. Correcting a closing is the
+//                     owner's, from the dashboard — the same posture as the
+//                     invoice, where a mistake is recorded on top and never
+//                     erased.
+//
+//                     + refundShiftId ON THE INVOICE. A refund belongs to the
+//                     shift in which it was PAID OUT, not the shift that sold the
+//                     piece — the money leaves the drawer today even if the sale
+//                     was last week. It is a top-level field so the closing can
+//                     find its refunds with a single-field query; a value nested
+//                     inside the returns[] array cannot be queried at all.
 //
 //  v26  2026-09-28  + 'colour' ON THE PRODUCT — ONE WORD, AND WHY IT NEEDED A
 //                     REVISION AT ALL.
@@ -1461,13 +1502,64 @@ service cloud.firestore {
       // invoice returned with no stock going back. Apart, each press may write
       // only the fields belonging to it, and NEITHER can touch the lines, the
       // prices, the discount or the total.
+      // ⚠️ 'refundShiftId' أُضيف في v27 إلى **شكل الإرجاع وحدَه**: به يعرف تقريرُ
+      //   Z أيَّ فواتيرَ رُدّ ثمنُها في هذه الوردية. وهو معرّفُ ورديةٍ لا مبلغٌ،
+      //   ولا يُضاف إلى شكل تصحيح الدفع — فتصحيحُ دفعٍ لا شأنَ له بوردية.
       allow update: if isAdmin()
         || ((isViewer() || isKiosk())
             && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['status', 'returns', 'returnedQty', 'updatedAt']))
+                 .hasOnly(['status', 'returns', 'returnedQty', 'refundShiftId', 'updatedAt']))
         || ((isViewer() || isKiosk())
             && request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(['payment', 'paymentCorrections', 'updatedAt']));
+      allow delete: if isAdmin();
+    }
+
+    // ---- abaya_shifts (ONE DOCUMENT PER TILL SESSION — opening to Z) --------
+    // Id = 'Z-GM-260928-093015'  =  'Z-' + shop initials + YYMMDD + the time it
+    // was opened, Qatar time. That string IS the Z number printed on the paper.
+    //
+    // Fields at OPENING: shop, date, openedAt, openedTime, openedBy,
+    //   openedByName, openingFloat, status:'open', createdAt.
+    // Fields added at CLOSING: status:'closed', closedAt, closedTime, closedBy,
+    //   closedByName, countedCash, note, z{...}, updatedAt.
+    //
+    // ⚠️⚠️ WHY THE FIGURES ARE FROZEN IN `z` AND NOT RECOMPUTED ON READ:
+    // a return recorded tomorrow against an invoice sold today would change a Z
+    // report that has already been printed and counted against the cash in the
+    // drawer. The till was reconciled against THOSE numbers, at THAT moment.
+    // A Z report that changes afterwards cannot be used to find a shortfall.
+    //
+    // ⚠️ THE OPENING FLOAT AND THE COUNTED CASH ARE TYPED ON AN ANONYMOUS PAGE,
+    // and these rules cannot prove who pressed — exactly the same, stated limit
+    // as the daily sales report and the petty-cash request. What this DOES buy:
+    // the figures cannot be altered after the close, so a difference that appears
+    // stays visible instead of being quietly tidied away.
+    //
+    // ⚠️ NO COST, NO SUPPLIER, NO MARGIN — refused by key name, the same
+    // blacklist as the invoice. The shift is a cash record, not a purchase one.
+    match /abaya_shifts/{shiftId} {
+      // ⚠️ الكشكُ يقرأ هذه المجموعةَ بخلاف التقرير اليوميّ (المُرسَل بلا قراءة):
+      //   بعد إعادةِ تحميلِ الصفحة يجب أن تعرف الشاشةُ هل الصندوقُ مفتوحٌ سلفًا،
+      //   وإلّا فُتح صندوقٌ ثانٍ فوق الأوّل وانقسم تقريرُ اليوم على ورديتَين وهميّتَين.
+      allow read: if isAdmin() || isAccountant() || isViewer() || isKiosk();
+      allow create: if (isAdmin() || isViewer() || isKiosk())
+        && !request.resource.data.keys().hasAny(
+             ['cost', 'costPerPiece', 'supplier', 'unitUsd', 'usdRate', 'unitQar',
+              'shipping', 'labour', 'totalQar', 'profit', 'margin', 'marginPct',
+              'salary', 'commission']);
+      // ⚠️⚠️ شكلٌ واحدٌ فقط — الإغلاق. ولا قاعدةَ تُعيد فتحَ ورديةٍ مُغلقةٍ ولا
+      //   تُعيد كتابةَ `z` أو `openingFloat`: تصحيحُ إغلاقٍ هو عملُ المالك من
+      //   لوحته، كالفاتورة بالحرف — الخطأُ يُسجَّل فوقَه ولا يُمحى.
+      // ⚠️ و`openingFloat` **ليست** في القائمة عن قصد: مبلغُ البداية يُثبَّت لحظةَ
+      //   الفتح، وتعديلُه بعد ساعاتٍ من البيع يجعل «الفرق» رقمًا لا معنى له.
+      allow update: if isAdmin()
+        || ((isViewer() || isKiosk())
+            && resource.data.status == 'open'
+            && request.resource.data.status == 'closed'
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['status', 'closedAt', 'closedTime', 'closedBy',
+                           'closedByName', 'countedCash', 'note', 'z', 'updatedAt']));
       allow delete: if isAdmin();
     }
 
