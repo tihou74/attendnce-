@@ -1106,6 +1106,23 @@
     .close-modal:hover { background: var(--danger-soft); color: var(--danger); }
 
     .edit-profile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; margin-bottom: 22px; background: var(--surface-2); padding: 22px; border-radius: var(--radius); border: 1px solid var(--border); }
+    /**
+     * 🔴🔴 إخفاءُ أرقام المال — **قاعدةُ CSS لا لقطةُ جافاسكربت**.
+     *
+     * ⚠️⚠️⚠️ كان الإخفاءُ سطرًا واحدًا في applyRoleToUi:
+     *     document.querySelectorAll('.money-only').forEach(el => el.style.display = 'none')
+     *   وهي **لقطةٌ تُؤخذ لحظةَ الدخول**. فكلُّ خانةٍ تُرسم بعدها — وكلُّ جدولٍ
+     *   يُعاد بناؤه — لا تراها تلك اللقطةُ ولا تُخفى أبدًا. والنتيجةُ تسرّبٌ حقيقيٌّ
+     *   كان شغّالًا: عمودُ «Salary was» في تبويب «من تركوا العمل» عنوانُه مخفيٌّ
+     *   (ترميزٌ ثابت) وخاناتُه ظاهرةٌ (تُرسم بجافاسكربت) — **والسكرتيرةُ تملك هذا
+     *   التبويب**، فكانت ترى رواتبَهم كلَّها بخلاف قرار الإدارة الصريح.
+     * ⚠️ والقاعدةُ هنا تُصلح كلَّ موضعٍ حاضرٍ ومستقبليٍّ بلا أن يُتذكّر شيء:
+     *   صنفٌ على العنصر + صنفٌ على body، ولا لقطةَ ولا توقيت.
+     * ⚠️ و`!important` مقصودة: بعضُ المسارات تكتب `style.display` في السطر
+     *   (applyBiz على بطاقات الأرقام)، والنمطُ في السطر يقهر الصنفَ دائمًا.
+     */
+    body.no-money .money-only { display: none !important; }
+
     .money-field { position: relative; }
     .money-field.locked input { opacity: 0.4; pointer-events: none; }
     .lock-note { font-size: 11px; color: var(--text-faint); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
@@ -2959,7 +2976,7 @@
              واحدة على شاشتَي بياعتين — وهو بالضبط ما تجنّبناه بالتصميم المشترك.
              ⚠️ والمفتاح **لا يحذف** سعر الخصم ولا يكتبه: يقول للشاشات
              «اعرضي سعر الخصم الآن». فإغلاق الموسم لا يُفقد رقمًا أُدخل. -->
-        <div class="card" style="border-left: 4px solid var(--accent);">
+        <div class="card" id="acSeasonCard" style="border-left: 4px solid var(--accent);">
             <h3><span data-icon="dollar"></span> Discount season <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">موسم الخصومات</span></h3>
             <p class="card-sub">
                 While this is <b>open</b> every screen shows the discount price of any abaya that has one, with the
@@ -2984,7 +3001,9 @@
         </div>
 
         <!-- ============ إضافة / تعديل عباية ============ -->
-        <div class="card">
+        <!-- ⚠️ المعرّفُ موجودٌ كي تُخفى البطاقةُ عن دورِ البضاعة: الكتالوجُ عندها
+             للقراءة، والقاعدةُ ترفض كتابتَها — فزرٌّ ظاهرٌ يُرجع «صلاحية مرفوضة». -->
+        <div class="card" id="acFormCard">
             <h3><span data-icon="edit"></span> <span id="acFormTitle">Add an abaya</span></h3>
             <p class="card-sub" id="acFormHint">
                 The barcode is the abaya's <b>name in the system</b> and cannot be repeated &mdash; typing a barcode that
@@ -5806,6 +5825,21 @@
     const ROLE_ACCOUNTANT = 'ACCOUNTANT';
     const ROLE_SECRETARY = 'SECRETARY';
     const ROLE_SUPERVISOR = 'SUPERVISOR';
+    /**
+     * ⭐⭐⭐⭐⭐ دورُ «البضاعة» — بأمر المالك: «أريد إضافة بياعة يمكنها الدخول
+     *   للأدمين لكن بمهامَّ محدودة: تسوّي الباركود وتُضيف البضاعة الجديدة، وليس
+     *   لها الحقُّ في رؤية الكوست ولا الرواتب».
+     *
+     * ⚠️⚠️⚠️ وهذا الدورُ **ممنوعٌ من `abaya_arrivals` منعًا تامًّا**، وليس هذا
+     *   تضييقًا زائدًا: مستندُ الشحنة يحمل سعرَ الدولار وسعرَ الصرف والشيبنق
+     *   واللابر والمجموعَ المدفوعَ وكوستَ القطعة **واسمَ المورّد** — كلَّها على
+     *   نفس المستند. وفايرستور **لا يُعيد بعضَ حقولِ مستند**: القراءةُ تأتي به
+     *   كاملًا. فـ«تُدخل البضاعةَ ولا ترى الكوست» لا يتحقّق بإخفاء عمودٍ في
+     *   الشاشة — الرقمُ يصل إلى متصفّحها ويُقرأ بأدواته. ولذلك تُدخل البضاعةَ في
+     *   شاشةِ إدخالٍ مستقلّةٍ لا تحمل مالًا بحال (`abaya_intake`)، ويُسعّرها
+     *   المالكُ بعدها — وهو نفسُ نمطِ `abaya_shelf_tasks` المُقرّ من قبل.
+     */
+    const ROLE_GOODS = 'GOODS';
 
     // الإيميل هو المفتاح، ويجب أن يطابق حرفيًا الحساب المُنشأ في
     // Firebase Console > Authentication > Users. أي إيميل غير مذكور هنا
@@ -5819,7 +5853,15 @@
         'marieanne@alsheikhagroup.qa': ROLE_SECRETARY,
         'bilal.abdulsamad@alsheikhagroup.qa': ROLE_SUPERVISOR,  // بلال عبد الصمد
         'ashraf.alsuhaili@alsheikhagroup.qa': ROLE_SUPERVISOR,  // أشرف السهيلي
-        'vikas@alsheikhagroup.qa': ROLE_SUPERVISOR              // فيكاس
+        'vikas@alsheikhagroup.qa': ROLE_SUPERVISOR,             // فيكاس
+        // ⭐ بياعةُ البضاعة الجديدة والباركود — بأمر المالك.
+        // ⚠️⚠️ والعنوانُ مكتوبٌ بحالتَي الأحرف عن قصد، كما فُعل مع Marieanne:
+        //   الخريطةُ هنا تُصغّر الحروفَ قبل المطابقة، لكن **قواعدَ فايرستور تُقارن
+        //   النصَّ حرفًا بحرف**. فلو أُنشئ الحسابُ بأحرفٍ كبيرةٍ وكانت القائمةُ
+        //   صغيرةً لسقط الدورُ على الافتراض = **مالكٌ كامل الصلاحيّة**. والخطأُ في
+        //   هذا الاتجاه لا يُغتفر، فيُكتب الاحتمالان.
+        'info@sheikhastyle.com': ROLE_GOODS,
+        'INFO@SHEIKHASTYLE.COM': ROLE_GOODS
     };
 
     // التبويبات المسموحة لكل دور، بالترتيب الذي تظهر به.
@@ -5880,7 +5922,18 @@
         // اليومي، فهم أول من يلاحظ رقمًا خاطئًا. يرون ويصحّحون ويُعيدون الإرسال،
         // ولا يحذفون — القاعدة في firestore.rules تمنع الحذف عنهم أيضًا.
         [ROLE_SUPERVISOR]: ['tab-home', 'tab-employees', 'tab-payroll', 'tab-attendance', 'tab-shifts',
-                            'tab-requests', 'tab-applications', 'tab-sales', 'tab-former']
+                            'tab-requests', 'tab-applications', 'tab-sales', 'tab-former'],
+        /**
+         * ⭐⭐⭐⭐⭐ بياعةُ البضاعة: ثلاثُ نوافذَ فقط.
+         *
+         * ⚠️ ولا `tab-home`: الرئيسيّةُ تعرض `homeNetPayroll` — صافيَ الرواتب.
+         * ⚠️ ولا `tab-abaya` ولا `tab-abaya-month`: تقاريرُ مبيعاتٍ وعمولاتٌ ونسبٌ.
+         * ⚠️ ولا `tab-abaya-arrivals`: **هذا هو سجلُّ الشراء** — انظر ROLE_GOODS.
+         * ⚠️ ولا `tab-abaya-invoices`: فيها الكلفةُ والربحُ لكلِّ فاتورة.
+         * ⚠️⚠️ وإخفاءُ التبويب **ليس الحماية**: القواعدُ ترفض كلَّ مجموعةٍ من هذه
+         *   لهذا الدور، وهي الحارس. هذه القائمةُ تمنع الإرباكَ لا الاختراق.
+         */
+        [ROLE_GOODS]: ['tab-abaya-catalog', 'tab-abaya-labels']
     };
 
     let currentRole = ROLE_ADMIN;
@@ -6081,7 +6134,21 @@
      * تُعتبر هذه الدالة حاجزًا أمنيًّا بل منعًا للإرباك ولعرض ما لا يخصّها.
      */
     function canSeeMoney() {
-        return currentRole !== ROLE_SECRETARY;
+        // ⚠️ ودورُ البضاعة معها: «ليس لها الحقُّ في رؤية الكوست» بنصّ المالك.
+        //   وهذا يُخفي عمودَ الكوست في الكتالوج وبطاقتَي «المخزون بالكوست»
+        //   و«بسعر البيع» — أمّا **سعرُ البيع** في شاشة الملصقات فيبقى، وهي
+        //   تحتاجه: هو ما يُطبع على الملصق نفسِه.
+        return currentRole !== ROLE_SECRETARY && currentRole !== ROLE_GOODS;
+    }
+
+    /**
+     * ⭐ من يفتح شاشاتِ البضاعة الوصفيّة: الكتالوجُ والملصقاتُ وشاشةُ الإدخال.
+     * ⚠️ ومنفصلةٌ عن `canSeeAbaya()` عن قصد: تلك تفتح تقاريرَ المبيعات والعمولات
+     *   والكلفة، وهذه تفتح الوصفَ وحدَه. ودمجُهما كان سيُعطي بياعةَ الباركود
+     *   تقريرَ مبيعاتِ المحلات.
+     */
+    function canSeeAbayaGoods() {
+        return canSeeAbaya() || currentRole === ROLE_GOODS;
     }
 
     function hasFinanceAccess() {
@@ -6244,10 +6311,23 @@
         // للمدير والمحاسب. القواعد ترفض التغيير على الخادم أيضًا، فهذا لمنع
         // الإرباك لا للحماية.
         // ⚠️ الصنف money-only كان موجودًا في الترميز ولم يكن يُطبَّق إطلاقًا —
-        // فكانت كل أرقام المال ظاهرة لكل دور. الآن يُخفى فعلًا عن السكرتيرة.
+        // فكانت كل أرقام المال ظاهرة لكل دور. ثم أُخفي عن السكرتيرة.
+        // 🔴🔴 وكان الإخفاءُ **لقطةً** (`querySelectorAll` لحظةَ الدخول) فلا تُخفى
+        //   خانةٌ تُرسم بعدها — وهو تسرّبٌ كان شغّالًا: رواتبُ من تركوا العملَ في
+        //   تبويبٍ تملكه السكرتيرة. صار صنفًا على `body` وقاعدةً في CSS، فيُصلح
+        //   كلَّ موضعٍ حاضرٍ ومستقبليٍّ بلا لقطةٍ ولا توقيت. انظر التعليقَ عند القاعدة.
         const showMoney = canSeeMoney();
-        document.querySelectorAll('.money-only').forEach(el => {
-            el.style.display = showMoney ? '' : 'none';
+        document.body.classList.toggle('no-money', !showMoney);
+
+        // ⭐⭐⭐⭐⭐ دورُ «البضاعة»: الكتالوجُ عندها **للقراءة**. فتُخفى بطاقةُ
+        //   الإضافة/التعديل وبطاقةُ موسم الخصم — وليس إخفاءً تجميليًّا: القاعدةُ
+        //   ترفض كتابتَها على `abaya_products` و`settings`، فزرٌّ ظاهرٌ يُرجع
+        //   «صلاحية مرفوضة» يجعلها تُبلّغ عن عطلٍ لا وجودَ له. (نفسُ الدرس الذي
+        //   طُبّق على بطاقة الأوت سورس عند السكرتيرة.)
+        const ownsCatalogue = canEditAbayaSetup();
+        ['acFormCard', 'acSeasonCard'].forEach(id => {
+            const c = document.getElementById(id);
+            if (c) c.style.display = ownsCatalogue ? '' : 'none';
         });
 
         // ⭐⭐⭐ بطاقةُ شركة الأوت سورس في «الحالة الإدارية»: للقراءة عند من لا
@@ -6318,7 +6398,10 @@
                 [ROLE_ADMIN]: 'Owner — full access',
                 [ROLE_ACCOUNTANT]: 'Accountant — payroll & finance',
                 [ROLE_SECRETARY]: 'Secretary — profiles, warnings & requests',
-                [ROLE_SUPERVISOR]: 'Supervisor — profiles, attendance & requests'
+                [ROLE_SUPERVISOR]: 'Supervisor — profiles, attendance & requests',
+                // ⚠️ الشارةُ تقول حدَّ الصلاحيّة بالحرف: من يقرأ «Goods» وحدَها
+                //   يظنّ أنّ شيئًا ما ناقصٌ حين لا يجد نافذةً.
+                [ROLE_GOODS]: 'Goods & barcodes — no cost, no salaries'
             }[currentRole] || currentRole;
             badge.innerText = label;
             // ⚠️⚠️ inline-flex لا inline-block: صارت الشارةُ نقطةً ملوّنةً (::before)
@@ -7050,6 +7133,22 @@
 
     window.initDashboard = async function() {
         beginLoadCycle();
+        /**
+         * ⭐⭐⭐⭐⭐ دورُ البضاعة يتوقّف هنا — ولا يُنادى شيءٌ من قارئات الموظفين.
+         *
+         * ⚠️⚠️ والسببُ ليس السرعة: `employees` و`deductions` و`settings`
+         *   و`annual_leaves` و`attendance` **ترفضها القاعدةُ كلَّها** لهذا الدور.
+         *   ونداؤها يُنتج سلسلةَ رفضٍ في الكونسول، **وقد يقطع السلسلةَ عند أوّل
+         *   رميةٍ فلا يُرسم تبويبُها إطلاقًا** — فتفتح اللوحةَ فتراها فارغةً ولا
+         *   تعرف السبب. والصمتُ عن قراءةٍ نعرف يقينًا أنها مرفوضةٌ أصدقُ من
+         *   محاولتها ثمّ التقاطِ خطئها.
+         * ⚠️ ويُعلَن نجاحُ الدورة صريحًا: حارسُ إعادة المحاولة يقيس عليها، وبلا
+         *   ذلك يظنّ الإقلاعَ متعثّرًا فيُعيده إلى الأبد.
+         */
+        if (currentRole === ROLE_GOODS) {
+            loadCycleSucceeded();
+            return;
+        }
         await loadEmployees();
         await loadDeductions();
         await loadAllowancePayments();
@@ -14492,22 +14591,40 @@
      * ISO من المتصفّح (لا serverTimestamp) فلا يمكن أن يغيب فيسقط السطر.
      */
     window.loadAbayaCatalog = async function(force) {
-        if (!canSeeAbaya()) return;
+        // ⚠️ `canSeeAbayaGoods` لا `canSeeAbaya`: بياعةُ الباركود تفتح الكتالوجَ
+        //   والملصقاتِ (وكلتاهما تقرأ هذه الدالّة)، ولا تفتح تقاريرَ المبيعات.
+        if (!canSeeAbayaGoods()) return;
         const body = document.getElementById('acBody');
         if (body && !abayaCatalogLoaded) {
             body.innerHTML = `<tr><td colspan="13" style="text-align:center;">Loading...</td></tr>`;
         }
         try {
-            const [prodSnap, costSnap, moveSnap, seasonSnap] = await Promise.all([
+            const [prodSnap, moveSnap, seasonSnap] = await Promise.all([
                 getDocs(collection(db, ABAYA_PRODUCTS_COLL)),
-                // الكوست: مجموعةٌ مستقلّة لا يقرؤها الكشك — انظر الملاحظة فوق الثابت.
-                getDocs(collection(db, ABAYA_PRODUCT_COSTS_COLL)),
                 getDocs(query(collection(db, ABAYA_PRODUCT_MOVES_COLL), orderBy('at', 'desc'), limit(ABAYA_MOVES_SHOWN))),
                 getDoc(doc(db, 'settings', ABAYA_DISCOUNT_DOC))
             ]);
 
+            /**
+             * ⭐⭐⭐⭐ الكوست: قراءةٌ **مستقلّةٌ بحارسها وبـtry خاصّ**، ونُزعت من
+             *   Promise.all عن قصد.
+             *
+             * ⚠️⚠️ لأنّ `abaya_product_costs` **مرفوضةٌ بالقاعدة** لدور البضاعة —
+             *   وهي مجموعةٌ مستقلّةٌ لهذا السببِ بالذات منذ البداية. ولو بقيت في
+             *   Promise.all لأسقط رفضُها **الكتالوجَ كلَّه**: فترى شاشةً فارغةً
+             *   ورسالةَ «صلاحية مرفوضة» على بضاعةٍ من حقِّها أن تراها.
+             * ⚠️ والفراغُ هنا معناه «لا أعرف الكوست» لا «الكوستُ صفر»: عمودُه
+             *   مخفيٌّ عنها أصلًا بـ`money-only`، فلا يُعرض صفرٌ كاذب.
+             */
             const costById = {};
-            costSnap.forEach(d => { costById[d.id] = Number((d.data() || {}).cost || 0) || 0; });
+            if (canSeeMoney()) {
+                try {
+                    const costSnap = await getDocs(collection(db, ABAYA_PRODUCT_COSTS_COLL));
+                    costSnap.forEach(d => { costById[d.id] = Number((d.data() || {}).cost || 0) || 0; });
+                } catch (e) {
+                    console.error('The costs were not read (the catalogue itself is fine):', e);
+                }
+            }
 
             abayaProducts = [];
             prodSnap.forEach(d => {
@@ -14673,7 +14790,10 @@
     }
 
     window.renderAbayaCatalog = function() {
-        if (!canSeeAbaya()) return;
+        // ⚠️⚠️ `canSeeAbayaGoods` لا `canSeeAbaya` — وهذا سطرٌ كان سيُفرغ شاشتَها
+        //   تمامًا: القراءةُ تنجح والبياناتُ تصل، ثم يعود الرسمُ من أوّل سطرٍ فترى
+        //   جدولًا فارغًا بلا رسالةِ خطإٍ ولا سبب. وأسوأُ الأعطال ما لا يقول شيئًا.
+        if (!canSeeAbayaGoods()) return;
         buildAbayaCatalogShopInputs();
         const shop = String((document.getElementById('acFilterShop') || {}).value || '');
         const rows = abayaCatalogRows();
@@ -19911,7 +20031,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v205';
+        const APP_BUILD = 'v206';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;

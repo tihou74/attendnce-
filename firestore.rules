@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v27   (2026-09-28)  <<<
+//   >>>  RULES REVISION: v28   (2026-09-28)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,7 +12,7 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       abaya_shifts
+//       isGoodsClerk
 //
 //   (This exact text exists nowhere in any earlier revision, which is the whole
 //    point of a marker. Every earlier marker is now useless for telling the
@@ -30,10 +30,11 @@ rules_version = '2';
 //      "paymentCorrections"         introduced in v24, was the marker for v24
 //      "abaya_customers"            introduced in v25, was the marker for v25
 //      "'fabric', 'colour'"        introduced in v26, was the marker for v26
+//      "abaya_shifts"               introduced in v27, was the marker for v27
 //    Always search for the marker named directly above, and when publishing a
 //    new revision, change that name to something introduced by it.)
 //
-//   FOUND     -> v27 is live. Good.
+//   FOUND     -> v28 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -51,6 +52,65 @@ rules_version = '2';
 // exact mistake happened with the "(v4)" label, which never changed across
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
+//
+//  v28  2026-09-28  + isGoodsClerk() — A SALESWOMAN IN THE DASHBOARD, WITH
+//                     NEITHER COST NOR SALARIES. PUBLISH v28 — it contains
+//                     v16..v27 in full.
+//
+//                     The owner: "a saleswoman who can sign into the dashboard
+//                     but with limited duties — she does the barcodes and adds
+//                     the new goods, and she has no right to see the cost nor
+//                     the salaries."
+//
+//                     ⚠️⚠️⚠️ THE ONE THING THAT MADE THIS NON-OBVIOUS, AND IT IS
+//                     A PROPERTY OF FIRESTORE, NOT A CHOICE:
+//                     an `abaya_arrivals` document carries the dollar price, the
+//                     rate, the shipping, the labour, the total paid, the cost of
+//                     one piece AND THE SUPPLIER'S NAME — all on the same
+//                     document. Firestore cannot return SOME FIELDS of a
+//                     document; a read brings the whole thing. So "she records
+//                     the shipment but never sees its cost" CANNOT be delivered
+//                     by hiding a column: the figure would arrive in her browser
+//                     and be readable from its own dev tools.
+//                     She is therefore REFUSED abaya_arrivals outright, and her
+//                     goods-in screen writes to a separate money-free collection
+//                     that the owner then prices. That is the same shape as
+//                     abaya_shelf_tasks — a safe copy instead of a widened rule.
+//
+//                     WHAT SHE IS GRANTED, and nothing more:
+//                       abaya_products        read   (the catalogue + the labels;
+//                                                     carries price, never cost)
+//                       abaya_product_images  read   (she must see the piece)
+//                       abaya_product_moves   read   (stock ledger, no money)
+//                       settings/abaya_discount read (ONE document, see below)
+//
+//                     ⚠️ WHY ONE SETTINGS DOCUMENT AND NOT THE COLLECTION: that
+//                     collection also holds financial_rates, cash_account and
+//                     **salary_payouts**. Granting her the collection to reach
+//                     the discount switch would hand her the payroll payouts.
+//                     Rules are additive, so a second, narrower match on that one
+//                     document grants exactly it. And she does need it: without
+//                     the discount switch the label screen would print the
+//                     pre-discount price during a discount season.
+//
+//                     WHAT SHE IS REFUSED, deliberately and by name:
+//                       abaya_arrivals · abaya_arrival_images ·
+//                       abaya_product_costs · abaya_sales_reports ·
+//                       abaya_invoices · abaya_shifts · employees ·
+//                       employee_pins · employee_offers · deductions ·
+//                       attendance · annual_leaves · allowance_payments ·
+//                       settings (the collection) · financial_* · manager_*
+//
+//                     ⚠️⚠️ AND THE STRUCTURAL TRAP, WRITTEN DOWN SO IT IS NOT
+//                     REPEATED: isAdmin() is defined BY EXCLUSION — "a real login
+//                     on none of the restricted lists". An address that is not
+//                     folded into that exclusion IS THE OWNER, server-side, with
+//                     full access to salaries and purchase prices, no matter what
+//                     the dashboard hides. So isGoodsClerk() had to be added to
+//                     isAdmin()'s exclusion list, NOT merely given grants. She is
+//                     also kept OUT of isStaff(): that single function is what
+//                     grants employees, deductions, employee_offers and settings
+//                     — i.e. every salary figure in the system.
 //
 //  v27  2026-09-28  + abaya_shifts — OPENING AND CLOSING THE TILL, AND THE
 //                     Z REPORT. PUBLISH v27 — it contains v16..v26 in full.
@@ -658,6 +718,29 @@ function isSupervisor() {
   ];
 }
 
+/**
+ * The GOODS CLERK: a saleswoman who works the barcodes and the new goods from
+ * the dashboard, and who may see neither purchase cost nor any salary.
+ *
+ * ⚠️⚠️ Written in BOTH letter cases on purpose. The dashboard lowercases the
+ * address before it looks the role up; these rules compare the token string
+ * LITERALLY. So if the Firebase account was created as INFO@SHEIKHASTYLE.COM and
+ * this list held only the lowercase form, she would match no list here — and
+ * isAdmin() is defined by exclusion, so she would be THE OWNER server-side. An
+ * error in that direction cannot be taken back, so both forms are listed.
+ * (The same reasoning as the two accepted addresses for the secretary.)
+ *
+ * ⚠️ She is deliberately NOT part of isStaff(): that function grants employees,
+ * employee_pins, employee_offers, deductions and settings — every salary figure
+ * in the system. She is excluded from isAdmin() separately instead.
+ */
+function isGoodsClerk() {
+  return isRealLogin() && request.auth.token.email in [
+    'info@sheikhastyle.com',
+    'INFO@SHEIKHASTYLE.COM'
+  ];
+}
+
 // Any restricted dashboard role.
 function isStaff() {
   return isAccountant() || isSecretary() || isSupervisor();
@@ -718,7 +801,12 @@ function isViewer() {
 // The OWNER: a real email/password login that is on none of the restricted
 // lists. Only this account has full access to everything.
 function isAdmin() {
-  return isRealLogin() && !isViewer() && !isStaff();
+  // ⚠️⚠️⚠️ EVERY new restricted role MUST be added to this exclusion. isAdmin()
+  // is "a real login on none of the lists" — so an address that is granted
+  // things elsewhere but forgotten HERE is the OWNER, with the salaries and the
+  // purchase prices, whatever the dashboard shows. Grants are not a boundary;
+  // this line is.
+  return isRealLogin() && !isViewer() && !isStaff() && !isGoodsClerk();
 }
 
 function isKiosk() {
@@ -816,6 +904,24 @@ service cloud.firestore {
     match /settings/{docId} {
       allow read: if isAdmin() || isStaff() || isKiosk() || isViewer();
       allow write: if isAdmin() || isAccountant();
+    }
+
+    // ---- settings/abaya_discount — ONE DOCUMENT, FOR THE GOODS CLERK ---------
+    // ⚠️⚠️ WHY A SECOND, NARROWER MATCH INSTEAD OF WIDENING match /settings/{docId}:
+    // that collection also holds financial_rates, cash_account and
+    // **salary_payouts**. Widening it to reach one switch would hand her the
+    // payroll payouts — the exact figure she must never see.
+    // Firestore rules are ADDITIVE: any matching allow grants. So this grants
+    // precisely this one document and nothing else in the collection.
+    //
+    // ⚠️ And she genuinely needs it: the label screen prints the price that is
+    // being charged TODAY. Without the discount switch it would print the
+    // pre-discount price during a discount season — a wrong price on a printed
+    // label, stuck to a garment, argued over at the counter.
+    //
+    // READ ONLY. Opening and closing the season stays the owner's.
+    match /settings/abaya_discount {
+      allow read: if isGoodsClerk();
     }
 
     // ---- employee_warnings (Warning Letters tab) ----------------------------
@@ -1236,7 +1342,7 @@ service cloud.firestore {
     //
     //   DELETE stays the owner's alone.
     match /abaya_products/{productId} {
-      allow read: if isAdmin() || isAccountant() || isViewer() || isKiosk();
+      allow read: if isAdmin() || isAccountant() || isViewer() || isKiosk() || isGoodsClerk();
       allow create: if isAdmin() || isViewer();
       allow delete: if isAdmin();
       allow update: if isAdmin()
@@ -1324,7 +1430,9 @@ service cloud.firestore {
     // That restraint is in her page, not in this rule, because a rule cannot read
     // the old document's hasImage flag on a create.
     match /abaya_product_images/{productId} {
-      allow read: if isAdmin() || isAccountant() || isViewer() || isKiosk();
+      // ⚠️ والبياعةُ تقرأ الصورَ: عملُها التعرّفُ على القطعة وطباعةُ ملصقها،
+      //   وكتالوجٌ بلا صورٍ يجعلها تُطابق بالباركود وحدَه فتُخطئ.
+      allow read: if isAdmin() || isAccountant() || isViewer() || isKiosk() || isGoodsClerk();
       allow write: if isAdmin() || isViewer();
     }
 
@@ -1345,7 +1453,9 @@ service cloud.firestore {
     // the exact question this log exists to answer.
     // Update stays closed to everyone, as before: a correction is a NEW line.
     match /abaya_product_moves/{moveId} {
-      allow read: if isAdmin() || isAccountant() || isViewer();
+      // ⚠️ سجلُّ الحركة **لا يحمل مالًا** (عددٌ ومحلٌّ وسبب)، وشاشةُ الكتالوج
+      //   تعرضه. وبلا قراءتِه تُرفض قراءةُ الكتالوج كلِّها عندها.
+      allow read: if isAdmin() || isAccountant() || isViewer() || isGoodsClerk();
       allow create: if isKiosk() || isAdmin() || isViewer();
       allow update: if false;
       allow delete: if isAdmin();
