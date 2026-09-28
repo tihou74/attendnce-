@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v28   (2026-09-28)  <<<
+//   >>>  RULES REVISION: v29   (2026-09-28)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,7 +12,7 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       isGoodsClerk
+//       abaya_intake
 //
 //   (This exact text exists nowhere in any earlier revision, which is the whole
 //    point of a marker. Every earlier marker is now useless for telling the
@@ -31,10 +31,11 @@ rules_version = '2';
 //      "abaya_customers"            introduced in v25, was the marker for v25
 //      "'fabric', 'colour'"        introduced in v26, was the marker for v26
 //      "abaya_shifts"               introduced in v27, was the marker for v27
+//      "isGoodsClerk"               introduced in v28, was the marker for v28
 //    Always search for the marker named directly above, and when publishing a
 //    new revision, change that name to something introduced by it.)
 //
-//   FOUND     -> v28 is live. Good.
+//   FOUND     -> v29 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -52,6 +53,40 @@ rules_version = '2';
 // exact mistake happened with the "(v4)" label, which never changed across
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
+//
+//  v29  2026-09-28  + abaya_intake — GOODS RECORDED BY SOMEONE WHO MAY NOT SEE
+//                     WHAT THEY COST. PUBLISH v29 — it contains v16..v28 in full.
+//
+//                     The owner: "she must have access to the new goods that
+//                     arrived — she creates a barcode, the colour and the
+//                     quantity; after that I enter anything to do with price."
+//
+//                     THIS IS THE COLLECTION THAT MAKES THAT POSSIBLE, and it
+//                     exists for one reason: an abaya_arrivals document carries
+//                     the dollar price, the rate, the shipping, the labour, the
+//                     total paid, the cost per piece and the supplier, all
+//                     inline — and Firestore cannot return part of a document.
+//                     So she is not given a narrower view of an arrival; she is
+//                     given a DIFFERENT DOCUMENT that has no money in it at all.
+//                     Same shape as abaya_shelf_tasks, for the same reason.
+//
+//                     ⚠️⚠️ THE MONEY KEYS ARE REFUSED BY NAME ON CREATE AND ON
+//                     UPDATE, not merely absent from her screen. A blacklist on
+//                     the server is what makes "no money in this collection" a
+//                     fact rather than a hope: if a future version of the page
+//                     ever tried to write a price here, the write would fail
+//                     loudly instead of quietly turning her screen into a second
+//                     purchase record.
+//
+//                     ⚠️ SHE MAY EDIT AND DELETE ONLY WHILE status == 'waiting'.
+//                     Once the owner has priced it and turned it into a real
+//                     shipment it is 'accepted', and it stops being hers — the
+//                     arrival now carries the money and the catalogue line may
+//                     already exist. Changing the descriptive row underneath
+//                     that would leave two records disagreeing about one piece.
+//
+//                     ⚠️ ONLY THE OWNER MAY SET status. She cannot mark her own
+//                     row accepted, so she cannot make a shipment appear priced.
 //
 //  v28  2026-09-28  + isGoodsClerk() — A SALESWOMAN IN THE DASHBOARD, WITH
 //                     NEITHER COST NOR SALARIES. PUBLISH v28 — it contains
@@ -1623,6 +1658,78 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(['payment', 'paymentCorrections', 'updatedAt']));
       allow delete: if isAdmin();
+    }
+
+    // ---- abaya_intake (GOODS AS THE SALESWOMAN RECORDS THEM — NO MONEY) -----
+    // One document per batch she records: code, productId, name, type, colour,
+    // colourCode, fabric, fabricCode, size, pieces, note, status, hasImage,
+    // createdBy, createdByName, createdAt, updatedAt — and, once the owner has
+    // priced it, acceptedAt / acceptedBy / arrivalId.
+    //
+    // ⚠️⚠️⚠️ WHY THIS COLLECTION EXISTS AT ALL, and it is not a convenience:
+    // the owner wants her to record arriving goods while never seeing what they
+    // cost. An abaya_arrivals document holds the dollar price, the rate, the
+    // shipping, the labour, the total paid, the cost of one piece AND the
+    // supplier — on the same document. Firestore has no field-level read: a read
+    // brings the whole document. So there is no version of "let her see the
+    // shipment but not its price". She writes HERE, where no such field exists,
+    // and the owner converts it into a priced arrival from his own screen.
+    //
+    // ⚠️⚠️ THE MONEY KEYS ARE REFUSED BY NAME, on create AND on update. That is
+    // what makes "there is no money in this collection" a fact enforced by the
+    // server rather than a property of today's page. If some future edit tried
+    // to write a price here it would fail loudly, instead of quietly turning her
+    // screen into a second purchase record that she can read.
+    //
+    // ⚠️ She may edit and delete only while it is still 'waiting'. Once the owner
+    // has priced it, the arrival carries the money and a catalogue line may
+    // already exist; rewriting the descriptive row underneath that would leave
+    // two records disagreeing about one piece.
+    //
+    // ⚠️ And she may not set `status` at all — only the owner accepts. Otherwise
+    // she could mark her own row accepted and make goods look priced when no
+    // price was ever entered.
+    //
+    // ⚠️ No `supplier` field here either, and it is refused by name: the supplier
+    // is a purchase secret by the same rule that closes abaya_arrivals to her.
+    match /abaya_intake/{intakeId} {
+      allow read: if isAdmin() || isAccountant() || isGoodsClerk();
+      allow create: if (isAdmin() || isGoodsClerk())
+        && request.resource.data.get('status', '') == 'waiting'
+        && !request.resource.data.keys().hasAny(
+             ['cost', 'costPerPiece', 'supplier', 'source', 'unitUsd', 'usdRate',
+              'unitQar', 'shipping', 'labour', 'totalQar', 'suggestedPrice',
+              'sellingPrice', 'price', 'discountPrice', 'profit', 'margin',
+              'marginPct', 'salary', 'commission']);
+      allow update: if isAdmin()
+        || (isGoodsClerk()
+            && resource.data.status == 'waiting'
+            && !request.resource.data.keys().hasAny(
+                 ['cost', 'costPerPiece', 'supplier', 'source', 'unitUsd', 'usdRate',
+                  'unitQar', 'shipping', 'labour', 'totalQar', 'suggestedPrice',
+                  'sellingPrice', 'price', 'discountPrice', 'profit', 'margin',
+                  'marginPct', 'salary', 'commission'])
+            // ⚠️ `status` غائبٌ عن هذه القائمة عن قصد: هي تُصحّح وصفًا ولا تقبل
+            //   بضاعتَها بنفسها. والقبولُ كتابةُ المالك وحدَه.
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['code', 'productId', 'name', 'type', 'size',
+                           'colour', 'colourCode', 'fabric', 'fabricCode',
+                           'pieces', 'note', 'hasImage', 'updatedAt',
+                           'updatedBy']));
+      allow delete: if isAdmin()
+        || (isGoodsClerk() && resource.data.status == 'waiting');
+    }
+
+    // ---- abaya_intake_images (her photograph of the goods) ------------------
+    // ⚠️ A separate document for the same reason as every other image collection
+    // here: Firestore's ceiling is 1 MB per document, and a base64 photograph on
+    // the record itself would eventually make not only the photo fail but EVERY
+    // later edit to that record fail.
+    // ⚠️ The kiosk is refused: this is keyed to intake, which the shop floor has
+    // no part in.
+    match /abaya_intake_images/{intakeId} {
+      allow read: if isAdmin() || isAccountant() || isGoodsClerk();
+      allow write: if isAdmin() || isGoodsClerk();
     }
 
     // ---- abaya_shifts (ONE DOCUMENT PER TILL SESSION — opening to Z) --------

@@ -1440,6 +1440,10 @@
             <!-- ⭐⭐⭐⭐⭐ بأمر المالك: «أريد أن أجعل هذا نظام بيع». وأوّلُ ناقصٍ
                  أنّ لوحتَه **لا ترى الفواتير إطلاقًا** — يملك فواتيرَ لا يقرؤها. -->
             <button class="nav-tab-btn" data-tab="tab-abaya-invoices" data-biz="abaya" data-group="abaya"><span class="ic-slot" data-icon="fileText"></span><span class="tab-label">Abaya &mdash; Invoices</span></button>
+            <!-- ⭐⭐⭐⭐⭐ «البضاعة الواصلة» — تُدخلها البياعة، ويُسعّرها المالك.
+                 ⚠️ ونافذةٌ مستقلّةٌ عن «البضاعة الجديدة» لا قسمٌ داخلها: تلك تحمل
+                    سعرَ الشراء والمورّد، وهذه مجموعةٌ أخرى بلا مالٍ إطلاقًا. -->
+            <button class="nav-tab-btn" data-tab="tab-abaya-intake" data-biz="abaya" data-group="abaya"><span class="ic-slot" data-icon="inbox"></span><span class="tab-label">Abaya &mdash; Goods Arrived</span></button>
             <button class="nav-tab-btn" data-tab="tab-abaya-labels" data-biz="abaya" data-group="abaya"><span class="ic-slot" data-icon="inbox"></span><span class="tab-label">Abaya &mdash; Barcode Labels</span></button>
 
             <div class="rail-group" data-group="system">System</div>
@@ -3434,6 +3438,24 @@
         </details>
 
         <!-- ============ الجدول ============ -->
+        <!-- ⭐⭐⭐⭐⭐ ما سجّلته البياعةُ وينتظر سعرًا — بأمر المالك:
+             «هي تُنشئ باركود واللون والكمية، بعدها أنا أُدخل أيَّ شيءٍ متعلّقٍ بالسعر».
+             ⚠️ وموضعُها **فوق** جدول الوصولات: هذا عملٌ ينتظره أحدٌ، وجدولُ
+                الوصولات أرشيف. وعملٌ ينتظر أسفلَ أرشيفٍ طويلٍ لا يُرى. -->
+        <div class="card" id="ikWaitCard" style="display:none; border-left: 4px solid var(--accent);">
+            <h3><span data-icon="inbox"></span> Recorded by the shop &mdash; waiting for a price</h3>
+            <p class="card-sub">She has entered the barcode, the colour and the quantity. Press <b>Price it</b> and
+                the form above fills itself &mdash; you add what it cost and save, and it becomes a normal shipment.</p>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Picture</th><th>Barcode</th><th>Name</th><th>What</th>
+                        <th>Sizes</th><th class="money-col">Pieces</th><th>Recorded</th><th></th></tr></thead>
+                    <tbody id="ikWaitBody"></tbody>
+                </table>
+            </div>
+            <p class="card-sub" id="ikWaitNote" style="margin-top:14px;"></p>
+        </div>
+
         <div class="card">
             <h3><span data-icon="fileText"></span> Everything that arrived</h3>
             <p class="card-sub" id="arvTableNote">&mdash;</p>
@@ -3489,6 +3511,117 @@
          ⚠️ والعددُ يُقترح من **المخزون الحقيقيّ** لكلِّ تصميم: ملصقٌ لكلِّ قطعةٍ على
             الرفّ هو الحالةُ الغالبة، ولها تغييرُه.
          ================================================================== -->
+    <!-- ==================================================================
+         ⭐⭐⭐⭐⭐ «البضاعة الواصلة» — تُدخلها البياعة بلا سعر
+         ------------------------------------------------------------------
+         بأمر المالك: «يجب أن يكون لها أكسس لبضاعة جديدة وصلت، تُنشئ باركود
+         واللون والكمية، بعدها أنا أُدخل أيَّ شيءٍ متعلّقٍ بالسعر».
+         ⚠️⚠️⚠️ ولماذا نافذةٌ ومجموعةٌ مستقلّتان بدل إعطائها شاشةَ الوصولات
+            بأعمدةٍ مخفيّة: مستندُ الشحنة يحمل سعرَ الدولار والصرفَ والشيبنقَ
+            واللابرَ والمجموعَ المدفوعَ وكوستَ القطعة **واسمَ المورّد** على نفس
+            المستند، و**فايرستور لا يُعيد بعضَ حقولِ مستند** — القراءةُ تأتي به
+            كاملًا. فإخفاءُ عمودٍ لا يُخفي شيئًا: الرقمُ يصل إلى متصفّحها ويُقرأ
+            بأدواته. فتكتب هنا، حيث لا حقلَ مالٍ موجودٌ أصلًا، والقاعدةُ ترفض
+            حقولَ المال **بالاسم** — فالمنعُ حقيقةٌ على الخادم لا خاصّيّةُ شاشة.
+         ================================================================== -->
+    <div id="tab-abaya-intake" class="tab-content">
+        <div class="stats">
+            <div class="stat-box"><div class="stat-icon" data-icon="inbox"></div><div><h3>Batches recorded</h3><p id="ikStatCount">0</p></div></div>
+            <div class="stat-box"><div class="stat-icon" data-icon="inbox"></div><div><h3>Pieces</h3><p id="ikStatPieces">0</p></div></div>
+            <div class="stat-box"><div class="stat-icon" data-icon="alertTriangle"></div><div><h3>Waiting for a price</h3><p id="ikStatWaiting">0</p></div></div>
+        </div>
+
+        <details class="card" id="ikFormCard" open>
+            <summary style="cursor: pointer; font-size: 13.5px; font-weight: 700;
+                    display: flex; align-items: center; gap: 9px; flex-wrap: wrap; color: var(--text);">
+                <span data-icon="edit"></span> <span id="ikFormTitle">Record goods that arrived</span>
+                <span id="ikFormBadge" style="font-weight: 600; font-size: 11.5px; color: var(--text-dim);"></span>
+            </summary>
+            <p class="card-sub" style="margin-top: 14px;">
+                Choose what it is, the colour and the fabric &mdash; <b>the barcode writes itself</b>. Then the sizes,
+                how many pieces, and a photo if you can. <b>Nothing here asks about money</b>; the owner adds the
+                price afterwards.
+            </p>
+
+            <div class="date-group" style="align-items: flex-start;">
+                <div style="width: 200px;"><label for="ikCode">Barcode <span style="color: var(--danger);">*</span></label>
+                    <input type="text" id="ikCode" placeholder="built for you" autocomplete="off" oninput="onIntakeCodeEdited()">
+                    <p class="card-sub" id="ikCodeNote" style="margin: 6px 0 0; font-size: 11.5px;"></p>
+                </div>
+                <div style="flex: 1; min-width: 190px;"><label for="ikName">Name / model</label>
+                    <input type="text" id="ikName" placeholder="e.g. Black crepe, silver embroidery" autocomplete="off">
+                </div>
+                <div style="width: 180px;"><label for="ikType">What is it <span style="color: var(--danger);">*</span></label>
+                    <select id="ikType"></select>
+                </div>
+                <div style="width: 185px;" id="ikColourWrap"><label for="ikColour">Colour <span style="color: var(--danger);">*</span></label>
+                    <select id="ikColour" onchange="onIntakeAutoCode()"></select>
+                </div>
+                <div style="width: 185px;" id="ikFabricWrap"><label for="ikFabric">Fabric <span style="color: var(--danger);">*</span></label>
+                    <select id="ikFabric" onchange="onIntakeAutoCode()"></select>
+                </div>
+                <div style="width: 175px;"><label for="ikSize">Sizes available</label>
+                    <input type="text" id="ikSize" maxlength="60" placeholder="e.g. 54, 56, 58" autocomplete="off">
+                </div>
+                <div style="width: 135px;"><label for="ikPieces">Pieces <span style="color: var(--danger);">*</span></label>
+                    <input type="number" id="ikPieces" step="1" min="1" placeholder="0">
+                </div>
+            </div>
+
+            <div class="date-group" style="align-items: flex-start; margin-top: 4px;">
+                <div style="flex: 1; min-width: 240px;"><label for="ikNote">Note for the owner</label>
+                    <input type="text" id="ikNote" maxlength="200" placeholder="e.g. two pieces have a mark on the sleeve">
+                </div>
+                <!-- ⚠️ الصورةُ تُضغط قبل الحفظ بنفس دالّةِ الوصولات حرفيًّا: هي
+                     نفسُها التي ستصير صورةَ الكتالوج، فيجب أن تُضغط بنفس القياس. -->
+                <div style="width: 230px;"><label>Photo</label>
+                    <div style="display:flex; gap:10px; align-items:flex-start;">
+                        <div style="width:64px; height:80px; border:1px solid var(--border); border-radius:6px;
+                                    background: var(--bg-soft); display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                            <img id="ikPhotoImg" alt="" style="display:none; width:100%; height:100%; object-fit:cover;">
+                            <span id="ikPhotoEmpty" style="font-size:10.5px; color: var(--text-dim); text-align:center;">no<br>picture</span>
+                        </div>
+                        <div>
+                            <input type="file" id="ikPhotoInput" accept="image/*" onchange="onIntakePhotoPicked(event)"
+                                   style="font-size:12px; max-width:150px;">
+                            <button type="button" class="btn-ghost btn-sm" id="ikPhotoClear" onclick="clearIntakePhoto()"
+                                    style="display:none; margin-top:6px;">Remove</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls" style="margin-top: 16px;">
+                <button class="btn-success" id="ikSaveBtn" onclick="saveAbayaIntake()"><span data-icon="save"></span> Save</button>
+                <button class="btn-ghost" id="ikCancelBtn" onclick="resetIntakeForm()" style="display:none;">Cancel</button>
+            </div>
+            <div class="status" id="ikFormStatus" style="min-height:18px; font-size:13px; font-weight:700; margin-top:10px;"></div>
+        </details>
+
+        <div class="card">
+            <h3><span data-icon="fileText"></span> What has been recorded</h3>
+            <div class="date-group">
+                <div style="flex:1; min-width:220px;"><label for="ikSearch">Search</label>
+                    <input type="text" id="ikSearch" placeholder="Barcode, name, colour, fabric..." onkeyup="renderAbayaIntake()"></div>
+                <div style="width:200px;"><label for="ikFilterStatus">Show</label>
+                    <select id="ikFilterStatus" onchange="renderAbayaIntake()">
+                        <option value="waiting">Waiting for a price</option>
+                        <option value="">Everything</option>
+                        <option value="accepted">Already priced</option>
+                    </select></div>
+                <button class="btn-accent" onclick="loadAbayaIntake(true)"><span data-icon="refresh"></span> Refresh</button>
+            </div>
+            <div class="table-container" style="margin-top:14px;">
+                <table>
+                    <thead><tr><th>Picture</th><th>Barcode</th><th>Name</th><th>What</th><th>Colour / fabric</th>
+                        <th>Sizes</th><th class="money-col">Pieces</th><th>Status</th><th>Note</th><th></th></tr></thead>
+                    <tbody id="ikBody"></tbody>
+                </table>
+            </div>
+            <p class="card-sub" id="ikTableNote" style="margin-top:14px;"></p>
+        </div>
+    </div>
+
     <div id="tab-abaya-labels" class="tab-content">
         <div class="filter-section">
             <h3><span data-icon="inbox"></span> Print barcode labels &mdash; Zebra ZD220, 50&times;25mm</h3>
@@ -5933,7 +6066,7 @@
          * ⚠️⚠️ وإخفاءُ التبويب **ليس الحماية**: القواعدُ ترفض كلَّ مجموعةٍ من هذه
          *   لهذا الدور، وهي الحارس. هذه القائمةُ تمنع الإرباكَ لا الاختراق.
          */
-        [ROLE_GOODS]: ['tab-abaya-catalog', 'tab-abaya-labels']
+        [ROLE_GOODS]: ['tab-abaya-intake', 'tab-abaya-catalog', 'tab-abaya-labels']
     };
 
     let currentRole = ROLE_ADMIN;
@@ -6873,6 +7006,18 @@
         if (tabId === 'tab-abaya-arrivals') {
             if (abayaArrivalsLoaded) renderAbayaArrivals();
             loadAbayaArrivals();
+            if (!abayaCatalogLoaded) loadAbayaCatalog();
+            // ⭐ وما سجّلته البياعةُ: بطاقةُ «ينتظر سعرًا» تُقرأ معها — عملٌ ينتظره
+            //   المالكُ ولا يجوز أن يحتاج فتحَ نافذةٍ أخرى ليراه.
+            loadAbayaIntake(true);
+        }
+        // ⭐⭐ «البضاعة الواصلة»: تُعاد قراءتُها في كل فتحة — قد يكون المالكُ سعّر
+        //   سطرًا قبل دقيقة، وشاشةٌ تقول «ينتظر» وقد سُعِّر تُنتج تسعيرًا مكرَّرًا.
+        if (tabId === 'tab-abaya-intake') {
+            if (abayaIntakeLoaded) renderAbayaIntake();
+            loadAbayaIntake(true);
+            // ⚠️ والكتالوجُ معها: مولّدُ الباركود يفحص التفرّدَ مقابلَه، وبلا قراءته
+            //   يُنتج رقمًا يظنّه جديدًا وهو في الكتالوج سلفًا.
             if (!abayaCatalogLoaded) loadAbayaCatalog();
         }
         // النوافذ الثلاث تتغذّى من نفس البيانات، فتحميلها واحد.
@@ -13538,6 +13683,16 @@
         (typeof abayaArrivals !== 'undefined' ? abayaArrivals : []).forEach(x => {
             if (x && x.code) taken.add(abayaProductId(x.code));
         });
+        // ⭐ وما سجّلته البياعةُ ولم يُسعّر بعد: رقمُه محجوزٌ وإن لم يكن شحنةً بعد.
+        // ⚠️⚠️ وحدٌّ معلومٌ يُقال بصدق: البياعةُ **لا تقرأ** `abaya_arrivals`
+        //   بالقاعدة، فقائمةُ المحجوز عندها أقصرُ من الحقيقة. فقد يُنتج مولّدُها
+        //   رقمًا يطابق شحنةً سجّلها المالكُ اليوم ولا تراها. والأثرُ محدودٌ
+        //   وظاهرٌ لا صامت: الرقمُ يصير إعادةَ تعبئةٍ لنفس التصميم، وشاشةُ المالك
+        //   تقول له «هذا الباركود في الكتالوج سلفًا» لحظةَ التسعير. وإغلاقُه تمامًا
+        //   يحتاج أن تقرأ الشحنات — أي أن تقرأ أسعارَ الشراء، وهو الممنوعُ أصلًا.
+        (typeof abayaIntake !== 'undefined' ? abayaIntake : []).forEach(x => {
+            if (x && x.code) taken.add(abayaProductId(x.code));
+        });
         return taken;
     }
 
@@ -16263,11 +16418,42 @@
                 + `total ${m.total} QAR — cost/piece ${m.costPerPiece} QAR`
                 + ` — ${payload.source === ARRIVAL_SOURCE_WORKSHOP ? 'from OUR WORKSHOP' : 'from a supplier'}`
                 + (payload.supplier ? ` — ${payload.supplier}` : ''));
+            /**
+             * ⭐⭐⭐⭐⭐ إن كانت هذه الشحنةُ من سطرٍ سجّلته البياعة — يُوسَم «سُعِّر».
+             *
+             * ⚠️⚠️ **بعد** نجاحِ كتابةِ الشحنة وفي حارسٍ خاصّ: الشحنةُ هي العمل،
+             *   والوسمُ ترتيب. فلو فشل الوسمُ بقيت الشحنةُ محفوظةً — لكن سطرُها
+             *   يبقى «ينتظر سعرًا» فقد يُسعّره مرّةً ثانيةً فتُنشأ شحنةٌ مكرَّرةٌ
+             *   بكوستٍ مدفوعٍ مرّتين. فيُقال ذلك **صريحًا** ولا يُكتفى بالكونسول.
+             */
+            let intakeStamped = true;
+            if (arvFromIntake) {
+                try {
+                    await updateDoc(doc(db, ABAYA_INTAKE_COLL, arvFromIntake), {
+                        status: INTAKE_ACCEPTED,
+                        arrivalId: String(id),
+                        acceptedAt: new Date().toISOString(),
+                        acceptedBy: (currentUser && currentUser.email) || '',
+                        updatedAt: serverTimestamp()
+                    });
+                } catch (e) {
+                    intakeStamped = false;
+                    console.error('The shop record was not marked priced (the shipment IS saved):', e);
+                }
+            }
+            const wasFromIntake = arvFromIntake;
+            arvFromIntake = '';
             resetArrivalForm();
             await loadAbayaArrivals();
+            if (wasFromIntake) await loadAbayaIntake(true);
             if (st) {
-                st.style.color = 'var(--success)';
-                st.textContent = `Saved ${rawCode}. It is now waiting in "Newly arrived" on Mrs Fatima's panel.`;
+                st.style.color = intakeStamped ? 'var(--success)' : 'var(--danger)';
+                st.innerHTML = `Saved ${escapeHtml(rawCode)}. It is now waiting in "Newly arrived" on Mrs Fatima's panel.`
+                    + (wasFromIntake && intakeStamped
+                        ? ` The shop's record is marked <b>priced</b>.` : '')
+                    + (wasFromIntake && !intakeStamped
+                        ? `<br><b>&#9888; The shipment saved, but the shop's record is still shown as waiting.</b> `
+                          + `Do not price it a second time &mdash; that would record the same cost twice.` : '');
             }
         } catch (e) {
             console.error('Error saving the arrival:', e);
@@ -16304,6 +16490,550 @@
         } catch (e) {
             alert(`Could not delete: ${e.message}`);
         }
+    };
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ «البضاعة الواصلة» — تُدخلها البياعة، ويُسعّرها المالك
+    // ---------------------------------------------------------------------
+    // بأمر المالك: «تُنشئ باركود واللون والكمية، بعدها أنا أُدخل أيَّ شيءٍ متعلّقٍ
+    // بالسعر». فهذه المجموعةُ **لا تحمل حقلَ مالٍ واحدًا**، والقاعدةُ ترفض حقولَ
+    // المال بالاسم — فالمنعُ حقيقةٌ على الخادم لا خاصّيّةُ شاشة.
+    // =====================================================================
+    const ABAYA_INTAKE_COLL = 'abaya_intake';
+    const ABAYA_INTAKE_IMAGES_COLL = 'abaya_intake_images';
+    const INTAKE_WAITING = 'waiting';
+    const INTAKE_ACCEPTED = 'accepted';
+
+    let abayaIntake = [];
+    let abayaIntakeLoaded = false;
+    let ikEditingId = '';
+    let ikPendingPhoto = null;
+    let ikPhotoCleared = false;
+    let ikCodeAuto = false;
+    const ikImageCache = new Map();
+    /** ⚠️ من أيِّ إدخالٍ فُتحت شاشةُ الوصول — كي يُوسَم «سُعِّر» بعد الحفظ. */
+    let arvFromIntake = '';
+
+    /** من يسجّل بضاعةً واصلة: المالكُ وبياعةُ البضاعة. */
+    function canRecordIntake() {
+        return canEditAbayaSetup() || currentRole === ROLE_GOODS;
+    }
+
+    function buildIntakeSelects() {
+        const ty = document.getElementById('ikType');
+        if (ty && !ty.dataset.built) {
+            ty.innerHTML = ABAYA_STOCK_ITEMS.map(t =>
+                `<option value="${escapeHtml(t.key)}">${escapeHtml(t.en)} &middot; ${escapeHtml(t.ar)}</option>`).join('');
+            ty.addEventListener('change', onIntakeTypeChanged);
+            ty.dataset.built = '1';
+        }
+        const fb = document.getElementById('ikFabric');
+        if (fb && !fb.dataset.built) {
+            fb.innerHTML = `<option value="">&mdash; not chosen &mdash;</option>`
+                + ABAYA_FABRICS.map(x =>
+                    `<option value="${escapeHtml(x.code)}">${escapeHtml(x.en)} &middot; ${escapeHtml(x.ar)}</option>`).join('');
+            fb.dataset.built = '1';
+        }
+        const cl = document.getElementById('ikColour');
+        if (cl && !cl.dataset.built) {
+            cl.innerHTML = `<option value="">&mdash; not chosen &mdash;</option>`
+                + ABAYA_COLOURS.map(x =>
+                    `<option value="${escapeHtml(x.code)}">${escapeHtml(x.en)} &middot; ${escapeHtml(x.ar)}</option>`).join('');
+            cl.dataset.built = '1';
+        }
+    }
+
+    window.onIntakeTypeChanged = function() {
+        const t = String((document.getElementById('ikType') || {}).value || '');
+        const f = document.getElementById('ikFabricWrap');
+        if (f) f.style.display = isAbayaType(t) ? '' : 'none';
+        const c = document.getElementById('ikColourWrap');
+        if (c) c.style.display = isColourType(t) ? '' : 'none';
+        onIntakeAutoCode();
+    };
+
+    /**
+     * ⭐ الباركودُ يُبنى وحدَه — نفسُ قواعدِ شاشة الوصولات بالحرف.
+     * ⚠️ ولا يُكتب فوقَ ما كتبته بيدها: `ikCodeAuto` تحفظ من صاحبُ القيمة. ومن
+     *   كتبت باركودَ تصميمٍ قائمٍ لتزيد كميّتَه ثمّ بدّلت اللونَ كان باركودُها
+     *   سيُمحى — فيُنشأ تصميمٌ مكرَّرٌ بدل إعادةِ تعبئة.
+     * ⚠️ وسطرٌ **يُحرَّر** لا يُعاد ترقيمُه: قد تكون طبعت ملصقاتِه سلفًا.
+     */
+    window.onIntakeAutoCode = function() {
+        const codeEl = document.getElementById('ikCode');
+        const note = document.getElementById('ikCodeNote');
+        const say = (html, col) => { if (note) { note.innerHTML = html; note.style.color = col || 'var(--text-dim)'; } };
+        if (!codeEl) return;
+        const type = String((document.getElementById('ikType') || {}).value || '');
+        const colour = isColourType(type) ? String((document.getElementById('ikColour') || {}).value || '') : '';
+        const fabric = isAbayaType(type) ? String((document.getElementById('ikFabric') || {}).value || '') : '';
+
+        if (ikEditingId) {
+            say(`This batch is already recorded, so its barcode stays `
+                + `<b>${escapeHtml(codeEl.value)}</b> &mdash; labels may already be printed.`);
+            return;
+        }
+        if (codeEl.value.trim() && !ikCodeAuto) {
+            say(`Barcode written by you &mdash; it is kept exactly as it is. Empty the box to have one built.`);
+            return;
+        }
+        const missing = [];
+        if (!type) missing.push('what it is');
+        if (isColourType(type) && !colour) missing.push('the colour');
+        if (isAbayaType(type) && !fabric) missing.push('the fabric');
+        if (missing.length) {
+            if (ikCodeAuto) { codeEl.value = ''; ikCodeAuto = false; }
+            say(`Choose ${missing.join(' and ')}, and the barcode is built for you.`);
+            return;
+        }
+        const base = abayaBarcodeBase(type, colour, fabric);
+        const built = abayaAutoBarcode(type, colour, fabric);
+        codeEl.value = built;
+        ikCodeAuto = true;
+        const shape = `${escapeHtml(arrivalTypeLabel(type) || type)}`
+            + (colour ? ` &middot; ${escapeHtml(colourLabelOf(colour))}` : '')
+            + (fabric ? ` &middot; ${escapeHtml(fabricLabelOf(fabric))}` : '');
+        if (built === base) {
+            say(`<b style="color: var(--success);">${escapeHtml(built)}</b> &mdash; a new barcode (${shape}).`);
+        } else {
+            // ⚠️⚠️ نفسُ الشرحِ الذي يُقال للمالك: التكرارُ في نفس اليوم قد يكون
+            //   نفسَ القطعة وصلت مرّةً أخرى — والفرقُ بين «زيادةُ كميّة» و«سطرٌ
+            //   مكرَّرٌ بسعرَين» لا يعرفه إلّا من رأى البضاعة.
+            say(`<b style="color: var(--warning);">${escapeHtml(built)}</b> &mdash; a ${shape} was already recorded `
+                + `today, so this one is numbered apart. <b>If it is the SAME design arriving again</b>, type its own `
+                + `barcode over this one so the quantity is added instead.`, 'var(--text)');
+        }
+    };
+
+    window.onIntakeCodeEdited = function() {
+        ikCodeAuto = false;
+        onIntakeAutoCode();
+    };
+
+    // ---- القراءة ---------------------------------------------------------
+    window.loadAbayaIntake = async function(force) {
+        if (!canSeeAbayaGoods()) return;
+        if (abayaIntakeLoaded && !force) { renderAbayaIntake(); renderIntakeWaiting(); return; }
+        const body = document.getElementById('ikBody');
+        if (body && !abayaIntakeLoaded) body.innerHTML = '<tr><td colspan="10" style="text-align:center;">Loading...</td></tr>';
+        try {
+            // ⚠️ بلا orderBy: فايرستور يُسقط بصمتٍ كلَّ مستندٍ لا يحمل الحقلَ
+            //   المرتَّبَ به — والترتيبُ محليٌّ بالسطر التالي على أيِّ حال.
+            const snap = await getDocs(collection(db, ABAYA_INTAKE_COLL));
+            abayaIntake = [];
+            snap.forEach(d => {
+                const v = d.data() || {};
+                abayaIntake.push({
+                    id: d.id,
+                    code: String(v.code || ''),
+                    productId: String(v.productId || ''),
+                    name: String(v.name || ''),
+                    type: String(v.type || ''),
+                    size: String(v.size || ''),
+                    colour: String(v.colour || ''),
+                    colourCode: String(v.colourCode || ''),
+                    fabric: String(v.fabric || ''),
+                    fabricCode: String(v.fabricCode || ''),
+                    pieces: Math.floor(Number(v.pieces || 0)) || 0,
+                    note: String(v.note || ''),
+                    // ⚠️ أيُّ قيمةٍ غير 'accepted' تُقرأ «ينتظر»: سطرٌ لم يُسعَّر
+                    //   يجب أن يظهر، وهو الأسلمُ من إخفاء عملٍ مطلوب.
+                    status: v.status === INTAKE_ACCEPTED ? INTAKE_ACCEPTED : INTAKE_WAITING,
+                    arrivalId: String(v.arrivalId || ''),
+                    createdByName: String(v.createdByName || ''),
+                    createdAtISO: String(v.createdAtISO || ''),
+                    hasImage: v.hasImage === true
+                });
+            });
+            abayaIntake.sort((a, b) => String(b.createdAtISO || '').localeCompare(String(a.createdAtISO || '')));
+            abayaIntakeLoaded = true;
+            renderAbayaIntake();
+            renderIntakeWaiting();
+        } catch (err) {
+            abayaIntakeLoaded = true;
+            if (body) {
+                body.innerHTML = `<tr><td colspan="10" style="text-align:center; color: var(--danger);">`
+                    + `Could not read it: ${escapeHtml(String((err && err.message) || err))}`
+                    + (/permission/i.test(String(err && err.message))
+                        ? ' &mdash; the new rules (v29) are not published yet.' : '')
+                    + `</td></tr>`;
+            }
+        }
+    };
+
+    function intakeRows() {
+        const q = String((document.getElementById('ikSearch') || {}).value || '').trim().toUpperCase();
+        const st = (document.getElementById('ikFilterStatus') || {}).value;
+        return abayaIntake.filter(v => {
+            if (st && v.status !== st) return false;
+            if (!q) return true;
+            return [v.code, v.name, v.colour, v.fabric, v.size, arrivalTypeLabel(v.type)]
+                .some(x => String(x || '').toUpperCase().includes(q));
+        });
+    }
+
+    window.renderAbayaIntake = function() {
+        buildIntakeSelects();
+        const body = document.getElementById('ikBody');
+        if (!body) return;
+        const rows = intakeRows();
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        set('ikStatCount', String(abayaIntake.length));
+        set('ikStatPieces', String(abayaIntake.reduce((a, v) => a + v.pieces, 0)));
+        set('ikStatWaiting', String(abayaIntake.filter(v => v.status === INTAKE_WAITING).length));
+
+        const mine = canRecordIntake();
+        body.innerHTML = rows.slice(0, 300).map(v => {
+            const waiting = v.status === INTAKE_WAITING;
+            return `<tr>
+                <td>${v.hasImage
+                    ? `<img data-ikimg="${escapeHtml(v.id)}" alt="" loading="lazy" style="width:48px; height:60px; object-fit:cover; border-radius:6px; border:1px solid var(--border); background: var(--bg-soft);">`
+                    : `<span style="font-size:11.5px; color: var(--text-dim);">no picture</span>`}</td>
+                <td style="font-family: ui-monospace, monospace; direction: ltr;"><b>${escapeHtml(v.code)}</b></td>
+                <td>${escapeHtml(v.name) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>
+                <td>${escapeHtml(arrivalTypeLabel(v.type))}</td>
+                <td>${escapeHtml([v.colour, v.fabric].filter(Boolean).join(' &middot; ')) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>
+                <td style="direction: ltr;">${escapeHtml(v.size) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>
+                <td class="money-col"><b>${v.pieces}</b></td>
+                <td>${waiting
+                    ? '<b style="color: var(--warning);">waiting for a price</b>'
+                    : '<span style="color: var(--success);">priced</span>'}</td>
+                <td style="max-width:200px; white-space:pre-wrap;" dir="auto">${escapeHtml(v.note) || '<span style="color: var(--text-faint);">&mdash;</span>'}</td>
+                <td>${waiting && mine
+                    ? `<button class="btn-ghost btn-sm" onclick="editAbayaIntake('${escapeJsAttr(v.id)}')">Edit</button>
+                       <button class="btn-ghost btn-sm" onclick="deleteAbayaIntake('${escapeJsAttr(v.id)}')">Delete</button>`
+                    // ⚠️⚠️ ولا زرَّ تعديلٍ بعد التسعير: الشحنةُ تحمل المالَ الآن وقد
+                    //   يكون سطرُ الكتالوج أُنشئ — فتعديلُ الوصفِ تحتها يجعل سجلَّين
+                    //   يقولان شيئَين عن قطعةٍ واحدة. والقاعدةُ ترفضه كذلك.
+                    : '<span style="font-size:11.5px; color: var(--text-faint);">priced &mdash; locked</span>'}</td>
+            </tr>`;
+        }).join('') || `<tr><td colspan="10" style="text-align:center;">Nothing recorded yet.</td></tr>`;
+
+        const n = document.getElementById('ikTableNote');
+        if (n) {
+            n.innerHTML = `Showing <b>${Math.min(rows.length, 300)}</b> of <b>${abayaIntake.length}</b> batch(es). `
+                + `A batch can be changed or removed <b>only while it is waiting for a price</b>.`;
+        }
+        // الصورُ تُقرأ بعد الرسم، ولا تُعطّله إن فشلت.
+        body.querySelectorAll('img[data-ikimg]').forEach(async (img) => {
+            const id = img.getAttribute('data-ikimg');
+            try {
+                if (ikImageCache.has(id)) { img.src = ikImageCache.get(id); return; }
+                const snap = await getDoc(doc(db, ABAYA_INTAKE_IMAGES_COLL, id));
+                const url = snap.exists() ? String(snap.data().imageBase64 || '') : '';
+                if (/^data:image\//.test(url)) { ikImageCache.set(id, url); img.src = url; }
+            } catch (e) { /* صورةٌ لا تُقرأ لا تُعطّل جدولًا */ }
+        });
+    };
+
+    /** بطاقةُ المالك: ما ينتظر سعرًا. */
+    window.renderIntakeWaiting = function() {
+        const card = document.getElementById('ikWaitCard');
+        const body = document.getElementById('ikWaitBody');
+        if (!card || !body) return;
+        // ⚠️ للمالك وحدَه: هي ترى قائمتَها في نافذتها، وهذه بطاقةُ عملٍ عليه.
+        const waiting = canEditAbayaSetup()
+            ? abayaIntake.filter(v => v.status === INTAKE_WAITING) : [];
+        if (!waiting.length) { card.style.display = 'none'; body.innerHTML = ''; return; }
+        card.style.display = '';
+        body.innerHTML = waiting.map(v => `<tr>
+            <td>${v.hasImage
+                ? `<img data-ikimg="${escapeHtml(v.id)}" alt="" loading="lazy" style="width:48px; height:60px; object-fit:cover; border-radius:6px; border:1px solid var(--border);">`
+                : `<span style="font-size:11.5px; color: var(--text-dim);">no picture</span>`}</td>
+            <td style="font-family: ui-monospace, monospace; direction: ltr;"><b>${escapeHtml(v.code)}</b></td>
+            <td>${escapeHtml(v.name) || '&mdash;'}</td>
+            <td>${escapeHtml(arrivalTypeLabel(v.type))}<br><small style="color: var(--text-dim);">${escapeHtml([v.colour, v.fabric].filter(Boolean).join(' · '))}</small></td>
+            <td style="direction: ltr;">${escapeHtml(v.size) || '&mdash;'}</td>
+            <td class="money-col"><b>${v.pieces}</b></td>
+            <td>${escapeHtml(v.createdByName || '&mdash;')}<br><small style="color: var(--text-dim);">${escapeHtml(String(v.createdAtISO || '').slice(0, 10))}</small></td>
+            <td><button class="btn-accent btn-sm" onclick="priceIntake('${escapeJsAttr(v.id)}')">Price it</button></td>
+        </tr>`).join('');
+        const n = document.getElementById('ikWaitNote');
+        if (n) {
+            n.innerHTML = `<b>${waiting.length}</b> batch(es) waiting. Pressing <b>Price it</b> fills the form above with `
+                + `what she recorded &mdash; you add the cost and save, and this row is marked priced.`;
+        }
+        body.querySelectorAll('img[data-ikimg]').forEach(async (img) => {
+            const id = img.getAttribute('data-ikimg');
+            try {
+                if (ikImageCache.has(id)) { img.src = ikImageCache.get(id); return; }
+                const snap = await getDoc(doc(db, ABAYA_INTAKE_IMAGES_COLL, id));
+                const url = snap.exists() ? String(snap.data().imageBase64 || '') : '';
+                if (/^data:image\//.test(url)) { ikImageCache.set(id, url); img.src = url; }
+            } catch (e) { /* لا تُعطّل */ }
+        });
+    };
+
+    // ---- الصورة ----------------------------------------------------------
+    function showIntakeFormPhoto(url) {
+        const img = document.getElementById('ikPhotoImg');
+        const empty = document.getElementById('ikPhotoEmpty');
+        const clr = document.getElementById('ikPhotoClear');
+        const has = !!url;
+        if (img) { img.style.display = has ? '' : 'none'; if (has) img.src = url; else img.removeAttribute('src'); }
+        if (empty) empty.style.display = has ? 'none' : '';
+        if (clr) clr.style.display = has ? '' : 'none';
+    }
+
+    window.onIntakePhotoPicked = async function(ev) {
+        const file = ev && ev.target && ev.target.files && ev.target.files[0];
+        const st = document.getElementById('ikFormStatus');
+        if (!file) return;
+        if (st) { st.style.color = ''; st.textContent = 'Compressing the picture...'; }
+        try {
+            // ⚠️ نفسُ الدالّةِ المستعملةِ في الوصولات حرفيًّا: هذه الصورةُ ستصير
+            //   صورةَ الكتالوج، فيجب أن تُضغط بنفس القياس تمامًا.
+            ikPendingPhoto = await shrinkAbayaPhoto(file);
+            ikPhotoCleared = false;
+            showIntakeFormPhoto(ikPendingPhoto);
+            const kb = Math.round(ikPendingPhoto.length * 0.75 / 1024);
+            if (st) { st.style.color = ''; st.textContent = `Picture ready (${kb} KB). Press Save.`; }
+        } catch (e) {
+            ikPendingPhoto = null;
+            showIntakeFormPhoto('');
+            if (st) { st.style.color = 'var(--danger)'; st.textContent = e.message; }
+        }
+        if (ev.target) ev.target.value = '';
+    };
+
+    window.clearIntakePhoto = function() {
+        ikPendingPhoto = null;
+        ikPhotoCleared = true;
+        showIntakeFormPhoto('');
+        const st = document.getElementById('ikFormStatus');
+        if (st) { st.style.color = ''; st.textContent = 'The picture will be removed when you press Save.'; }
+    };
+
+    // ---- النموذج ---------------------------------------------------------
+    window.resetIntakeForm = function() {
+        ikEditingId = '';
+        ikPendingPhoto = null;
+        ikPhotoCleared = false;
+        ikCodeAuto = false;
+        buildIntakeSelects();
+        const v = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        v('ikCode', ''); v('ikName', ''); v('ikSize', ''); v('ikPieces', ''); v('ikNote', '');
+        const ty = document.getElementById('ikType'); if (ty) ty.selectedIndex = 0;
+        setArrivalChoice('ikFabric', '', '', ABAYA_FABRICS);
+        setArrivalChoice('ikColour', '', '', ABAYA_COLOURS);
+        onIntakeTypeChanged();
+        const t = document.getElementById('ikFormTitle'); if (t) t.textContent = 'Record goods that arrived';
+        const b = document.getElementById('ikFormBadge'); if (b) b.textContent = '';
+        const c = document.getElementById('ikCancelBtn'); if (c) c.style.display = 'none';
+        const st = document.getElementById('ikFormStatus'); if (st) { st.style.color = ''; st.textContent = ''; }
+        showIntakeFormPhoto('');
+    };
+
+    window.editAbayaIntake = async function(id) {
+        if (!canRecordIntake()) return;
+        const v = abayaIntake.find(x => x.id === id);
+        if (!v) return;
+        // ⚠️ المُسعَّرُ لا يُعدَّل — والقاعدةُ ترفضه، فيُقال السببُ بدل رسالةِ خادم.
+        if (v.status !== INTAKE_WAITING) {
+            alert(`${v.code} has already been priced and turned into a shipment.\n\n`
+                + `Its cost is now on the shipment and its catalogue line may already exist, so changing the `
+                + `description here would leave two records disagreeing about one piece.\n\n`
+                + `Ask the owner to correct it in "Abaya — New Arrivals".`);
+            return;
+        }
+        buildIntakeSelects();
+        ikEditingId = id;
+        ikPendingPhoto = null;
+        ikPhotoCleared = false;
+        ikCodeAuto = false;
+        const set = (eid, val) => { const el = document.getElementById(eid); if (el) el.value = val; };
+        set('ikCode', v.code); set('ikName', v.name); set('ikSize', v.size);
+        set('ikPieces', v.pieces ? String(v.pieces) : ''); set('ikNote', v.note);
+        const ty = document.getElementById('ikType'); if (ty && v.type) ty.value = v.type;
+        setArrivalChoice('ikFabric', v.fabricCode, v.fabric, ABAYA_FABRICS);
+        setArrivalChoice('ikColour', v.colourCode, v.colour, ABAYA_COLOURS);
+        onIntakeTypeChanged();
+        const t = document.getElementById('ikFormTitle'); if (t) t.textContent = 'Edit ' + v.code;
+        const b = document.getElementById('ikFormBadge'); if (b) b.textContent = '— editing, not saved yet';
+        const c = document.getElementById('ikCancelBtn'); if (c) c.style.display = '';
+        const card = document.getElementById('ikFormCard'); if (card) card.open = true;
+        showIntakeFormPhoto('');
+        if (v.hasImage) {
+            if (ikImageCache.has(id)) showIntakeFormPhoto(ikImageCache.get(id));
+            else {
+                try {
+                    const snap = await getDoc(doc(db, ABAYA_INTAKE_IMAGES_COLL, id));
+                    const url = snap.exists() ? String(snap.data().imageBase64 || '') : '';
+                    if (/^data:image\//.test(url)) { ikImageCache.set(id, url); showIntakeFormPhoto(url); }
+                } catch (e) { /* لا تُعطّل التحرير */ }
+            }
+        }
+        if (t && t.scrollIntoView) t.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
+    window.saveAbayaIntake = async function() {
+        if (!canRecordIntake()) { alert('You cannot record goods.'); return; }
+        const st = document.getElementById('ikFormStatus');
+        const fail = (m) => { if (st) { st.style.color = 'var(--danger)'; st.textContent = m; } };
+        const g = (id) => String((document.getElementById(id) || {}).value || '').trim();
+
+        const rawCode = g('ikCode');
+        const productId = abayaProductId(rawCode);
+        if (!productId) return fail('The barcode is required — it is the name the piece will carry.');
+        const type = g('ikType');
+        if (!type) return fail('Choose what the piece is.');
+        if (isColourType(type) && !g('ikColour')) return fail('Choose the colour.');
+        if (isAbayaType(type) && !g('ikFabric')) return fail('Choose the fabric.');
+        const pieces = Math.floor(Number(g('ikPieces')) || 0);
+        if (pieces < 1) return fail('How many pieces arrived? At least one.');
+
+        const btn = document.getElementById('ikSaveBtn');
+        if (btn) btn.disabled = true;
+        if (st) { st.style.color = ''; st.textContent = 'Saving...'; }
+        try {
+            /**
+             * ⚠️⚠️⚠️ ولا حقلَ مالٍ واحدٍ في هذه الحمولة — لا سعرًا ولا كوستًا ولا
+             *   مورّدًا. والقاعدةُ ترفضها بالاسم من الطرف الثاني، فلو أُضيف حقلٌ
+             *   منها يومًا **فشل الحفظُ بصوتٍ عالٍ** بدل أن تصير هذه الشاشةُ سجلَّ
+             *   شراءٍ ثانيًا تقرؤه من لا يحقُّ له.
+             */
+            const payload = {
+                code: rawCode,
+                productId,
+                name: g('ikName'),
+                type,
+                size: g('ikSize').slice(0, ABAYA_SIZE_MAX),
+                colour: isColourType(type) ? colourLabelOf(g('ikColour')) : '',
+                colourCode: isColourType(type) && colourByCode(g('ikColour')) ? g('ikColour') : '',
+                fabric: isAbayaType(type) ? fabricLabelOf(g('ikFabric')) : '',
+                fabricCode: isAbayaType(type) && fabricByCode(g('ikFabric')) ? g('ikFabric') : '',
+                pieces,
+                note: g('ikNote').slice(0, 200),
+                updatedAt: serverTimestamp(),
+                updatedBy: (currentUser && currentUser.email) || ''
+            };
+
+            let id = ikEditingId;
+            if (!id) {
+                // ⚠️ معرّفٌ تلقائيٌّ لا الباركود: نفسُ التصميمِ قد يصل مرّتين،
+                //   وكلُّ وصولٍ سجلٌّ قائمٌ بنفسه.
+                payload.status = INTAKE_WAITING;
+                payload.arrivalId = '';
+                payload.hasImage = false;
+                payload.createdBy = (currentUser && currentUser.email) || '';
+                payload.createdByName = (currentUser && currentUser.email) || '';
+                // ⚠️ تاريخٌ نصّيٌّ بجانب serverTimestamp: الترتيبُ محليٌّ، وحقلُ
+                //   الخادم لا يُقرأ قيمتُه فورًا بعد الكتابة.
+                payload.createdAtISO = new Date().toISOString();
+                payload.createdAt = serverTimestamp();
+                const ref = await addDoc(collection(db, ABAYA_INTAKE_COLL), payload);
+                id = ref.id;
+            }
+
+            // ⚠️ الصورةُ تُكتب **قبل** وسم hasImage: وسمٌ يقول «فيها صورة» ولا صورةَ
+            //   لها يُنتج مربّعًا فارغًا إلى الأبد.
+            let hasImage = ikEditingId
+                ? ((abayaIntake.find(x => x.id === id) || {}).hasImage === true) : false;
+            if (ikPendingPhoto) {
+                await setDoc(doc(db, ABAYA_INTAKE_IMAGES_COLL, id), {
+                    imageBase64: ikPendingPhoto,
+                    updatedAt: serverTimestamp(),
+                    updatedBy: (currentUser && currentUser.email) || ''
+                });
+                ikImageCache.set(id, ikPendingPhoto);
+                hasImage = true;
+            } else if (ikPhotoCleared) {
+                try { await deleteDoc(doc(db, ABAYA_INTAKE_IMAGES_COLL, id)); } catch (e) { /* لم تكن */ }
+                ikImageCache.delete(id);
+                hasImage = false;
+            }
+
+            if (ikEditingId) {
+                // ⚠️ تحديثٌ بمفاتيحَ محدودةٍ: القاعدةُ تحصر ما تستطيع تغييرَه،
+                //   ومفتاحٌ زائدٌ يُرفض معه التحديثُ كلُّه. ولا `status` هنا بحال.
+                await updateDoc(doc(db, ABAYA_INTAKE_COLL, id), { ...payload, hasImage });
+            } else {
+                await setDoc(doc(db, ABAYA_INTAKE_COLL, id), { hasImage }, { merge: true });
+            }
+
+            resetIntakeForm();
+            await loadAbayaIntake(true);
+            if (st) {
+                st.style.color = 'var(--success)';
+                st.textContent = `Saved ${rawCode} — ${pieces} piece(s). The owner will add the price.`;
+            }
+        } catch (e) {
+            console.error('Could not save the intake:', e);
+            fail(`Could not save: ${(e && e.message) || e}`
+                + (/permission/i.test(String(e && e.message)) ? ' — the new rules (v29) are not published yet.' : ''));
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    };
+
+    window.deleteAbayaIntake = async function(id) {
+        if (!canRecordIntake()) return;
+        const v = abayaIntake.find(x => x.id === id);
+        if (!v) return;
+        if (v.status !== INTAKE_WAITING) { alert('It has already been priced — it cannot be removed here.'); return; }
+        if (!confirm(`Remove ${v.code}${v.name ? ' — ' + v.name : ''} (${v.pieces} piece(s))?\n\n`
+            + `Nothing has been priced yet, so nothing else is affected.`)) return;
+        try {
+            await deleteDoc(doc(db, ABAYA_INTAKE_COLL, id));
+            try { await deleteDoc(doc(db, ABAYA_INTAKE_IMAGES_COLL, id)); } catch (e) { /* لا صورة */ }
+            ikImageCache.delete(id);
+            if (ikEditingId === id) resetIntakeForm();
+            await loadAbayaIntake(true);
+        } catch (e) {
+            alert(`Could not remove it: ${(e && e.message) || e}`);
+        }
+    };
+
+    /**
+     * ⭐⭐⭐⭐⭐ «Price it» — يفتح ما سجّلته في نموذج الوصول ويُملأ وصفَه.
+     *
+     * ⚠️⚠️ ولا يُنشئ شحنةً بنفسه: المالكُ هو من يحفظ، بعد أن يُدخل الأرقام. فلو
+     *   أنشأها هذا الزرُّ بأصفارٍ لدخل كوستُ صفرٍ إلى الكتالوج — ومعه ربحٌ وهميٌّ
+     *   يساوي كاملَ سعر البيع في كلِّ شاشةِ مالٍ بعدها.
+     * ⚠️ والصورةُ تُنسخ إلى الصورةِ المعلّقةِ للنموذج: هي من صوّرت البضاعة، وإعادةُ
+     *   تصويرها عملٌ مكرّرٌ يُنسى فيبقى الكتالوجُ بلا صورة.
+     */
+    window.priceIntake = async function(id) {
+        if (!canEditAbayaSetup()) { alert('Only the owner can price goods.'); return; }
+        const v = abayaIntake.find(x => x.id === id);
+        if (!v) { alert('That batch is no longer in the list. Press Refresh.'); return; }
+        if (v.status !== INTAKE_WAITING) { alert('It has already been priced.'); return; }
+        window.switchTab('tab-abaya-arrivals');
+        resetArrivalForm();
+        buildArrivalTypeSelects();
+        const set = (eid, val) => { const el = document.getElementById(eid); if (el) el.value = val; };
+        set('arvCode', v.code); set('arvName', v.name); set('arvSize', v.size);
+        set('arvPieces', v.pieces ? String(v.pieces) : '');
+        const ty = document.getElementById('arvType'); if (ty && v.type) ty.value = v.type;
+        // ⚠️ الرايةُ تُطفأ **بعد** كتابة الباركود: بلا ذلك يُعيد المولّدُ بناءه
+        //   على لونٍ آخرَ فيتغيّر رقمٌ قد تكون طبعت ملصقاتِه سلفًا.
+        setArrivalChoice('arvFabric', v.fabricCode, v.fabric, ABAYA_FABRICS);
+        setArrivalChoice('arvColour', v.colourCode, v.colour, ABAYA_COLOURS);
+        onArrivalTypeChanged();
+        set('arvCode', v.code);
+        arvFromIntake = id;
+        const card = document.getElementById('arvFormCard'); if (card) card.open = true;
+        const note = document.getElementById('arvCodeNote');
+        if (note) {
+            note.style.color = 'var(--text)';
+            note.innerHTML = `<b>From the shop's record</b> (${escapeHtml(v.createdByName || 'the shop')})`
+                + `${v.note ? ` &mdash; her note: ${escapeHtml(v.note)}` : ''}`
+                + `<br>Add what it cost and save. This row is then marked priced.`;
+        }
+        if (v.hasImage) {
+            try {
+                const url = ikImageCache.get(id)
+                    || (await getDoc(doc(db, ABAYA_INTAKE_IMAGES_COLL, id))).data().imageBase64 || '';
+                if (/^data:image\//.test(url)) {
+                    ikImageCache.set(id, url);
+                    arvPendingPhoto = url;
+                    showArrivalFormPhoto(url);
+                }
+            } catch (e) { console.error('Her photo did not copy across:', e); }
+        }
+        onArrivalInput();
+        const t = document.getElementById('arvFormTitle');
+        if (t) { t.textContent = 'Price ' + v.code + ' — recorded by the shop'; if (t.scrollIntoView) t.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
     };
 
     window.exportAbayaArrivalsExcel = function() {
@@ -20039,7 +20769,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v207';
+        const APP_BUILD = 'v208';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
