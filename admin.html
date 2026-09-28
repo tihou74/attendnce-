@@ -14602,8 +14602,12 @@
                 + `Short in total: <b style="color: var(--danger);">${money(Math.abs(shortSum))} QAR</b> &middot; `
                 + `over in total: <b style="color: var(--warning);">${money(overSum)} QAR</b>.`);
         }
-        // ⚠️⚠️⚠️ بيعٌ خارج وردية — وهذا هو ثمنُ قرارِ «نُحذّر ولا نمنع»، فيُقاس
-        //   ويُعرض بدل أن يُنسى.
+        // ⚠️⚠️⚠️ بيعٌ خارج وردية — والسطرُ يبقى **بعد** أن صار البيعُ ممنوعًا
+        //   بصندوقٍ مغلق (بأمر المالك). ولا يُحذف لسببَين:
+        //     ١) فواتيرُ ما قبل المنعِ موجودةٌ فعلًا ويجب أن تُرى.
+        //     ٢) والمنعُ يقع حين **تُعرف** حالةُ الصندوق؛ فإن تعذّرت قراءتُها
+        //        (قواعدُ لم تُنشر، شبكةٌ منقطعة) يمضي البيعُ ويُوسَم فراغًا — وإلّا
+        //        توقّفت المحلّاتُ كلُّها. فهذا السطرُ هو ما يُظهر تلك الحالة.
         //   ⚠️ ولا تُحسب فيه فواتيرُ ما قبل الميزة: تلك لم يكن لها صندوقٌ بحال،
         //     وعدُّها يُنتج رقمًا مرتفعًا بلا معنى يُدرَّب المالكُ على تجاهله.
         //     فيُقاس من تاريخ **أوّلِ وردية فُتحت قطّ**.
@@ -14620,8 +14624,10 @@
                     + `down, but they are on <b>no Z report</b>, so no drawer was ever reconciled against them: `
                     + loose.slice(0, 8).map(v => `${escapeHtml(v.no || '')}`).join(' · ')
                     + (loose.length > 8 ? ` &hellip;` : '')
-                    + `. Selling is deliberately NOT blocked when the till is shut &mdash; a forgotten opening would `
-                    + `otherwise stop a whole shop &mdash; so this line is how you see it instead.`);
+                    + `. Selling with the till shut <b>is now blocked</b> on your order. These are either sales from `
+                    + `before that, or moments when the shop could not read the till state at all (rules not `
+                    + `published, or no network) &mdash; in that one case the sale is still allowed, because `
+                    + `refusing on "I could not read it" would stop every shop.`);
             }
         }
         const w = document.getElementById('abShiftWarn');
@@ -20917,7 +20923,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v215';
+        const APP_BUILD = 'v216';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;

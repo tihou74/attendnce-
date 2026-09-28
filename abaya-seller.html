@@ -3808,7 +3808,7 @@
         } catch (e) {
             console.error('Could not save the shelf task:', e);
             setMsg('saMsg', /permission/i.test(String(e && e.message))
-                ? 'Not allowed yet — the new rules (v20) have not been published. Tell the owner.'
+                ? 'Not allowed yet — the newest rules have not been published. Tell the owner.'
                 : 'That could not be saved just now. Try again.', 'err');
         } finally {
             saBusy = '';
@@ -3918,7 +3918,7 @@
             //   بياعةٍ لا تملك الإصلاح، وهذا قسمٌ لشخصٍ واحدٍ يتكلّم المالكَ مباشرةً
             //   ويحتاج أن يعرف لماذا لا يرى البضاعةَ التي أُخبر أنها وصلت.
             flError = /permission|insufficient/i.test(String(e && e.message))
-                ? 'Not allowed yet &mdash; the new rules (v22) have not been published. Tell the owner.'
+                ? 'Not allowed yet &mdash; the newest rules have not been published. Tell the owner.'
                 : 'The list could not be read just now. Press Refresh.';
         }
         renderFlorinda();
@@ -4547,12 +4547,24 @@
      * ⚠️ ولا تُفتح على فاتورةٍ فارغة: نافذةُ دفعٍ بمبلغِ صفرٍ تُضغط ثمّ تُرفض،
      *   وهي أسوأُ من زرٍّ معطَّلٍ يقول السبب.
      */
-    function cpPayOpen() {
+    async function cpPayOpen() {
         const t = cpCartTotals();
         if (!cpCart.length && t.feeTotal <= 0) {
             setMsg('cpFinMsg', 'Nothing on the invoice yet — add a piece, or a fee.', 'err');
             return;
         }
+        /**
+         * ⭐⭐⭐⭐⭐ حارسُ الصندوقِ الأوّل — **قبل أن تُفتح النافذة**.
+         *
+         * ⚠️⚠️ وموضعُه هنا لسببٍ في الشكل لا في المال: `cpFinMsg` **خارجَ** النافذة
+         *   بقرارٍ سابقٍ مقصود، فرفضٌ يقع والنافذةُ مفتوحةٌ تكون رسالتُه خلفَ
+         *   الحجاب — تُرفض البيعةُ ولا تُقرأ الكلمةُ التي تقول لماذا. ومنعٌ صامتٌ
+         *   أسوأُ من لا منع: تُضغط الزرُّ عشرًا ويُقال إنّ البرنامجَ تعطّل.
+         * ⚠️ والحارسُ الحقيقيُّ يبقى في `cpFinishInvoice` (هناك تُكتب الأسطر) —
+         *   وهذا الأوّلُ راحةٌ لها لا حمايةٌ للمال. والدالّةُ واحدةٌ في الموضعَين
+         *   فلا شرطان قد يفترقان.
+         */
+        if (!await tillMustBeOpen('cpFinMsg')) return;
         cpRenderPay();
         el('cpPayModal').classList.remove('hidden');
         // ⚠️ التركيزُ ينتقل إلى النافذة: من يستعمل لوحةَ مفاتيحٍ أو قارئَ شاشةٍ
@@ -4644,6 +4656,17 @@
         el('cpFinish').disabled = true;
         setMsg('cpFinMsg', 'Saving...', 'load');
         try {
+            /**
+             * ⭐⭐⭐⭐⭐ حارسُ الصندوقِ الحاسم — **قبل أوّلِ قراءةٍ وقبل أيِّ نقص**.
+             *
+             * وهذا هو الحارسُ الذي يُعتمد عليه: نافذةُ الدفع راحةٌ، وهنا وحدَه
+             *   تُنقص الأرفُفُ وتُكتب الفاتورة. وموضعُه **داخل** الـtry كي يُطلق
+             *   `finally` الزرَّ و`cpBusy` مهما جرى، ولأنّ القفلَ مرفوعٌ سلفًا فضغطةٌ
+             *   ثانيةٌ أثناء قراءتِه لا تدخل.
+             * ⚠️ والنافذةُ تُغلق عند المنع (`tillMustBeOpen` تكتب في `cpFinMsg`
+             *   وهي خارجَها): منعٌ خلفَ حجابٍ رماديٍّ = زرٌّ لا يعمل بلا سبب.
+             */
+            if (!await tillMustBeOpen('cpFinMsg')) { cpPayCloseModal(); return; }
             // ---- ١) فحصُ كلِّ الأسطر من الخادم قبل نقصِ أيِّ شيء --------------
             const fresh = [];
             for (const l of cpCart) {
@@ -4661,6 +4684,12 @@
                 const fv = snap.data() || {};
                 const left = Number((fv.qty || {})[key] || 0) || 0;
                 if (left < l.qty) {
+                    // 🔴🔴 نافذةُ الدفع تُغلق قبل الرسالة — عطلٌ كان شغّالًا منذ
+                    //   `2224f85`: `cpFinMsg` **خارجَ** النافذة، فكانت «لم يبقَ منها
+                    //   شيءٌ في المحلّ» تُكتب خلفَ الحجاب الرماديّ فلا تُقرأ. كنتُ
+                    //   أغلقتُها في مسار النجاح وحدَه ونسيتُ مسارَي الفشل — وهما
+                    //   أحقُّ: النجاحُ تراه على الورقة، والفشلَ لا تراه إلّا هنا.
+                    cpPayCloseModal();
                     setMsg('cpFinMsg', left <= 0
                         ? `${l.code}: none left in ${state.shop}. Remove it from the invoice.`
                         : `${l.code}: only ${left} left in ${state.shop}, the invoice asks for ${l.qty}.`, 'err');
@@ -4726,9 +4755,13 @@
                      *   بالثانية، وفاتورةٌ وقعت على الحدّ تُحسب في الوردية الخطأ —
                      *   أي مالٌ يظهر في صندوقٍ لم يدخله. والوسمُ المكتوبُ لا يُختلف
                      *   فيه ولا يعتمد على ساعةِ جهاز.
-                     * ⚠️ والفراغُ حالةٌ صريحةٌ لا خطأ: بيعةٌ وقعت والصندوقُ لم يُفتح.
-                     *   وهي **لا تُمنع** (قرارٌ معلَنٌ للمالك) بل تُوسَم فراغًا فتظهر
-                     *   له في لوحته باسمها: «بيعٌ خارج وردية».
+                     * ⚠️⚠️ والفراغُ لم يَمُت وإن صار البيعُ ممنوعًا بصندوقٍ مغلق:
+                     *   المنعُ يقع حين **نعرف** أنه مغلق، أمّا حين تتعذّر القراءةُ
+                     *   (قواعدُ لم تُنشر، شبكةٌ منقطعة) فالبيعُ يمضي ويُوسَم فراغًا
+                     *   — و«بيعٌ خارج وردية» في لوحة المالك تبقى شاشةً لازمةً.
+                     *   ⚠️ وفواتيرُ ما قبل المنعِ تحمل الفراغَ كذلك، فلا يُحذف حقلٌ
+                     *   ولا قارئٌ يعتمد على أنّ المنعَ يجعله مستحيلًا. (انظر
+                     *   `tillMustBeOpen` — ثلاثُ حالاتٍ لا اثنتان.)
                      */
                     shiftId: tillShiftId(),
                     lines,
@@ -4855,8 +4888,13 @@
             rcptPrint(sale);
         } catch (e) {
             console.error('Could not finish the invoice:', e);
+            // 🔴 ونفسُ الإغلاق هنا: هذه أعمُّ رسالةِ فشلٍ في الشاشة، وكانت محجوبة.
+            cpPayCloseModal();
+            // ⚠️ ولا يُسمّى رقمُ مراجعةٍ في رسالةٍ تُقرأ بعد سنة: كانت تقول «v23»
+            //   ونحن في v30، فتُرسل المالكَ إلى نشرِ نسخةٍ ماضية. «الجديدة» تبقى
+            //   صحيحةً مهما تقدّمت المراجعات.
             setMsg('cpFinMsg', /permission/i.test(String(e && e.message))
-                ? 'Not allowed yet — ask the owner to publish the new rules (v23).'
+                ? 'Not allowed yet — ask the owner to publish the newest rules.'
                 : `Could not save it: ${e.message}`, 'err');
         } finally {
             cpBusy = false;
@@ -5128,6 +5166,55 @@
     /** معرّفُ الوردية المفتوحة أو '' — يُوسَم به كلُّ بيعٍ وكلُّ إرجاع. */
     function tillShiftId() { return tillShift ? String(tillShift.id || '') : ''; }
 
+    /**
+     * ⭐⭐⭐⭐⭐ لا بيعَ ولا إرجاعَ بصندوقٍ مغلق — بأمر المالك: «يجب أن تفتح الصندوق».
+     *
+     * تُعيد `true` إن جاز المضيُّ و`false` إن مُنع، وتكتب السببَ في `msgId`.
+     *
+     * ⚠️⚠️⚠️ وثلاثُ حالاتٍ لا اثنتان — وهذا كلُّ الفرق:
+     *     مفتوحٌ               → يمضي.
+     *     مغلقٌ **بالتأكيد**   → يُمنع.
+     *     **لم نستطع القراءة** → يمضي ويُحذَّر بصوتٍ عالٍ. ولا يُمنع بحال.
+     *
+     * والحالةُ الثالثةُ ليست احتمالًا نظريًّا: قراءةُ `abaya_shifts` تحتاج قواعدَ
+     *   **لم يَنشُرها المالكُ بعد**، وشبكةُ محلٍّ تنقطع. فمنعُ البيع على «لم أعرف»
+     *   كان سيُوقف المحلّاتِ الأربعةَ كلَّها عن البيع لحظةَ رفعِ هذا الالتزام — وهو
+     *   عكسُ ما أراده بالضبط: أراد صندوقًا مضبوطًا، لا محلًّا واقفًا.
+     *   ⚠️ فالمنعُ **يبدأ عمله يومَ يَنشُر القواعد**، وهذا قِيل له صريحًا.
+     *
+     * ⚠️⚠️ وتُعاد القراءةُ من الخادم **قبل الرفض لا قبل السماح**: أغلى خطإٍ هنا هو
+     *   رفضُ بيعةٍ وزبونةٌ واقفةٌ لأنّ ذاكرةَ الصفحة قديمةٌ (فُتح الصندوقُ على جهازٍ
+     *   آخرَ أو في تبويبٍ آخر). فحين تقول الذاكرةُ «مفتوح» نمضي بلا دورةٍ إلى
+     *   الخادم، وحين تقول «مغلق» نتأكّد أوّلًا. **الرفضُ وحدَه يستحقّ ثمنَ القراءة.**
+     *
+     * ⚠️ ولا يُعطَّل زرُّ الدفع بناءً على هذه الذاكرة: زرٌّ مطفأٌ بسبب ذاكرةٍ قديمةٍ
+     *   لا يُمكن إصلاحُه من الشاشة، أمّا زرٌّ يُضغط فيقرأ ويشرح فهو مخرجٌ دائمًا.
+     */
+    async function tillMustBeOpen(msgId) {
+        if (tillShiftId()) return true;
+        setMsg(msgId, 'Checking the till...', 'load');
+        try { await tillLoad(true); } catch (e) { console.error('Could not re-read the till:', e); }
+        if (tillShiftId()) return true;
+        if (!tillKnown) {
+            setMsgHtml(msgId, `<b>&#9888; The till state could not be read &mdash; going ahead anyway.</b>`
+                + `<br>This one will be on <b>no Z report</b>. Tell the owner the till cannot be read.`, 'warn');
+            return true;
+        }
+        setMsgHtml(msgId, `<b>&#9888; The till is closed. Open it first.</b>`
+            + `<br>Press <b>Open the till</b> above, count the cash that is in the drawer, then come back.`
+            + `<br><b>Nothing is lost</b> &mdash; the invoice is still here exactly as you left it.`, 'err');
+        // ⚠️ ولا نُنقل الشاشةَ إلى قسم الصندوق بأنفسنا: الرسالةُ ستصير خلفَ عرضٍ
+        //   مخفيٍّ فلا تُقرأ، وفاتورةٌ نصفُ مكتوبةٍ تختفي من تحت يدها تُقلق. يُقرَّب
+        //   الشريطُ إلى النظر ويُركَّز زرُّه، والخطوةُ التاليةُ بيدها.
+        try {
+            const bar = el('cpTillBar');
+            if (bar && bar.scrollIntoView) bar.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const go = el('cpTillGo');
+            if (go) go.focus();
+        } catch (e) { /* زينةٌ لا تُعطّل منعًا */ }
+        return false;
+    }
+
     /** الفرقُ بين المعدودِ والمتوقَّع — بالهللات الصحيحة لا بالكسور (انظر `fils`). */
     function tillDiffOf(expected, counted) {
         const d = (fils(counted) - fils(expected)) / 100;
@@ -5162,8 +5249,9 @@
             //   صندوقَين وهميَّين ولا يُطابق أحدُهما ما في الدرج.
             tillShift = null; tillRecent = []; tillKnown = false;
             setMsgHtml('tillMsg', `Could not read the till: ${escapeHtml(String((e && e.message) || e))}`
+                // ⚠️ بلا رقمِ مراجعة (كان «v27»): الرقمُ يشيخ ويُرسل إلى نشرةٍ ماضية.
                 + (/permission/i.test(String(e && e.message))
-                    ? ` &mdash; the owner has not published the new rules (v27) yet.` : '')
+                    ? ` &mdash; the owner has not published the newest rules yet.` : '')
                 + `<br><b>Do not open a till until this line clears</b> &mdash; there may already be one open.`, 'err');
         }
         tillPaint();
@@ -5334,8 +5422,12 @@
             setMsgHtml('tillState', `<b>The till state is not known yet.</b> Press <b>Till</b> again to read it.`, 'warn');
             if (openBox) openBox.classList.add('hidden');
             if (openedBox) openedBox.classList.add('hidden');
+            // ⚠️⚠️ ولا يُقال لها «البيعُ متوقّف» في هذه الحالة: «لم نعرف» **لا
+            //   يمنع** (انظر `tillMustBeOpen`)، وقولُ المنعِ هنا يُوقفها عن البيع
+            //   بنفسها بلا أن يمنعها البرنامج — وهو أسوأُ من العطل: محلٌّ واقفٌ
+            //   بسببِ جملةٍ مكتوبة.
             cpPaintSessionBar('unknown', 'Till state unknown',
-                'Open the <b>Till</b> section to read it');
+                'Open the <b>Till</b> section to read it &middot; a sale now would be on <b>no Z report</b>');
             tillRenderDone();
             return;
         }
@@ -5363,14 +5455,18 @@
                 + `${escapeHtml(tillShift.openedByName || '—')}`);
         } else {
             if (badge) badge.innerText = 'CLOSED';
-            setMsgHtml('tillState', `<b>The till is closed.</b> Open it before you start selling.`, 'warn');
+            setMsgHtml('tillState', `<b>The till is closed &mdash; selling is stopped.</b>`
+                + ` Count the cash in the drawer, type it below, and open the till.`, 'warn');
             if (openBox) openBox.classList.remove('hidden');
             if (openedBox) openedBox.classList.add('hidden');
-            // ⚠️⚠️ تحذيرٌ لا منعٌ — قرارٌ متعمَّدٌ ومعلَنٌ للمالك: بياعةٌ نسيت الفتحَ
-            //   كان المنعُ سيُوقف محلًّا كاملًا عن البيع. فتُبَع البيعةُ وتُوسَم
-            //   «خارج وردية» وتظهر للمالك في لوحته باسمها.
+            /**
+             * ⭐⭐⭐ منعٌ صريحٌ — بأمر المالك: «يجب أن تفتح الصندوق».
+             * ⚠️ وكان هذا الشريطُ يقول «تستطيعين البيعَ على أيِّ حال» بقرارٍ سابقٍ
+             *   (تحذيرٌ لا منع)، فنُقض القرارُ بكلمته. والكلامُ يُصحَّح مع الحارس:
+             *   شريطٌ يقول «تستطيعين» وزرٌّ يرفض هو أسوأُ من الاثنين.
+             */
             cpPaintSessionBar('closed', '&#9888; The till is not open',
-                'You can still sell, but the sale will be on <b>no Z report</b>');
+                'No selling and no refunds until you <b>open the till</b>');
             // آخرُ إغلاقٍ معروفٍ — خبرًا بجانب الخانة، ولا يُكتب فيها.
             const last = tillRecent.find(r => String(r.status || '') === 'closed');
             const note = el('tillLastNote');
@@ -5463,7 +5559,7 @@
             //   حقيقيًّا من قبل وكلّف المالكَ ثلاثَ نشراتٍ بلا فائدة.
             setMsgHtml('tillMsg', `Could not open the till: ${escapeHtml(String((e && e.message) || e))}`
                 + (/permission/i.test(String(e && e.message))
-                    ? `<br>Ask the owner to publish the new rules (v27).` : ''), 'err');
+                    ? `<br>Ask the owner to publish the newest rules.` : ''), 'err');
         } finally {
             tillBusy = false;
             if (el('tillOpen')) el('tillOpen').disabled = false;
@@ -5554,7 +5650,7 @@
             console.error('Could not close the till:', e);
             setMsgHtml('tillMsg', `<b>The till was NOT closed:</b> ${escapeHtml(String((e && e.message) || e))}`
                 + (/permission/i.test(String(e && e.message))
-                    ? `<br>Ask the owner to publish the new rules (v27).` : '')
+                    ? `<br>Ask the owner to publish the newest rules.` : '')
                 + `<br>Nothing was saved. The till is still open.`, 'err');
         } finally {
             tillBusy = false;
@@ -5841,7 +5937,7 @@
             console.error('Could not correct the payment:', e);
             setMsg('cpFixMsg', `Could not correct it: ${escapeHtml(String((e && e.message) || e))}`
                 + (/permission/i.test(String(e && e.message))
-                    ? ' — the rules (v24) are not published yet.' : ''), 'err');
+                    ? ' — the newest rules are not published yet.' : ''), 'err');
         } finally { cpBusy = false; }
     }
 
@@ -5885,7 +5981,7 @@
         } catch (e) {
             console.error('Could not read the invoice:', e);
             setMsg('cpRetMsg', /permission/i.test(String(e && e.message))
-                ? 'Not allowed yet — ask the owner to publish the new rules (v23).'
+                ? 'Not allowed yet — ask the owner to publish the newest rules.'
                 : 'Could not read it just now. Try again.', 'err');
         }
     }
@@ -5901,6 +5997,23 @@
         const lines = Array.isArray(cpRet.lines) ? cpRet.lines : [];
         if (!lines.length) { setMsg('cpRetMsg', 'This invoice has no lines to take back.', 'err'); return; }
         if (!state.shop) { setMsg('cpRetMsg', 'Pick your shop first.', 'err'); return; }
+        /**
+         * ⭐⭐⭐⭐⭐ والإرجاعُ كذلك — نفسُ أمرِ المالك ونفسُ السبب.
+         *
+         * ⚠️⚠️ إرجاعٌ بصندوقٍ مغلقٍ **يُخرج مالًا من الدرج بلا وردية**: لا يظهر في
+         *   تقريرِ Z أيِّ صندوق، فيُعَدّ الدرجُ في آخر اليوم فيُوجد ناقصًا ولا أحدَ
+         *   يعرف أين ذهب المال. وهذه بالضبط هي الفجوةُ التي أمر بإغلاقها — والبيعُ
+         *   وحدَه لا يُغلقها.
+         * ⚠️ والحارسُ **قبل `confirm`**: سؤالُها «أُرجِع الفاتورةَ كلَّها؟» ثمّ رفضُها
+         *   بعد أن تقول نعم إهدارُ ثقةٍ بلا مقابل.
+         * ⚠️⚠️ والقفلُ يُرفع حولَ الانتظار وحدَه ثمّ يُعاد: بلا ذلك تدخل ضغطتانِ
+         *   متتاليتانِ معًا لأنّ `cpBusy` لا تُرفع إلّا بعد `confirm`. والفجوةُ بين
+         *   الإطلاق وإعادةِ الرفع يسدّها `confirm` نفسُه — فهو يُجمّد الصفحةَ كلَّها.
+         */
+        cpBusy = true;
+        let tillOk = false;
+        try { tillOk = await tillMustBeOpen('cpRetMsg'); } finally { cpBusy = false; }
+        if (!tillOk) return;
         if (!confirm(`Take the whole invoice ${cpRet.no} back?\n\n`
             + lines.map(l => `  ${l.qty} × ${l.code}`).join('\n')
             + `\n\nRefund: ${money(cpRet.total)} QAR\n`
@@ -6081,11 +6194,11 @@
                 const why = cpLastSaveError
                     ? `<br>The server refused it with these words: <b>&ldquo;${escapeHtml(cpLastSaveError)}&rdquo;</b>`
                       + (/permission|insufficient/i.test(cpLastSaveError)
-                          ? `<br>That message means one thing only: <b>the rules (v23) are not published</b>. `
+                          ? `<br>That message means one thing only: <b>the newest rules are not published</b>. `
                             + `Nothing on this screen can fix it &mdash; the owner publishes them once.`
                           : '')
                     : `<br>The stock went down but the invoices were refused. The commonest cause is that the new `
-                      + `rules (v23) have not been published.`;
+                      + `rules have not been published.`;
                 el('cpInvNote').innerHTML = `<b style="color: var(--color-danger);">&#9888; You sold `
                     + `${cpSoldHere.length} invoice(s) on this screen and NONE of them is saved.</b>`
                     + why + `<br>Tell the owner.`;
@@ -6094,7 +6207,7 @@
             console.error('Could not read the invoices:', e);
             cpInvLoaded = true;
             el('cpInvNote').innerHTML = /permission/i.test(String(e && e.message))
-                ? `<b style="color: var(--color-danger);">Not allowed yet &mdash; the new rules (v23) have not been `
+                ? `<b style="color: var(--color-danger);">Not allowed yet &mdash; the newest rules have not been `
                   + `published. Tell the owner.</b>`
                 : 'Could not read them just now. Press All invoices again.';
             el('cpInvList').innerHTML = '';
