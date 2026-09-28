@@ -49,6 +49,39 @@
 <link rel="stylesheet" href="./brand/design-tokens.css">
 
 <style>
+    /* =====================================================================
+       ⭐⭐⭐⭐⭐ الباليتُّ الكريميُّ الذهبيُّ العنّابيُّ — بأمر المالك
+       ---------------------------------------------------------------------
+       «لا يعجبني، يجب أن تكون الألوانُ ليست داكنة: كريمي ذهبي عنابي».
+       ⚠️ والقيمُ **من `brand/design-tokens.css`** لا من ذوقي: سلّمُ الكريمي
+          والبيج والعنابي موجودٌ فيه سلفًا بطلبه، وكلُّ نسبةِ تباينٍ فيه محسوبةٌ
+          بمعادلة WCAG. فأخطأتُ حين كتبتُ `#0F172A` بيدي في شريطَي الأقسام
+          والجلسة — كان الواجبُ استعمالَ ما هو مكتوبٌ ومقيس.
+       ⚠️⚠️ ويُكتب هذا التجاوزُ في `:root` بعد وسم `<link>` عن قصد: الخصائصُ
+          المخصّصةُ المتأخّرةُ تغلب، ولا `:root` أخرى في هذه الصفحة تُنافسه.
+          (وهذا يختلف عن فخِّ «كتلةِ التجاوزات» المكتوبِ في visual-identity.md —
+           ذاك عن **محدِّدات** تغلبها قواعدُ أصليّةٌ أسفلَ الملفّ، لا عن متغيّرات.)
+       ⚠️⚠️⚠️ و`success` و`warning` **عُمِّقا إلزامًا**: القيمُ المعياريّةُ
+          (#15803D و#B45309) تباينُها على `cream-200` **4.16:1 — راسبٌ** تحت 4.5.
+          وهذا مقيسٌ ومكتوبٌ في الذاكرة من قبل، وأعدتُ قياسَه فطابق. والأحمرُ
+          **لا يُعمَّق**: تعميقُه يُلغي تمييزَه عن العنّابي (1.57:1).
+       ===================================================================== */
+    :root {
+        --color-bg:            var(--cream-100);   /* الصفحة  — ink عليها 16.14:1 */
+        --color-surface:       var(--cream-50);    /* البطاقة — ink عليها 17.26:1 */
+        --color-surface-2:     var(--cream-200);   /* سطحٌ ثانٍ — 14.80:1 */
+        --color-border:        var(--beige-400);   /* حدٌّ مرئيّ — 1.67:1 (كان 1.23) */
+        --color-border-strong: var(--gold-600);
+        --color-text-muted:    var(--warm-650);    /* دافئٌ — 7.95:1 */
+        --color-text-faint:    var(--warm-450);    /* 5.58:1 */
+        /* ⚠️ مقيسان: 6.74:1 و6.44:1 على cream-100 بدل 4.16:1 الراسبة. */
+        --color-success:       #116232;
+        --color-warning:       #8F4207;
+        /* الأزرارُ الأساسيّةُ عنّابيّة — انظر قرارَ الإطار أدناه. */
+        --color-primary:       var(--wine-600);
+        --color-on-primary:    #FFFFFF;            /* على العنّابي 10.16:1 */
+    }
+
     /* =========================================================================
        هوية مجموعة الشيخة — كل قيمة من ./brand/design-tokens.css.
        الذهب #A89060 تباينه على الأبيض 3.08:1 فلا يحمل نصًّا أبدًا: هو للحدود
@@ -705,11 +738,15 @@
     }
 
     /* ---- شريطُ الجلسة ------------------------------------------------- */
+    /* ⚠️ عنّابيٌّ لا كحليّ: هذا موضعُ «الحضور البصريّ» بنصِّ ملفِّ الهوية —
+       النافذةُ النشِطة ورؤوسُ الجداول وخطُّ الترويسة. والنصُّ ذهبيٌّ فاتحٌ
+       (gold-300 على العنّابي = 5.51:1 مقيسة) والأرقامُ بيضاءُ (10.16:1). */
     .sessbar {
         display: flex; align-items: center; flex-wrap: wrap;
         gap: var(--space-3); margin-bottom: var(--space-4);
         padding: 10px var(--space-4);
-        background: #0F172A; color: #FFFFFF;
+        background: var(--wine-600); color: var(--gold-300);
+        border: var(--border-hairline) solid var(--wine-700);
         border-radius: var(--radius-md);
     }
     /* ⚠️ نقطةٌ ملوّنةٌ **مع** نصٍّ لا لونٌ وحدَه: الحالةُ يجب أن تُقرأ على شاشةٍ
@@ -717,39 +754,108 @@
     .sessbar .dot { flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; background: #64748B; }
     .sessbar .dot.on  { background: #22C55E; box-shadow: 0 0 0 3px rgba(34,197,94,.28); }
     .sessbar .dot.off { background: #EF4444; box-shadow: 0 0 0 3px rgba(239,68,68,.24); }
-    .sessbar .lbl { font-size: 13px; font-weight: 800; letter-spacing: .01em; }
-    .sessbar .meta { font-size: 11.5px; font-weight: 600; color: #CBD5E1; }
+    .sessbar .lbl { font-size: 13px; font-weight: 800; letter-spacing: .01em; color: #FFFFFF; }
+    .sessbar .meta { font-size: 11.5px; font-weight: 600; color: var(--gold-300); }
     .sessbar .acts { margin-inline-start: auto; display: flex; gap: 8px; flex-wrap: wrap; }
     .sessbar .sb {
         width: auto; min-height: 34px; padding: 0 13px;
         font-family: inherit; font-size: 12px; font-weight: 800; cursor: pointer;
-        background: rgba(255,255,255,.13); color: #FFFFFF;
-        border: 1px solid rgba(255,255,255,.24); border-radius: 8px;
+        background: rgba(255,255,255,.14); color: #FFFFFF;
+        border: 1px solid rgba(255,255,255,.30); border-radius: 8px;
     }
-    .sessbar .sb:hover { background: rgba(255,255,255,.22); }
-    .sessbar .sb.prim { background: #16A34A; border-color: #16A34A; }
-    .sessbar .sb.warn { background: #DC2626; border-color: #DC2626; }
+    .sessbar .sb:hover { background: rgba(255,255,255,.24); }
+    /* ⚠️ «افتح» كريميٌّ مصمتٌ على العنّابي: أبرزُ ما يُرى على شريطٍ عنّابيّ،
+       ولا يحتاج لونًا ثالثًا. والنصُّ عنّابيٌّ عليه (9.82:1). */
+    .sessbar .sb.prim { background: var(--cream-50); color: var(--wine-700);
+                        border-color: var(--cream-50); }
+    /* ⚠️⚠️ «أغلق» **مُحدَّدٌ بإطارٍ لا مصمتٌ أحمر**: زرٌّ أحمرُ مصمتٌ على شريطٍ
+       عنّابيٍّ لونانِ متشابهان (1.57:1 مقيسة)، فالفرقُ يُصنع بالـ**ملء** لا باللون. */
+    .sessbar .sb.warn { background: transparent; color: #FFFFFF;
+                        border-color: #FFFFFF; border-width: 2px; }
 
     /* ---- شريطُ الأقسام: صفٌّ داكنٌ مضغوطٌ بدل أربعةِ صناديقَ بيضاءَ عالية ---- */
     /* ⚠️ يُكتب **بعد** القواعد الأصلية عن قصد: نفسُ الأولويّة، والأخيرةُ تغلب.
        فالقواعدُ القديمةُ تبقى مقروءةً بتعليقاتها ولا تُحذف — ويُعرف ما تغيّر. */
+    /* ⚠️ كريميٌّ لا كحليّ — وهذا ما طلبه المالك. والقسمُ النشِطُ حبّةٌ عنّابيّةٌ
+       مصمتةٌ بنصٍّ أبيض (10.16:1)، وغيرُ النشِط نصٌّ دافئٌ على cream-200 (7.29:1). */
     .snav {
-        gap: 4px; padding: 6px; border: 0;
-        background: #0F172A; border-radius: var(--radius-md);
-        box-shadow: 0 1px 3px rgba(15,23,42,.18);
+        gap: 4px; padding: 6px;
+        background: var(--cream-200);
+        border: var(--border-hairline) solid var(--beige-400);
+        border-radius: var(--radius-md);
+        box-shadow: none;
     }
     .snav button {
         min-height: 40px; padding: 5px 8px;
-        background: transparent; color: #CBD5E1; border: 0; border-radius: 8px;
+        background: transparent; color: var(--warm-650); border: 0; border-radius: 8px;
     }
     .snav button .t { font-size: 12px; font-weight: 700; color: inherit; }
     .snav button[aria-pressed="true"] {
-        background: #FFFFFF; border: 0;
+        background: var(--wine-600); border: 0;
     }
-    .snav button[aria-pressed="true"] .t { color: #0F172A; }
-    .snav .badge { background: #DC2626; color: #FFFFFF; }
+    .snav button[aria-pressed="true"] .t { color: #FFFFFF; }
+    .snav .badge { background: var(--wine-700); color: #FFFFFF; }
 
     /* ---- لوحةُ الفاتورة: المجموعُ والزرُّ يُقرآن أوّلًا --------------------- */
+    /* =====================================================================
+       ⚠️⚠️⚠️ الأزرارُ المدمِّرة: **إطارٌ أحمرُ لا ملءٌ أحمر**.
+       ---------------------------------------------------------------------
+       ملفُّ الهوية يمنع العنّابيَّ للأزرار الأساسيّة لأنّ فرقَه عن أحمر الخطر
+       1.57:1 — «زرُّ حفظٍ عنّابيٌّ بجانب زرِّ حذفٍ أحمرَ يصيران أحمرَين
+       متشابهَين». وأعدتُ القياس: wine-700 ضدّ #B91C1C = **1.93:1** — لا يزال
+       أحمرَين. فبدل التنازل عن العنّابي (وهو ما طلبه المالك) يُصنع الفرقُ
+       بالـ**ملء**: الأساسيُّ مصمتٌ عنّابيّ، والمدمِّرُ إطارٌ أحمرُ على كريميّ
+       (نصٌّ أحمر 6.26:1). والفرقُ بينهما لم يبقَ لونًا يُخطئ فيه النظرُ بل
+       شكلًا مختلفًا تمامًا.
+       ===================================================================== */
+    button.danger, #tillClose, #cpClear.danger {
+        background: transparent !important;
+        color: var(--color-danger) !important;
+        border: 2px solid var(--color-danger) !important;
+        font-weight: 800;
+    }
+    button.danger:hover, #tillClose:hover {
+        background: color-mix(in srgb, var(--color-danger) 10%, transparent) !important;
+    }
+
+    /* ---- نافذةُ الدفع ------------------------------------------------- */
+    /* ⚠️ `--scrim` من ملفِّ الهوية لا سوادٌ أكتبه بيدي. */
+    .pmod {
+        position: fixed; inset: 0; z-index: 60;
+        display: flex; align-items: center; justify-content: center;
+        padding: var(--space-4); background: var(--scrim);
+    }
+    .pmod.hidden { display: none; }
+    .pmbox {
+        width: 100%; max-width: 420px; max-height: 92vh; overflow-y: auto;
+        background: var(--color-surface);
+        border: var(--border-hairline) solid var(--beige-400);
+        border-top: 4px solid var(--wine-600);
+        border-radius: var(--radius-md);
+        padding: var(--space-5);
+        box-shadow: 0 18px 48px rgba(92, 30, 46, .22);
+    }
+    .pmhead { display: flex; align-items: center; gap: var(--space-3); }
+    .pmhead h2 {
+        flex: 1 1 auto; margin: 0; font-size: var(--text-lg); font-weight: 800;
+        color: var(--wine-600);
+    }
+    .pmx {
+        width: auto; min-height: 34px; padding: 0 12px; font-size: 20px; line-height: 1;
+        background: transparent; color: var(--color-text-muted);
+        border: var(--border-hairline) solid var(--color-border); border-radius: 8px;
+    }
+    /* ⚠️ المبلغُ المطلوبُ كبيرٌ في أعلى النافذة: هو سببُ فتحها، ويجب أن يُقرأ
+       بلا بحثٍ — وهي اللحظةُ التي يُقال فيها الرقمُ للزبونة. */
+    .pmamt {
+        display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3);
+        margin: var(--space-4) 0 var(--space-2);
+        padding: var(--space-3) var(--space-4);
+        background: var(--cream-200); border-radius: var(--radius-sm, 8px);
+    }
+    .pmamt span { font-size: var(--text-xs); font-weight: 700; color: var(--color-text-muted); }
+    .pmamt b { font-size: var(--text-xl); font-weight: 800; color: var(--wine-600); }
+
     #cpInvPanel #cpTotals { border-top: 1px dashed var(--color-border); padding-top: var(--space-3); }
     #cpInvPanel #cpFinish { min-height: 52px; font-size: var(--text-base); }
     /* ⚠️ لوحةُ الفاتورة لا تُقصّ محتواها: `sticky` مع `overflow` محسوبٍ يقطع
@@ -801,6 +907,61 @@
         الشاشة: الخانةُ قد تكون تغيّرت بعد البيع (فُرّغ الباركود، أو
         اختيرت عبايةٌ أخرى)، فالفاتورةُ يجب أن تحمل ما بِيع لا ما هو معروض.
      ================================================================== -->
+<!-- ==================================================================
+     ⭐⭐⭐⭐⭐ نافذةُ الدفع — بأمر المالك
+     ------------------------------------------------------------------
+     «زرٌّ مكتوبٌ عليه دفع، بعدين تفتح نافذةٌ صغيرةٌ فيها الخيارُ كارت أو كاش
+      أو الاثنين مع بعض».
+     ⚠️ ابنةُ `body` مباشرةً لسببَين: قاعدةُ الطباعة تُخفي
+        `body > *:not(#rcpt)` فلا تُطبع النافذةُ أبدًا، **ولأنّ غلافَ السلّة
+        يُخفى حين تُفرَّغ** — ونافذةٌ داخلَه كانت ستختفي مع محتواها.
+     ⚠️⚠️ ولم تُنسخ خاناتُ الدفع بل **نُقلت بمعرّفاتها**: نسخُها كان يُنتج
+        معرّفَين متكرّرَين، فيقرأ الحسابُ خانةً والبياعةُ تكتب في الأخرى — وهو
+        عطلٌ في المال لا يُرى على الشاشة.
+     ================================================================== -->
+<div id="cpPayModal" class="pmod hidden" role="dialog" aria-modal="true" aria-labelledby="cpPayTitle">
+    <div class="pmbox" id="cpPayBox">
+        <div class="pmhead">
+            <h2 id="cpPayTitle">Payment &mdash; <span dir="rtl">الدفع</span></h2>
+            <button type="button" class="pmx" id="cpPayClose" aria-label="Close">&times;</button>
+        </div>
+        <div class="pmamt">
+            <span>Amount due &mdash; <span dir="rtl">المطلوب</span></span>
+            <b id="cpPayDue" dir="ltr">0.00 QAR</b>
+        </div>
+                <!-- ==========================================================
+                     ⭐⭐⭐⭐⭐ طريقةُ الدفع — بأمر المالك: «كاش أو كارد أو كاش وكارد»
+                     ----------------------------------------------------------
+                     ⚠️ ثلاثةُ أزرارٍ لا قائمةٌ منسدلة: هذا اختيارٌ يُضغط مئةَ مرّةٍ
+                        في اليوم على هاتف، والمنسدلةُ ضغطتانِ وقراءةٌ في كلِّ مرّة.
+                     ⚠️⚠️ و«مقسوم» يحفظ **المبلغَين معًا**: «دفعت 500 كاش و700 شبكة»
+                        هي الحقيقة، ورقمٌ واحدٌ مجموعٌ لا يُقسَم إلى أصله بعد ذلك.
+                     ========================================================== -->
+                <div style="margin-top: var(--space-4);">
+                    <span class="alabel" style="font-size: var(--text-xs); font-weight: 700;
+                          text-transform: uppercase; letter-spacing: .5px;">How was it paid</span>
+                    <div class="bar" id="cpPayBar" style="margin-top: 6px;">
+                        <button type="button" class="ghost" data-cppay="cash"  aria-pressed="false" style="width:auto;">Cash</button>
+                        <button type="button" class="ghost" data-cppay="card"  aria-pressed="false" style="width:auto;">Card</button>
+                        <button type="button" class="ghost" data-cppay="split" aria-pressed="false" style="width:auto;">Cash + Card</button>
+                    </div>
+                    <div id="cpSplitWrap" class="hidden two" style="margin-top: var(--space-3);">
+                        <div><label for="cpPayCash">Cash part</label>
+                            <input type="number" id="cpPayCash" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+                        <div><label for="cpPayCard">Card part</label>
+                            <input type="number" id="cpPayCard" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+                    </div>
+                    <p class="note" id="cpPayNote" style="margin-top: var(--space-2);"></p>
+                </div>
+
+                <!-- ⚠️ عنّابيٌّ كبقيّة الأزرار الأساسيّة (يأخذه من --color-primary)،
+                     ولم يبقَ أخضرَ: الأخضرُ لونُ **حالةٍ** لا لونُ إجراء، والخلطُ
+                     يجعل «تمّ» و«اضغط» لونًا واحدًا. -->
+                <button id="cpFinish" style="margin-top: var(--space-3);">
+                    Finish the invoice &amp; print</button>
+    </div>
+</div>
+
 <div id="rcpt" aria-hidden="true">
     <div class="c">
         <img class="logo" id="rcLogo" src="./brand/al-sheikha-style-logo.png" alt="">
@@ -1112,7 +1273,9 @@
                 <label for="tillNote">Note <span style="text-transform:none; font-weight:400;">&mdash; if something needs explaining</span></label>
                 <input type="text" id="tillNote" maxlength="200" placeholder="e.g. 20 QAR taken for a taxi, receipt in the till">
                 <div style="height: var(--space-4);"></div>
-                <button id="tillClose" style="background:#b91c1c;">Close the till &amp; print the Z report</button>
+                <!-- ⚠️ بلا لونٍ في السطر: النمطُ في السطر يقهر الصنفَ، وكان يُبقيه
+                     مصمتًا أحمرَ فيلتبس بالعنّابي. القاعدةُ أعلاه تُعطيه إطارًا. -->
+                <button id="tillClose">Close the till &amp; print the Z report</button>
             </div>
 
             <p class="status" id="tillMsg" style="margin-top: var(--space-4);"></p>
@@ -1213,7 +1376,9 @@
                              عددًا غير محدودٍ من القطع بأمر المالك، فهذه الضغطةُ تضع
                              القطعةَ في السلّة و**لا تُنقص الرفَّ ولا تكتب شيئًا**.
                              والنقصُ كلُّه يقع مرّةً واحدةً عند «أكمل الفاتورة». -->
-                        <button id="cpAdd" style="background: #0f172a;">Add to the invoice</button>
+                        <!-- ⚠️ بلا لونٍ في السطر: يأخذ --color-primary (عنّابي). والنمطُ
+                             في السطر يقهر التوكِن، فكان يبقى كحليًّا داكنًا وحدَه. -->
+                        <button id="cpAdd">Add to the invoice</button>
                     </div>
                 </div>
             </div>
@@ -1318,33 +1483,13 @@
                     <p class="note" id="cpCustNote" style="margin-top: var(--space-2);"></p>
                 </div>
 
-                <!-- ==========================================================
-                     ⭐⭐⭐⭐⭐ طريقةُ الدفع — بأمر المالك: «كاش أو كارد أو كاش وكارد»
-                     ----------------------------------------------------------
-                     ⚠️ ثلاثةُ أزرارٍ لا قائمةٌ منسدلة: هذا اختيارٌ يُضغط مئةَ مرّةٍ
-                        في اليوم على هاتف، والمنسدلةُ ضغطتانِ وقراءةٌ في كلِّ مرّة.
-                     ⚠️⚠️ و«مقسوم» يحفظ **المبلغَين معًا**: «دفعت 500 كاش و700 شبكة»
-                        هي الحقيقة، ورقمٌ واحدٌ مجموعٌ لا يُقسَم إلى أصله بعد ذلك.
-                     ========================================================== -->
-                <div style="margin-top: var(--space-4);">
-                    <span class="alabel" style="font-size: var(--text-xs); font-weight: 700;
-                          text-transform: uppercase; letter-spacing: .5px;">How was it paid</span>
-                    <div class="bar" id="cpPayBar" style="margin-top: 6px;">
-                        <button type="button" class="ghost" data-cppay="cash"  aria-pressed="false" style="width:auto;">Cash</button>
-                        <button type="button" class="ghost" data-cppay="card"  aria-pressed="false" style="width:auto;">Card</button>
-                        <button type="button" class="ghost" data-cppay="split" aria-pressed="false" style="width:auto;">Cash + Card</button>
-                    </div>
-                    <div id="cpSplitWrap" class="hidden two" style="margin-top: var(--space-3);">
-                        <div><label for="cpPayCash">Cash part</label>
-                            <input type="number" id="cpPayCash" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
-                        <div><label for="cpPayCard">Card part</label>
-                            <input type="number" id="cpPayCard" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
-                    </div>
-                    <p class="note" id="cpPayNote" style="margin-top: var(--space-2);"></p>
-                </div>
-
-                <button id="cpFinish" style="background: #16a34a; margin-top: var(--space-3);">
-                    Finish the invoice &amp; print</button>
+                <!-- ⭐⭐⭐⭐⭐ زرُّ الدفع — بأمر المالك: زرٌّ واحدٌ يفتح نافذةً صغيرة.
+                     ⚠️ والمجموعُ مكتوبٌ **على الزرِّ نفسِه**: هو الرقمُ الذي تقوله
+                        للزبونة، ووجودُه على ما تضغطه يمنع الضغطَ على مبلغٍ قديم.
+                     ⚠️⚠️ ونُقلت خاناتُ الدفع إلى النافذة بمعرّفاتها كما هي —
+                        فكلُّ مستمعٍ وكلُّ حسابٍ يعمل بلا تغييرِ حرف. -->
+                <button id="cpPayOpen" style="margin-top: var(--space-4);">
+                    Pay &mdash; <span id="cpPayOpenAmt" dir="ltr">0.00 QAR</span></button>
             </div>
             <!-- ⚠️⚠️⚠️ رسالةُ نتيجة الفاتورة **خارج** غلاف السلّة — وهذا إصلاحُ عطلٍ
                  صنعتُه: كانت داخلَه، والغلافُ يُخفى لحظةَ تفريغ السلّة بعد كلِّ
@@ -4142,6 +4287,11 @@
         // ⚠️ سطرُ الدفع يتبع المجموع: تغييرُ الخصم أو إضافةُ قطعةٍ يُغيّر المبلغَ
         //   المطلوب، فتقسيمٌ كان صحيحًا يصير ناقصًا — ويجب أن تُخبَر في الحال.
         if (typeof cpRenderPay === 'function') cpRenderPay();
+        // ⚠️⚠️ والمبلغُ على زرِّ الدفع وفي رأس النافذة يتبعانه كذلك: زرٌّ يحمل
+        //   مبلغًا قديمًا يُضغط على رقمٍ لم يبقَ صحيحًا — وهو رقمٌ يُقال لزبونة.
+        const due = `${money(t.total)} QAR`;
+        const oa = el('cpPayOpenAmt'); if (oa) oa.textContent = due;
+        const pd = el('cpPayDue'); if (pd) pd.textContent = due;
     }
 
     /** ⚠️ لا تكتب في القاعدة بحال — سلّةٌ في الذاكرة وحدها. */
@@ -4156,7 +4306,8 @@
         document.querySelectorAll('#cpKindBar button[data-cpkind]').forEach(b => {
             const on = b.getAttribute('data-cpkind') === cpKind;
             b.setAttribute('aria-pressed', String(on));
-            b.style.borderColor = on ? '#0f172a' : '';
+            // ⚠️ حدُّ المختار عنّابيٌّ من التوكِن لا كحليٌّ مكتوبٌ بيدي.
+            b.style.borderColor = on ? 'var(--wine-600)' : '';
             b.style.borderWidth = on ? '2px' : '';
             b.style.fontWeight = on ? '800' : '';
         });
@@ -4350,7 +4501,8 @@
             const on = b.getAttribute('data-cppay') === cpPay;
             b.setAttribute('aria-pressed', String(on));
             // ⚠️ ولونٌ وحدَه لا يكفي على شاشةٍ صغيرة: المختارُ يثقُل خطُّه ويُحدَّد.
-            b.style.borderColor = on ? '#0f172a' : '';
+            // ⚠️ حدُّ المختار عنّابيٌّ من التوكِن لا كحليٌّ مكتوبٌ بيدي.
+            b.style.borderColor = on ? 'var(--wine-600)' : '';
             b.style.borderWidth = on ? '2px' : '';
             b.style.fontWeight = on ? '800' : '';
         });
@@ -4389,6 +4541,39 @@
     });
     el('cpPayCash').addEventListener('input', cpRenderPay);
     el('cpPayCard').addEventListener('input', cpRenderPay);
+
+    /**
+     * ⭐⭐⭐⭐⭐ نافذةُ الدفع — بأمر المالك.
+     * ⚠️ ولا تُفتح على فاتورةٍ فارغة: نافذةُ دفعٍ بمبلغِ صفرٍ تُضغط ثمّ تُرفض،
+     *   وهي أسوأُ من زرٍّ معطَّلٍ يقول السبب.
+     */
+    function cpPayOpen() {
+        const t = cpCartTotals();
+        if (!cpCart.length && t.feeTotal <= 0) {
+            setMsg('cpFinMsg', 'Nothing on the invoice yet — add a piece, or a fee.', 'err');
+            return;
+        }
+        cpRenderPay();
+        el('cpPayModal').classList.remove('hidden');
+        // ⚠️ التركيزُ ينتقل إلى النافذة: من يستعمل لوحةَ مفاتيحٍ أو قارئَ شاشةٍ
+        //   يبقى وإلّا خلفَ الحجاب.
+        const first = el('cpPayBar') && el('cpPayBar').querySelector('button');
+        if (first) { try { first.focus(); } catch (e) { /* لا يُعطّل */ } }
+    }
+    function cpPayCloseModal() {
+        const m = el('cpPayModal');
+        if (m) m.classList.add('hidden');
+    }
+    el('cpPayOpen').addEventListener('click', cpPayOpen);
+    el('cpPayClose').addEventListener('click', cpPayCloseModal);
+    // ⚠️ ثلاثُ طرقٍ للإغلاق — نفسُ قاعدةِ بقيّة نوافذ المشروع: الزرُّ، والضغطُ
+    //   خارج الصندوق، وEscape. ونافذةٌ لا تُغلق إلّا بزرٍّ صغيرٍ تحبس القارئَ.
+    el('cpPayModal').addEventListener('click', (ev) => {
+        if (!ev.target.closest('#cpPayBox')) cpPayCloseModal();
+    });
+    document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape' && !el('cpPayModal').classList.contains('hidden')) cpPayCloseModal();
+    });
 
     el('cpAdd').addEventListener('click', cpAddToCart);
     el('cpDisc').addEventListener('input', cpRenderCart);
@@ -4643,6 +4828,9 @@
             cpCust = null;
             if (el('cpCustPhone')) el('cpCustPhone').value = '';
             if (el('cpCustName')) el('cpCustName').value = '';
+            // ⚠️ النافذةُ تُغلق بعد النجاح: لو بقيت مفتوحةً حجبت رسالةَ النتيجة
+            //   (ورقمَ الفاتورة، والتحذيرَ الحرجَ إن لم تُحفظ) خلفَ حجابٍ رماديّ.
+            cpPayCloseModal();
             cpRenderCart();
             cpRenderPay();
             cpRenderCust();
@@ -5662,7 +5850,7 @@
         cpFixPick = b.getAttribute('data-cpfix');
         el('cpFixBox').querySelectorAll('button[data-cpfix]').forEach(x => {
             const on = x.getAttribute('data-cpfix') === cpFixPick;
-            x.style.borderColor = on ? '#0f172a' : '';
+            x.style.borderColor = on ? 'var(--wine-600)' : '';
             x.style.borderWidth = on ? '2px' : '';
             x.style.fontWeight = on ? '800' : '';
         });
