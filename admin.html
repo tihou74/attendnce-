@@ -14239,6 +14239,13 @@
      *  صفرٌ يُقرأ «جاءت مجّانًا» فيُنتج ربحًا وهميًّا، والفراغُ يقول «لا أعرف». */
     function abInvCost(v) {
         if (!abayaCatalogLoaded) return null;
+        /**
+         * ⚠️⚠️⚠️ فاتورةٌ فيها **أوردر** كلفتُها غيرُ معروفةٍ بعد، فتُعاد `null`.
+         *   الأوردرُ قطعةٌ **لم تُصنع** — وكلفتُها ستأتي مع شحنةٍ قادمة. واستعمالُ
+         *   كلفةِ الكتالوج لها يُنتج **ربحًا لم يتحقّق** في شاشةِ مالٍ يُقرَّر عليها.
+         *   والفراغُ يقول «لا أعرف»؛ والصفرُ أو التقديرُ يكذبان.
+         */
+        if ((v.lines || []).some(l => String(l.kind || '') === 'order')) return null;
         let total = 0, known = true;
         (v.lines || []).forEach(l => {
             const prod = abayaProducts.find(x => x.id === l.productId);
@@ -14392,7 +14399,13 @@
             const profit = (c === null || ret) ? null : Math.round(((Number(v.total) || 0) - c) * 100) / 100;
             return `<tr${ret ? ' style="background: rgba(185,28,28,0.05);"' : ''}>
                 <td style="font-family: ui-monospace, monospace;"><b>${escapeHtml(v.no || '')}</b>
-                    <br><small style="color: var(--text-dim);">${(v.lines || []).map(l => escapeHtml(l.code)).join(' · ')}</small></td>
+                    <br><small style="color: var(--text-dim);">${(v.lines || []).map(l =>
+                        // ⚠️ الأوردرُ يُوسَم في الجدول: فاتورةٌ لم تُنقص المخزونَ يجب أن
+                        //   تُعرف من نظرةٍ، وإلّا بُحث عن حركةِ مخزونٍ لا وجودَ لها.
+                        escapeHtml(l.code) + (String(l.kind || '') === 'order'
+                            ? ' <b style="color: var(--warning);">[ORDER]</b>' : '')).join(' · ')}</small>
+                    ${(v.lines || []).some(l => String(l.kind || '') === 'order')
+                        ? `<br><small style="color: var(--warning); font-weight:700;">has an order &mdash; no stock moved</small>` : ''}</td>
                 <td>${escapeHtml(v.date || '')}<br><small style="color: var(--text-dim);">${escapeHtml(v.time || '')}</small></td>
                 <td>${escapeHtml(v.shop || '')}</td>
                 <td>${escapeHtml(v.byName || '')}</td>
@@ -14402,7 +14415,11 @@
                     ? `${escapeHtml(v.customerName || '—')}<br><small dir="ltr" style="color: var(--text-dim);">${escapeHtml(v.customerPhone || '')}</small>`
                     : '<span style="color: var(--text-faint);">walk-in</span>'}</td>
                 <td class="money-col">${pcs}</td>
-                <td class="money-col">${money(v.subtotal)}</td>
+                <td class="money-col">${money(v.subtotal)}
+                    ${Number(v.feeTotal || 0) > 0
+                        // ⚠️ الرسمُ يُعرض بجانب المجموع لا مكانَه: هو **داخلٌ** في
+                        //   الإجمالي، وسطرٌ منفصلٌ في عمودٍ آخر يُقرأ إضافةً فوقه.
+                        ? `<br><small style="color: var(--text-dim);">+ fees ${money(v.feeTotal)}</small>` : ''}</td>
                 <td class="money-col">${Number(v.discountAmount || 0) > 0
                     ? `-${money(v.discountAmount)}<br><small>${escapeHtml(String(v.discountPct || 0))}%</small>` : '—'}</td>
                 <td class="money-col"><b>${money(v.total)}</b></td>
@@ -14599,7 +14616,14 @@
                     'Invoice subtotal': Number(v.subtotal) || 0,
                     'Discount %': Number(v.discountPct) || 0,
                     'Discount amount': Number(v.discountAmount) || 0,
+                    // ⚠️ الرسومُ أعمدةٌ مستقلّةٌ **وهي داخلةٌ في الإجمالي**: من يجمع
+                    //   العمودَين فوق الإجمالي يُضاعف المال. وعنوانُ العمود يقول ذلك.
+                    'Alteration fee (in total)': Number(v.altFee) || 0,
+                    'Delivery fee (in total)': Number(v.deliveryFee) || 0,
                     'Invoice total': Number(v.total) || 0,
+                    // ⚠️ نوعُ السطر: بلا هذا العمود لا يُعرف في الإكسل لماذا لم
+                    //   تنقص كميّةُ تصميمٍ بِيع.
+                    'Ready or order': String(l.kind || 'shelf') === 'order' ? 'ORDER' : 'From the shelf',
                     'Unit cost': unitCost || '',
                     'Line cost': unitCost ? unitCost * (Number(l.qty) || 0) : '',
                     Customer: String(v.customerName || ''),
@@ -20769,7 +20793,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v210';
+        const APP_BUILD = 'v211';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;

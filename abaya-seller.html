@@ -1179,6 +1179,30 @@
                         <span class="qt" id="cpFoundLeft"></span>
                     </div>
                 </div>
+                <!-- ==========================================================
+                     ⭐⭐⭐⭐⭐ «أوردر» — بأمر المالك: «أضف أوبشن أوردر، فإذا كان
+                     الطلب أوردر لا يُنقص من الشيلف ولا من الستوك».
+                     ----------------------------------------------------------
+                     ⚠️⚠️ والخيارُ **لكلِّ سطرٍ لا لكلِّ فاتورة**: زبونةٌ تأخذ عبايةً
+                        جاهزةً من الرفّ **وتطلب** ثانيةً تفصيلًا في نفس الفاتورة —
+                        وهي حالةٌ عاديّةٌ لا استثناء. فخيارٌ على مستوى الفاتورة كان
+                        سيُجبرها على فاتورتَين أو يُنقص رفًّا لم تُؤخذ منه قطعة.
+                     ⚠️ ويعود إلى «من الرفّ» بعد كلِّ إضافة: نسيانُه مفتوحًا على
+                        «أوردر» يعني قطعةً تخرج من الرفّ ولا تُخصم منه — أي جردٌ
+                        يكذب، ولا يُكتشف إلّا بعدّ الرفّ.
+                     ========================================================== -->
+                <div style="margin-top: var(--space-4);">
+                    <span class="alabel" style="font-size: var(--text-xs); font-weight: 700;
+                          text-transform: uppercase; letter-spacing: .5px;">Ready or made to order</span>
+                    <div class="bar" id="cpKindBar" style="margin-top: 6px;">
+                        <button type="button" class="ghost" data-cpkind="shelf" aria-pressed="true"
+                                style="width:auto;">From the shelf</button>
+                        <button type="button" class="ghost" data-cpkind="order" aria-pressed="false"
+                                style="width:auto;">&#9986; Order &mdash; made to measure</button>
+                    </div>
+                    <p class="note" id="cpKindNote" style="margin-top: var(--space-2);"></p>
+                </div>
+
                 <div class="two" style="margin-top: var(--space-4);">
                     <div>
                         <label for="cpQty">How many</label>
@@ -1245,6 +1269,31 @@
                         <button class="ghost" id="cpClear" style="width: auto;">Empty the invoice</button>
                     </div>
                 </div>
+                <!-- ==========================================================
+                     ⭐⭐⭐⭐⭐ الرسوم — بأمر المالك: «أضف ميزةً للبياعات، مثلًا
+                     التريشن فيس وتحطّ السعر، والديليفري فيس وتحطّ السعر».
+                     ----------------------------------------------------------
+                     ⚠️⚠️ والرسمُ يُضاف **بعد** الخصم لا قبله: خصمُ 20٪ على عبايةٍ
+                        لا يعني خصمًا على أجرةِ الخيّاط ولا على التوصيل — وحسابُه
+                        قبل الخصم كان يُنقص من أجرةٍ تُدفع كاملةً لغيرنا.
+                     ⚠️ ولا مخزونَ لها: الرسمُ خدمةٌ لا قطعةٌ على رفّ.
+                     ⚠️⚠️ وفاتورةُ رسمٍ وحدَه **مسموحة**: زبونةٌ تعود بعبايةٍ اشترتها
+                        لتُعدَّل تدفع أجرةَ تعديلٍ بلا بيعِ قطعة. فالفاتورةُ تُقبل
+                        بلا أسطرٍ إن كان فيها رسم.
+                     ========================================================== -->
+                <div style="margin-top: var(--space-4);">
+                    <span class="alabel" style="font-size: var(--text-xs); font-weight: 700;
+                          text-transform: uppercase; letter-spacing: .5px;">Fees &mdash; optional</span>
+                    <div class="two" style="margin-top: 6px;">
+                        <div><label for="cpAltFee">Alteration fee</label>
+                            <input type="number" id="cpAltFee" inputmode="decimal" step="0.01" min="0"
+                                   placeholder="0.00"></div>
+                        <div><label for="cpDelFee">Delivery fee</label>
+                            <input type="number" id="cpDelFee" inputmode="decimal" step="0.01" min="0"
+                                   placeholder="0.00"></div>
+                    </div>
+                </div>
+
                 <div id="cpTotals" style="margin-top: var(--space-3);"></div>
 
                 <!-- ==========================================================
@@ -2839,6 +2888,11 @@
         el('cpCode').value = '';
         el('cpQty').value = '1';
         if (el('cpDisc')) el('cpDisc').value = '';
+        // ⚠️ الرسومُ والنوعُ يُصفَّران مع المحلّ: الجهازُ مشترك — نفسُ سببِ تصفير الخصم.
+        if (el('cpAltFee')) el('cpAltFee').value = '';
+        if (el('cpDelFee')) el('cpDelFee').value = '';
+        cpKind = 'shelf';
+        if (typeof cpRenderKind === 'function') cpRenderKind();
         if (el('cpRetNo')) el('cpRetNo').value = '';
         if (el('cpSearch')) el('cpSearch').value = '';
         el('cpFound').classList.add('hidden');
@@ -3125,6 +3179,10 @@
 
     async function cpSelect(p) {
         cpSelected = p;
+        // ⚠️ النوعُ يعود إلى «من الرفّ» مع كلِّ قطعةٍ جديدة، ويُعاد رسمُ ملاحظتِه:
+        //   سطرُها يذكر الباركود، فقطعةٌ جديدةٌ مع ملاحظةِ قطعةٍ سابقةٍ تُضلّل.
+        cpKind = 'shelf';
+        if (typeof cpRenderKind === 'function') cpRenderKind();
         const left = cpQtyOf(p, state.shop);
         el('cpList').classList.add('hidden');
         el('cpFound').classList.remove('hidden');
@@ -4016,9 +4074,25 @@
         // ⚠️ التقريبُ إلى الهللة **مرّةً واحدةً هنا**: لو قُرِّب في الشاشة وحدها
         //   لاختلف مجموعُ الورقة عن مجموع المستند بهللةٍ لا يُعرف من أين جاءت.
         const discountAmount = Math.round(subtotal * pct) / 100;
-        const total = Math.round((subtotal - discountAmount) * 100) / 100;
+        /**
+         * ⭐⭐ الرسوم — بأمر المالك. والفراغُ صفرٌ، والسالبُ صفرٌ.
+         * ⚠️⚠️ وتُضاف **بعد** الخصم: خصمُ 20٪ على عبايةٍ لا يخصم أجرةَ الخيّاط.
+         *   ولو حُسبت قبله لَخُصم من أجرةٍ تُدفع كاملةً.
+         */
+        const fee = (id) => {
+            const v = Number((el(id) || {}).value);
+            return (isFinite(v) && v > 0) ? Math.round(v * 100) / 100 : 0;
+        };
+        const altFee = fee('cpAltFee');
+        const deliveryFee = fee('cpDelFee');
+        const feeTotal = Math.round((altFee + deliveryFee) * 100) / 100;
+        const total = Math.round((subtotal - discountAmount + feeTotal) * 100) / 100;
         const pieces = cpCart.reduce((a, l) => a + (Number(l.qty) || 0), 0);
-        return { subtotal, pct, discountAmount, total, pieces };
+        // ⚠️ عددُ الأسطر التي تُنقص الرفَّ فعلًا — الأوردر ليس منها.
+        const shelfPieces = cpCart.reduce((a, l) =>
+            a + (l.kind === 'order' ? 0 : (Number(l.qty) || 0)), 0);
+        return { subtotal, pct, discountAmount, altFee, deliveryFee, feeTotal,
+                 total, pieces, shelfPieces };
     }
 
     function cpRenderCart() {
@@ -4041,6 +4115,10 @@
         el('cpCartList').innerHTML = cpCart.map((l, i) => `
             <div class="cpsold">
                 <span><b dir="ltr">${escapeHtml(l.code)}</b>${l.name ? ' &mdash; ' + escapeHtml(l.name) : ''}
+                    ${l.kind === 'order'
+                        // ⚠️ الأوردرُ يُوسَم في السلّة بلونٍ **وكلمة**: سطرٌ لا يُنقص
+                        //   الرفَّ يجب أن يُرى قبل الإكمال لا أن يُكتشف من الجرد.
+                        ? `<b style="color:#B45309;"> &middot; ORDER</b>` : ''}
                     <br><small style="color: var(--color-text-muted);" dir="ltr">${l.qty} &times; ${money(l.price)} QAR
                     = ${money((Number(l.price) || 0) * (Number(l.qty) || 0))} QAR</small></span>
                 <button type="button" class="ghost" data-cpdel="${i}">Remove</button>
@@ -4052,13 +4130,61 @@
         el('cpTotals').innerHTML =
             row(`Subtotal &mdash; ${t.pieces} piece(s)`, `${money(t.subtotal)} QAR`)
             + (t.pct > 0 ? row(`Discount ${t.pct}%`, `- ${money(t.discountAmount)} QAR`) : '')
-            + row('Total', `${money(t.total)} QAR`, true);
+            + (t.altFee > 0 ? row('Alteration fee', `+ ${money(t.altFee)} QAR`) : '')
+            + (t.deliveryFee > 0 ? row('Delivery fee', `+ ${money(t.deliveryFee)} QAR`) : '')
+            + row('Total', `${money(t.total)} QAR`, true)
+            // ⚠️ يُقال صريحًا كم قطعةً ستنزل من الرفّ فعلًا: فاتورةٌ فيها أوردر
+            //   تُظهر عددًا أكبرَ من الذي سيُخصم، والفرقُ يجب أن يُقرأ لا يُحسب.
+            + (t.shelfPieces !== t.pieces
+                ? `<div style="font-size:12px; color:#B45309; font-weight:700; margin-top:4px;">`
+                  + `${t.pieces - t.shelfPieces} piece(s) are ORDERS &mdash; they do not come off the shelf.</div>`
+                : '');
         // ⚠️ سطرُ الدفع يتبع المجموع: تغييرُ الخصم أو إضافةُ قطعةٍ يُغيّر المبلغَ
         //   المطلوب، فتقسيمٌ كان صحيحًا يصير ناقصًا — ويجب أن تُخبَر في الحال.
         if (typeof cpRenderPay === 'function') cpRenderPay();
     }
 
     /** ⚠️ لا تكتب في القاعدة بحال — سلّةٌ في الذاكرة وحدها. */
+    /**
+     * ⭐⭐⭐⭐⭐ «من الرفّ» أم «أوردر» — والفرقُ مخزونٌ لا عرض.
+     * ⚠️ ويعود إلى «من الرفّ» بعد كلِّ إضافةٍ وكلِّ اختيارِ قطعةٍ جديدة: بقاؤه على
+     *   «أوردر» بالسهو يُخرج قطعةً من الرفّ بلا خصم — جردٌ يكذب لا يُكتشف إلّا بالعدّ.
+     */
+    let cpKind = 'shelf';
+
+    function cpRenderKind() {
+        document.querySelectorAll('#cpKindBar button[data-cpkind]').forEach(b => {
+            const on = b.getAttribute('data-cpkind') === cpKind;
+            b.setAttribute('aria-pressed', String(on));
+            b.style.borderColor = on ? '#0f172a' : '';
+            b.style.borderWidth = on ? '2px' : '';
+            b.style.fontWeight = on ? '800' : '';
+        });
+        const note = el('cpKindNote');
+        if (!note) return;
+        if (cpKind !== 'order') {
+            note.innerHTML = `The piece leaves the shelf now and the stock goes down.`;
+            note.style.color = '';
+            return;
+        }
+        // ⚠️⚠️ ويُقال ما يترتّب عليه بالحرف: «لا يُنقص من الشيلف ولا من الستوك»
+        //   بنصّ المالك — فمن تختاره وهي تأخذ قطعةً من الرفّ تُفسد الجرد.
+        const off = cpSelected && cpSelected.canOrder !== true;
+        note.innerHTML = `<b>An order does NOT come off the shelf and does NOT reduce the stock.</b> `
+            + `Choose this only when the piece will be made, not handed over now.`
+            + (off ? `<br><b style="color:#B45309;">&#9888; The catalogue does not mark `
+                     + `${escapeHtml((cpSelected || {}).code || 'this design')} as order-able.</b> `
+                     + `You may still record it, but check with the owner.` : '');
+        note.style.color = 'var(--color-text)';
+    }
+
+    el('cpKindBar').addEventListener('click', (ev) => {
+        const b = ev.target.closest('button[data-cpkind]');
+        if (!b) return;
+        cpKind = b.getAttribute('data-cpkind') === 'order' ? 'order' : 'shelf';
+        cpRenderKind();
+    });
+
     function cpAddToCart() {
         if (!cpSelected) { setMsg('cpMsg', 'Find the abaya first.', 'err'); return; }
         if (!state.shop) { setMsg('cpMsg', 'Pick your shop first.', 'err'); return; }
@@ -4066,25 +4192,39 @@
         if (!isFinite(n) || n < 1) { setMsg('cpMsg', 'How many? At least one.', 'err'); return; }
         const key = abayaShopKey(state.shop);
         const left = Number((cpSelected.qty || {})[key] || 0) || 0;
+        const isOrder = cpKind === 'order';
         // ⚠️⚠️ ما في السلّة يُحسب مع الجديد: ثلاثُ قطعٍ في السلّة وواحدةٌ على الرفّ
         //   كانت تمرّ لأنّ كلَّ إضافةٍ تُقارن وحدَها. والقراءةُ هنا محليّة، والقراءةُ
         //   من الخادم تقع عند الإكمال — فهذا تحذيرٌ مبكّرٌ لا الحارسَ الأخير.
-        const already = cpCart.filter(l => l.id === cpSelected.id)
+        // ⚠️⚠️⚠️ والأوردرُ **لا يُحسب في هذا العدّ ولا يُقارن بالرفّ**: هو قطعةٌ
+        //   ستُصنع، فلا تُؤخذ من رفٍّ ولا تُنقص رصيدَه. ولو حُسب لَمُنع طلبُ عبايةٍ
+        //   نفدت من الرفّ — وهو أوضحُ سببٍ للطلب من أصله.
+        const already = cpCart.filter(l => l.id === cpSelected.id && l.kind !== 'order')
                               .reduce((a, l) => a + (Number(l.qty) || 0), 0);
-        if (already + n > left) {
+        if (!isOrder && already + n > left) {
             setMsg('cpMsg', `Only ${left} of ${cpSelected.code} in ${state.shop}`
-                + (already ? `, and ${already} are already on this invoice.` : '.'), 'err');
+                + (already ? `, and ${already} are already on this invoice.` : '.')
+                + ` If it is to be MADE, choose "Order" instead.`, 'err');
             return;
         }
         const price = cpShownPrice(cpSelected);
         // نفسُ التصميم بنفس السعر يُجمع في سطرٍ واحد — ورقةٌ فيها سطرانِ متطابقان تُربك.
-        const same = cpCart.find(l => l.id === cpSelected.id && Number(l.price) === Number(price));
+        // ⚠️ والنوعُ شرطُ الدمج: سطرُ رفٍّ وسطرُ أوردرٍ لنفس التصميم **لا يُدمجان**،
+        //   وإلّا نقص الرفُّ بعددِ الاثنين أو بعددِ لا شيء.
+        const same = cpCart.find(l => l.id === cpSelected.id
+            && Number(l.price) === Number(price)
+            && (l.kind === 'order') === isOrder);
         if (same) same.qty = (Number(same.qty) || 0) + n;
-        else cpCart.push({ id: cpSelected.id, code: cpSelected.code, name: cpSelected.name || '', qty: n, price });
+        else cpCart.push({ id: cpSelected.id, code: cpSelected.code, name: cpSelected.name || '',
+                           qty: n, price, kind: isOrder ? 'order' : 'shelf' });
         cpRenderCart();
-        setMsg('cpMsg', `${n} × ${cpSelected.code} added. Scan the next piece, or finish the invoice.`, 'ok');
+        setMsg('cpMsg', `${n} × ${cpSelected.code}${isOrder ? ' (ORDER)' : ''} added. `
+            + `Scan the next piece, or finish the invoice.`, 'ok');
         el('cpCode').value = '';
         el('cpQty').value = '1';
+        // ⚠️ يعود إلى «من الرفّ» — انظر التعليقَ عند `cpKind`.
+        cpKind = 'shelf';
+        cpRenderKind();
     }
 
     // =====================================================================
@@ -4252,6 +4392,11 @@
 
     el('cpAdd').addEventListener('click', cpAddToCart);
     el('cpDisc').addEventListener('input', cpRenderCart);
+    // ⚠️ الرسومُ تُغيّر المجموعَ، والمجموعُ يُغيّر ما يجب أن يُدفع — فسطرُ الدفع
+    //   يُعاد حسابُه معها (cpRenderCart تُنادي cpRenderPay). وبلا مستمعٍ يبقى
+    //   تقسيمٌ كان صحيحًا ناقصًا بقيمة الرسم.
+    el('cpAltFee').addEventListener('input', cpRenderCart);
+    el('cpDelFee').addEventListener('input', cpRenderCart);
     el('cpCartList').addEventListener('click', (ev) => {
         const b = ev.target.closest('button[data-cpdel]');
         if (!b || cpBusy) return;
@@ -4284,10 +4429,16 @@
      */
     async function cpFinishInvoice() {
         if (cpBusy) return;
-        if (!cpCart.length) { setMsg('cpFinMsg', 'The invoice is empty.', 'err'); return; }
         if (!state.shop) { setMsg('cpFinMsg', 'Pick your shop first.', 'err'); return; }
         const key = abayaShopKey(state.shop);
         const t = cpCartTotals();
+        // ⚠️⚠️ الفراغُ صار «لا أسطرَ **ولا** رسوم»: زبونةٌ تعود بعبايةٍ اشترتها
+        //   لتُعدَّل تدفع أجرةَ تعديلٍ بلا بيعِ قطعة — وهي فاتورةٌ حقيقيّةٌ ومالٌ
+        //   يدخل الصندوق. ومنعُها كان يُجبرها على كتابتها في مكانٍ آخر أو تركِها.
+        if (!cpCart.length && t.feeTotal <= 0) {
+            setMsg('cpFinMsg', 'The invoice is empty — add a piece, or an alteration / delivery fee.', 'err');
+            return;
+        }
         if (t.total < 0) { setMsg('cpFinMsg', 'The discount cannot be more than the total.', 'err'); return; }
         // ⚠️⚠️ ولا فاتورةَ بلا طريقةِ دفعٍ صحيحة: تُفحَص **قبل** أن يُنقص أيُّ رفّ،
         //   فلا تبقى قطعٌ منقوصةً لأجل خانةِ دفعٍ ناقصة. ولا افتراضَ «كاش» صامتًا.
@@ -4311,6 +4462,15 @@
             // ---- ١) فحصُ كلِّ الأسطر من الخادم قبل نقصِ أيِّ شيء --------------
             const fresh = [];
             for (const l of cpCart) {
+                /**
+                 * ⚠️⚠️⚠️ الأوردرُ يُستثنى من فحصِ المخزون ومن النقصِ معًا — بأمر
+                 *   المالك: «إذا كان الطلب أوردر لا يُنقص من الشيلف ولا من الستوك».
+                 *   وهو قطعةٌ **ستُصنع**، فلا رصيدَ لها يُفحَص ولا رفٌّ يُنقص منه.
+                 * ⚠️ والاستثناءُ هنا يكفي للاثنين: الحلقةُ التاليةُ تعمل على `fresh`
+                 *   وحدَها، فما لم يدخلها لا يُنقص. (وهذا مقصودٌ: حارسٌ واحدٌ في
+                 *   موضعٍ واحدٍ أأمنُ من شرطَين متطابقَين في موضعَين.)
+                 */
+                if (l.kind === 'order') continue;
                 const snap = await getDoc(doc(db, 'abaya_products', l.id));
                 if (!snap.exists()) throw new Error(`${l.code} is no longer in the list.`);
                 const fv = snap.data() || {};
@@ -4357,7 +4517,11 @@
                 productId: String(l.id), code: String(l.code), name: String(l.name || ''),
                 qty: Math.floor(Number(l.qty)) || 0,
                 unitPrice: Number(l.price) || 0,
-                lineTotal: Math.round((Number(l.price) || 0) * (Number(l.qty) || 0) * 100) / 100
+                lineTotal: Math.round((Number(l.price) || 0) * (Number(l.qty) || 0) * 100) / 100,
+                // ⚠️⚠️ النوعُ يُحفظ على السطر: بلا هذا الحقلِ لا يعرف الإرجاعُ أنّ
+                //   السطرَ لم يخرج من رفٍّ أصلًا — فيُعيده إليه ويُنشئ مخزونًا لا وجودَ
+                //   له. وهو الحقلُ الذي يمنع أخطرَ عطلٍ في هذه الميزة.
+                kind: l.kind === 'order' ? 'order' : 'shelf'
             }));
             let saved = true;
             try {
@@ -4386,6 +4550,12 @@
                     subtotal: Math.round(t.subtotal * 100) / 100,
                     discountPct: t.pct,
                     discountAmount: t.discountAmount,
+                    // ⭐⭐ الرسومُ تُحفظ **منفصلةً** ومجموعةً، وهي داخلةٌ في `total`.
+                    // ⚠️ فلا تُجمع فوقه بحالٍ في أيِّ قارئٍ لاحق — ذلك يُضاعف المال.
+                    //   وهذا نفسُ القرار المُقرّ في التقرير اليوميّ بالحرف.
+                    altFee: t.altFee,
+                    deliveryFee: t.deliveryFee,
+                    feeTotal: t.feeTotal,
                     total: t.total,
                     // ⚠️ حالةُ الإرجاع تُولد مكتوبةً لا غائبة — حقلٌ غائبٌ يُقرأ
                     //   بطرقٍ مختلفةٍ في شاشتَين، والصريحُ لا يُختلف فيه.
@@ -4447,13 +4617,22 @@
             const sale = {
                 no: invoiceNo, shop: state.shop, byName: state.sellerName || '',
                 when: soldAt, lines,
-                subtotal: t.subtotal, pct: t.pct, discountAmount: t.discountAmount, total: t.total,
+                subtotal: t.subtotal, pct: t.pct, discountAmount: t.discountAmount,
+                altFee: t.altFee, deliveryFee: t.deliveryFee, feeTotal: t.feeTotal,
+                total: t.total,
                 payment: { method: pay.method, cash: pay.cash, card: pay.card },
                 customerPhone: custKey, customerName: custName
             };
             cpSoldHere.unshift(sale);
             cpCart = [];
             if (el('cpDisc')) el('cpDisc').value = '';
+            // ⚠️⚠️ والرسومُ تُصفَّر: أجرةُ تعديلٍ منسيّةٌ في الخانة تُضاف إلى فاتورة
+            //   الزبونة التالية — مالٌ يُقبض من امرأةٍ لم تطلب تعديلًا.
+            if (el('cpAltFee')) el('cpAltFee').value = '';
+            if (el('cpDelFee')) el('cpDelFee').value = '';
+            // ⚠️ ونوعُ السطر يعود إلى «من الرفّ».
+            cpKind = 'shelf';
+            if (typeof cpRenderKind === 'function') cpRenderKind();
             // ⚠️⚠️ وطريقةُ الدفع تُصفَّر: نسيانُها يجعل فاتورةَ الزبونةِ التالية
             //   تُسجَّل بطريقةِ دفعِ السابقة — وهو خطأٌ في المال لا في العرض.
             cpPay = '';
@@ -4474,6 +4653,12 @@
             setMsgHtml('cpFinMsg',
                 `Invoice <b class="ltr">${escapeHtml(invoiceNo)}</b> &mdash; ${t.pieces} piece(s), `
                 + `<b>${money(t.total)} QAR</b>. Printing.`
+                + (t.feeTotal > 0 ? ` <br>Fees included: ${money(t.feeTotal)} QAR.` : '')
+                // ⚠️ يُقال بعد الحفظ كذلك، لا قبله وحدَه: هي اللحظةُ التي تُراجع فيها
+                //   الورقةَ، وفرقُ «بِيع» و«نزل من الرفّ» يجب أن يُقرأ لا يُستنتج.
+                + (t.shelfPieces !== t.pieces
+                    ? `<br><b>${t.pieces - t.shelfPieces} piece(s) were ORDERS</b> &mdash; nothing came off the shelf `
+                      + `for them and the stock is unchanged.` : '')
                 + (saved ? '' : `<br><b>&#9888; The stock went down but the invoice was NOT saved.</b> `
                     + `A return will not find it. Tell the owner this number.`)
                 + (failedMoves.length ? `<br><b>&#9888; No movement line for: ${escapeHtml(failedMoves.join(', '))}.</b>` : '')
@@ -4523,6 +4708,9 @@
      */
     const RCPT_AR = {
         receipt:   'فاتورة',
+        order:     'طلب — يُصنع',
+        altFee:    'أجرة التعديل',
+        delFee:    'أجرة التوصيل',
         ret:       'إرجاع واسترداد',
         servedBy:  'البائعة',
         customer:  'الزبونة',
@@ -4577,7 +4765,11 @@
         const when = sale.when instanceof Date ? sale.when : new Date();
         const money2 = (n) => `${money(n)} QR`;
         // الشكلُ القديم: قطعةٌ واحدةٌ بلا مصفوفة أسطر
-        const lines = Array.isArray(sale.lines) && sale.lines.length
+        // ⚠️⚠️ `Array.isArray` وحدَها لا `&& length`: فاتورةُ **رسمٍ وحدَه** أسطرُها
+        //   مصفوفةٌ فارغةٌ بحقّ، والشرطُ القديم كان يسقط إلى الشكل القديم فيطبع
+        //   سطرًا من `undefined`. وغيابُ الحقلِ تمامًا (جلسةٌ قديمة) هو ما يستحقّ
+        //   الشكلَ القديم.
+        const lines = Array.isArray(sale.lines)
             ? sale.lines
             : [{ code: sale.code, name: sale.name, qty: sale.qty,
                  unitPrice: sale.price,
@@ -4624,6 +4816,10 @@
             <tr>
                 <td class="q ltr">${Number(l.qty) || 0}</td>
                 <td>${escapeHtml(l.name || l.code || '')}
+                    ${l.kind === 'order'
+                        // ⚠️ الأوردرُ يُكتب على الورقة بلغتَين: الزبونةُ تأخذ ورقةً
+                        //   بقطعةٍ لم تُسلَّم لها، فيجب أن تقرأ أنها **طلبٌ يُصنع**.
+                        ? `<br><b>ORDER${ar1(RCPT_AR.order)}</b>` : ''}
                     <br><span class="sub ltr">${escapeHtml(l.code || '')}</span>
                     <br><span class="sub ltr">${escapeHtml(money2(l.unitPrice))} / Unit &middot; ${ar1(RCPT_AR.unit)}</span></td>
                 <td class="a ltr">${escapeHtml(money2(l.lineTotal))}</td>
@@ -4635,6 +4831,18 @@
                  + `<td class="a ltr">${escapeHtml(money2(subtotal))}</td></tr>`
                  + `<tr><td colspan="2">${bi('Discount ' + String(pct) + '%', RCPT_AR.discount + ' ' + String(pct) + '٪')}</td>`
                  + `<td class="a ltr">- ${escapeHtml(money2(disc))}</td></tr>`;
+        }
+        // ⭐⭐ الرسومُ على الورقة بلغتَين، وكلٌّ بسطرِه: الزبونةُ تسأل «على ماذا
+        //   دفعتُ هذا؟» — ومجموعٌ واحدٌ لا يُجيب.
+        const af = Number(sale.altFee || 0) || 0;
+        const df = Number(sale.deliveryFee || 0) || 0;
+        if (af > 0) {
+            html += `<tr><td colspan="2">${bi('Alteration fee', RCPT_AR.altFee)}</td>`
+                 + `<td class="a ltr">${escapeHtml(money2(af))}</td></tr>`;
+        }
+        if (df > 0) {
+            html += `<tr><td colspan="2">${bi('Delivery fee', RCPT_AR.delFee)}</td>`
+                 + `<td class="a ltr">${escapeHtml(money2(df))}</td></tr>`;
         }
         el('rcItems').innerHTML = html;
         el('rcTotal').textContent = (isReturn ? '- ' : '') + money2(total);
@@ -4792,6 +5000,10 @@
         const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
         const z = {
             invoices: 0, pieces: 0, subtotal: 0, discountAmount: 0, netSales: 0,
+            // ⚠️ الرسومُ تُجمع للعرض وحدَه: هي **داخلةٌ** في netSales وفي الكاش/الكارد
+            //   أصلًا، فلا تُجمع فوقها بحال. وتُعرض كي يُعرف كم من مالِ اليوم أجرةُ
+            //   خدمةٍ لا بيعُ بضاعة — وهو سؤالٌ يُسأل عند مراجعة الربح.
+            fees: 0,
             cashSales: 0, cardSales: 0, noMethod: 0,
             refundCount: 0, refunds: 0, refundCash: 0, refundCard: 0,
             openingFloat: r2((shift || {}).openingFloat)
@@ -4806,6 +5018,7 @@
             z.subtotal += Number(v.subtotal) || 0;
             z.discountAmount += Number(v.discountAmount) || 0;
             z.netSales += Number(v.total) || 0;
+            z.fees += Number(v.feeTotal) || 0;
             const pm = v.payment || {};
             z.cashSales += Number(pm.cash) || 0;
             z.cardSales += Number(pm.card) || 0;
@@ -4823,7 +5036,7 @@
         });
 
         ['subtotal', 'discountAmount', 'netSales', 'cashSales', 'cardSales',
-         'refunds', 'refundCash', 'refundCard'].forEach(k => { z[k] = r2(z[k]); });
+         'refunds', 'refundCash', 'refundCard', 'fees'].forEach(k => { z[k] = r2(z[k]); });
         // ⚠️ المتوقَّعُ في الدرج: ما بدأتِ به + كاشُ البيع − كاشُ المردود. والشبكةُ
         //   ليست فيه بحال — مالُها في البنك لا في الدرج.
         z.expectedCash = r2(z.openingFloat + z.cashSales - z.refundCash);
@@ -4857,6 +5070,7 @@
             row(`Invoices &mdash; ${z.pieces} piece(s)`, String(z.invoices))
             + (z.discountAmount > 0 ? row('Gross', m(z.subtotal)) + row('Discounts', `- ${m(z.discountAmount)}`) : '')
             + row('Net sales', m(z.netSales), true)
+            + (z.fees > 0 ? row('&nbsp;&nbsp;of which fees', m(z.fees)) : '')
             + `<div style="height:8px;"></div>`
             + row('Cash', m(z.cashSales))
             + row('Card', m(z.cardSales))
@@ -5194,6 +5408,7 @@
                 + row('Pieces', String(z.pieces))
                 + row('Gross', m(z.subtotal))
                 + (z.discountAmount > 0 ? row('Discounts', `- ${m(z.discountAmount)}`) : '')
+                + (z.fees > 0 ? row('of which fees', m(z.fees)) : '')
                 + row('NET SALES', m(z.netSales), true)
                 + head('HOW IT WAS PAID')
                 + row('Cash', m(z.cashSales))
@@ -5506,11 +5721,19 @@
         setMsg('cpRetMsg', 'Taking it back...', 'load');
         const key = abayaShopKey(state.shop);
         const at = new Date();
-        const back = [], failed = [];
+        const back = [], failed = [], ordersBack = [];
         try {
             for (const l of lines) {
                 const n = Math.floor(Number(l.qty)) || 0;
                 if (n <= 0) continue;
+                /**
+                 * ⚠️⚠️⚠️ سطرُ أوردرٍ **لا يعود إلى الرفّ**: لم يخرج منه أصلًا.
+                 *   وإعادتُه تُنشئ مخزونًا لا وجودَ له — قطعةٌ تظهر على الشاشة
+                 *   وليست على الرفّ، فتُباع مرّةً ثانيةً وتُوعَد زبونةٌ بما لا يوجد.
+                 *   وهذا أخطرُ ما كان يمكن أن تُحدثه ميزةُ الأوردر.
+                 * ⚠️ والمبلغُ يُردّ كاملًا على أيِّ حال: المالُ قُبض فعلًا.
+                 */
+                if (l.kind === 'order') { ordersBack.push(`${n} × ${l.code}`); continue; }
                 try {
                     await updateDoc(doc(db, 'abaya_products', l.productId), {
                         ['qty.' + key]: increment(n),
@@ -5569,8 +5792,14 @@
             if (!el('cpList').classList.contains('hidden')) cpRenderGrid();
             cpRenderRet();
             setMsgHtml('cpRetMsg',
-                `Taken back &mdash; ${escapeHtml(back.join(' · '))} back on ${escapeHtml(state.shop)}. `
+                `Taken back &mdash; ${escapeHtml(back.join(' · ')) || 'nothing to put back'} `
+                + `${back.length ? 'back on ' + escapeHtml(state.shop) + '. ' : '. '}`
                 + `Refund <b>${money(cpRet.total)} QAR</b>.`
+                // ⚠️ يُقال صريحًا أنّ الأوردرَ لم يُعَد إلى الرفّ، وسببُه: وإلّا ظُنّ
+                //   أنّ الإرجاعَ نقص فيه شيء، أو عُدّ الرفُّ فوُجد أقلَّ من المتوقَّع.
+                + (ordersBack.length
+                    ? `<br><b>${escapeHtml(ordersBack.join(' · '))}</b> were ORDERS &mdash; they never came off the `
+                      + `shelf, so nothing was put back for them. The money is refunded in full.` : '')
                 + (failed.length ? `<br><b>&#9888; NOT put back: ${escapeHtml(failed.join(', '))}.</b> Tell the owner.` : '')
                 + (stamped ? '' : `<br><b>&#9888; The pieces went back but the invoice is not marked returned</b> — `
                     + `it could be returned a second time. Tell the owner this number.`)
