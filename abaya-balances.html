@@ -4259,7 +4259,7 @@
 
                 <div class="afacts">
                     ${a.colour ? `<div class="arow"><span>Colour</span><b>${escapeHtml(a.colour)}</b></div>` : ''}
-                    ${a.fabric ? `<div class="arow"><span>Fabric</span><b>${escapeHtml(a.fabric)}</b></div>` : ''}
+                    ${a.fabric ? `<div class="arow"><span>Work</span><b>${escapeHtml(a.fabric)}</b></div>` : ''}
                     <div class="arow"><span>Pieces arrived</span><b class="num">${a.pieces}</b></div>
                     <!-- ⚠️ السطرُ يُعرض **دائمًا** الآن لا عند وجود اسمِ مورّدٍ فقط:
                          وجودُ زرِّ واتسابٍ أخضرَ على بطاقةٍ لا تقول من أين وصلت
@@ -5102,7 +5102,7 @@
         // ⚠️ اللونُ **قبل** القماش في الرسالة: «اعملوا خمسًا أخرى» بلا لونٍ
         //   طلبٌ ناقصٌ تُنفّذه الورشةُ بلونٍ من عندها.
         if (a.colour) L.push('Colour: ' + a.colour);
-        if (a.fabric) L.push('Fabric: ' + a.fabric);
+        if (a.fabric) L.push('Work: ' + a.fabric);
         if (a.size) L.push('Sizes: ' + a.size);
         L.push('Pieces in this batch: ' + a.pieces);
         if (a.arrivedAt) L.push('Arrived on: ' + a.arrivedAt);

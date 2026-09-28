@@ -1398,7 +1398,7 @@
             <!-- كل العبايات بالصور -->            <!-- كل العبايات بالصور -->
             <div id="cpList" class="hidden" style="margin-top: var(--space-4);">
                 <label for="cpSearch">Search &mdash; barcode or name</label>
-                <input type="text" id="cpSearch" autocomplete="off" placeholder="Barcode, name, type, colour, fabric or size">
+                <input type="text" id="cpSearch" autocomplete="off" placeholder="Barcode, name, type, colour, work or size">
                 <!-- ⚠️ الغلافُ لم يبقَ شبكةً: صار يحمل أقسامًا، وكلُّ قسمٍ فيه
                      عنوانُه وشبكتُه (.cpg). عنوانٌ داخلَ شبكةٍ يأخذ خليّةً فيقع
                      بجانب بطاقةٍ لا فوق قسمه. -->
@@ -3703,7 +3703,7 @@
         // ⚠️⚠️ واللونُ معه: شحنتانِ من نفس التصميم بلونَين تصلان في يومٍ واحدٍ،
         //   وبلا اللونِ على البطاقة لا تعرف البياعةُ أيَّ صندوقٍ تُرفِّع.
         if (t.colour) s += `<span class="ln">Colour: <b>${escapeHtml(t.colour)}</b></span>`;
-        if (t.fabric) s += `<span class="ln">Fabric: <b>${escapeHtml(t.fabric)}</b></span>`;
+        if (t.fabric) s += `<span class="ln">Work: <b>${escapeHtml(t.fabric)}</b></span>`;
         if (t.size) s += `<span class="ln">Sizes: <b dir="ltr">${escapeHtml(t.size)}</b></span>`;
         s += `<span class="ln"><b>${t.pieces}</b> piece(s) to put on the shelf</span>`;
         s += `<span class="pr">${money(priceNow)} QAR`
@@ -3978,7 +3978,7 @@
         if (g.name) s += `<span class="nm">${escapeHtml(g.name)}</span>`;
         if (g.type) s += `<span class="ln">${escapeHtml(cpTypeLabel(g.type))}</span>`;
         if (g.colour) s += `<span class="ln">Colour: <b>${escapeHtml(g.colour)}</b></span>`;
-        if (g.fabric) s += `<span class="ln">Fabric: <b>${escapeHtml(g.fabric)}</b></span>`;
+        if (g.fabric) s += `<span class="ln">Work: <b>${escapeHtml(g.fabric)}</b></span>`;
         if (g.size) s += `<span class="ln">Sizes: <b dir="ltr">${escapeHtml(g.size)}</b></span>`;
         s += `<span class="pr">${money(priceNow)} QAR</span>`;
         if (changed) {
@@ -4897,6 +4897,7 @@
     const RCPT_AR = {
         receipt:   'فاتورة',
         order:     'طلب — يُصنع',
+        work:      'نوع الشغل',
         altFee:    'أجرة التعديل',
         delFee:    'أجرة التوصيل',
         ret:       'إرجاع واسترداد',

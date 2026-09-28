@@ -3041,8 +3041,11 @@
                 </div>
                 <!-- ⭐⭐⭐⭐ حقولُ العباية الثلاثة — تُملأ تلقائيًّا عند الإرسال،
                      وتبقى هنا لضبطها. وتُخفى لغير العباية بنصّ المالك. -->
-                <div style="width: 175px;" id="acFabricWrap"><label for="acFabric">Fabric &mdash; القماش</label>
-                    <input type="text" id="acFabric" maxlength="40" placeholder="e.g. Nida, Crepe" autocomplete="off">
+                <!-- ⚠️ خانةُ التصحيح تبقى **نصًّا حرًّا** لا قائمةً: هي ما يُصلح به
+                     المالكُ سطرًا قديمًا يحمل «Cotton» أو شغلًا لم تُدرجه القائمةُ بعد.
+                     وقائمةٌ مغلقةٌ هنا تمنعه من كتابةِ ما هو مكتوبٌ فعلًا على مستند. -->
+                <div style="width: 175px;" id="acFabricWrap"><label for="acFabric">Work &mdash; الشغل</label>
+                    <input type="text" id="acFabric" maxlength="40" placeholder="e.g. Aari, Full Lace" autocomplete="off">
                 </div>
                 <div style="width: 165px;" id="acToneWrap"><label for="acTone">Gold / silver</label>
                     <select id="acTone"></select>
@@ -3286,7 +3289,7 @@
                 <div style="width: 200px;" id="arvColourWrap"><label for="arvColour">Colour &mdash; اللون <span style="color: var(--danger);">*</span></label>
                     <select id="arvColour" onchange="onArrivalAutoCode()"></select>
                 </div>
-                <div style="width: 200px;" id="arvFabricWrap"><label for="arvFabric">Fabric &mdash; نوع القماش <span style="color: var(--danger);">*</span></label>
+                <div style="width: 200px;" id="arvFabricWrap"><label for="arvFabric">Work &mdash; نوع الشغل <span style="color: var(--danger);">*</span></label>
                     <select id="arvFabric" onchange="onArrivalAutoCode()"></select>
                 </div>
                 <!-- ⭐⭐⭐⭐⭐ من أين وصلت — بأمر المالك: «إذا كانت البضاعة الجديدة
@@ -3557,7 +3560,7 @@
                 <div style="width: 185px;" id="ikColourWrap"><label for="ikColour">Colour <span style="color: var(--danger);">*</span></label>
                     <select id="ikColour" onchange="onIntakeAutoCode()"></select>
                 </div>
-                <div style="width: 185px;" id="ikFabricWrap"><label for="ikFabric">Fabric <span style="color: var(--danger);">*</span></label>
+                <div style="width: 185px;" id="ikFabricWrap"><label for="ikFabric">Work &mdash; الشغل <span style="color: var(--danger);">*</span></label>
                     <select id="ikFabric" onchange="onIntakeAutoCode()"></select>
                 </div>
                 <div style="width: 175px;"><label for="ikSize">Sizes available</label>
@@ -3613,7 +3616,7 @@
             </div>
             <div class="table-container" style="margin-top:14px;">
                 <table>
-                    <thead><tr><th>Picture</th><th>Barcode</th><th>Name</th><th>What</th><th>Colour / fabric</th>
+                    <thead><tr><th>Picture</th><th>Barcode</th><th>Name</th><th>What</th><th>Colour / work</th>
                         <th>Sizes</th><th class="money-col">Pieces</th><th>Status</th><th>Note</th><th></th></tr></thead>
                     <tbody id="ikBody"></tbody>
                 </table>
@@ -3629,7 +3632,7 @@
                 The price on the label is the one being charged now.</p>
             <div class="date-group">
                 <div style="flex:1; min-width:240px;"><label for="lblSearch">Search</label>
-                    <input type="text" id="lblSearch" placeholder="Barcode, name, type, colour, fabric or size"
+                    <input type="text" id="lblSearch" placeholder="Barcode, name, type, colour, work or size"
                            onkeyup="renderLabelPicker()"></div>
                 <div style="width:190px;"><label for="lblShop">In stock at</label>
                     <select id="lblShop" onchange="renderLabelPicker()"></select></div>
@@ -13602,21 +13605,35 @@
     //   ثلاثةِ أحرفٍ يجعل Crepe وCream يتصادمان (CRE)، وتغييرُ اسمٍ يومًا يُغيّر رمزَه
     //   فتنكسر باركوداتٌ مطبوعةٌ على بضاعةٍ على الرفّ.
     // =====================================================================
+    /**
+      * ⭐⭐⭐⭐⭐ نوعُ الشغل — بأمر المالك، بديلًا عن «نوع القماش».
+      * بنصّه: «أريد حذف نوع القماش ووضع مكانه هاته الخيارات: Plain, Aari,
+      *  Embroidery, Lace Trim, Full Lace, Shake». (وEmbroidery كُتبت مرّتين.)
+      *
+      * ⚠️⚠️ واسمُ الثابتِ وأسماءُ الحقول (`fabric` / `fabricCode`) **لم تُغيَّر**،
+      *   وهذا مقصودٌ لا إهمال: الحقلُ مكتوبٌ على مستنداتٍ قائمةٍ في ثلاثِ مجموعاتٍ،
+      *   ومذكورٌ بالاسم في قائمةِ `hasOnly` في القواعد، ويُقرأ في أربعةِ ملفّات.
+      *   وإعادةُ تسميةٍ **لتحسين الاسم** تعني مستنداتٍ قديمةً بحقلٍ لا يقرؤه أحد،
+      *   ونشرةَ قواعدَ أخرى — بلا ربحٍ واحدٍ للمالك. وهذه قاعدةٌ مكتوبةٌ في
+      *   `tech.md`: «أسماءُ الحقول لا تُعاد تسميتُها لتحسين التسمية».
+      *   فالمتغيّرُ هو **ما يُعرض** وحدَه: العنوانُ صار «نوع الشغل» والقائمةُ هذه.
+      *
+      * ⚠️ والرموزُ ثلاثيّةٌ مكتوبةٌ بيدٍ كسابقتها — لا مشتقّةٌ من الاسم: `Lace Trim`
+      *   و`Full Lace` أوّلُ ثلاثةِ أحرفٍ فيهما واحدةٌ (`LAC`)، فالاشتقاقُ يجعلهما
+      *   شغلًا واحدًا في الباركود.
+      *
+      * ⚠️⚠️⚠️ وما سُجِّل بالقائمة القديمة **لا يضيع**: `setArrivalChoice` تُطابق
+      *   بالرمز ثمّ بالاسم، وإن لم تجد حقنت خيارًا لمرّةٍ واحدةٍ يحمل النصَّ نفسَه
+      *   («Cotton — as it was written before»). فالسطرُ القديمُ يبقى مقروءًا
+      *   وقابلًا للتحرير، وباركودُه المطبوعُ (…-CTN) يبقى صحيحًا كما هو.
+      */
     const ABAYA_FABRICS = [
-        { code: 'NID', en: 'Nida',      ar: 'نيدا' },
-        { code: 'LIN', en: 'Linen',     ar: 'كتان' },
-        { code: 'CRP', en: 'Crepe',     ar: 'كريب' },
-        { code: 'SLK', en: 'Silk',      ar: 'حرير' },
-        { code: 'CHF', en: 'Chiffon',   ar: 'شيفون' },
-        { code: 'SAT', en: 'Satin',     ar: 'ساتان' },
-        { code: 'JRS', en: 'Jersey',    ar: 'جيرسي' },
-        { code: 'CTN', en: 'Cotton',    ar: 'قطن' },
-        { code: 'GRG', en: 'Georgette', ar: 'جورجيت' },
-        { code: 'VLV', en: 'Velvet',    ar: 'مخمل' },
-        { code: 'ORG', en: 'Organza',   ar: 'أورجانزا' },
-        { code: 'LCE', en: 'Lace',      ar: 'دانتيل' },
-        { code: 'WOL', en: 'Wool',      ar: 'صوف' },
-        { code: 'TFT', en: 'Taffeta',   ar: 'تفتا' }
+        { code: 'PLN', en: 'Plain',      ar: 'سادة' },
+        { code: 'AAR', en: 'Aari',       ar: 'عاري' },
+        { code: 'EMB', en: 'Embroidery', ar: 'تطريز' },
+        { code: 'LCT', en: 'Lace Trim',  ar: 'حاشية دانتيل' },
+        { code: 'FLC', en: 'Full Lace',  ar: 'دانتيل كامل' },
+        { code: 'SHK', en: 'Shake',      ar: 'شيك' }
     ];
     const ABAYA_COLOURS = [
         { code: 'BLK', en: 'Black',  ar: 'أسود' },
@@ -15535,7 +15552,7 @@
                 'Name': p.name,
                 'What it is': abayaTypeLabel(p.type),
                 'Colour': p.colour,
-                'Fabric': p.fabric,
+                'Work': p.fabric,
                 'Gold / silver': abayaToneLabel(p.tone),
                 'Orders can be taken': p.canOrder ? 'Yes' : 'No',
                 'Sizes available': p.size,
@@ -17114,7 +17131,7 @@
                 'What': arrivalTypeLabel(a.type),
                 'Sizes available': a.size,
                 'Colour': a.colour,
-                'Fabric': a.fabric,
+                'Work': a.fabric,
                 'Where from': isWorkshopArrival(a.source) ? 'Our workshop' : 'A supplier',
                 'Supplier / workshop': a.supplier,
                 'Pieces': a.pieces,
@@ -20818,7 +20835,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v213';
+        const APP_BUILD = 'v214';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
