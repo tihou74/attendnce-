@@ -3008,6 +3008,14 @@
                 <div style="width: 180px;"><label for="acSize">Sizes available</label>
                     <input type="text" id="acSize" maxlength="60" placeholder="e.g. 54, 56, 58" autocomplete="off">
                 </div>
+                <!-- ⭐⭐⭐⭐⭐ اللونُ هنا كذلك، وليس زينةً: الوصولُ الذي أُرسل
+                     **مقفولٌ عن التحرير** عن قصد (كوستُه صار على سطر الكتالوج)، فلو
+                     لم تكن هذه الخانةُ هنا لبقي لونٌ اختير خطأً على شاشة البياعة
+                     بلا أيِّ سبيلٍ لتصحيحه.
+                     ⚠️ ويظهر لكلِّ ملبوسٍ لا للعباية وحدَها، بخلاف الثلاثة تحته. -->
+                <div style="width: 175px;" id="acColourWrap"><label for="acColour">Colour &mdash; اللون</label>
+                    <select id="acColour"></select>
+                </div>
                 <!-- ⭐⭐⭐⭐ حقولُ العباية الثلاثة — تُملأ تلقائيًّا عند الإرسال،
                      وتبقى هنا لضبطها. وتُخفى لغير العباية بنصّ المالك. -->
                 <div style="width: 175px;" id="acFabricWrap"><label for="acFabric">Fabric &mdash; القماش</label>
@@ -3224,7 +3232,11 @@
             <!-- ---- من نحن نشتري، وماذا ---- -->
             <div class="date-group" style="align-items: flex-start;">
                 <div style="width: 200px;"><label for="arvCode">Barcode <span style="color: var(--danger);">*</span></label>
-                    <input type="text" id="arvCode" placeholder="e.g. AS-1042" autocomplete="off" oninput="onArrivalCodeTyped()">
+                    <input type="text" id="arvCode" placeholder="built for you" autocomplete="off" oninput="onArrivalCodeEdited()">
+                    <!-- ⭐⭐ الباركودُ يُبنى وحدَه متى اكتمل الصنفُ واللونُ والقماش.
+                         ⚠️ والخانةُ تبقى **قابلةً للكتابة**: إعادةُ تعبئةِ تصميمٍ قائمٍ
+                            تُكتب بباركودِه هو كي تُزاد كميّتُه ولا يُنشأ سطرٌ ثانٍ. -->
+                    <p class="card-sub" id="arvCodeNote" style="margin: 6px 0 0; font-size: 11.5px;"></p>
                 </div>
                 <div style="flex: 1; min-width: 200px;"><label for="arvName">Name / model</label>
                     <input type="text" id="arvName" placeholder="e.g. Black crepe, silver embroidery" autocomplete="off">
@@ -3240,13 +3252,19 @@
                 <div style="width: 190px;"><label for="arvSize">Sizes available</label>
                     <input type="text" id="arvSize" maxlength="60" placeholder="e.g. 54, 56, 58" autocomplete="off">
                 </div>
-                <!-- ⭐⭐⭐⭐ نوعُ القماش — **للعباية وحدَها** بنصّ المالك، ويكتبه هو
-                     لأنه من اشترى ويعرف ما وصله. ويُخفى لغير العباية: «نوعُ
-                     القماش» على عطرٍ ضجيجٌ يُملأ بالخطأ.
-                     ⚠️ ونصٌّ حرٌّ: أسماءُ الأقمشة لا تُحصى، وقائمةٌ مغلقةٌ ترفض
-                     يومًا قماشًا وصل فعلًا. -->
-                <div style="width: 200px;" id="arvFabricWrap"><label for="arvFabric">Fabric &mdash; نوع القماش</label>
-                    <input type="text" id="arvFabric" maxlength="40" placeholder="e.g. Nida, Crepe, Satin" autocomplete="off">
+                <!-- ⭐⭐⭐⭐⭐ القماشُ واللون — بأمر المالك: «أضف في البضاعة الجديدة
+                     نوع القماش كتان، واللون، وبعدها بمجرّد ملء المعلومات يتمّ
+                     إنشاء باركود أوتوماتيكي».
+                     القماشُ للعباية وحدَها، واللونُ لكلِّ ملبوس (لا للعطر ولا
+                     للأكياس) — وكلاهما يُخفى لما لا يعنيه.
+                     ⚠️⚠️ وقائمتانِ مغلقتانِ لا خانتانِ حرّتان، والسببُ الباركودُ
+                     نفسُه: «Linen» و«linen» و«كتان» تُنتج ثلاثةَ رموزٍ لقماشٍ واحد،
+                     فيصير الباركودُ غيرَ قابلٍ للفرز. -->
+                <div style="width: 200px;" id="arvColourWrap"><label for="arvColour">Colour &mdash; اللون <span style="color: var(--danger);">*</span></label>
+                    <select id="arvColour" onchange="onArrivalAutoCode()"></select>
+                </div>
+                <div style="width: 200px;" id="arvFabricWrap"><label for="arvFabric">Fabric &mdash; نوع القماش <span style="color: var(--danger);">*</span></label>
+                    <select id="arvFabric" onchange="onArrivalAutoCode()"></select>
                 </div>
                 <!-- ⭐⭐⭐⭐⭐ من أين وصلت — بأمر المالك: «إذا كانت البضاعة الجديدة
                      السبلاير الخاص بها الورشة أي الفاكتوري فيظهر زرُّ واتساب
@@ -3459,7 +3477,7 @@
                 The price on the label is the one being charged now.</p>
             <div class="date-group">
                 <div style="flex:1; min-width:240px;"><label for="lblSearch">Search</label>
-                    <input type="text" id="lblSearch" placeholder="Barcode, name, type, fabric or size"
+                    <input type="text" id="lblSearch" placeholder="Barcode, name, type, colour, fabric or size"
                            onkeyup="renderLabelPicker()"></div>
                 <div style="width:190px;"><label for="lblShop">In stock at</label>
                     <select id="lblShop" onchange="renderLabelPicker()"></select></div>
@@ -13290,6 +13308,120 @@
      *   قماش؟» و«فيها ذهبي؟» و«أقدر أطلبها تفصيل؟». فمكانُها مستندُ المنتج.
      */
     const ABAYA_FABRIC_MAX = 40;
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ القماشُ واللونُ والباركودُ التلقائيّ — بأمر المالك
+    // ---------------------------------------------------------------------
+    // «أضف في البضاعة الجديدة نوع القماش (كتان…) واللون، وبعدها بمجرّد ملء
+    //  المعلومات يتمّ إنشاء باركود أوتوماتيكيّ بحيث الباركود لا يتعاود، ويكون
+    //  بهاته الصيغة: ab(date)(colour)(fabric)».
+    //
+    // ⚠️⚠️ قائمتانِ مغلقتانِ لا خانتانِ حرّتان — والسببُ الباركودُ نفسُه: «Linen»
+    //   و«linen» و«كتان» و«LINEN ' '» تُنتج أربعةَ رموزٍ مختلفةٍ لقماشٍ واحد، فيصير
+    //   الباركودُ غيرَ قابلٍ للقراءة ولا للفرز. والقائمةُ تُثبّت الرمزَ إلى الأبد.
+    // ⚠️ والرمزُ **لا يُشتقُّ من الاسم** بل مكتوبٌ بيدٍ في القائمة: اشتقاقُه من أوّل
+    //   ثلاثةِ أحرفٍ يجعل Crepe وCream يتصادمان (CRE)، وتغييرُ اسمٍ يومًا يُغيّر رمزَه
+    //   فتنكسر باركوداتٌ مطبوعةٌ على بضاعةٍ على الرفّ.
+    // =====================================================================
+    const ABAYA_FABRICS = [
+        { code: 'NID', en: 'Nida',      ar: 'نيدا' },
+        { code: 'LIN', en: 'Linen',     ar: 'كتان' },
+        { code: 'CRP', en: 'Crepe',     ar: 'كريب' },
+        { code: 'SLK', en: 'Silk',      ar: 'حرير' },
+        { code: 'CHF', en: 'Chiffon',   ar: 'شيفون' },
+        { code: 'SAT', en: 'Satin',     ar: 'ساتان' },
+        { code: 'JRS', en: 'Jersey',    ar: 'جيرسي' },
+        { code: 'CTN', en: 'Cotton',    ar: 'قطن' },
+        { code: 'GRG', en: 'Georgette', ar: 'جورجيت' },
+        { code: 'VLV', en: 'Velvet',    ar: 'مخمل' },
+        { code: 'ORG', en: 'Organza',   ar: 'أورجانزا' },
+        { code: 'LCE', en: 'Lace',      ar: 'دانتيل' },
+        { code: 'WOL', en: 'Wool',      ar: 'صوف' },
+        { code: 'TFT', en: 'Taffeta',   ar: 'تفتا' }
+    ];
+    const ABAYA_COLOURS = [
+        { code: 'BLK', en: 'Black',  ar: 'أسود' },
+        { code: 'WHT', en: 'White',  ar: 'أبيض' },
+        { code: 'CRM', en: 'Cream',  ar: 'كريمي' },
+        { code: 'BEI', en: 'Beige',  ar: 'بيج' },
+        { code: 'GRY', en: 'Grey',   ar: 'رمادي' },
+        { code: 'NVY', en: 'Navy',   ar: 'كحلي' },
+        { code: 'BLU', en: 'Blue',   ar: 'أزرق' },
+        { code: 'GRN', en: 'Green',  ar: 'أخضر' },
+        { code: 'BRN', en: 'Brown',  ar: 'بني' },
+        { code: 'CML', en: 'Camel',  ar: 'جملي' },
+        { code: 'GLD', en: 'Gold',   ar: 'ذهبي' },
+        { code: 'SLV', en: 'Silver', ar: 'فضي' },
+        { code: 'RED', en: 'Red',    ar: 'أحمر' },
+        { code: 'MRN', en: 'Maroon', ar: 'عنابي' },
+        { code: 'PNK', en: 'Pink',   ar: 'زهري' },
+        { code: 'ROS', en: 'Rose',   ar: 'وردي' },
+        { code: 'PRP', en: 'Purple', ar: 'بنفسجي' },
+        { code: 'LIL', en: 'Lilac',  ar: 'ليلكي' },
+        { code: 'MNT', en: 'Mint',   ar: 'نعناعي' },
+        { code: 'MST', en: 'Mustard', ar: 'خردلي' }
+    ];
+    /** رمزُ الصنف في الباركود — «ab» بنصّ المالك للعباية، والباقي بنفس المنطق. */
+    const ABAYA_TYPE_CODES = {
+        abaya: 'AB', kaftan: 'KF', shela: 'SH', inner: 'IN',
+        travel: 'TR', jalabiya: 'JL', dress: 'DR', perfume: 'PF',
+        // ⚠️ وللأكياسِ رمزُها: بلا سطرِها تسقط على الافتراض 'AB' فيُقرأ باركودُ
+        //   كيسٍ عبايةً — وهذا أسوأُ من غياب الباركود.
+        bags: 'BG'
+    };
+
+    const fabricByCode = (c) => ABAYA_FABRICS.find(x => x.code === String(c || '')) || null;
+    const colourByCode = (c) => ABAYA_COLOURS.find(x => x.code === String(c || '')) || null;
+
+    /**
+     * ⭐⭐⭐⭐⭐ الباركودُ التلقائيّ: `AB-031026-BLK-LIN`
+     *
+     * الصيغةُ بنصّ المالك: رمزُ الصنف + التاريخ + اللون + القماش.
+     * ⚠️ والتاريخُ `DDMMYY` لا `YYMMDD`: هو ما اعتادته باركوداتُ المحلِّ القائمة
+     *   (`QSS-030926-1` = 03/09/26)، وتغييرُ العُرف يُربك من يقرأ الرقمَ بعينه.
+     * ⚠️ وبتوقيت قطر لا بتوقيت الجهاز: شحنتانِ تُسجَّلان في نفس اللحظة من جهازَين
+     *   كانتا ستحملان تاريخَين مختلفَين.
+     * ⚠️⚠️ **«لا يتعاود» يُضمَن بالفحص لا بالصيغة**: نفسُ الصنفِ واللونِ والقماشِ في
+     *   نفس اليوم يُنتج نفسَ النصّ — فيُفحَص مقابلَ **الكتالوج والوصولات معًا** ويُزاد
+     *   لاحقةٌ `-2` ثمّ `-3`. والفحصُ على الاثنين لا الكتالوج وحدَه: شحنةٌ سُجِّلت
+     *   اليومَ ولم تُرسل بعد ليست في الكتالوج، ورقمُها محجوزٌ مع ذلك.
+     * ⚠️ والحدُّ 60 محاولةً ثمّ يُضاف الوقت: حلقةٌ بلا حدٍّ تُعلّق الصفحةَ لو وُجد خللٌ
+     *   في البيانات، والوقتُ يضمن التفرّدَ في كلِّ حال.
+     */
+    function abayaBarcodeBase(typeKey, colourCode, fabricCode, when) {
+        const t = ABAYA_TYPE_CODES[String(typeKey || '')] || 'AB';
+        const p = qatarParts(when || new Date());
+        const date = `${p.day}${p.month}${String(p.year).slice(2)}`;
+        const parts = [t, date];
+        if (colourCode) parts.push(colourCode);
+        if (fabricCode) parts.push(fabricCode);
+        return parts.join('-');
+    }
+
+    /** كلُّ باركودٍ محجوزٍ الآن — في الكتالوج أو في وصولٍ لم يُرسل بعد. */
+    function abayaTakenCodes() {
+        const taken = new Set();
+        (typeof abayaProducts !== 'undefined' ? abayaProducts : []).forEach(x => {
+            if (x && x.id) taken.add(String(x.id));
+        });
+        (typeof abayaArrivals !== 'undefined' ? abayaArrivals : []).forEach(x => {
+            if (x && x.code) taken.add(abayaProductId(x.code));
+        });
+        return taken;
+    }
+
+    function abayaAutoBarcode(typeKey, colourCode, fabricCode, when) {
+        const base = abayaBarcodeBase(typeKey, colourCode, fabricCode, when);
+        const taken = abayaTakenCodes();
+        if (!taken.has(abayaProductId(base))) return base;
+        for (let i = 2; i <= 60; i++) {
+            const c = `${base}-${i}`;
+            if (!taken.has(abayaProductId(c))) return c;
+        }
+        const p = qatarParts(when || new Date());
+        return `${base}-${p.hour}${p.minute}${p.second}`;
+    }
+
     /** النوعُ الذي تنطبق عليه الحقولُ الثلاثة — عبايةٌ وحدَها بنصّ المالك. */
     const ABAYA_DETAIL_TYPE = 'abaya';
     /**
@@ -13306,6 +13438,36 @@
     }
     /** هل تنطبق حقولُ التفصيل على هذا النوع؟ */
     const isAbayaType = (t) => String(t || '') === ABAYA_DETAIL_TYPE;
+
+    /**
+     * ⭐⭐ اللونُ لكلِّ **ملبوس** لا للعباية وحدَها، والقماشُ للعباية وحدَها.
+     * ⚠️ والفرقُ مقصودٌ ولا يُوحَّد: فستانٌ أسودُ وفستانٌ أحمرُ قطعتان مختلفتان
+     *   يجب أن يفرّق الباركودُ بينهما، أمّا «نوعُ القماش» فسؤالٌ عن العباية بنصّ
+     *   المالك ولا يُسأل عن عطرٍ ولا عن كيس.
+     * ⚠️⚠️ ويُستثنى العطرُ والأكياس بالاسم لا بالتخمين: «لونُ» عطرٍ حقلٌ يُملأ
+     *   بالخطأ ثم يظهر على شاشة البياعة بلا معنى.
+     */
+    const isColourType = (t) => {
+        const k = String(t || '');
+        if (!k || k === 'perfume') return false;
+        const it = ABAYA_STOCK_ITEMS.find(x => x.key === k);
+        return !!it && it.supply !== true;
+    };
+
+    /**
+     * ⭐⭐⭐ نصُّ العرض من قيمةِ القائمة.
+     * ⚠️⚠️ ونصٌّ **لا يطابق القائمةَ يُعاد كما هو** ولا يُفرَّغ: خانةُ القماش كانت
+     *   حرّةً قبل اليوم، وفي المستندات القائمة قيمٌ مثل «Nida Premium» لا رمزَ لها.
+     *   وتفريغُها يعني محوَ معلومةٍ كتبها المالكُ بيده عند أوّلِ حفظٍ لاحق.
+     */
+    const fabricLabelOf = (v) => {
+        const f = fabricByCode(v);
+        return f ? f.en : String(v || '').trim().slice(0, ABAYA_FABRIC_MAX);
+    };
+    const colourLabelOf = (v) => {
+        const c = colourByCode(v);
+        return c ? c.en : String(v || '').trim().slice(0, ABAYA_FABRIC_MAX);
+    };
     // كم حركةً تُعرض. ⚠️ العدد المقروء يُقال على الشاشة كي لا يكون القصّ صامتًا.
     const ABAYA_MOVES_SHOWN = 200;
 
@@ -13544,7 +13706,9 @@
             if (p.active === false) return false;
             if (shop && !(Number((p.qty || {})[abayaShopKey(shop)] || 0) > 0)) return false;
             if (!q) return true;
-            return [p.code, p.name, p.type, p.fabric, p.size]
+            // ⚠️ واللونُ في البحث: «اطبع ليبلات السود» أوّلُ ما سيُكتب هنا، ولو لم
+            //   يكن اللونُ مشمولًا لعاد البحثُ فارغًا ولبدا أنّ المخزونَ خالٍ.
+            return [p.code, p.name, p.type, p.colour, p.fabric, p.size]
                 .some(x => String(x || '').toUpperCase().includes(q));
         });
     }
@@ -14017,6 +14181,13 @@
 
     // ---- «بضاعة جديدة وصلت» ----------------------------------------------
     let abayaArrivals = [];            // [{ id, code, type, pieces, costPerPiece, status, ... }]
+    /**
+     * ⚠️⚠️ مَن كتب الباركودَ الموجودَ الآن في الخانة: نحن أم هو؟
+     *   بلا هذه الرايةِ لا سبيلَ للتمييز — فإمّا نكتب فوق خطِّ يدِه (فيُنشأ تصميمٌ
+     *   مكرَّرٌ بدل زيادةِ كميّة)، وإمّا لا نُحدّث المولَّدَ أبدًا (فيبقى باركودُ
+     *   لونٍ غيرِ اللون الذي اختاره).
+     */
+    let arvCodeAuto = false;
     let abayaArrivalsLoaded = false;
     let abayaArrivalsLoadedAt = null;
     let arvEditingId = '';             // '' = وصولٌ جديد
@@ -14166,6 +14337,9 @@
                     type: String(v.type || ''),
                     size: String(v.size || ''),
                     fabric: String(v.fabric || ''),
+                    // ⚠️ اللونُ نصٌّ للعرض على هذا المستند لا رمزًا: البياعةُ تقرؤه
+                    //   حرفيًّا على شاشتها، و«BLK» ليست جوابًا لزبونةٍ تسأل عن اللون.
+                    colour: String(v.colour || ''),
                     tone: String(v.tone || ''),
                     canOrder: v.canOrder === true,
                     cost: costById[d.id] || 0,
@@ -14234,10 +14408,20 @@
             const el = document.getElementById(w);
             if (el) el.style.display = on ? '' : 'none';
         });
+        // ⚠️ اللونُ بشرطِه هو لا بشرطِ العباية: فستانٌ أسودُ وفستانٌ أحمرُ قطعتان.
+        const cw = document.getElementById('acColourWrap');
+        if (cw) cw.style.display = isColourType(t) ? '' : 'none';
     };
 
     function buildAbayaCatalogShopInputs() {
         buildAbayaTypeSelects();
+        const cs = document.getElementById('acColour');
+        if (cs && !cs.dataset.built) {
+            cs.innerHTML = `<option value="">&mdash; not chosen &mdash;</option>`
+                + ABAYA_COLOURS.map(x =>
+                    `<option value="${escapeHtml(x.code)}">${escapeHtml(x.en)} &middot; ${escapeHtml(x.ar)}</option>`).join('');
+            cs.dataset.built = '1';
+        }
         const tn = document.getElementById('acTone');
         if (tn && !tn.dataset.built) {
             tn.innerHTML = `<option value="">&mdash; not chosen &mdash;</option>`
@@ -14379,6 +14563,7 @@
                               : '<span style="color: var(--warning); font-weight: 700;">not set</span>'}`
                         // ⚠️ أسطرٌ تحت النوع لا أعمدةٌ جديدة: ثلاثةُ أعمدةٍ تجعل
                         //   الجدولَ ١٥ عمودًا فيُقرأ بالتمرير الأفقيّ وحدَه.
+                        + (p.colour ? `<br><span style="font-size:11px; color: var(--text-dim);">${escapeHtml(p.colour)}</span>` : '')
                         + (p.fabric ? `<br><span style="font-size:11px; color: var(--text-dim);">${escapeHtml(p.fabric)}</span>` : '')
                         + (p.tone ? `<br><span style="font-size:11px; color: var(--text-dim);">${escapeHtml(abayaToneLabel(p.tone))}</span>` : '')
                         + (p.canOrder ? `<br><span style="font-size:11px; color: var(--success); font-weight:700;">order OK</span>` : '')
@@ -14572,6 +14757,7 @@
         v('acCode', ''); v('acName', ''); v('acSize', ''); v('acCost', ''); v('acPrice', ''); v('acDisc', '');
         const acTy = document.getElementById('acType'); if (acTy) acTy.value = '';
         v('acFabric', '');
+        setArrivalChoice('acColour', '', '', ABAYA_COLOURS);
         const acTn = document.getElementById('acTone'); if (acTn) acTn.value = '';
         const acOr = document.getElementById('acOrder'); if (acOr) acOr.checked = false;
         onAbayaTypeChanged();
@@ -14596,6 +14782,8 @@
         v('acName', p.name);
         const acTyE = document.getElementById('acType'); if (acTyE) acTyE.value = p.type || '';
         v('acFabric', p.fabric || '');
+        // ⚠️ يُطابَق بالاسم لا بالرمز: المستندُ يحمل «Black» لا «BLK».
+        setArrivalChoice('acColour', '', p.colour, ABAYA_COLOURS);
         const acTnE = document.getElementById('acTone'); if (acTnE) acTnE.value = p.tone || '';
         const acOrE = document.getElementById('acOrder'); if (acOrE) acOrE.checked = p.canOrder === true;
         onAbayaTypeChanged();
@@ -14652,6 +14840,7 @@
         const active = !!((document.getElementById('acActive') || {}).checked);
         const acTypeVal = String((document.getElementById('acType') || {}).value || '');
         const acFabricVal = String((document.getElementById('acFabric') || {}).value || '').trim();
+        const acColourVal = String((document.getElementById('acColour') || {}).value || '').trim();
         const acToneVal = String((document.getElementById('acTone') || {}).value || '');
         const acOrderVal = !!((document.getElementById('acOrder') || {}).checked);
         const existing = abayaProducts.find(p => p.id === id);
@@ -14702,6 +14891,8 @@
                 // ⚠️ حقولُ العباية تُحفظ للعباية وحدَها، وتُفرَّغ لغيرها صراحةً —
                 //   لونٌ ذهبيٌّ على عطرٍ يظهر على شاشة البياعة بلا معنى.
                 fabric: isAbayaType(acTypeVal) ? acFabricVal.slice(0, ABAYA_FABRIC_MAX) : '',
+                // ⚠️ يُحفظ نصًّا لا رمزًا: هذا الحقلُ تقرؤه البياعةُ والسيدةُ فاطمة.
+                colour: isColourType(acTypeVal) ? colourLabelOf(acColourVal) : '',
                 tone: isAbayaType(acTypeVal) ? acToneVal : '',
                 canOrder: isAbayaType(acTypeVal) ? acOrderVal : false,
                 discountPrice: disc,
@@ -14825,6 +15016,7 @@
                 'Barcode': p.code,
                 'Name': p.name,
                 'What it is': abayaTypeLabel(p.type),
+                'Colour': p.colour,
                 'Fabric': p.fabric,
                 'Gold / silver': abayaToneLabel(p.tone),
                 'Orders can be taken': p.canOrder ? 'Yes' : 'No',
@@ -14899,6 +15091,114 @@
         const t = String((document.getElementById('arvType') || {}).value || '');
         const w = document.getElementById('arvFabricWrap');
         if (w) w.style.display = isAbayaType(t) ? '' : 'none';
+        const c = document.getElementById('arvColourWrap');
+        if (c) c.style.display = isColourType(t) ? '' : 'none';
+        // ⚠️ والباركودُ يُعاد بناؤه مع النوع: بادئتُه هي النوع، فعبايةٌ بُدّلت إلى
+        //   فستانٍ وبقي باركودُها على «AB» تحمل كذبةً مطبوعةً على القطعة.
+        onArrivalAutoCode();
+    };
+
+    /**
+     * ⭐ يضبط قائمةً مغلقةً من مستندٍ محفوظ: بالرمز أوّلًا، ثم بالاسم.
+     * ⚠️⚠️ ونصٌّ لا يطابق القائمةَ **لا يُترك فارغًا**: خانةُ القماش كانت حرّةً
+     *   قبل اليوم، فقيمةٌ مثل «Nida Premium» لا رمزَ لها. ولو تُركت الخانةُ فارغةً
+     *   لمحا أوّلُ حفظٍ معلومةً كتبها المالكُ بيده وهو لا يقصد. فيُحقن خيارٌ
+     *   لمرّةٍ واحدةٍ يحمل النصَّ نفسَه قيمةً — فيُحفظ كما هو.
+     */
+    function setArrivalChoice(elId, code, label, list) {
+        const sel = document.getElementById(elId);
+        if (!sel) return;
+        Array.from(sel.querySelectorAll('option[data-oneoff]')).forEach(o => o.remove());
+        const byCode = list.find(x => x.code === String(code || '').toUpperCase());
+        if (byCode) { sel.value = byCode.code; return; }
+        const txt = String(label || '').trim();
+        if (!txt) { sel.value = ''; return; }
+        const up = txt.toUpperCase();
+        const byName = list.find(x => x.en.toUpperCase() === up || x.ar === txt || x.code === up);
+        if (byName) { sel.value = byName.code; return; }
+        const o = document.createElement('option');
+        o.value = txt;
+        o.textContent = `${txt} — as it was written before`;
+        o.setAttribute('data-oneoff', '1');
+        sel.appendChild(o);
+        sel.value = txt;
+    }
+
+    /**
+     * ⭐⭐⭐⭐⭐ الباركودُ يُبنى وحدَه — بأمر المالك.
+     *
+     * ⚠️⚠️⚠️ ولا يُكتب فوقَ ما كتبه بيده بحال: `arvCodeAuto` تحفظ من صاحبُ القيمة
+     *   الحاليّة. من كتب باركودَ تصميمٍ قائمٍ ليزيد كميّتَه، ثمّ بدّل اللونَ، كان
+     *   باركودُه سيُمحى ويُنشأ سطرٌ ثانٍ لنفس العباية — أي تصميمٌ مكرَّرٌ في
+     *   الكتالوج بسعرَين.
+     * ⚠️⚠️ ووصولٌ **يُحرَّر** لا يُعاد بناءُ باركودِه: قد يكون مطبوعًا على القطع.
+     * ⚠️ والناقصُ يُسمّى بالاسم: «املأ المعلومات» لا تقول أيَّ معلومة.
+     */
+    window.onArrivalAutoCode = function() {
+        const codeEl = document.getElementById('arvCode');
+        const note = document.getElementById('arvCodeNote');
+        const say = (html, col) => {
+            if (note) { note.innerHTML = html; note.style.color = col || 'var(--text-dim)'; }
+        };
+        if (!codeEl) return;
+        const type = String((document.getElementById('arvType') || {}).value || '');
+        const colour = isColourType(type) ? String((document.getElementById('arvColour') || {}).value || '') : '';
+        const fabric = isAbayaType(type) ? String((document.getElementById('arvFabric') || {}).value || '') : '';
+
+        if (arvEditingId) {
+            say(`This shipment is already recorded, so its barcode stays <b>${escapeHtml(codeEl.value)}</b> `
+                + `&mdash; it is not rebuilt, because it may already be printed on the pieces.`);
+            return;
+        }
+        // خطُّ يده لا يُمسّ.
+        if (codeEl.value.trim() && !arvCodeAuto) {
+            say(`Barcode written by you &mdash; it will be saved exactly as it is. `
+                + `Empty the box to have one built for you.`);
+            onArrivalCodeTyped();
+            return;
+        }
+        const missing = [];
+        if (!type) missing.push('what it is');
+        if (isColourType(type) && !colour) missing.push('the colour');
+        if (isAbayaType(type) && !fabric) missing.push('the fabric');
+        if (missing.length) {
+            // ⚠️ يُمحى الباركودُ المولَّدُ إن نُقض شرطُه: باركودٌ يقول «أسود كتان»
+            //   على شحنةٍ رُفع عنها القماشُ يكذب، وهو مطبوعٌ لا يُصحَّح.
+            if (arvCodeAuto) { codeEl.value = ''; arvCodeAuto = false; }
+            say(`Choose ${missing.join(' and ')}, and the barcode is built for you.`);
+            onArrivalCodeTyped();
+            return;
+        }
+        const base = abayaBarcodeBase(type, colour, fabric);
+        const built = abayaAutoBarcode(type, colour, fabric);
+        codeEl.value = built;
+        arvCodeAuto = true;
+        const cName = colour ? (colourLabelOf(colour) || colour) : '';
+        const fName = fabric ? (fabricLabelOf(fabric) || fabric) : '';
+        const shape = `${escapeHtml(arrivalTypeLabel(type) || type)} &middot; today`
+            + (cName ? ` &middot; ${escapeHtml(cName)}` : '')
+            + (fName ? ` &middot; ${escapeHtml(fName)}` : '');
+        if (built === base) {
+            say(`<b style="color: var(--success);">${escapeHtml(built)}</b> &mdash; a new barcode (${shape}). `
+                + `Nothing in the catalogue or in the arrivals carries it.`);
+        } else {
+            // ⚠️⚠️ هذا أهمُّ سطرٍ في الشاشة: نفسُ اللونِ والقماشِ في نفس اليوم ليس
+            //   بالضرورة تصميمًا ثانيًا — قد تكون نفسَ العباية وصلت مرّةً أخرى.
+            //   والفرقُ بين الحالتين هو الفرقُ بين «زيادةُ الكمية» و«سطرٌ مكرَّرٌ
+            //   بسعرَين»، ولا يعرفه إلّا هو.
+            say(`<b style="color: var(--warning);">${escapeHtml(built)}</b> &mdash; a ${shape} was already `
+                + `recorded today, so this one is numbered separately. `
+                + `<b>If this is the SAME design arriving again</b>, type its own barcode over this one instead &mdash; `
+                + `that adds to its quantity rather than creating a second line in the catalogue.`,
+                'var(--text)');
+        }
+        onArrivalCodeTyped();
+    };
+
+    /** ⚠️ الكتابةُ بيدِه تُنهي التوليدَ فورًا — ولا يُستأنف إلّا بتفريغ الخانة. */
+    window.onArrivalCodeEdited = function() {
+        arvCodeAuto = false;
+        onArrivalAutoCode();
     };
 
     /**
@@ -14944,6 +15244,23 @@
                 `<option value="${escapeHtml(t.key)}">${escapeHtml(t.en)} &middot; ${escapeHtml(t.ar)}</option>`).join('');
             sel.addEventListener('change', onArrivalTypeChanged);
             sel.dataset.built = '1';
+        }
+        // ⭐ القماشُ واللون: قائمتانِ تُبنيان من الثوابت، فما يُضاف إليها يظهر وحدَه.
+        // ⚠️ و«غيرُ مختار» أوّلًا لا أوّلُ قماشٍ في القائمة: خانةٌ تبدأ على «نيدا»
+        //   تُحفظ «نيدا» على شحنةٍ لم يُسأل عن قماشها أحدٌ قطّ.
+        const fb = document.getElementById('arvFabric');
+        if (fb && !fb.dataset.built) {
+            fb.innerHTML = `<option value="">&mdash; not chosen &mdash;</option>`
+                + ABAYA_FABRICS.map(x =>
+                    `<option value="${escapeHtml(x.code)}">${escapeHtml(x.en)} &middot; ${escapeHtml(x.ar)}</option>`).join('');
+            fb.dataset.built = '1';
+        }
+        const cl = document.getElementById('arvColour');
+        if (cl && !cl.dataset.built) {
+            cl.innerHTML = `<option value="">&mdash; not chosen &mdash;</option>`
+                + ABAYA_COLOURS.map(x =>
+                    `<option value="${escapeHtml(x.code)}">${escapeHtml(x.en)} &middot; ${escapeHtml(x.ar)}</option>`).join('');
+            cl.dataset.built = '1';
         }
         const f = document.getElementById('arvFilterType');
         if (f && !f.dataset.built) {
@@ -14993,7 +15310,12 @@
                     name: String(v.name || ''),
                     type: String(v.type || ''),
                     size: String(v.size || ''),
+                    // ⚠️ النصُّ للعرض والرمزُ للباركود، ويُقرآن معًا: المستنداتُ
+                    //   القديمةُ فيها نصٌّ بلا رمز، والجديدةُ فيها الاثنان.
                     fabric: String(v.fabric || ''),
+                    fabricCode: String(v.fabricCode || ''),
+                    colour: String(v.colour || ''),
+                    colourCode: String(v.colourCode || ''),
                     supplier: String(v.supplier || ''),
                     // ⚠️ الغيابُ يُقرأ «مورّد»: كلُّ شحنةٍ قبل هذه الميزة بلا حقل،
                     //   وافتراضُ «ورشة» يُظهر زرَّ الورشة على شحنةِ مورّدٍ صيني.
@@ -15253,6 +15575,7 @@
                         + `<td style="font-family: monospace; direction: ltr;"><b>${escapeHtml(a.code)}</b></td>`
                         + `<td>${escapeHtml(a.name) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
                         + `<td>${escapeHtml(arrivalTypeLabel(a.type))}`
+                        + (a.colour ? `<br><span style="font-size:11px; color: var(--text-dim);">${escapeHtml(a.colour)}</span>` : '')
                         + (a.fabric ? `<br><span style="font-size:11px; color: var(--text-dim);">${escapeHtml(a.fabric)}</span>` : '')
                         + `</td>`
                         + `<td style="direction: ltr; white-space: nowrap;">${escapeHtml(a.size) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
@@ -15419,7 +15742,12 @@
         arvPendingPhoto = null;
         arvPhotoCleared = false;
         const v = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
-        v('arvCode', ''); v('arvName', ''); v('arvSupplier', ''); v('arvSize', ''); v('arvFabric', '');
+        v('arvCode', ''); v('arvName', ''); v('arvSupplier', ''); v('arvSize', '');
+        // ⚠️ عبر setArrivalChoice لا بتفريغ القيمة: خيارٌ محقونٌ لشحنةٍ سابقةٍ
+        //   («Nida Premium») يبقى في القائمة وقد يُختار سهوًا لشحنةٍ لا تعنيه.
+        arvCodeAuto = false;
+        setArrivalChoice('arvFabric', '', '', ABAYA_FABRICS);
+        setArrivalChoice('arvColour', '', '', ABAYA_COLOURS);
         v('arvUsd', ''); v('arvQar', ''); v('arvPieces', '');
         v('arvShipping', ''); v('arvLabour', ''); v('arvSuggested', '');
         v('arvRate', String(ABAYA_USD_RATE_DEFAULT));
@@ -15464,7 +15792,11 @@
         v('arvName', a.name);
         v('arvSupplier', a.supplier);
         v('arvSize', a.size);
-        v('arvFabric', a.fabric || '');
+        // ⚠️⚠️ الرايةُ تُطفأ **قبل** ضبط الخانات: بناءُ باركودٍ فوق وصولٍ محفوظٍ
+        //   يُغيّر رقمًا قد يكون مطبوعًا على القطع.
+        arvCodeAuto = false;
+        setArrivalChoice('arvFabric', a.fabricCode, a.fabric, ABAYA_FABRICS);
+        setArrivalChoice('arvColour', a.colourCode, a.colour, ABAYA_COLOURS);
         v('arvUsd', a.unitUsd ? String(a.unitUsd) : '');
         v('arvRate', String(a.usdRate || ABAYA_USD_RATE_DEFAULT));
         v('arvQar', a.unitQar ? String(a.unitQar) : '');
@@ -15543,7 +15875,15 @@
                 // ⚠️⚠️ القماشُ يُكتب **للعباية وحدَها**، ويُفرَّغ لغيرها صراحةً:
                 //   من كتب قماشًا ثم بدّل النوعَ إلى «عطور» كان سيُخزَّن قماشٌ على
                 //   عطرٍ فيظهر على شاشة البياعة بلا معنى. فالنوعُ هو الحاكم.
-                fabric: isAbayaType(type) ? g('arvFabric').slice(0, ABAYA_FABRIC_MAX) : '',
+                // ⚠️⚠️ حقلانِ لكلِّ صفة: `fabric` نصُّ العرض و`fabricCode` رمزُ
+                //   الباركود. والنصُّ يبقى اسمَ الحقلِ القديمِ نفسَه عن قصد —
+                //   ثلاثُ شاشاتٍ تعرضه اليوم، ولو صار رمزًا لقرأت البياعةُ «LIN».
+                // ⚠️ والقماشُ للعباية وحدَها، واللونُ لكلِّ ملبوس، ويُفرَّغان لما
+                //   لا يعنيه: قماشٌ على عطرٍ يظهر على شاشة البياعة بلا معنى.
+                fabric: isAbayaType(type) ? fabricLabelOf(g('arvFabric')) : '',
+                fabricCode: isAbayaType(type) && fabricByCode(g('arvFabric')) ? g('arvFabric') : '',
+                colour: isColourType(type) ? colourLabelOf(g('arvColour')) : '',
+                colourCode: isColourType(type) && colourByCode(g('arvColour')) ? g('arvColour') : '',
                 // ⚠️⚠️ يُمرَّر عبر arrivalSourceOf لا كما قُرئ: قيمةٌ غريبةٌ في الخانة
                 //   (تحريرُ HTML، حفظٌ قديم) تصير «مورّد» — وهو الافتراضُ الآمن.
                 //   ولا يُسقَط الحقلُ بحال: غيابُه على مستندٍ **حُرِّر** يجعل الشحنةَ
@@ -15680,6 +16020,7 @@
                 'Name': a.name,
                 'What': arrivalTypeLabel(a.type),
                 'Sizes available': a.size,
+                'Colour': a.colour,
                 'Fabric': a.fabric,
                 'Where from': isWorkshopArrival(a.source) ? 'Our workshop' : 'A supplier',
                 'Supplier / workshop': a.supplier,
@@ -19384,7 +19725,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v203';
+        const APP_BUILD = 'v204';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;

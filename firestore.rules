@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v25   (2026-09-28)  <<<
+//   >>>  RULES REVISION: v26   (2026-09-28)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,7 +12,7 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       abaya_customers
+//       'fabric', 'colour'
 //
 //   (This exact text exists nowhere in any earlier revision, which is the whole
 //    point of a marker. Every earlier marker is now useless for telling the
@@ -28,10 +28,11 @@ rules_version = '2';
 //      "distributedBy"              introduced in v22, was the marker for v22
 //      "abaya_invoices"             introduced in v23, was the marker for v23
 //      "paymentCorrections"         introduced in v24, was the marker for v24
+//      "abaya_customers"            introduced in v25, was the marker for v25
 //    Always search for the marker named directly above, and when publishing a
 //    new revision, change that name to something introduced by it.)
 //
-//   FOUND     -> v25 is live. Good.
+//   FOUND     -> v26 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -49,6 +50,35 @@ rules_version = '2';
 // exact mistake happened with the "(v4)" label, which never changed across
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
+//
+//  v26  2026-09-28  + 'colour' ON THE PRODUCT — ONE WORD, AND WHY IT NEEDED A
+//                     REVISION AT ALL.
+//                     PUBLISH v26 — it contains v16..v25 in full, including the
+//                     customer book that was never published.
+//
+//                     The owner: "add the fabric type and the colour to the new
+//                     goods, and then a barcode is created automatically."
+//
+//                     The colour is now a field on abaya_products, exactly like
+//                     'fabric' beside it, and Mrs Fatima's panel writes it when
+//                     she dispatches a shipment. Her update on that collection is
+//                     restricted by a hasOnly() list, so without adding the word
+//                     the write would be REFUSED.
+//
+//                     ⚠️ WHY IT IS SAFE, stated plainly rather than assumed:
+//                     every key on that list is DESCRIPTIVE — how many, what
+//                     size, what kind, what colour. None of them is money. The
+//                     line that must never move is 'price' and 'discountPrice':
+//                     that is the difference between "she prices goods that are
+//                     new" and "she can reprice the whole shop".
+//
+//                     ⚠️⚠️ AND THE CODE DOES NOT DEPEND ON THIS BEING PUBLISHED.
+//                     The colour is written in its own separate updateDoc, after
+//                     the quantity has already moved. If this revision is not
+//                     live yet, that second write is refused, the message goes to
+//                     the console, and the shipment still reaches the shelf. A
+//                     descriptive field must never be able to stop goods from
+//                     being dispatched — so it was not put in the same write.
 //
 //  v25  2026-09-28  + abaya_customers — A CUSTOMER BOOK, AND THE ONE PRIVACY
 //                     DECISION IN IT SAID OUT LOUD.
@@ -1150,8 +1180,8 @@ service cloud.firestore {
     //   sold before IS a new design and her selling price is the whole point of
     //   the step the owner described ("هي التي تضع سعر البيع").
     //
-    //   UPDATE — restricted to hasOnly(['qty','size','type','fabric','tone',
-    //   'canOrder','updatedAt']). The
+    //   UPDATE — restricted to hasOnly(['qty','size','type','fabric','colour',
+    //   'tone','canOrder','updatedAt']). The
     //   kiosk stays on ['qty','updatedAt'] and is deliberately NARROWER: it signs
     //   in anonymously, so whatever it may write, anyone holding the saleswoman's
     //   link may write. Sending a second shipment of a design already on a shelf
@@ -1179,9 +1209,13 @@ service cloud.firestore {
         //   سبيلٍ لتصحيحه. والمقاسُ لا يحمل مالًا ولا يُشبه سعرًا.
         //   ⚠️⚠️ ولا يزيد عليها 'price' بحال — هذا هو الحدُّ الذي يفصل «تُسعّر
         //   الجديدَ» عن «تُعيد تسعيرَ المحلّ كلِّه».
+        // ⚠️ 'colour' أُضيفت في v26 لنفس سببِ 'fabric' بالحرف: صفةٌ وصفيّةٌ لا
+        //   تحمل مالًا، وشحنةٌ تصل بلونٍ يجب أن تُصلح فراغًا في سطرِ الكتالوج.
+        //   ⚠️⚠️ ولا يزيد على القائمةِ 'price' بحال — هذا هو الحدُّ الذي يفصل
+        //   «تُسعّر الجديدَ» عن «تُعيد تسعيرَ المحلّ كلِّه».
         || (isViewer()
             && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['qty', 'size', 'type', 'fabric', 'tone', 'canOrder', 'updatedAt']));
+                 .hasOnly(['qty', 'size', 'type', 'fabric', 'colour', 'tone', 'canOrder', 'updatedAt']));
     }
 
     // ---- abaya_product_costs (WHAT THE ABAYA COST US) -----------------------

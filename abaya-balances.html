@@ -1785,6 +1785,10 @@
             size: String(a.size || ''),
             // ⚠️ القماشُ «إن كان متوفّرًا» بنصّه — ففراغُه حالةٌ صحيحةٌ لا نقص.
             fabric: String(a.fabric || ''),
+            // ⭐⭐ واللونُ معه: فلوريندا تُوزّع ثلاثَ شحناتٍ في يومٍ واحدٍ وقد تكون
+            //   من نفس التصميم بألوانٍ مختلفة، فبلا اللونِ على البطاقة لا تعرف
+            //   أيُّ صندوقٍ لأيِّ محلّ.
+            colour: String(a.colour || ''),
             // ⚠️ ذهبيٌّ/فضّيٌّ للعباية وحدَها: دائرةٌ ذهبيّةٌ على عطرٍ بلا معنى.
             tone: isAb ? String(tone || '') : '',
             canOrder: isAb ? !!canOrder : false,
@@ -2462,6 +2466,7 @@
                     type: String(v.type || ''),
                     size: String(v.size || ''),
                     fabric: String(v.fabric || ''),
+                    colour: String(v.colour || ''),
                     tone: String(v.tone || ''),
                     canOrder: v.canOrder === true,
                     price: Number(v.price || 0) || 0,
@@ -2713,6 +2718,7 @@
                 + (p.name ? `<span class="nm">${escapeHtml(p.name)}</span>` : '')
                 + (p.type ? `<span class="nm">${escapeHtml(arvTypeLabel(p.type))}</span>` : '')
                 + (p.size ? `<span class="nm" dir="ltr">Sizes: ${escapeHtml(p.size)}</span>` : '')
+                + (p.colour ? `<span class="nm">${escapeHtml(p.colour)}</span>` : '')
                 + (p.fabric ? `<span class="nm">${escapeHtml(p.fabric)}</span>` : '')
                 + (p.tone ? `<span class="nm">${escapeHtml(abayaToneLabel(p.tone))}</span>` : '')
                 + (p.canOrder ? `<span class="nm">Orders can be taken</span>` : '')
@@ -4104,6 +4110,10 @@
                     type: String(v.type || ''),
                     size: String(v.size || ''),
                     fabric: String(v.fabric || ''),
+                    // ⭐ اللونُ نصٌّ للعرض كالقماش تمامًا. والرمزُ (BLK) لا يُقرأ
+                    //   هنا عن قصد: لا شيءَ على هذه الشاشة يبني باركودًا — الباركودُ
+                    //   يُبنى في الإدارة مرّةً واحدةً ويُنقل معه.
+                    colour: String(v.colour || ''),
                     supplier: String(v.supplier || ''),
                     // ⚠️ الغيابُ يُقرأ «مورّد» كما في لوحة الإدارة بالحرف: زرُّ
                     //   الورشة على شحنةِ مورّدٍ يعني رسالةً إلى الجهة الخطأ.
@@ -4240,6 +4250,7 @@
                 </div>` : ''}
 
                 <div class="afacts">
+                    ${a.colour ? `<div class="arow"><span>Colour</span><b>${escapeHtml(a.colour)}</b></div>` : ''}
                     ${a.fabric ? `<div class="arow"><span>Fabric</span><b>${escapeHtml(a.fabric)}</b></div>` : ''}
                     <div class="arow"><span>Pieces arrived</span><b class="num">${a.pieces}</b></div>
                     <!-- ⚠️ السطرُ يُعرض **دائمًا** الآن لا عند وجود اسمِ مورّدٍ فقط:
@@ -4636,6 +4647,27 @@
                 //   تُغيّر قرارَها في شحنةٍ تالية. ولا يحملان مالًا.
                 if (isAb) { patch.tone = tone; patch.canOrder = canOrder; }
                 await updateDoc(doc(db, 'abaya_products', a.productId), patch);
+                /**
+                 * ⭐⭐⭐⭐⭐ اللونُ يُكتب في **كتابةٍ ثانيةٍ منفصلةٍ تمامًا**، وهذا
+                 *   ليس ترتيبًا جميلًا بل حرسٌ مقصود:
+                 *   قاعدةُ تحديثِ المنتج للسيدة فاطمة محصورةٌ بقائمةِ حقولٍ
+                 *   (hasOnly)، و'colour' ليس فيها حتى يَنشُر المالكُ القواعدَ
+                 *   الجديدة. ولو كان الحقلُ في نفس الكتابةِ أعلاه لرفضت القاعدةُ
+                 *   الكتابةَ **كلَّها** — أي لتوقّفت شحنةٌ عن الوصول إلى رفِّ المحلّ
+                 *   من أجل حقلٍ وصفيٍّ لا يحمل مالًا ولا يُغيّر عددًا.
+                 *   فالكميّةُ تنتقل أوّلًا مهما كان حالُ القواعد، واللونُ محاولةٌ
+                 *   فشلُها يُطبع في الكونسول ولا يُعطّل شيئًا.
+                 * ⚠️ ويُصلح فراغًا ولا يُبدّل ما ضبطه المالكُ — كالنوع والقماش.
+                 */
+                if (a.colour && !prodData.colour) {
+                    try {
+                        await updateDoc(doc(db, 'abaya_products', a.productId),
+                            { colour: a.colour, updatedAt: serverTimestamp() });
+                    } catch (e) {
+                        console.error('The colour did not reach the catalogue line — the pieces DID '
+                            + '(publish the new rules and the next shipment will carry it):', e);
+                    }
+                }
             } else {
                 /**
                  * ⚠️⚠️⚠️ الصورةُ تُكتب **قبل** إنشاءِ المنتج، وهذا ليس ترتيبًا
@@ -4686,8 +4718,12 @@
                     //   صنعتُها حين نقلتُ المقاسَ وحدَه، وهذا يُصلحها.
                     type: a.type || '',
                     size: a.size || '',
-                    // ⭐ القماشُ من الشحنة (كتبه المالك)، والخيارانِ من قرارها.
+                    // ⭐ القماشُ واللونُ من الشحنة (كتبهما المالك)، والخيارانِ من قرارها.
+                    // ⚠️ ولا حرسَ هنا بخلاف فرعِ «وُجد سلفًا»: قاعدةُ **الإنشاء**
+                    //   للسيدة فاطمة غيرُ محصورةٍ بحقول (هي من تُسعّر الجديد)،
+                    //   فاللونُ يمرُّ في الكتابة نفسِها بلا خطرٍ على الكميّة.
                     fabric: a.fabric || '',
+                    colour: a.colour || '',
                     tone: tone,
                     canOrder: canOrder,
                     price: price,
@@ -5055,6 +5091,9 @@
         L.push('Barcode: ' + a.code);
         if (a.name) L.push('Name: ' + a.name);
         L.push('What it is: ' + arvTypeLabel(a.type));
+        // ⚠️ اللونُ **قبل** القماش في الرسالة: «اعملوا خمسًا أخرى» بلا لونٍ
+        //   طلبٌ ناقصٌ تُنفّذه الورشةُ بلونٍ من عندها.
+        if (a.colour) L.push('Colour: ' + a.colour);
         if (a.fabric) L.push('Fabric: ' + a.fabric);
         if (a.size) L.push('Sizes: ' + a.size);
         L.push('Pieces in this batch: ' + a.pieces);

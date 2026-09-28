@@ -1042,7 +1042,7 @@
             <!-- كل العبايات بالصور -->            <!-- كل العبايات بالصور -->
             <div id="cpList" class="hidden" style="margin-top: var(--space-4);">
                 <label for="cpSearch">Search &mdash; barcode or name</label>
-                <input type="text" id="cpSearch" autocomplete="off" placeholder="Barcode, name, type, fabric or size">
+                <input type="text" id="cpSearch" autocomplete="off" placeholder="Barcode, name, type, colour, fabric or size">
                 <!-- ⚠️ الغلافُ لم يبقَ شبكةً: صار يحمل أقسامًا، وكلُّ قسمٍ فيه
                      عنوانُه وشبكتُه (.cpg). عنوانٌ داخلَ شبكةٍ يأخذ خليّةً فيقع
                      بجانب بطاقةٍ لا فوق قسمه. -->
@@ -2555,6 +2555,8 @@
                     // ⭐ ثلاثةٌ تُسأل عنها الزبونةُ مباشرةً: «من أيِّ قماش؟»
                     //   و«فيها ذهبي؟» و«أقدر أطلبها تفصيل؟»
                     fabric: String(v.fabric || ''),
+                    // ⭐ واللون: «عندكم هاي بالأسود؟» أوّلُ سؤالٍ يُسأل في المحلّ.
+                    colour: String(v.colour || ''),
                     tone: String(v.tone || ''),
                     canOrder: v.canOrder === true,
                     price: Number(v.price || 0) || 0,
@@ -2774,6 +2776,10 @@
                 name: String(v.name || ''),
                 type: String(v.type || ''),
                 fabric: String(v.fabric || ''),
+                // ⚠️ يُقرأ في الموضعَين معًا إلزامًا: شكلُ الكائنِ واحدٌ، وحقلٌ
+                //   يُقرأ هنا ولا يُقرأ هناك يجعل اللونَ يظهر في البحثِ بالاسم
+                //   ويغيب في البحثِ بالباركود — وهو عطلٌ «يعمل أحيانًا».
+                colour: String(v.colour || ''),
                 tone: String(v.tone || ''),
                 canOrder: v.canOrder === true,
                 // ⭐ المقاسُ المتوفّر — أوّلُ ما تسأل عنه الزبونة، فيُقرأ ويُعرض.
@@ -2805,7 +2811,7 @@
         //   وسطرٌ ثالثٌ يدفع زرَّ التأكيد أسفلَ الشاشة.
         // ⚠️ سطرٌ واحدٌ مضغوطٌ لا أربعة: مساحةُ الشاشة ضيّقةٌ على الهاتف، وأسطرٌ
         //   زائدةٌ تدفع زرَّ التأكيد أسفلَ الشاشة فلا يُرى وقتَ الزحمة.
-        el('cpFoundName').innerText = [cpTypeLabel(p.type), p.name || '', p.fabric || '',
+        el('cpFoundName').innerText = [cpTypeLabel(p.type), p.name || '', p.colour || '', p.fabric || '',
             cpToneLabel(p.tone), p.size ? 'Sizes: ' + p.size : '',
             p.canOrder ? 'Order OK' : ''].filter(Boolean).join('  ·  ');
         const disc = cpSeasonOn && cpHasDiscount(p);
@@ -2867,6 +2873,7 @@
             return String(p.code).toUpperCase().includes(q)
                 || String(p.name).toUpperCase().includes(q)
                 || String(p.size || '').toUpperCase().includes(q)
+                || String(p.colour || '').toUpperCase().includes(q)
                 || String(p.fabric || '').toUpperCase().includes(q)
                 || cpToneLabel(p.tone).toUpperCase().includes(q)
                 || cpTypeLabel(p.type).toUpperCase().includes(q);
@@ -3004,6 +3011,7 @@
             type: String(v.type || ''),
             size: String(v.size || ''),
             fabric: String(v.fabric || ''),
+            colour: String(v.colour || ''),
             tone: String(v.tone || ''),
             canOrder: v.canOrder === true,
             price: Number(v.price || 0) || 0,
@@ -3167,6 +3175,9 @@
         if (t.name) s += `<span class="nm">${escapeHtml(t.name)}</span>`;
         if (t.type) s += `<span class="ln">${escapeHtml(cpTypeLabel(t.type))}</span>`;
         // ⚠️ «اسم القماش إن كان متوفّرًا» بنصّ المالك — ففراغُه حالةٌ صحيحةٌ لا نقص.
+        // ⚠️⚠️ واللونُ معه: شحنتانِ من نفس التصميم بلونَين تصلان في يومٍ واحدٍ،
+        //   وبلا اللونِ على البطاقة لا تعرف البياعةُ أيَّ صندوقٍ تُرفِّع.
+        if (t.colour) s += `<span class="ln">Colour: <b>${escapeHtml(t.colour)}</b></span>`;
         if (t.fabric) s += `<span class="ln">Fabric: <b>${escapeHtml(t.fabric)}</b></span>`;
         if (t.size) s += `<span class="ln">Sizes: <b dir="ltr">${escapeHtml(t.size)}</b></span>`;
         s += `<span class="ln"><b>${t.pieces}</b> piece(s) to put on the shelf</span>`;
@@ -3404,7 +3415,7 @@
             if (!g) {
                 g = {
                     key: k, productId: t.productId, code: t.code, name: t.name,
-                    type: t.type, size: t.size, fabric: t.fabric, tone: t.tone,
+                    type: t.type, size: t.size, fabric: t.fabric, colour: t.colour, tone: t.tone,
                     canOrder: t.canOrder, price: t.price, hasImage: t.hasImage,
                     sentAt: t.sentAt, tasks: [], total: 0
                 };
@@ -3441,6 +3452,7 @@
         s += `<span class="bc">${escapeHtml(g.code)}</span>`;
         if (g.name) s += `<span class="nm">${escapeHtml(g.name)}</span>`;
         if (g.type) s += `<span class="ln">${escapeHtml(cpTypeLabel(g.type))}</span>`;
+        if (g.colour) s += `<span class="ln">Colour: <b>${escapeHtml(g.colour)}</b></span>`;
         if (g.fabric) s += `<span class="ln">Fabric: <b>${escapeHtml(g.fabric)}</b></span>`;
         if (g.size) s += `<span class="ln">Sizes: <b dir="ltr">${escapeHtml(g.size)}</b></span>`;
         s += `<span class="pr">${money(priceNow)} QAR</span>`;
