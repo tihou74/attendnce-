@@ -259,10 +259,10 @@ match /employee_pins/{empId} { allow read: if isAdmin() || isStaff() || isKiosk(
 الثلاث، وهو أسرعُ من التمرير حين تعرف الصنفَ الذي تريد.
 
 
-## 🔴 عاجل: القواعدُ **v28** — الماركرُ `isGoodsClerk`
+## 🔴 عاجل: القواعدُ **v29** — الماركرُ `abaya_intake`
 
-`firestore.rules` مراجعتُه **v28** وتحمل v16→v28 كلَّها. والماركرُ الذي يُبحَث عنه
-في Firebase Console هو **`isGoodsClerk`** — وكلُّ ماركرٍ أقدمَ (`abaya_shifts`،
+`firestore.rules` مراجعتُه **v29** وتحمل v16→v29 كلَّها. والماركرُ الذي يُبحَث عنه
+في Firebase Console هو **`abaya_intake`** — وكلُّ ماركرٍ أقدمَ (`abaya_shifts`،
 `'fabric', 'colour'`، `abaya_customers`، `abaya_invoices`، `paymentCorrections`،
 `distributedBy`، `sentPlan`) موجودٌ في v28 أيضًا **فلا يُفرّق بين المراجعات**.
 
@@ -317,14 +317,7 @@ Firebase Authentication. لأنّ `isAdmin()` تُعرَّف بالاستثنا�
 في أوّل `cpFinishInvoice` يرفض بلا `tillShiftId()`، ويُقال السببُ والزرُّ في نفس
 الرسالة. ⚠️ ولا يُفعل بلا كلمته: هذا قرارُ تشغيلٍ يُوقف بيعًا، لا قرارُ برمجة.
 
-## 🔸 الخطوةُ الثانية من دور البضاعة — شاشةُ الإدخال (لم تُبنَ)
+## ✅ أُنجز: شاشةُ إدخال البضاعة للبياعة (`79ecf94`)
 
-بُني في `950f83a` الدورُ ونافذتا الكتالوج والملصقات. ويبقى **«تُضيف البضاعة
-الجديدة»**: مجموعةٌ جديدة `abaya_intake` بلا حقلِ مالٍ واحد (قائمةٌ سوداءُ في
-القاعدة كما في `abaya_shelf_tasks`)، تكتب فيها الوصفَ والصورةَ والعدد، ثمّ يفتحها
-المالكُ في شاشة الوصولات فتُملأ الخاناتُ ويُضيف هو الأسعارَ ويحفظ.
-
-⚠️ ولا تُعطى `abaya_arrivals` بحال — انظر `security-model.md`.
-⚠️ وستحتاج القواعدُ v29: `abaya_intake` + `abaya_intake_images`، وأوّلُ منحِ
-**كتابةٍ** لهذا الدور (فحصٌ قائمٌ يؤكّد اليومَ أنه بلا كتابةٍ في أيِّ مكان — يجب
-تحديثُه حينها لا حذفُه).
+`abaya_intake` + `abaya_intake_images`، قواعد v29. تفاصيلُها في `security-model.md`
+و`abaya-arrivals.md`.
