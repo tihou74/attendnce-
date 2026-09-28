@@ -628,6 +628,94 @@
            يقلب موضعَ الرقم في بعض المحرّكات فيُقرأ سعرٌ خطأ. */
         #rcpt .ltr { direction: ltr; unicode-bidi: isolate; }
     }
+
+    /* =====================================================================
+       ⭐⭐⭐⭐⭐ شاشةُ البيع: عمودان وشريطُ صندوق — بأمر المالك
+       ---------------------------------------------------------------------
+       «الواجهة والترتيب والتصميم خرابيط، يجب أن تكون مثل هاته مرتّبة ومنظّمة»
+       مع صورةِ نظامِ نقاطِ بيعٍ: البضاعةُ شبكةً يسارًا، والفاتورةُ لوحةً ثابتةً
+       يمينًا، وشريطُ جلسةٍ واحدٌ في الأعلى.
+
+       ⚠️⚠️ والتوسيعُ **بصنفٍ على body لا في .wrap مباشرةً**: بقيّةُ الأقسام
+          (البصمة، تقريرُ اليوم، البضاعةُ الواصلة) بُنيت على عمودٍ عرضُه 720px
+          وقُرئت وجُرّبت عليه. فتوسيعُها كلِّها لأجل البيع يُفكّك ما يعمل. فيتوسّع
+          البيعُ وحدَه، وتبقى الأخرى كما هي حرفيًّا.
+       ⚠️ ولا نقطةَ انكسارٍ بوسمٍ ولا بجافاسكربت: على الهاتف ينهار العمودانِ إلى
+          واحدٍ بالـCSS وحدَها، فلا شيءَ يعتمد على قياسٍ يُحسب في الكود.
+       ===================================================================== */
+    body.sell-wide .wrap { max-width: 1180px; }
+
+    .pos { display: grid; gap: var(--space-4); align-items: start; }
+    .pos > .poscol { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+    .pos .panel { margin-bottom: 0; }
+
+    @media (min-width: 960px) {
+        .pos { grid-template-columns: minmax(0, 1fr) 390px; }
+        /* ⚠️ الفاتورةُ لاصقةٌ: هي المرجعُ الذي تُراجعه العينُ في كلِّ إضافة، واختفاؤها
+           عند التمرير هو نصفُ الشكوى. و`top` تُترك مسافةَ شريطِ الأقسام اللاصق. */
+        .pos > .poscol.side { position: sticky; top: 64px; }
+        /* شبكةٌ أوسعُ داخل عمودٍ أوسع */
+        body.sell-wide .cpg { grid-template-columns: repeat(3, 1fr); }
+        /* ⚠️ عنوانُ قسمِ النوع لاصقٌ بـtop:0، وشريطُ الأقسام لاصقٌ بـtop:0 كذلك
+           وz-index أعلى — فكان العنوانُ ينزلق **تحت** الشريط فيُقرأ نصفُه.
+           فيُنزَّل بمقدارِ ارتفاعِ الشريط. */
+        body.sell-wide .cpsec > h3 { top: 58px; }
+    }
+    @media (min-width: 1280px) {
+        body.sell-wide .cpg { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    /* ---- شريطُ الجلسة ------------------------------------------------- */
+    .sessbar {
+        display: flex; align-items: center; flex-wrap: wrap;
+        gap: var(--space-3); margin-bottom: var(--space-4);
+        padding: 10px var(--space-4);
+        background: #0F172A; color: #FFFFFF;
+        border-radius: var(--radius-md);
+    }
+    /* ⚠️ نقطةٌ ملوّنةٌ **مع** نصٍّ لا لونٌ وحدَه: الحالةُ يجب أن تُقرأ على شاشةٍ
+       ساطعةٍ وبعينٍ مستعجلة، ومن لا يُفرّق الأحمرَ من الأخضر يقرأ الكلمة. */
+    .sessbar .dot { flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; background: #64748B; }
+    .sessbar .dot.on  { background: #22C55E; box-shadow: 0 0 0 3px rgba(34,197,94,.28); }
+    .sessbar .dot.off { background: #EF4444; box-shadow: 0 0 0 3px rgba(239,68,68,.24); }
+    .sessbar .lbl { font-size: 13px; font-weight: 800; letter-spacing: .01em; }
+    .sessbar .meta { font-size: 11.5px; font-weight: 600; color: #CBD5E1; }
+    .sessbar .acts { margin-inline-start: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+    .sessbar .sb {
+        width: auto; min-height: 34px; padding: 0 13px;
+        font-family: inherit; font-size: 12px; font-weight: 800; cursor: pointer;
+        background: rgba(255,255,255,.13); color: #FFFFFF;
+        border: 1px solid rgba(255,255,255,.24); border-radius: 8px;
+    }
+    .sessbar .sb:hover { background: rgba(255,255,255,.22); }
+    .sessbar .sb.prim { background: #16A34A; border-color: #16A34A; }
+    .sessbar .sb.warn { background: #DC2626; border-color: #DC2626; }
+
+    /* ---- شريطُ الأقسام: صفٌّ داكنٌ مضغوطٌ بدل أربعةِ صناديقَ بيضاءَ عالية ---- */
+    /* ⚠️ يُكتب **بعد** القواعد الأصلية عن قصد: نفسُ الأولويّة، والأخيرةُ تغلب.
+       فالقواعدُ القديمةُ تبقى مقروءةً بتعليقاتها ولا تُحذف — ويُعرف ما تغيّر. */
+    .snav {
+        gap: 4px; padding: 6px; border: 0;
+        background: #0F172A; border-radius: var(--radius-md);
+        box-shadow: 0 1px 3px rgba(15,23,42,.18);
+    }
+    .snav button {
+        min-height: 40px; padding: 5px 8px;
+        background: transparent; color: #CBD5E1; border: 0; border-radius: 8px;
+    }
+    .snav button .t { font-size: 12px; font-weight: 700; color: inherit; }
+    .snav button[aria-pressed="true"] {
+        background: #FFFFFF; border: 0;
+    }
+    .snav button[aria-pressed="true"] .t { color: #0F172A; }
+    .snav .badge { background: #DC2626; color: #FFFFFF; }
+
+    /* ---- لوحةُ الفاتورة: المجموعُ والزرُّ يُقرآن أوّلًا --------------------- */
+    #cpInvPanel #cpTotals { border-top: 1px dashed var(--color-border); padding-top: var(--space-3); }
+    #cpInvPanel #cpFinish { min-height: 52px; font-size: var(--text-base); }
+    /* ⚠️ لوحةُ الفاتورة لا تُقصّ محتواها: `sticky` مع `overflow` محسوبٍ يقطع
+       قائمةَ الأسطر على فاتورةٍ طويلة. فتُترك تنمو، والصفحةُ تتمرّر. */
+
 </style>
 </head>
 <body>
@@ -997,12 +1085,35 @@
         </div><!-- /viewTill -->
 
         <div class="hidden" id="viewSell">
-        <!-- ⚠️⚠️ سطرُ حالةِ الصندوق فوق البيع مباشرةً: هنا تقف البياعةُ وتبيع،
-             وهنا يجب أن تقرأ أنّ الصندوقَ لم يُفتح — لا في قسمٍ آخر لا تدخله. -->
-        <div id="cpTillBar" class="status" style="margin-bottom: var(--space-4); display:none;"></div>
+        <!-- ==================================================================
+             ⭐⭐⭐⭐⭐ شريطُ الصندوق — سطرٌ واحدٌ في الأعلى، كالمرجع الذي أرسله المالك
+             ------------------------------------------------------------------
+             ⚠️ موضعُه فوق البيع مباشرةً: هنا تقف البياعةُ وتبيع، وهنا يجب أن تقرأ
+                أنّ الصندوقَ لم يُفتح — لا في قسمٍ آخر لا تدخله.
+             ⚠️⚠️ وصار شريطًا لا سطرَ نصٍّ: الحالةُ والرقمُ ومبلغُ البداية وأزرارُ
+                X والإغلاق في صفٍّ واحد، فلا تحتاج مغادرةَ شاشة البيع لتقرأ صندوقَها.
+             ⚠️ وأزرارُ الفتح/الإغلاق **تنقل إلى قسم الصندوق** ولا تُكرّر خاناتِه:
+                الفتحُ يحتاج مبلغًا معدودًا والإغلاقُ يحتاج عدًّا، وخانةٌ مكرّرةٌ في
+                موضعَين تعني منطقَ مالٍ مكرَّرًا — وهو أسوأُ ما يُفعل بشاشةِ صندوق.
+                أمّا X فلا يحتاج خانةً، فيُنفَّذ من هنا مباشرةً.
+             ================================================================== -->
+        <div id="cpTillBar" class="sessbar" style="display:none;">
+            <span class="dot" id="cpTillDot"></span>
+            <span class="lbl" id="cpTillLabel">&mdash;</span>
+            <span class="meta" id="cpTillMeta"></span>
+            <span class="acts">
+                <button type="button" class="sb" id="cpTillX" style="display:none;">&#128424; X-Report</button>
+                <button type="button" class="sb" id="cpTillGo">Open the till</button>
+            </span>
+        </div>
+        <!-- ⚠️⚠️ عمودان لا عمودٌ واحد: الشكوى كانت التمريرَ الطويل. البضاعةُ
+             والبحثُ يسارًا، والفاتورةُ يمينًا **ثابتةً** فلا تختفي عند التمرير.
+             وعلى الهاتف ينهار العمودانِ إلى واحدٍ تلقائيًّا (لا وسمَ ولا شرط). -->
+        <div class="pos">
+        <div class="poscol">
         <div class="panel" id="cpPanel">
             <h2>Sell an abaya</h2>
-            <p class="ar">Type the barcode, or press <b>Show the abayas</b> and tap the picture</p>
+            <p class="ar">Scan or type the barcode &mdash; or tap a picture from the list below</p>
 
             <label for="cpCode">Barcode</label>
             <input type="text" id="cpCode" autocomplete="off" spellcheck="false" dir="ltr" placeholder="e.g. AS-1042">
@@ -1041,6 +1152,37 @@
                 </div>
             </div>
 
+
+
+
+
+
+
+
+        </div><!-- /cpPanel -->
+
+        <!-- ⭐ شبكةُ البضاعة صارت **ظاهرةً دائمًا** لا خلفَ زرّ: هذا جوهرُ المرجع
+             («Tap products to add them»). والزرُّ باقٍ يعمل لمن أراد إخفاءها. -->
+        <div class="panel" id="cpBrowsePanel">
+            <!-- كل العبايات بالصور -->            <!-- كل العبايات بالصور -->
+            <div id="cpList" class="hidden" style="margin-top: var(--space-4);">
+                <label for="cpSearch">Search &mdash; barcode or name</label>
+                <input type="text" id="cpSearch" autocomplete="off" placeholder="Barcode, name, type, colour, fabric or size">
+                <!-- ⚠️ الغلافُ لم يبقَ شبكةً: صار يحمل أقسامًا، وكلُّ قسمٍ فيه
+                     عنوانُه وشبكتُه (.cpg). عنوانٌ داخلَ شبكةٍ يأخذ خليّةً فيقع
+                     بجانب بطاقةٍ لا فوق قسمه. -->
+                <div id="cpGrid"></div>
+                <p class="ar" id="cpListNote" style="margin-top: var(--space-3);"></p>
+            </div>        </div><!-- /cpBrowsePanel -->
+        </div><!-- /poscol -->
+
+        <aside class="poscol side">
+        <!-- ⚠️ لوحةُ الفاتورة تبقى ظاهرةً وإن كانت فارغة، وتقول ماذا يُفعل —
+             لوحةٌ تظهر وتختفي مع أوّل قطعةٍ تُربك العينَ وتُخفي المجموعَ لحظةَ الحاجة. -->
+        <div class="panel" id="cpInvPanel">
+            <h2>The invoice</h2>
+            <p class="ar" id="cpEmptyHint">Nothing on it yet. Find a piece by its barcode, or tap one from the
+                list, and it appears here with the total.</p>
             <!-- ==============================================================
                  ⭐⭐⭐⭐⭐ السلّة — فاتورةٌ واحدةٌ بعددٍ غير محدودٍ من القطع
                  --------------------------------------------------------------
@@ -1050,7 +1192,6 @@
                  ⚠️ والخصمُ **بالنسبة** بنصّ المالك، وعلى المجموع لا على سطرٍ بعينه.
                  ============================================================== -->
             <div id="cpCartWrap" class="hidden" style="margin-top: var(--space-5);">
-                <h3 style="font-size: 15px; margin: 0 0 var(--space-2);">The invoice</h3>
                 <div id="cpCartList"></div>
                 <div class="two" style="margin-top: var(--space-3);">
                     <div>
@@ -1121,19 +1262,19 @@
                  المالكُ فاتورتين، ونقصت القطعُ، ولم تُحفظ الفاتورتان، ولم يرَ
                  السببَ إطلاقًا — ثم بحث عنهما فلم يجدهما.
                  ورسالةٌ في حاويةٍ تُخفى = لا رسالة. -->
-            <p class="status" id="cpFinMsg" style="margin-top: var(--space-4);"></p>
+            <p class="status" id="cpFinMsg" style="margin-top: var(--space-4);"></p>        </div><!-- /cpInvPanel -->
+        </aside>
+        </div><!-- /pos -->
 
-            <!-- كل العبايات بالصور -->            <!-- كل العبايات بالصور -->
-            <div id="cpList" class="hidden" style="margin-top: var(--space-4);">
-                <label for="cpSearch">Search &mdash; barcode or name</label>
-                <input type="text" id="cpSearch" autocomplete="off" placeholder="Barcode, name, type, colour, fabric or size">
-                <!-- ⚠️ الغلافُ لم يبقَ شبكةً: صار يحمل أقسامًا، وكلُّ قسمٍ فيه
-                     عنوانُه وشبكتُه (.cpg). عنوانٌ داخلَ شبكةٍ يأخذ خليّةً فيقع
-                     بجانب بطاقةٍ لا فوق قسمه. -->
-                <div id="cpGrid"></div>
-                <p class="ar" id="cpListNote" style="margin-top: var(--space-3);"></p>
-            </div>
-
+        <!-- ⚠️⚠️ الإرجاعُ وكلُّ الفواتير وإعادةُ الطبع: عملٌ **عارضٌ** لا يُفعل في كلِّ
+             بيعة، فطُوي خلفَ سطرٍ واحدٍ بدل أن يُطيل شاشةَ البيع تمريرًا في كلِّ مرّة.
+             ⚠️ والحقولُ باقيةٌ في DOM وإن كان المطويُّ مغلقًا — `details` لا تحذف شيئًا،
+                فكلُّ مستمعٍ ومعرّفٍ يعمل كما كان. -->
+        <details class="panel" id="cpExtras" style="margin-top: var(--space-4);">
+            <summary style="cursor:pointer; font-size:13.5px; font-weight:800; display:flex;
+                    align-items:center; gap:9px; color: var(--color-text);">
+                Returns, all invoices &amp; reprints
+            </summary>
             <!-- ما بِعتِه من هذه الشاشة اليوم — مع تصحيحٍ لضغطةٍ خطأ -->
             <!-- ==============================================================
                  ⭐⭐⭐⭐⭐ الإرجاع — «إذا حدث مشكل وزبونة ترجع فاتورة»
@@ -1172,9 +1313,7 @@
                      ⚠️ والتصحيحُ **إضافةٌ لا محو**: القيمةُ القديمةُ تُحفظ باسم من
                         صحّحها ووقتِه، فتبقى الحقيقةُ الأولى مقروءةً إلى الأبد. -->
                 <div id="cpFixBox" class="hidden" style="margin-top: var(--space-3);"></div>
-            </div>
-
-            <!-- فواتيرُ هذه الجلسة -->
+            </div>            <!-- فواتيرُ هذه الجلسة -->
             <div id="cpSoldWrap" class="hidden" style="margin-top: var(--space-5);">
                 <p class="sect" style="font-size: var(--text-sm); font-weight: 700; margin: 0 0 var(--space-3);">
                     What you took off the shelf from this screen
@@ -1187,8 +1326,7 @@
                     A slip that jammed or came out faint? <b>Print again</b> prints the same invoice number.
                     To take an invoice back, use <b>Take an invoice back</b> above.
                 </p>
-            </div>
-        </div>
+            </div>        </details>
         </div><!-- /viewSell -->
 
         <!-- ⚠️⚠️ تقريرُ اليوم: سبعُ لوحاتٍ كانت مبثوثةً بين البصمة والبيع، وهي **عملٌ
@@ -1889,6 +2027,8 @@
         //   اليوم» كان بثُّ الكاميرا يبقى شغّالًا وضوءُها مشتعلًا بقيّةَ اليوم.
         if (typeof scCloseScanner === 'function') scCloseScanner();
         sellerView = which;
+        // ⚠️ العرضُ الواسعُ **للبيع وحدَه** — انظر تعليقَ `body.sell-wide` في التنسيق.
+        document.body.classList.toggle('sell-wide', which === 'sell');
         Object.entries(SELLER_VIEWS).forEach(([k, o]) => {
             const v = el(o.view); if (v) v.classList.toggle('hidden', k !== which);
             const n = el(o.nav); if (n) n.setAttribute('aria-pressed', String(k === which));
@@ -2545,7 +2685,18 @@
     el('navSell').addEventListener('click', () => {
         showSellerView('sell');
         // ⚠️ الكتالوجُ يُقرأ عند فتح القسم أيضًا: قد تكون الشحنةُ وصلت بعد دخولها.
-        loadSellerCatalog();
+        // ⭐⭐ والشبكةُ تُفتح معه: جوهرُ التصميم الذي طلبه المالك أن تُلمس الصورةُ
+        //   فتُضاف، لا أن تُبحث خلفَ زرّ. والزرُّ باقٍ يعمل لمن أراد إخفاءها.
+        loadSellerCatalog().then(() => {
+            if (sellerView !== 'sell') return;      // غادرت القسمَ أثناء القراءة
+            const list = el('cpList');
+            // ⚠️ ولا تُفتح فوقَ عبايةٍ وُجدت بالباركود: من مسحت قطعةً تنظر إليها،
+            //   وشبكةٌ تُفتح تحتها تدفعها خارجَ الشاشة.
+            if (list && list.classList.contains('hidden') && el('cpFound').classList.contains('hidden')) {
+                list.classList.remove('hidden');
+                cpRenderGrid();
+            }
+        }).catch(() => { /* قراءةٌ فشلت لا تمنع البيعَ بالباركود */ });
     });
     el('navReport').addEventListener('click', () => showSellerView('report'));
     el('navArrivals').addEventListener('click', () => {
@@ -3831,6 +3982,9 @@
     function cpRenderCart() {
         const wrap = el('cpCartWrap');
         if (!wrap) return;
+        // ⚠️ السطرُ التوضيحيُّ عكسُ السلّة: لوحةٌ فارغةٌ بلا كلمةٍ تُقرأ عطلًا.
+        const hint = el('cpEmptyHint');
+        if (hint) hint.style.display = cpCart.length ? 'none' : '';
         if (!cpCart.length) {
             wrap.classList.add('hidden');
             el('cpCartList').innerHTML = '';
@@ -4646,11 +4800,32 @@
             d.kind);
     }
 
+    /**
+     * ⭐ يُعبّئ شريطَ الجلسة في أعلى شاشة البيع.
+     * ⚠️ ولا يُبنى بـinnerHTML في كلِّ رسم: العناصرُ ثابتةٌ في الترميز وتُكتب
+     *   نصوصُها فقط — فزرٌّ مربوطٌ بمستمعٍ لا يُستبدَل من تحته فيفقد مستمعَه.
+     *   (وهذا عطلٌ كلاسيكيٌّ في الأشرطة التي تُعاد كتابتُها.)
+     */
+    function cpPaintSessionBar(kind, label, meta) {
+        const bar = el('cpTillBar');
+        if (!bar) return;
+        bar.style.display = '';
+        const dot = el('cpTillDot');
+        if (dot) dot.className = 'dot' + (kind === 'open' ? ' on' : kind === 'closed' ? ' off' : '');
+        const lb = el('cpTillLabel'); if (lb) lb.innerHTML = label || '';
+        const mt = el('cpTillMeta'); if (mt) mt.innerHTML = meta || '';
+        const x = el('cpTillX'); if (x) x.style.display = kind === 'open' ? '' : 'none';
+        const go = el('cpTillGo');
+        if (go) {
+            go.textContent = kind === 'open' ? 'Close the till' : 'Open the till';
+            go.className = 'sb ' + (kind === 'open' ? 'warn' : 'prim');
+        }
+    }
+
     function tillPaint() {
         const badge = el('navTillBadge');
         const openBox = el('tillOpenBox');
         const openedBox = el('tillOpenedBox');
-        const bar = el('cpTillBar');
         if (el('tillChipShop')) el('tillChipShop').innerText = state.shop || '—';
         if (el('tillChipSeller')) el('tillChipSeller').innerText = state.sellerName || '';
 
@@ -4661,8 +4836,8 @@
             setMsgHtml('tillState', `<b>The till state is not known yet.</b> Press <b>Till</b> again to read it.`, 'warn');
             if (openBox) openBox.classList.add('hidden');
             if (openedBox) openedBox.classList.add('hidden');
-            if (bar) { bar.style.display = 'block'; bar.className = 'status warn';
-                       bar.innerHTML = `The till state is not known &mdash; open the <b>Till</b> section.`; }
+            cpPaintSessionBar('unknown', 'Till state unknown',
+                'Open the <b>Till</b> section to read it');
             tillRenderDone();
             return;
         }
@@ -4681,9 +4856,13 @@
                     + `covering both days. Close it, then open a new one for today.` : ''), old ? 'warn' : 'ok');
             if (openBox) openBox.classList.add('hidden');
             if (openedBox) openedBox.classList.remove('hidden');
-            if (bar) { bar.style.display = 'block'; bar.className = 'status ok';
-                       bar.innerHTML = `Till <span class="ltr">${escapeHtml(tillShift.id || '')}</span> is open &mdash; `
-                           + `this invoice will belong to it.`; }
+            // ⚠️ مبلغُ البداية يُعرض على الشريط: هو نصفُ معادلةِ «المتوقَّع في الدرج»،
+            //   ورؤيتُه طولَ اليوم تجعل الفرقَ في الإغلاق مفهومًا لا مفاجأة.
+            cpPaintSessionBar('open',
+                `Session open &middot; <span class="ltr">${escapeHtml(tillShift.id || '')}</span>`,
+                `Float ${escapeHtml(money(tillShift.openingFloat))} &middot; `
+                + `opened ${escapeHtml(tillShift.openedTime || '—')} by `
+                + `${escapeHtml(tillShift.openedByName || '—')}`);
         } else {
             if (badge) badge.innerText = 'CLOSED';
             setMsgHtml('tillState', `<b>The till is closed.</b> Open it before you start selling.`, 'warn');
@@ -4692,9 +4871,8 @@
             // ⚠️⚠️ تحذيرٌ لا منعٌ — قرارٌ متعمَّدٌ ومعلَنٌ للمالك: بياعةٌ نسيت الفتحَ
             //   كان المنعُ سيُوقف محلًّا كاملًا عن البيع. فتُبَع البيعةُ وتُوسَم
             //   «خارج وردية» وتظهر للمالك في لوحته باسمها.
-            if (bar) { bar.style.display = 'block'; bar.className = 'status err';
-                       bar.innerHTML = `&#9888; <b>The till is not open.</b> You can still sell, but the sale will `
-                           + `not be on any Z report. Open the <b>Till</b> first.`; }
+            cpPaintSessionBar('closed', '&#9888; The till is not open',
+                'You can still sell, but the sale will be on <b>no Z report</b>');
             // آخرُ إغلاقٍ معروفٍ — خبرًا بجانب الخانة، ولا يُكتب فيها.
             const last = tillRecent.find(r => String(r.status || '') === 'closed');
             const note = el('tillLastNote');
@@ -4981,6 +5159,19 @@
         }
     });
     el('tillCounted').addEventListener('input', tillRenderDiff);
+
+    // ---- أزرارُ شريط الجلسة في شاشة البيع -------------------------------
+    // ⚠️ X يُنفَّذ من هنا مباشرةً: لا يحتاج خانةً ولا يكتب شيئًا.
+    el('cpTillX').addEventListener('click', () => { el('tillX').click(); });
+    // ⚠️⚠️ أمّا الفتحُ والإغلاقُ فينقلان إلى قسم الصندوق ولا يُكرّران خاناتِه:
+    //   الفتحُ يحتاج مبلغًا **معدودًا** والإغلاقُ يحتاج عدًّا، وخانةٌ مكرّرةٌ في
+    //   موضعَين تعني منطقَ مالٍ مكرَّرًا — وهو أسوأُ ما يُفعل بشاشة صندوق.
+    el('cpTillGo').addEventListener('click', () => {
+        showSellerView('till');
+        const box = tillShift ? el('tillCounted') : el('tillFloat');
+        if (box && box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (box) { try { box.focus(); } catch (e) { /* لا يُعطّل */ } }
+    });
     el('tillDoneList').addEventListener('click', (ev) => {
         const b = ev.target.closest('button[data-tillz]');
         if (!b) return;
