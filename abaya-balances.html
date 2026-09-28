@@ -748,6 +748,42 @@
         display: flex; align-items: center; justify-content: center;
         color: var(--color-text-muted); font-size: 11.5px; font-weight: 700; text-align: center;
     }
+    /* ============ ⭐⭐⭐⭐⭐ وسمُ السعر على الصورة — بأمر المالك ============
+       بنصّه: «سعرُ البيع صغيرٌ لا يظهر، ضعه تقريبًا في الإطار الأخضر الذي أشّرتُ
+       عليه … بطريقةٍ احترافيّةٍ ومتناسقةٍ ومتناسبة».
+
+       ⚠️⚠️ **الخلفيةُ مصمتةٌ لا شفّافة.** النصُّ يقع على صورةِ عبايةٍ لا يُعرف
+         لونُها، وأيُّ شفافيّةٍ تجعل الرقمَ مقروءًا على صورةٍ سوداءَ ومحجوبًا على
+         صورةٍ فاتحة — وسعرٌ يُقرأ نصفَ الوقت أسوأُ من سعرٍ صغيرٍ يُقرأ دائمًا.
+       ⚠️⚠️ **وكحليٌّ صريحٌ لا `--color-primary`.** هذا الأخيرُ يصير **ذهبًا** في
+         الوضع الداكن (design-tokens.css سطر 152)، فيصير أبيضُ على ذهبٍ — وهو ما
+         تمنعه ورقةُ الهوية بالحرف. والكحليُّ `--ink-800` ثابتٌ في الوضعَين،
+         والأبيضُ عليه **17.85:1** والذهبُ `--gold-300` عليه **10.09:1** — قياسان
+         مكتوبان في ملفّ الهوية لا مقدَّران بالعين.
+       ⚠️ **وحدٌّ ذهبيٌّ رقيق**: البطاقةُ بلا صورةٍ خلفيّتُها السطحُ الثاني، وهو
+         كحليٌّ في الوضع الداكن — فبلا حدٍّ يذوب الوسمُ في الصندوق ويختفي السعر.
+       ⚠️ و`max-width` مقيَّدٌ بعرض الصورة: بطاقتان في صفٍّ على شاشة هاتف، ورقمٌ
+         من خمس خاناتٍ يخرج من البطاقة بلا هذا القيد. */
+    .cat .phw { position: relative; display: block; width: 100%; }
+    .cat .ptag {
+        position: absolute; inset-inline-start: 8px; bottom: 8px;
+        display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+        max-width: calc(100% - 16px);
+        padding: 4px 9px 5px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--gold-400, #CAAD73);
+        background: var(--ink-800, #0F172A);
+        box-shadow: 0 3px 12px rgba(15, 23, 42, .32);
+    }
+    .cat .ptag .big {
+        font-size: 18px; font-weight: 900; line-height: 1.2; direction: ltr;
+        color: #ffffff; font-variant-numeric: tabular-nums;
+    }
+    .cat .ptag .sub {
+        font-size: 10px; font-weight: 800; line-height: 1.35; direction: ltr;
+        color: var(--gold-300, #DABB7D);
+    }
+    .cat .ptag .sub s { opacity: .85; }
     .cat .bd { padding: 10px 11px 12px; display: flex; flex-direction: column; gap: 4px; width: 100%; }
     /* ⚠️ الباركود يبقى LTR دائمًا ولو كانت الصفحة عربية — رقمٌ معكوسٌ لا يُقرأ. */
     .cat .code { direction: ltr; font-family: ui-monospace, monospace; font-size: 11.5px;
@@ -2698,14 +2734,33 @@
             // ٦٠٠ تظهر **مرّتين** في بطاقةٍ واحدة على شاشة هاتف.
             // ⚠️ وبيانُ «أيُّهما مأخوذ» لم يُفقد: يبقى في سطر الموسم فوق القائمة،
             // وفي **الشطب** على السعر القديم حين يكون الخصم مُطبَّقًا فعلًا.
-            const prices = hasDisc
-                ? `<span class="prow"><span class="k">Before discount</span>`
-                  + `<span class="v${active ? ' was' : ''}">${money(p.price)}</span></span>`
-                + `<span class="prow"><span class="k">After discount</span>`
-                  + `<span class="v disc">${money(p.discountPrice)}`
-                  + (off > 0 ? `<span class="off">-${off}%</span>` : '') + `</span></span>`
-                : `<span class="prow"><span class="k">Price</span>`
-                  + `<span class="v">${money(p.price)}</span></span>`;
+            /**
+             * ⭐⭐⭐⭐⭐ وسمُ السعر على الصورة — بأمر المالك: «سعرُ البيع صغيرٌ لا
+             *   يظهر، ضعه تقريبًا في الإطار الأخضر … بطريقةٍ احترافيّةٍ ومتناسقة».
+             *
+             * ⚠️⚠️⚠️ **نَقلٌ لا نَسخ**: سطرا السعرِ نُزعا من قائمةِ البطاقة. وإبقاؤهما
+             *   مع الوسمِ كان يُظهر نفسَ الرقم **مرّتين** في بطاقةٍ واحدةٍ على شاشة
+             *   هاتف — وهو بالحرف ما أمر بنزعه من قبل: «انزع كلمة تيكت ناو … لماذا
+             *   السعرُ قبل الخصم يظهر تحت». فلا يُعاد الخطأُ بصورةٍ أجمل.
+             * ⚠️⚠️ والرقمُ الكبيرُ من **`catShownPrice` وحدَها** — وهي مصدرُ «المأخوذِ
+             *   الآن» الذي يطبعه ملصقُ الباركود. ولو كُتب هنا شرطٌ بيدي لاختلف
+             *   الوسمُ عن الملصقِ يومًا يُغيَّر فيه أحدُهما، والزبونةُ ترى الرقمَين.
+             * ⚠️ وأمرُه «يجب أن يظهر السعرُ قبل الخصم والسعرُ بعد الخصم» **محفوظ**:
+             *   الرقمان في الوسم معًا (المأخوذُ كبيرًا والآخرُ مشطوبًا تحته)، وجدولُ
+             *   التفصيل الموسومُ بالكلمات باقٍ كما هو في نافذة العباية بلا مسّ.
+             * ⚠️⚠️ وثلاثُ حالاتٍ لا اثنتان: الخصمُ قد يكون **مكتوبًا وغيرَ مُطبَّق**
+             *   (الموسم مغلق). والشطبُ في تلك الحالة **يكذب** — معناه «لم يبقَ هذا
+             *   السعر» وهو السعرُ المأخوذُ فعلًا. فتُقال حالتُه بكلمةٍ لا بشطب.
+             */
+            const priceTag = `<span class="ptag">`
+                + `<span class="big">${money(catShownPrice(p))}</span>`
+                + (active
+                    ? `<span class="sub"><s>${money(p.price)}</s>`
+                      + (off > 0 ? ` &minus;${off}%` : '') + `</span>`
+                    : (hasDisc
+                        ? `<span class="sub">Season off &mdash; discount ${money(p.discountPrice)}</span>`
+                        : ''))
+                + `</span>`;
             // ⚠️⚠️ الكوست بأمر المالك: «هاي السيدة فاطمة يجب ان يظهر سعر الكوست».
             // ⚠️ وموسومٌ «Cost» بلونٍ باهت عن قصد: رقمٌ ثالثٌ بلا وسمٍ مميَّز كان
             // يُقرأ سعرَ بيعٍ ثالثًا، وقد تقوله لزبونةٍ فتبيع بالخسارة.
@@ -2718,9 +2773,19 @@
             // نفسها أن تكون زرًّا.
             return `<div class="cat${n <= 0 ? ' out' : ''}">`
                 + `<button type="button" class="catmain" data-catopen="${escapeHtml(p.id)}">`
+                // ⚠️ غلافٌ للصورة كي يُعلَّق السعرُ عليها: `position: absolute` يحتاج
+                //   أبًا موضوعًا. و`span` لا `div` — البطاقةُ `<button>` و`div` داخلَ
+                //   زرٍّ ترميزٌ غير صحيحٍ تُفكّكه المتصفّحات (نفسُ سببِ `span` في
+                //   بقيّة البطاقة، وهو عطلٌ وقع هنا فعلًا يوم أُضيف زرُّ واتساب).
+                // ⚠️ ولا تُمسّ `data-catimg`: مُحمِّلُ الصور يستعلم
+                //   `querySelectorAll('img[data-catimg]')` — بالخاصّيّة لا بموضع
+                //   العنصر — فالغلافُ لا يكسره. وهذا مُثبَتٌ بفحصٍ لا بالظنّ.
+                + `<span class="phw">`
                 + (p.hasImage
                     ? `<img class="ph" data-catimg="${escapeHtml(p.id)}" alt="${escapeHtml(p.name || p.code)}">`
                     : `<span class="ph none">No picture<br>yet</span>`)
+                + priceTag
+                + `</span>`
                 + `<span class="bd">`
                 + `<span class="code">${escapeHtml(p.code)}</span>`
                 + (p.name ? `<span class="nm">${escapeHtml(p.name)}</span>` : '')
@@ -2730,7 +2795,10 @@
                 + (p.fabric ? `<span class="nm">${escapeHtml(p.fabric)}</span>` : '')
                 + (p.tone ? `<span class="nm">${escapeHtml(abayaToneLabel(p.tone))}</span>` : '')
                 + (p.canOrder ? `<span class="nm">Orders can be taken</span>` : '')
-                + prices
+                // ⚠️ ولا سطرَ سعرٍ هنا: انتقل إلى الوسم على الصورة (انظر `priceTag`).
+                //   والكوستُ يبقى سطرًا صغيرًا باهتًا — والفرقُ في الحجم صار الآن
+                //   حارسًا إضافيًّا: رقمانِ متساويانِ في الحجم كان أحدُهما قد يُقال
+                //   لزبونةٍ سعرَ بيع (وهو الخطرُ المكتوبُ فوق `costRow` نفسِه).
                 + costRow
                 // ⚠️⚠️ و«Sold out» لا تُقال عن تصميمٍ قطعُه عند فلوريندا: لم يُبَع
                 //   ولم ينتهِ — لم يصل الرفَّ بعد. و«نُفدت» هنا تُقرأ «اطلبي المزيد»
