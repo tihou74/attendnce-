@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v29   (2026-09-28)  <<<
+//   >>>  RULES REVISION: v30   (2026-09-28)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,7 +12,7 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       abaya_intake
+//       sewHours
 //
 //   (This exact text exists nowhere in any earlier revision, which is the whole
 //    point of a marker. Every earlier marker is now useless for telling the
@@ -32,10 +32,11 @@ rules_version = '2';
 //      "'fabric', 'colour'"        introduced in v26, was the marker for v26
 //      "abaya_shifts"               introduced in v27, was the marker for v27
 //      "isGoodsClerk"               introduced in v28, was the marker for v28
+//      "abaya_intake"               introduced in v29, was the marker for v29
 //    Always search for the marker named directly above, and when publishing a
 //    new revision, change that name to something introduced by it.)
 //
-//   FOUND     -> v29 is live. Good.
+//   FOUND     -> v30 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -53,6 +54,26 @@ rules_version = '2';
 // exact mistake happened with the "(v4)" label, which never changed across
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
+//
+//  v30  2026-09-28  + sewHours / sewRate REFUSED BY NAME. PUBLISH v30 — it
+//                     contains v16..v29 in full.
+//
+//                     The owner asked for the sewing time to be part of the cost:
+//                     "add the time spent sewing, the sewing is 10 an hour."
+//                     Those two figures live on abaya_arrivals, which the kiosk
+//                     and the goods clerk are already refused outright.
+//
+//                     ⚠️⚠️ SO WHY TOUCH THE RULES AT ALL: the two collections the
+//                     shop floor CAN read — abaya_shelf_tasks and abaya_intake —
+//                     guard themselves with a BLACKLIST OF COST KEY NAMES. A new
+//                     cost field that is not on that list could be written there
+//                     by a future edit of the page, and the blacklist is what
+//                     makes "there is no purchase cost in this collection" a fact
+//                     enforced by the server rather than a property of today's
+//                     code. Leaving it off quietly weakens that guarantee.
+//
+//                     sewRate is a PRICE (10 per hour) and sewHours multiplies
+//                     into one. Both are refused by name in both collections.
 //
 //  v29  2026-09-28  + abaya_intake — GOODS RECORDED BY SOMEONE WHO MAY NOT SEE
 //                     WHAT THEY COST. PUBLISH v29 — it contains v16..v28 in full.
@@ -1593,7 +1614,8 @@ service cloud.firestore {
       allow create: if (isAdmin() || isViewer())
         && !request.resource.data.keys().hasAny(
              ['cost', 'costPerPiece', 'supplier', 'source', 'unitUsd', 'usdRate',
-              'unitQar', 'shipping', 'labour', 'totalQar', 'suggestedPrice',
+              'unitQar', 'shipping', 'labour', 'sewHours', 'sewRate',
+              'totalQar', 'suggestedPrice',
               'profit', 'margin', 'marginPct', 'sentBy']);
       // v22: TWO separate kiosk shapes, never one merged list.
       //   1) a shop shelves the task            -> done / doneAt / doneBy / doneByName
@@ -1698,7 +1720,8 @@ service cloud.firestore {
         && request.resource.data.get('status', '') == 'waiting'
         && !request.resource.data.keys().hasAny(
              ['cost', 'costPerPiece', 'supplier', 'source', 'unitUsd', 'usdRate',
-              'unitQar', 'shipping', 'labour', 'totalQar', 'suggestedPrice',
+              'unitQar', 'shipping', 'labour', 'sewHours', 'sewRate',
+              'totalQar', 'suggestedPrice',
               'sellingPrice', 'price', 'discountPrice', 'profit', 'margin',
               'marginPct', 'salary', 'commission']);
       allow update: if isAdmin()
@@ -1706,7 +1729,8 @@ service cloud.firestore {
             && resource.data.status == 'waiting'
             && !request.resource.data.keys().hasAny(
                  ['cost', 'costPerPiece', 'supplier', 'source', 'unitUsd', 'usdRate',
-                  'unitQar', 'shipping', 'labour', 'totalQar', 'suggestedPrice',
+                  'unitQar', 'shipping', 'labour', 'sewHours', 'sewRate',
+                  'totalQar', 'suggestedPrice',
                   'sellingPrice', 'price', 'discountPrice', 'profit', 'margin',
                   'marginPct', 'salary', 'commission'])
             // ⚠️ `status` غائبٌ عن هذه القائمة عن قصد: هي تُصحّح وصفًا ولا تقبل

@@ -3337,8 +3337,34 @@
                 <div style="width: 160px;"><label for="arvShipping">Shipping (QAR)</label>
                     <input type="number" id="arvShipping" step="0.01" min="0" placeholder="0 if none" oninput="onArrivalInput()">
                 </div>
-                <div style="width: 160px;"><label for="arvLabour">Labour (QAR)</label>
+                <!-- ==========================================================
+                     ⭐⭐⭐⭐⭐ وقتُ الخياطة — بأمر المالك: «أضف في الكوست برايس
+                     الوقتَ المستغرقَ في الخياطة، الخياطة سعر الساعة بـ10».
+                     ----------------------------------------------------------
+                     ⚠️⚠️ الساعاتُ **للشحنة كلِّها** لا للقطعة الواحدة — وهو نفسُ
+                        معنى خانةِ «الخياطة» الموجودةِ سلفًا (مجموعٌ للشحنة)، فلم
+                        يتغيّر معنى حسابٍ قائم. والسطرُ أسفلَه يقول «= كم ساعةً
+                        للقطعة» كي يُكتشف الخطأُ من نظرةٍ: عشرُ ساعاتٍ لعشرِ قطعٍ
+                        ساعةٌ للقطعة، وعشرُ ساعاتٍ لقطعةٍ واحدةٍ عشرٌ — والفرقُ في
+                        الكوست عشرةُ أضعاف.
+                     ⚠️ وتُملأ خانةَ «الخياطة» ولا تُقفلها: نفسُ نمطِ الدولار/الريال
+                        في هذه الشاشة بالحرف — يُحسب لك، وإن جاءت فاتورةُ الخيّاط
+                        برقمٍ آخرَ تكتبه فوقه. فلا يُفرض رقمٌ محسوبٌ على واقعٍ مدفوع.
+                     ========================================================== -->
+                <div style="width: 150px;"><label for="arvSewHours">Sewing hours</label>
+                    <input type="number" id="arvSewHours" step="0.25" min="0" placeholder="0"
+                           oninput="onArrivalSewTyped()">
+                    <span class="card-sub" style="font-size: 11px; display: block; margin-top: 4px;"
+                          id="arvSewNote">for the whole shipment</span>
+                </div>
+                <div style="width: 120px;"><label for="arvSewRate">QAR / hour</label>
+                    <input type="number" id="arvSewRate" step="0.5" min="0" oninput="onArrivalSewTyped()">
+                </div>
+                <div style="width: 160px;"><label for="arvLabour">Sewing (QAR)</label>
                     <input type="number" id="arvLabour" step="0.01" min="0" placeholder="0 if none" oninput="onArrivalInput()">
+                    <span class="card-sub" style="font-size: 11px; display: block; margin-top: 4px;">
+                        hours &times; rate &mdash; type over it if the tailor charged differently
+                    </span>
                 </div>
             </div>
 
@@ -3351,7 +3377,7 @@
                     <label>Total paid for this shipment</label>
                     <p id="arvCalcTotal" style="margin: 4px 0 0; font-family: 'IBM Plex Mono', ui-monospace, monospace;
                        font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums;">0.00 QAR</p>
-                    <span class="card-sub" style="font-size: 11px;">(one piece &times; pieces) + shipping + labour</span>
+                    <span class="card-sub" style="font-size: 11px;">(one piece &times; pieces) + shipping + sewing</span>
                 </div>
                 <div style="width: 210px;">
                     <label>Cost of ONE piece</label>
@@ -13589,6 +13615,14 @@
      * ⚠️ وهذه الحقولُ **ليست سرًّا**: البياعةُ تحتاجها لتجيب الزبونةَ — «من أيِّ
      *   قماش؟» و«فيها ذهبي؟» و«أقدر أطلبها تفصيل؟». فمكانُها مستندُ المنتج.
      */
+    /**
+     * ⭐⭐⭐⭐⭐ أجرةُ ساعةِ الخياطة — بأمر المالك: «الخياطة سعر الساعة بـ10».
+     * ⚠️ ثابتٌ **افتراضيٌّ لا مفروض**: يُملأ في الخانة ويُمكن تغييرُه لشحنةٍ خاطها
+     *   خيّاطٌ بسعرٍ آخر — والسعرُ المستعملُ يُجمَّد على المستند، فتغييرُ الافتراضِ
+     *   لاحقًا لا يُعيد حسابَ شحنةٍ لم تُخَط به. (نفسُ قاعدةِ سعرِ صرفِ الدولار.)
+     */
+    const ABAYA_SEW_RATE_DEFAULT = 10;
+
     const ABAYA_FABRIC_MAX = 40;
 
     // =====================================================================
@@ -15861,6 +15895,10 @@
                     pieces: Math.floor(Number(v.pieces || 0)) || 0,
                     shipping: Number(v.shipping || 0) || 0,
                     labour: Number(v.labour || 0) || 0,
+                    // ⚠️ الغيابُ صفرٌ: كلُّ شحنةٍ سُجّلت قبل هذه الميزة بلا ساعات،
+                    //   ومبلغُ خياطتها محفوظٌ على أيِّ حال فلا يتغيّر رقمٌ واحد.
+                    sewHours: Number(v.sewHours || 0) || 0,
+                    sewRate: Number(v.sewRate || 0) || 0,
                     totalQar: Number(v.totalQar || 0) || 0,
                     costPerPiece: Number(v.costPerPiece || 0) || 0,
                     suggestedPrice: Number(v.suggestedPrice || 0) || 0,
@@ -16188,6 +16226,19 @@
     };
 
     /** يُعيد رسمَ المجموع وكوست القطعة والربح مع كلّ حرفٍ يُكتب. */
+    /**
+     * ⭐ الساعاتُ × الأجرةُ تُملأ خانةَ الخياطة — نظيرُ `onArrivalUsdTyped` بالحرف.
+     * ⚠️ ولا تُملأ إن كانت الساعاتُ صفرًا: من مسح الساعاتَ ليكتب مبلغًا بيده كان
+     *   سيُمحى مبلغُه إلى صفرٍ في نفس اللحظة.
+     */
+    window.onArrivalSewTyped = function() {
+        const h = Number((document.getElementById('arvSewHours') || {}).value || 0) || 0;
+        const r = Number((document.getElementById('arvSewRate') || {}).value || 0) || 0;
+        const lab = document.getElementById('arvLabour');
+        if (lab && h > 0 && r > 0) lab.value = String(arvRound2(h * r));
+        onArrivalInput();
+    };
+
     window.onArrivalInput = function() {
         const g = (id) => (document.getElementById(id) || {}).value;
         const m = arrivalMath({
@@ -16198,6 +16249,19 @@
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
         set('arvCalcTotal', money(m.total) + ' QAR');
         set('arvCalcCost', money(m.costPerPiece) + ' QAR');
+        /**
+         * ⚠️⚠️ «كم ساعةً للقطعة» يُقال صريحًا — وهو حرسٌ على أخطرِ خطإٍ ممكنٍ هنا:
+         *   من كتب ساعاتِ **القطعة** في خانةِ ساعاتِ **الشحنة** يضرب كوستَ الخياطة
+         *   في عدد القطع. والرقمُ المعروضُ يكشفه من نظرةٍ بلا حساب.
+         */
+        const hEl = document.getElementById('arvSewHours');
+        const hrs = Number((hEl || {}).value || 0) || 0;
+        const nEl = document.getElementById('arvSewNote');
+        if (nEl) {
+            nEl.innerHTML = (hrs > 0 && m.pieces > 0)
+                ? `for the whole shipment &mdash; <b>${money(arvRound2(hrs / m.pieces))} h</b> per piece`
+                : 'for the whole shipment';
+        }
         const pEl = document.getElementById('arvCalcProfit');
         const mEl = document.getElementById('arvCalcMargin');
         if (m.sellingPrice > 0 && m.pieces > 0) {
@@ -16285,6 +16349,10 @@
         setArrivalChoice('arvColour', '', '', ABAYA_COLOURS);
         v('arvUsd', ''); v('arvQar', ''); v('arvPieces', '');
         v('arvShipping', ''); v('arvLabour', ''); v('arvSuggested', '');
+        v('arvSewHours', '');
+        // ⚠️ الأجرةُ تعود إلى الافتراض لا إلى الفراغ: خانةٌ فارغةٌ تعني ألّا تُحسب
+        //   الساعاتُ إطلاقًا، فتُكتب ساعاتٌ ولا يظهر مبلغٌ ولا يُعرف السبب.
+        v('arvSewRate', String(ABAYA_SEW_RATE_DEFAULT));
         v('arvRate', String(ABAYA_USD_RATE_DEFAULT));
         v('arvDate', todayISO());
         const ty = document.getElementById('arvType'); if (ty) ty.selectedIndex = 0;
@@ -16338,6 +16406,8 @@
         v('arvPieces', a.pieces ? String(a.pieces) : '');
         v('arvShipping', a.shipping ? String(a.shipping) : '');
         v('arvLabour', a.labour ? String(a.labour) : '');
+        v('arvSewHours', a.sewHours ? String(a.sewHours) : '');
+        v('arvSewRate', String(a.sewRate || ABAYA_SEW_RATE_DEFAULT));
         v('arvSuggested', a.suggestedPrice ? String(a.suggestedPrice) : '');
         v('arvDate', a.arrivedAt || todayISO());
         const ty = document.getElementById('arvType'); if (ty && a.type) ty.value = a.type;
@@ -16433,6 +16503,16 @@
                 pieces: m.pieces,
                 shipping: m.shipping,
                 labour: m.labour,
+                /**
+                 * ⭐⭐ الساعاتُ والأجرةُ تُحفظان بجانب المبلغ — لا المبلغُ وحدَه.
+                 * ⚠️ فمن سأل بعد شهرَين «لماذا كوستُ هذه الشحنة أعلى؟» يجد الجوابَ
+                 *   على المستند: 30 ساعةً بـ10. ومبلغٌ بلا أصلِه لا يُفسَّر ولا
+                 *   يُراجَع — وهو نفسُ سببِ تجميدِ `usdRate` على الشحنة.
+                 * ⚠️⚠️ والأجرةُ المستعملةُ تُجمَّد: تغييرُ الافتراضِ إلى 12 لا يُعيد
+                 *   حسابَ شحنةٍ خِيطت بعشرة.
+                 */
+                sewHours: Math.max(0, Number(g('arvSewHours')) || 0),
+                sewRate: Math.max(0, Number(g('arvSewRate')) || 0) || ABAYA_SEW_RATE_DEFAULT,
                 totalQar: m.total,
                 costPerPiece: m.costPerPiece,
                 suggestedPrice: m.sellingPrice,
@@ -17139,7 +17219,9 @@
                 'Rate used': a.usdRate || '',
                 'One piece QAR': a.unitQar,
                 'Shipping': a.shipping,
-                'Labour': a.labour,
+                'Sewing hours': a.sewHours || '',
+                'QAR per hour': a.sewRate || '',
+                'Sewing': a.labour,
                 'Total paid': a.totalQar,
                 'Cost per piece': a.costPerPiece,
                 'Suggested price': a.suggestedPrice || '',
@@ -20835,7 +20917,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v214';
+        const APP_BUILD = 'v215';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
