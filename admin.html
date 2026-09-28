@@ -3642,7 +3642,10 @@
         <div class="card">
             <div class="table-container lblpick">
                 <table>
-                    <thead><tr><th style="width:44px;"></th><th>Barcode</th><th>Name</th>
+                    <!-- ⚠️ الصورةُ **قبل** الباركود: هي ما يُبحث به هنا. والباركودُ
+                         نصٌّ لا يُعرَف منه الموديل، وهذا بنصّ المالك سببُ إضافتها. -->
+                    <thead><tr><th style="width:44px;"></th><th style="width:66px;">Picture</th>
+                        <th>Barcode</th><th>Name</th>
                         <th class="money-col">Price</th><th class="money-col">In stock</th>
                         <th>Labels to print</th></tr></thead>
                     <tbody id="lblBody"></tbody>
@@ -14026,6 +14029,21 @@
             return `<tr data-lblid="${escapeHtml(p.id)}">
                 <td><input type="checkbox" ${k.on ? 'checked' : ''}
                      style="width:18px; height:18px; cursor:pointer;" onchange="renderLabelCount()"></td>
+                <!-- صورةُ الموديل — بأمر المالك، لتسهيل البحث عن التصميم.
+                     ونفسُ الوسم data-acimg المستعملِ في الكتالوج عن قصد: تتكفّل
+                     observeAbayaThumbs بها بلا كودٍ ثانٍ، وتُشارك نفسَ الذاكرة
+                     acImageCache — فمن فتح الكتالوج ثمّ الملصقات لا يُنزّل صورةً
+                     مرّتين. ووسمٌ ثانٍ كان يعني قارئًا ثانيًا وذاكرةً ثانيةً وضِعفَ
+                     البيانات. و«no picture» تُكتب صريحةً: خليّةٌ فارغةٌ تُقرأ
+                     «الصورةُ لم تُحمَّل بعد» فتُنتظر بلا داعٍ.
+                     ⚠️⚠️ ولا علامةَ اقتباسٍ خلفيّةٍ في هذا التعليق: هو **داخلَ قالبٍ
+                        نصّيّ**، فأوّلُ علامةٍ خلفيّةٍ تُنهي القالبَ وتكسر الملفَّ كلَّه.
+                        وقعتُ فيه هنا فعلًا، وهو مكتوبٌ في tech.md من قبل. -->
+                <td>${p.hasImage
+                    ? `<img data-acimg="${escapeHtml(p.id)}" alt="" loading="lazy"
+                         style="width:54px; height:68px; object-fit:cover; border-radius:6px;
+                                border:1px solid var(--border); background: var(--bg-soft);">`
+                    : `<span style="font-size:10.5px; color: var(--text-faint);">no<br>picture</span>`}</td>
                 <td style="font-family: ui-monospace, monospace;"><b>${escapeHtml(p.code)}</b></td>
                 <td>${escapeHtml(p.name || '—')}<br><small style="color: var(--text-dim);">${escapeHtml(abayaTypeLabelEn(p.type))}</small></td>
                 <td class="money-col">${money(lblShownPrice(p))}</td>
@@ -14033,10 +14051,17 @@
                 <td><input type="number" min="1" max="100" step="1" inputmode="numeric"
                      value="${escapeHtml(String(n))}" onchange="renderLabelCount()"></td>
             </tr>`;
-        }).join('') || `<tr><td colspan="6" style="text-align:center;">`
+        }).join('') || `<tr><td colspan="7" style="text-align:center;">`
             + (abayaCatalogLoaded ? 'No design matches that.' : 'Press Refresh to read the catalogue.')
             + `</td></tr>`;
         renderLabelCount();
+        /**
+         * ⚠️ تُنادى **بعد** استبدال الجدول لا قبله: المراقِبُ يعمل على عناصرَ
+         *   موجودةٍ في DOM، وعناصرُ الجدول القديمِ رُميت مع innerHTML.
+         * ⚠️⚠️ ولا تُقرأ الصورُ كلُّها مع الجدول: ١٠٠ تصميمٍ × ١٦٠KB ≈ ١٦MB في كلِّ
+         *   فتحةٍ — على بيانات هاتفٍ في محلّ. فتُقرأ صورةُ الصفِّ حين يصل الشاشة.
+         */
+        if (typeof observeAbayaThumbs === 'function') observeAbayaThumbs();
     };
 
     /** اسمُ الصنف بالإنجليزية وحدَها — لا عربيّةَ على شاشةٍ يقرؤها أجنبيٌّ هنا. */
@@ -20793,7 +20818,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v212';
+        const APP_BUILD = 'v213';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
