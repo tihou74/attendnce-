@@ -605,7 +605,20 @@
             display: block !important;
             width: 72mm; margin: 0; padding: 2mm 0 6mm;
             color: #000; background: #fff;
-            font-family: ui-monospace, "Courier New", monospace;
+            /**
+             * ⚠️⚠️⚠️ الخطُّ **غُيّر لأجل العربيّة**، وهذا ليس تفصيلًا تجميليًّا:
+             *   خطوطُ `ui-monospace` تفتقر إلى المحارف العربية على كثيرٍ من
+             *   الأجهزة، فيُطبع مكانَ كلِّ حرفٍ **مربّعٌ فارغ** (tofu) — فتخرج
+             *   فاتورةٌ عربيّتُها مربّعاتٌ، وهي أسوأُ من فاتورةٍ بلا عربيّة:
+             *   تبدو صحيحةً على الشاشة وتفشل على الورق.
+             * ⚠️ وTahoma أوّلًا: موجودةٌ على كلِّ ويندوز ولها عربيّةٌ كاملةٌ وواضحةٌ
+             *   في الأحجام الصغيرة (وهذا شرطُ ورقٍ حراريٍّ بعرض 72mm).
+             *   وتُترك الخطوطُ الأحاديّةُ في آخرِ القائمة احتياطًا لا أوّلَها.
+             * ⚠️⚠️ و`tabular-nums` تعويضٌ عن فقدان الأحاديّة: الأرقامُ تبقى
+             *   متساويةَ العرض فيتراصف عمودُ المبالغ كما كان.
+             */
+            font-family: "Tahoma", "Segoe UI", "Arial", ui-monospace, "Courier New", monospace;
+            font-variant-numeric: tabular-nums;
             font-size: 11.5px; line-height: 1.45;
             -webkit-print-color-adjust: exact; print-color-adjust: exact;
         }
@@ -627,6 +640,32 @@
         /* ⚠️ الاتّجاهُ ltr على الأرقام والباركود دائمًا: اسمٌ عربيٌّ في السطر
            يقلب موضعَ الرقم في بعض المحرّكات فيُقرأ سعرٌ خطأ. */
         #rcpt .ltr { direction: ltr; unicode-bidi: isolate; }
+        /**
+         * ⭐⭐⭐⭐⭐ النصُّ العربيُّ على الفاتورة — بأمر المالك (إلزامٌ في قطر).
+         * ⚠️ و`isolate` شرطٌ لا زينة: كلمةٌ عربيّةٌ بجانب رقمٍ في نفس السطر تقلب
+         *   موضعَ الرقم في بعض محرّكات الطباعة — فيُقرأ سعرٌ خطأ على ورقةٍ في يد
+         *   زبونة. فكلُّ نصٍّ عربيٍّ معزولٌ باتّجاهه.
+         * ⚠️ ولا يُصغَّر أكثرَ من 9.5px: العربيّةُ تفقد نقاطَها على الورق الحراريّ
+         *   تحت ذلك، فتُقرأ «حسن» مكانَ «حسين».
+         */
+        #rcpt .ar2 {
+            display: block; direction: rtl; unicode-bidi: isolate;
+            font-size: 9.5px; line-height: 1.7; font-weight: 400;
+        }
+        #rcpt .tot .ar2 { font-size: 10.5px; font-weight: 700; }
+        /**
+         * عربيٌّ **داخل السطر** — للعناوين التي تقع بجانب رقمٍ في نفس السطر.
+         * ⚠️ و`isolate` هنا أهمُّ منها في `.ar2`: هذه الحالةُ بالضبط (عربيٌّ ثمّ
+         *   نقطتانِ ثمّ رقم) هي ما يقلب موضعَ الرقم في بعض المحرّكات.
+         */
+        #rcpt .ari { unicode-bidi: isolate; direction: rtl; }
+        #rcpt .bizar { font-size: 12px; font-weight: 700; direction: rtl;
+                       unicode-bidi: isolate; margin: 0 0 2mm; letter-spacing: 0; }
+        /* رأسُ الجدول: عنوانٌ لكلِّ عمودٍ بلغتَين — فاتورةٌ بلا رؤوسٍ تُقرأ قائمةَ أرقام. */
+        #rcpt .hd td {
+            font-weight: 700; font-size: 10px;
+            border-bottom: 1px solid #000; padding-bottom: 1mm;
+        }
     }
 
     /* =====================================================================
@@ -766,6 +805,9 @@
     <div class="c">
         <img class="logo" id="rcLogo" src="./brand/al-sheikha-style-logo.png" alt="">
         <p class="biz">AL SHEIKHA STYLE</p>
+        <!-- ⚠️ الاسمُ العربيُّ مكتوبٌ في الترميز لا يُبنى بالكود: هو ثابتٌ لا يتغيّر،
+             ووضعُه هنا يجعله يُطبع ولو فشل أيُّ جافاسكربت. -->
+        <p class="bizar">الشيخة ستايل</p>
         <p class="meta" id="rcMeta">&mdash;</p>
         <p class="no ltr" id="rcNo">&mdash;</p>
         <p class="kind" id="rcKind">Receipt</p>
@@ -4469,6 +4511,40 @@
     const RCPT_TEL = '74079000';
     const RCPT_MAIL = 'INFO@SHEIKHASTYLE.COM';
 
+    /**
+     * ⭐⭐⭐⭐⭐ عناوينُ الفاتورة بلغتَين — بأمر المالك: «أضف إلى الفاتورة التي تُعطى
+     *   لزبون اللغةَ العربية، لأنه ممنوعٌ في قطر فاتورةٌ من لغةٍ عربية».
+     *
+     * ⚠️⚠️ المُترجَمُ **العناوينُ وحدَها** لا أسماءُ البضاعة: اسمُ التصميم يُكتب في
+     *   الكتالوج بالإنجليزيّة بيد المالك، وترجمتُه آليًّا تُنتج اسمًا لا يعرفه أحدٌ
+     *   على ورقةٍ في يد زبونة — وقد يُخالف ما هو مكتوبٌ على الملصق نفسِه.
+     *   فالمطلوبُ قانونًا وجودُ العربيّة، وهذا يتحقّق بالعناوين.
+     * ⚠️ ومصدرٌ واحدٌ لكلِّ عنوان: عنوانٌ يُكتب مرّتين يُصحَّح مرّةً وتبقى الأخرى.
+     */
+    const RCPT_AR = {
+        receipt:   'فاتورة',
+        ret:       'إرجاع واسترداد',
+        servedBy:  'البائعة',
+        customer:  'الزبونة',
+        qty:       'العدد',
+        item:      'البيان',
+        amount:    'المبلغ',
+        unit:      'للوحدة',
+        subtotal:  'المجموع',
+        discount:  'الخصم',
+        total:     'الإجمالي',
+        paidCash:  'الدفع: نقدًا',
+        paidCard:  'الدفع: بطاقة',
+        paidSplit: 'الدفع: نقدًا وبطاقة',
+        retAgainst: 'إرجاع على الفاتورة',
+        tel:       'هاتف',
+        thanks:    'شكرًا لزيارتكم'
+    };
+    /** سطرٌ بلغتَين: الإنجليزيُّ ثمّ العربيُّ تحته معزولَ الاتّجاه. */
+    const bi = (en, ar) => `${escapeHtml(en)}<span class="ar2">${escapeHtml(ar)}</span>`;
+    /** عربيٌّ داخل السطر، معزولَ الاتّجاه — لعنوانٍ يقع بجانب رقم. */
+    const ar1 = (ar) => `<span class="ari">${escapeHtml(ar)}</span>`;
+
     /** آخرُ بيعةٍ طُبعت — لإعادة الطباعة بلا إعادة البيع. */
     let rcptLast = null;
 
@@ -4523,30 +4599,41 @@
         const dp = qatarParts(when);
         el('rcMeta').innerHTML =
             `${escapeHtml(`${dp.year}-${dp.month}-${dp.day}`)} &nbsp; ${escapeHtml(qatarTimeLabel(when))}`
-            + `<br>Served by: ${escapeHtml(sale.byName || '—')}`;
+            + `<br>Served by / ${ar1(RCPT_AR.servedBy)}: ${escapeHtml(sale.byName || '—')}`;
         el('rcNo').textContent = sale.no || '—';
         // ⚠️ يُعاد إلى «Total» صريحًا: تقريرُ Z يستعمل نفسَ الورقةِ ويُبدّل هذا
         //   العنوانَ إلى «OVER / SHORT»، فبلا إعادته تخرج فاتورةُ بيعٍ تالية
         //   ومجموعُها موسومٌ «SHORT».
-        el('rcTotLabel').textContent = 'Total';
+        el('rcTotLabel').innerHTML = bi('Total', RCPT_AR.total);
         // ⚠️ «Receipt» لا «Pro forma receipt»: تلك كلمةُ أودو لإيصالٍ قبل تأكيد
         //   الدفع، وهذه بيعةٌ وقعت فعلًا ونقصت من الرفّ.
-        el('rcKind').textContent = isReturn ? 'RETURN — refund' : 'Receipt';
+        // ⚠️ نوعُ الورقة بلغتَين: ورقةُ إرجاعٍ تُشبه ورقةَ بيعٍ تُقدَّم لزبونةٍ
+        //   فتظنّها فاتورةَ شراءٍ جديدة — والكلمةُ العربيّةُ هي ما تقرؤه فعلًا.
+        el('rcKind').innerHTML = isReturn
+            ? bi('RETURN — refund', RCPT_AR.ret)
+            : bi('Receipt', RCPT_AR.receipt);
 
-        let html = lines.map(l => `
+        // ⚠️ رأسُ الجدول يُكتب دائمًا: ثلاثةُ أعمدةٍ بلا عناوينَ تُقرأ قائمةَ أرقام،
+        //   والعربيّةُ في الرأس هي ما يُفتَّش عنه في فاتورةٍ نظاميّة.
+        let html = `<tr class="hd">`
+            + `<td class="q">${bi('Qty', RCPT_AR.qty)}</td>`
+            + `<td>${bi('Item', RCPT_AR.item)}</td>`
+            + `<td class="a">${bi('Amount', RCPT_AR.amount)}</td>`
+            + `</tr>`;
+        html += lines.map(l => `
             <tr>
                 <td class="q ltr">${Number(l.qty) || 0}</td>
                 <td>${escapeHtml(l.name || l.code || '')}
                     <br><span class="sub ltr">${escapeHtml(l.code || '')}</span>
-                    <br><span class="sub ltr">${escapeHtml(money2(l.unitPrice))} / Unit</span></td>
+                    <br><span class="sub ltr">${escapeHtml(money2(l.unitPrice))} / Unit &middot; ${ar1(RCPT_AR.unit)}</span></td>
                 <td class="a ltr">${escapeHtml(money2(l.lineTotal))}</td>
             </tr>`).join('');
         // ⚠️ المجموعُ قبل الخصم يُعرض **فقط** إن كان هناك خصم: بلا خصمٍ يكون
         //   الرقمُ نفسَه مرّتين على ورقةٍ صغيرة، وهو ما أمر المالكُ بنزعه من قبل.
         if (disc > 0) {
-            html += `<tr><td colspan="2">Subtotal</td>`
+            html += `<tr><td colspan="2">${bi('Subtotal', RCPT_AR.subtotal)}</td>`
                  + `<td class="a ltr">${escapeHtml(money2(subtotal))}</td></tr>`
-                 + `<tr><td colspan="2">Discount ${escapeHtml(String(pct))}%</td>`
+                 + `<tr><td colspan="2">${bi('Discount ' + String(pct) + '%', RCPT_AR.discount + ' ' + String(pct) + '٪')}</td>`
                  + `<td class="a ltr">- ${escapeHtml(money2(disc))}</td></tr>`;
         }
         el('rcItems').innerHTML = html;
@@ -4558,24 +4645,32 @@
         const cu = String(sale.customerName || '').trim();
         const cp = String(sale.customerPhone || '').trim();
         if (cu || cp) {
-            el('rcMeta').innerHTML += `<br>Customer: ${escapeHtml(cu || '—')}`
+            el('rcMeta').innerHTML += `<br>Customer / ${ar1(RCPT_AR.customer)}: ${escapeHtml(cu || '—')}`
                 + (cp ? ` <span class="ltr">${escapeHtml(cp)}</span>` : '');
         }
         const pm = sale.payment || {};
-        const pmTxt = !isReturn && pm.method
-            ? (pm.method === 'split'
-                ? `Paid: cash ${money(pm.cash)} + card ${money(pm.card)}`
-                : `Paid: ${pm.method === 'cash' ? 'CASH' : 'CARD'}`)
-            : '';
-        if (pmTxt) {
+        // ⭐ طريقةُ الدفع بلغتَين: الزبونةُ تُراجعها، والمالكُ يُطابق الصندوق.
+        let pmHtml = '';
+        if (!isReturn && pm.method) {
+            pmHtml = pm.method === 'split'
+                ? bi(`Paid: cash ${money(pm.cash)} + card ${money(pm.card)}`,
+                     `${RCPT_AR.paidSplit} — ${money(pm.cash)} + ${money(pm.card)}`)
+                : bi(`Paid: ${pm.method === 'cash' ? 'CASH' : 'CARD'}`,
+                     pm.method === 'cash' ? RCPT_AR.paidCash : RCPT_AR.paidCard);
+        }
+        if (pmHtml) {
             el('rcItems').innerHTML += `<tr><td colspan="3" class="sub" `
-                + `style="padding-top:1.5mm;">${escapeHtml(pmTxt)}</td></tr>`;
+                + `style="padding-top:1.5mm;">${pmHtml}</td></tr>`;
         }
         el('rcFoot').innerHTML =
-            (isReturn ? `<b>Returned against invoice ${escapeHtml(sale.no || '')}</b><br>` : '')
+            (isReturn
+                ? `<b>${bi('Returned against invoice ' + String(sale.no || ''),
+                           RCPT_AR.retAgainst + ' ' + String(sale.no || ''))}</b>` : '')
             + `${escapeHtml(sale.shop || '')}`
-            + `<br>Tel: <span class="ltr">${escapeHtml(RCPT_TEL)}</span>`
-            + `<br><span class="ltr">${escapeHtml(RCPT_MAIL)}</span>`;
+            + `<br>Tel / ${ar1(RCPT_AR.tel)}: <span class="ltr">${escapeHtml(RCPT_TEL)}</span>`
+            + `<br><span class="ltr">${escapeHtml(RCPT_MAIL)}</span>`
+            // ⚠️ سطرُ الشكر عربيٌّ وإنجليزيٌّ كذلك: هو آخرُ ما تقرؤه الزبونة.
+            + `<br>${bi('Thank you for your visit', RCPT_AR.thanks)}`;
         return true;
     }
 
