@@ -8468,9 +8468,10 @@
         const createdISO = getEmploymentStartISO(emp);
 
         // First pass: count how many days in the period were actually
-        // worked vs. not worked (excluding pre-hire/leave/manually-deducted
-        // days, which are handled by other mechanisms and never enter this
-        // ratio at all).
+        // worked vs. not worked. Pre-hire and post-end days are out entirely.
+        // Leave and manually-deducted days are never counted as REST (their
+        // money is taken elsewhere) but a day that was actually WORKED still
+        // counts towards the rest-day entitlement — see the block below.
         // آخر يوم عمل: ما بعده ليس غيابًا بل انقطاع علاقة عمل، ويُخصم مرة
         // واحدة بمعدل اليوم في computePayroll (تناسب الشهر الأخير). لو تُرك
         // هنا لحُسب غيابًا غير مبرَّر فخُصم مرتين.
@@ -8482,7 +8483,32 @@
             const iso = isoFromDate(cursor);
             if (createdISO && iso < createdISO) { cursor.setDate(cursor.getDate() + 1); continue; }
             if (endedISO && iso > endedISO) { cursor.setDate(cursor.getDate() + 1); continue; }
-            if (leaveSet.has(iso) || deductedSet.has(iso)) { cursor.setDate(cursor.getDate() + 1); continue; } // handled elsewhere
+            /**
+             * ⭐⭐⭐⭐⭐ «يُخصم يومٌ له يوم» — بأمر المالك، 2026-09-30.
+             *
+             * يومٌ عليه إجازةٌ أو خصمٌ يدويٌّ **لا يُحتسب غيابًا**: مالُه أُخذ في
+             *   موضعٍ آخر، وعدُّه هنا احتسابٌ مزدوج.
+             *
+             * ⚠️⚠️⚠️ لكنّه إن كان **مشتغلًا فعلًا** يبقى في رصيدِ أيّامِ العملِ الذي
+             *   يُكتسب به يومُ الراحة. وإسقاطُه من الرصيد كان يُكلّف خصمَ يومٍ
+             *   واحدٍ **يومَين**:
+             *     شهرٌ من 28 يومًا بنمطِ 6+1 ← 24 يومَ عملٍ ← رصيدُ راحةٍ 4 = المأخوذُ 4 ← متوازن.
+             *     وبعد خصمِ يومٍ مشتغل ← 23 ← `floor(23/6) = 3` والمأخوذُ 4 ← **غيابٌ إضافيٌّ 100**.
+             *   فكان ثمنُ الخصمِ 200 في فبراير و100 في أكتوبر — لنفسِ العقوبة.
+             *   (مقيسٌ بالتنفيذ، لا مستنتَجًا.)
+             *
+             * ⚠️ والتعليقُ الأصليُّ كان يقول إنّ هذه الأيّامَ «never enter this ratio
+             *   at all» — وهي كانت تدخله فعلًا من جهةِ **البسط**. فالاستثناءُ صار
+             *   تامًّا كما وُصف: لا يُعَدُّ اليومُ راحةً ولا غيابًا، ولا يُنقص رصيدًا
+             *   اكتُسب بعملٍ وقع فعلًا.
+             * ⚠️ ومعدّلُ اليوم (إجمالي ÷ 30) **لم يُمسّ** — بأمره الصريح في نفس
+             *   الرسالة: «تُحتسب إجمالي الراتب على 30 مهما كان الشهر».
+             */
+            if (leaveSet.has(iso) || deductedSet.has(iso)) {
+                if (workedSet.has(iso)) workedCount++;
+                cursor.setDate(cursor.getDate() + 1);
+                continue;
+            }
             if (workedSet.has(iso)) workedCount++;
             else restCount++;
             cursor.setDate(cursor.getDate() + 1);
@@ -21548,7 +21574,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v221';
+        const APP_BUILD = 'v222';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
