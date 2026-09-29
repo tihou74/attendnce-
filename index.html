@@ -3123,7 +3123,28 @@
                 managerName: reportState.managerName,
                 submittedAt: new Date().toISOString()
             };
-            await addDoc(collection(db, "sales_reports"), { ...report, timestamp: serverTimestamp() });
+            /**
+             * ⭐⭐⭐⭐⭐ معرّفٌ ثابتٌ = الفرعُ + اليوم. فرعٌ واحدٌ ويومٌ واحدٌ = مستندٌ واحد.
+             *
+             * 🔴🔴 ومنعُ التكرار هنا **من الخادم لا من المتصفّح**، وبلا تعديلِ قواعد:
+             *   قاعدةُ `sales_reports` تسمح للكشك بـ`create` وتمنعه من `update`.
+             *   فأوّلُ إرسالٍ إنشاءٌ ✅، والثاني تعديلٌ على مستندٍ موجودٍ ← **يرفضه
+             *   الخادمُ**. ولا حاجةَ لقراءةٍ مسبقةٍ — وهي ممنوعةٌ على هذه الصفحة
+             *   أصلًا (لا تستطيع قراءةَ التقارير بقصد).
+             * ⚠️ والتكرارُ كان يُجمَع في التقرير الشهريِّ بلا تحذير: تقريران ليومٍ
+             *   واحدٍ يُضاعفان مبيعاتَه، ويُضاعفان معها إيجارَ النسبة.
+             * ⚠️ ولا يدخل اسمُ المدير في المعرّف: المقصودُ يومٌ واحدٌ للفرع، لا يومٌ
+             *   واحدٌ لكلِّ مدير.
+             */
+            const slug = String(reportState.branch || '').toUpperCase()
+                .replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+            // ⚠️ ولا يُبنى معرّفٌ بفرعٍ فارغ: لكان `_2026-10-05` مشتركًا بين فرعَين.
+            if (!slug) {
+                showStatus("Your branch is not set. Close the report and pick it again.", "error");
+                return;
+            }
+            await setDoc(doc(db, "sales_reports", `${slug}_${dateISO}`),
+                { ...report, timestamp: serverTimestamp() });
 
             // الملخص يُبنى من الكائن المحفوظ نفسه — هذه الصفحة لا تستطيع قراءة
             // التقارير من قاعدة البيانات (قواعد الأمان تمنع ذلك عن قصد).
@@ -3142,7 +3163,21 @@
             showReportStep('reportSummaryStep');
         } catch (e) {
             console.error("Error sending sales report:", e);
-            showStatus("Error sending the report. Please check your connection and try again.", "error");
+            /**
+             * ⚠️ رفضُ الصلاحيّةِ على هذه المجموعةِ معناه الغالبُ **واحد**: مستندُ هذا
+             *   اليومِ لهذا الفرعِ موجودٌ سلفًا، فصارت الكتابةُ تعديلًا والكشكُ لا
+             *   يُعدّل. فتُقال الحقيقةُ المرجّحةُ **ومعها الاحتمالُ الآخرُ** — ولا
+             *   يُقطع بما لم يُتحقَّق منه، فالرسالةُ يقرؤها مديرٌ لا مبرمج.
+             */
+            const msg = String((e && (e.code || e.message)) || '');
+            if (/permission|insufficient/i.test(msg)) {
+                showStatus("This report was NOT sent: today's report for this branch has already "
+                    + "been sent, and it cannot be sent twice. If a figure in it is wrong, ask the "
+                    + "office to correct it — they can. (If you did not send one today, tell the office.)",
+                    "error");
+            } else {
+                showStatus("Error sending the report. Please check your connection and try again.", "error");
+            }
         } finally {
             isSubmittingReport = false;
             btn.disabled = false;

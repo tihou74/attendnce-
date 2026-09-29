@@ -4081,6 +4081,10 @@
                 </table>
             </div>
             <p class="card-sub" style="margin: 12px 0 0;" id="finSalesSource"></p>
+            <!-- ⭐⭐⭐⭐⭐ أيّامٌ ناقصةٌ أو مكرَّرةٌ — بأمر المالك قبل انطلاقة أكتوبر.
+                 ⚠️ عنصرٌ مستقلٌّ بـinnerHTML: `set()` في هذه الشاشة تكتب `innerText`،
+                    فرسالةٌ بـ<b> فيها تُقرأ حرفيًّا (نفسُ عطلِ `setMsg` الموثَّق). -->
+            <div id="finGaps" style="margin-top: 12px;"></div>
         </div>
 
         <!-- مقارنة الفروع — تظهر فقط عند اختيار «كل الفروع» -->
@@ -5950,27 +5954,44 @@
     // Minutes of [start, end) that fall inside the Qatar Labour Law "night
     // work" window (9pm to 6am the next day). Walks day-by-day so it stays
     // correct even for a session that spans past midnight.
+    /**
+     * دقائقُ الليل (21:00 → 06:00) داخل مدّةٍ ما — **بتوقيت قطر دائمًا**.
+     *
+     * 🔴🔴 كانت تُحسب بـ`getFullYear/setHours` أي بتوقيت **الجهاز** الذي يفتح
+     *   اللوحة. فانقسامُ الأوفرتايم نهارًا (×1.25) وليلًا (×1.5) كان يتبدّل بتبدّل
+     *   ساعةِ الحاسوب: نفسُ ورديةِ 14 ساعةً أعطت **20.28** ر.ق بتوقيت UTC
+     *   و**19.44** بتوقيت قطر. أي أنّ راتبَ الموظّفِ كان يعتمد على **مَن يفتح
+     *   الشاشةَ ومن أين** — وهو ما لا يجوز في رقمٍ يُدفع.
+     *   (مقيسٌ بالتنفيذ في `_test_payroll.js`، لا مستنتَجًا.)
+     *
+     * والحلُّ: يُزاح الزمنُ +3 ساعاتٍ ثمّ يُحسب بدوالِّ **UTC**. فتصير ساعاتُ UTC
+     *   هي ساعاتُ قطر بالضبط، والحسابُ لا يرى ساعةَ الجهاز إطلاقًا.
+     * ⚠️ وقطرُ **UTC+3 ثابتةٌ بلا توقيتٍ صيفيّ** — وهذا ما يجعل الإزاحةَ الثابتةَ
+     *   صحيحةً هنا، ولا تصلح في بلدٍ له توقيتٌ صيفيّ. (نفسُ الاحتياطِ المكتوبِ في
+     *   `qatarParts`.)
+     * ⚠️ والحلقةُ تبدأ **يومًا قبل**: ورديةٌ تبدأ الثانيةَ صباحًا تقع في ليلِ اليومِ
+     *   **السابق** (21:00 أمس → 06:00 اليوم)، فبدءُ العدِّ من منتصفِ ليلِها يُسقط
+     *   أربعَ ساعاتٍ ليليّةٍ مستحقّة.
+     */
     function nightMinutesBetween(start, end) {
         if (!start || !end || end <= start) return 0;
+        const DAY_MS = 86400000;
+        const HOUR_MS = 3600000;
+        const SHIFT = 3 * HOUR_MS;                 // قطر = UTC+3 ثابتة
+        const s = start.getTime() + SHIFT;
+        const e = end.getTime() + SHIFT;
         let total = 0;
-        let cursor = new Date(start);
-        while (cursor < end) {
-            const day = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
-            const nightStart = new Date(day); nightStart.setHours(NIGHT_START_HOUR, 0, 0, 0);
-            const nightEnd = new Date(day); nightEnd.setDate(nightEnd.getDate() + 1); nightEnd.setHours(NIGHT_END_HOUR, 0, 0, 0);
-            const prevNightStart = new Date(day); prevNightStart.setDate(prevNightStart.getDate() - 1); prevNightStart.setHours(NIGHT_START_HOUR, 0, 0, 0);
-            const prevNightEnd = new Date(day); prevNightEnd.setHours(NIGHT_END_HOUR, 0, 0, 0);
-
-            const o1Start = new Date(Math.max(cursor.getTime(), nightStart.getTime()));
-            const o1End = new Date(Math.min(end.getTime(), nightEnd.getTime()));
-            if (o1End > o1Start) total += (o1End - o1Start) / 60000;
-
-            const o2Start = new Date(Math.max(cursor.getTime(), prevNightStart.getTime()));
-            const o2End = new Date(Math.min(end.getTime(), prevNightEnd.getTime()));
-            if (o2End > o2Start) total += (o2End - o2Start) / 60000;
-
-            const nextDay = new Date(day); nextDay.setDate(nextDay.getDate() + 1);
-            cursor = nextDay < end ? nextDay : end;
+        // منتصفُ الليل القطريُّ لليومِ السابقِ ليومِ البداية
+        let dayStart = Math.floor(s / DAY_MS) * DAY_MS - DAY_MS;
+        while (dayStart < e) {
+            // ليلُ هذا اليوم: 21:00 منه → 06:00 من الذي يليه. ونوافذُ الأيّامِ
+            // المتتاليةِ لا تتقاطع (06:00 < 21:00) فلا احتسابَ مزدوج.
+            const nightStart = dayStart + NIGHT_START_HOUR * HOUR_MS;
+            const nightEnd = dayStart + DAY_MS + NIGHT_END_HOUR * HOUR_MS;
+            const a = Math.max(s, nightStart);
+            const b = Math.min(e, nightEnd);
+            if (b > a) total += (b - a) / 60000;
+            dayStart += DAY_MS;
         }
         return total;
     }
@@ -12317,10 +12338,32 @@
     window.deleteAttendanceSession = async function(idsCsv) {
         const ids = idsCsv.split(',').filter(Boolean);
         if (!ids.length) return;
-        if (!confirm(`Delete this attendance session? (${ids.length} record(s))`)) return;
+        /**
+         * ⚠️⚠️ يُوصَف المحذوفُ في التأكيد **بالاسم واليوم والساعة** لا بعددِ
+         *   السجلّات: «(2 record(s))» لا تقول له أيَّ يومٍ لأيِّ موظّفٍ سيمحو،
+         *   وزرُّ السلّة على يومٍ مقسَّمٍ يحمل **كلَّ أجزائه**.
+         */
+        const doomed = ids.map(id => (allAttendance || []).find(l => l.id === id)).filter(Boolean);
+        const who = Array.from(new Set(doomed.map(l => l.employeeName || l.employeeId || '?'))).join(', ');
+        const when = Array.from(new Set(doomed.map(l => logQatarDate(l)))).sort().join(', ');
+        const what = doomed.map(l => `${logQatarDate(l)} ${logQatarTime(l)} ${l.type}`).join('\n  ');
+        if (!confirm(`Delete ${ids.length} attendance record(s)?\n\n`
+            + `Employee: ${who || 'unknown'}\nDay(s): ${when || 'unknown'}\n\n  ${what}\n\n`
+            + `This cannot be undone. The hours disappear from the salary for that month.`)) return;
         const batch = writeBatch(db);
         ids.forEach(id => batch.delete(doc(db, "attendance", id)));
         await batch.commit();
+        /**
+         * 🔴 ويُسجَّل في `audit_log` — ولم يكن يُسجَّل.
+         *
+         * حذفُ حضورٍ **يُنقص راتبَ شهر**، وكان أثرُه صفرًا في السجلّ: لا مَن حذف،
+         *   ولا ماذا، ولا متى. وإلغاءُ ورديّةٍ منسيّةٍ (وهو أهونُ) كان يُسجَّل.
+         *   فالأقوى أثرًا كان الأصمتَ — وهذا بالضبط عكسُ ما يجب.
+         * ⚠️ ويُكتب **بعد** نجاحِ الحذف لا قبله: سطرٌ يقول «حُذف» ولم يُحذف يُفسد
+         *   السجلَّ الذي بُني ليُصدَّق. و`logAudit` لا تُنتظَر ولا ترمي (بتصميمها).
+         */
+        logAudit('Attendance record(s) deleted',
+            `${ids.length} record(s) — ${who || 'unknown'} — ${when || 'unknown'} — ids: ${ids.join(' ')}`);
         await loadAttendanceLogs();
     };
 
@@ -20372,6 +20415,96 @@
         renderFinancialReport();
     };
     /** YYYY-MM ← إلى { start: 'YYYY-MM-01', end: 'YYYY-MM-<آخر يوم>' } */
+    /**
+     * ⭐⭐⭐⭐⭐ أيّامٌ لم يُرسَل تقريرُها، وأيّامٌ أُرسل تقريرُها مرّتَين.
+     *
+     * 🔴🔴 ولمَ هذا أخطرُ مما يبدو: التقريرُ الشهريُّ كان يحسب **ما وصل** ويسكت.
+     *   ويومٌ ناقصٌ في وست ولك يُنقص المبيعاتَ، **ويُنقص معها إيجارَ النسبة**
+     *   (12٪ فوق 48,000) — فيُنفَخ الربحُ **مرّتَين**: بيعٌ لم يُحسب وإيجارٌ لم
+     *   يُحمَّل. ونسبةُ تكلفةِ العمالة تظهر أعلى من حقيقتها كذلك.
+     * 🔴 والتكرارُ عكسُه: يومٌ بتقريرَين تُجمع أرقامُه مرّتَين.
+     *
+     * ⚠️ ويُعَدُّ حتى **اليوم** لا حتى آخرِ الشهر: شهرٌ جارٍ لم تأتِ أيّامُه بعد،
+     *   وقولُ «ينقصك 20 يومًا» في الخامس من الشهر إنذارٌ يُدرَّب على تجاهله.
+     * ⚠️ ويُعَدُّ لكلِّ فرعٍ على حدة: «ينقصك 3 تقارير» بلا تسميةِ الفرع لا تُتابَع.
+     * ⚠️ ولا يمنع شيئًا — يُخبر فقط. أمّا الإغلاقُ فيُحذَّر فيه صريحًا (انظر
+     *   `closeFinancialMonth`)، لأنّ الإغلاق يُجمّد الرقمَ الناقصَ إلى الأبد.
+     */
+    function financeReportDayMap(month, branch) {
+        const { start, end } = financeMonthRange(month);
+        const today = todayISO();
+        const stop = end < today ? end : today;
+        const scope = branch ? [branch] : FINANCE_BRANCHES.slice();
+        const out = [];
+        scope.forEach(b => {
+            const missing = [], dupes = [];
+            if (stop >= start) {
+                for (let d = start; d <= stop; d = nextDayISO(d)) {
+                    const n = (allSalesReports || []).filter(r =>
+                        String(r.branch || '') === b && String(r.date || '') === d).length;
+                    if (n === 0) missing.push(d);
+                    else if (n > 1) dupes.push(`${d} (${n}×)`);
+                }
+            }
+            out.push({ branch: b, missing, dupes });
+        });
+        // ⚠️ وتقاريرُ فرعٍ لا يُطابق اسمُه أيَّ فرعٍ معروف: تدخل المجموعَ ولا تظهر
+        //   في أيِّ صفّ. فتُسمّى صريحةً وإلّا ضاع مالٌ في لا مكان.
+        const known = new Set(FINANCE_BRANCHES);
+        const strays = Array.from(new Set((allSalesReports || [])
+            .filter(r => String(r.date || '') >= start && String(r.date || '') <= end)
+            .map(r => String(r.branch || ''))
+            .filter(b => !known.has(b))));
+        return { rows: out, strays, stop, start, countedTo: stop };
+    }
+
+    function financeGapSummary(month, branch) {
+        const g = financeReportDayMap(month, branch);
+        return {
+            missingTotal: g.rows.reduce((a, r) => a + r.missing.length, 0),
+            dupeTotal: g.rows.reduce((a, r) => a + r.dupes.length, 0),
+            strays: g.strays, rows: g.rows, countedTo: g.countedTo
+        };
+    }
+
+    function renderFinanceGaps(month, branch) {
+        const box = document.getElementById('finGaps');
+        if (!box) return;
+        const g = financeGapSummary(month, branch);
+        if (!g.missingTotal && !g.dupeTotal && !g.strays.length) {
+            box.innerHTML = `<p class="card-sub" style="margin:0; color: var(--success); font-weight:700;">`
+                + `&#10003; Every day up to ${escapeHtml(g.countedTo)} has exactly one report from every branch.</p>`;
+            return;
+        }
+        const lines = [];
+        if (g.dupeTotal) {
+            lines.push(`<p style="margin:0 0 8px; font-weight:800; color: var(--danger);">`
+                + `&#9888; ${g.dupeTotal} day(s) have MORE THAN ONE report &mdash; their sales are being `
+                + `counted twice. Open the Daily Report tab and delete the extra one.</p>`
+                + g.rows.filter(r => r.dupes.length).map(r =>
+                    `<p class="card-sub" style="margin:0 0 4px;"><b>${escapeHtml(r.branch)}</b>: `
+                    + `${escapeHtml(r.dupes.join(' · '))}</p>`).join(''));
+        }
+        if (g.missingTotal) {
+            lines.push(`<p style="margin:${g.dupeTotal ? '10px' : '0'} 0 8px; font-weight:800; color: var(--warning);">`
+                + `&#9888; ${g.missingTotal} day(s) have NO report yet (counted up to `
+                + `${escapeHtml(g.countedTo)}). Until they arrive, the sales are understated &mdash; `
+                + `and so is the rent that is a percentage of sales, which makes the profit look `
+                + `<b>higher</b> than it is.</p>`
+                + g.rows.filter(r => r.missing.length).map(r =>
+                    `<p class="card-sub" style="margin:0 0 4px;"><b>${escapeHtml(r.branch)}</b> &mdash; `
+                    + `${r.missing.length} missing: ${escapeHtml(r.missing.slice(0, 12).join(' · '))}`
+                    + `${r.missing.length > 12 ? ' &hellip;' : ''}</p>`).join(''));
+        }
+        if (g.strays.length) {
+            lines.push(`<p style="margin:10px 0 0; font-weight:800; color: var(--danger);">`
+                + `&#9888; Report(s) filed under a branch name this report does not know: `
+                + `<b>${escapeHtml(g.strays.join(', '))}</b>. They are inside the combined total but `
+                + `belong to no branch row and to no branch's rent percentage.</p>`);
+        }
+        box.innerHTML = lines.join('');
+    }
+
     function financeMonthRange(month) {
         const [y, m] = month.split('-').map(Number);
         const last = new Date(y, m, 0).getDate();
@@ -21574,7 +21707,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v222';
+        const APP_BUILD = 'v223';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
@@ -22116,8 +22249,30 @@
         if (financeMonthIsClosed(month)) { show(`${month} is already closed.`, 'var(--warning)'); return; }
 
         const s = financeSummaryLive(month, '');
+        /**
+         * ⚠️⚠️ الإغلاقُ **يُجمّد** الأرقام. فإن كان في الشهر يومٌ لم يُرسَل تقريرُه،
+         *   يُجمَّد مبيعٌ ناقصٌ وإيجارٌ ناقصٌ وربحٌ منفوخ — **إلى الأبد**، والمخرجُ
+         *   الوحيدُ `reopenFinancialMonth` وهي **تمحو** الصورةَ المجمَّدة.
+         *   فيُقال له قبل أن يوافق، بالأرقام وبأسماء الفروع.
+         * ⚠️ ولا يُمنع الإغلاق: قد يُغلق شهرًا يعلم أنّ فرعًا أُقفل فيه أيّامًا.
+         *   القرارُ قرارُه، لكن لا يُتّخذ في العَمى.
+         */
+        const gaps = financeGapSummary(month, '');
+        const gapWarn = (gaps.missingTotal || gaps.dupeTotal || gaps.strays.length)
+            ? `\n⚠️ BEFORE YOU CLOSE:\n`
+              + (gaps.missingTotal ? `  • ${gaps.missingTotal} day(s) have NO sales report yet:\n`
+                  + gaps.rows.filter(r => r.missing.length)
+                      .map(r => `      ${r.branch}: ${r.missing.length} day(s)`).join('\n')
+                  + `\n    Closing now freezes sales AND the %-of-sales rent too low,\n`
+                  + `    so the profit above is HIGHER than the truth.\n` : '')
+              + (gaps.dupeTotal ? `  • ${gaps.dupeTotal} day(s) have MORE THAN ONE report `
+                  + `— those sales are counted twice.\n` : '')
+              + (gaps.strays.length ? `  • Report(s) under an unknown branch: `
+                  + `${gaps.strays.join(', ')}\n` : '')
+            : '';
         if (!confirm(
             `Close ${month} and freeze its figures?\n\n` +
+            gapWarn +
             `Net revenue : ${money(s.sales.netRevenue)} QAR\n` +
             `Payments    : ${money(s.totalPayments)} QAR\n` +
             `Net profit  : ${money(s.netProfit)} QAR\n\n` +
@@ -22217,6 +22372,7 @@
         set('finSalesSource', s.sales.reports
             ? `Based on ${s.sales.reports} daily report(s) for ${monthLabel}${branch ? ' — ' + branch : ' — all branches'}.`
             : `No daily sales reports found for ${monthLabel}${branch ? ' — ' + branch : ''}. Ask the branch managers to submit them.`);
+        renderFinanceGaps(month, branch);
 
         // ---- المدفوعات
         const monthClosed = financeMonthIsClosed(month);
