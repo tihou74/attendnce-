@@ -2015,6 +2015,25 @@
         return catTsToMillis(v && v.createdAt) || catTsToMillis(v && v.updatedAt) || 0;
     }
     /**
+     * ⭐⭐⭐⭐⭐ «متى وصل هذا التصميمُ آخِرَ مرّة» — وهو مفتاحُ الترتيب في كلِّ شاشة.
+     *
+     * بأمر المالك: «أيُّ شيءٍ وصل جديد، سواء كتالوج أو باركود أو أيُّ شيء، دائمًا
+     *   يظهر هو الأوّل». فإعادةُ التعبئة **وصولٌ جديد** كالتصميمِ الجديد تمامًا،
+     *   وكانت قبل هذا لا تُقدّم التصميمَ خطوةً واحدة.
+     *
+     * ⚠️⚠️⚠️ ولا يُستعمل `updatedAt` مفتاحًا للحداثة بحال: تكتبه **كلُّ بيعةٍ** وكلُّ
+     *   إرجاعٍ وكلُّ تصحيحِ اسمٍ أو سعر. فالترتيبُ به يُعيد رصفَ الكتالوج طولَ
+     *   اليوم، ويتصدّره **آخرُ ما بِيع** لا آخرُ ما وصل — وهو عكسُ المطلوب تمامًا.
+     *   ولهذا يوجد حقلٌ خاصٌّ `lastArrivalAt` لا يكتبه إلّا وصولُ بضاعة.
+     * ⚠️ والقديمُ ينجو بلا مسّ: مستندٌ بلا `lastArrivalAt` يرجع إلى `catCreatedMs`
+     *   بالحرف — فلا يتبدّل ترتيبُ شيءٍ إلّا لِما وصل فعلًا بعد هذه الميزة.
+     */
+    function catFreshMs(v) {
+        const arrived = catTsToMillis(v && v.lastArrivalAt);
+        const made = catCreatedMs(v);
+        return arrived > made ? arrived : made;
+    }
+    /**
      * يُقسّم صفوفَ الكتالوج إلى أقسام، قسمٌ لكلِّ صنف.
      * يُعيد: `[{ key, items, newest }]`
      *
@@ -2043,7 +2062,7 @@
         bucket.forEach((items, key) => {
             if (typeof sortWithin === 'function') items.sort(sortWithin);
             let newest = 0;
-            items.forEach(p => { const m = Number(p.createdMs || 0); if (m > newest) newest = m; });
+            items.forEach(p => { const m = Number(p.freshMs || 0); if (m > newest) newest = m; });
             out.push({ key, items, newest });
         });
         out.sort((a, b) => {
@@ -3084,7 +3103,7 @@
                     discountPrice: Number(v.discountPrice || 0) || 0,
                     qty: (v.qty && typeof v.qty === 'object') ? v.qty : {},
                     // ⭐ «متى دخل الكتالوج» — عليه يُبنى «الذي دخل حديثًا هو الأوّل».
-                    createdMs: catCreatedMs(v),
+                    freshMs: catFreshMs(v),
                     hasImage: v.hasImage === true
                 });
             });
@@ -3311,7 +3330,7 @@
                 // ⚠️ يُقرأ هنا أيضًا كي يكون شكلُ الكائن واحدًا في الموضعَين: عبايةٌ
                 //   وُجدت بالباركود قد تُمرَّر يومًا إلى الشبكة، وكائنٌ ناقصُ حقلٍ
                 //   يجعلها تُرتَّب كأنّها أقدمُ ما في الكتالوج.
-                createdMs: catCreatedMs(v),
+                freshMs: catFreshMs(v),
                 hasImage: v.hasImage === true
             });
             setMsg('cpMsg', '', '');
@@ -3436,7 +3455,7 @@
          *   أكبرَ من صفر (انظر أعلى الدالّة).
          */
         const groups = groupCatalogByType(rows, (a, b) =>
-            (Number(b.createdMs || 0) - Number(a.createdMs || 0))
+            (Number(b.freshMs || 0) - Number(a.freshMs || 0))
             || String(a.code).localeCompare(String(b.code)));
 
         el('cpGrid').innerHTML = groups.map(g =>

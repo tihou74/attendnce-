@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v30   (2026-09-28)  <<<
+//   >>>  RULES REVISION: v31   (2026-09-28)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,7 +12,7 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       sewHours
+//       lastArrivalAt
 //
 //   (This exact text exists nowhere in any earlier revision, which is the whole
 //    point of a marker. Every earlier marker is now useless for telling the
@@ -33,10 +33,11 @@ rules_version = '2';
 //      "abaya_shifts"               introduced in v27, was the marker for v27
 //      "isGoodsClerk"               introduced in v28, was the marker for v28
 //      "abaya_intake"               introduced in v29, was the marker for v29
+//      "sewHours"                   introduced in v30, was the marker for v30
 //    Always search for the marker named directly above, and when publishing a
 //    new revision, change that name to something introduced by it.)
 //
-//   FOUND     -> v30 is live. Good.
+//   FOUND     -> v31 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -54,6 +55,32 @@ rules_version = '2';
 // exact mistake happened with the "(v4)" label, which never changed across
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
+//
+//  v31  2026-09-28  + lastArrivalAt on abaya_products, FOR MRS FATIMA ONLY.
+//                     PUBLISH v31 — it contains v16..v30 in full.
+//
+//                     The owner: "anything newly arrived — catalogue, barcode,
+//                     anything — must ALWAYS appear first." A RESTOCK is a new
+//                     arrival too, and until now it moved nothing: the catalogue
+//                     is ordered by createdAt, which a restock never changes.
+//
+//                     ⚠️⚠️ WHY A DEDICATED FIELD AND NOT updatedAt: updatedAt is
+//                     written by every SALE, every return and every typo fix. Order
+//                     by it and the catalogue reshuffles all day and is led by the
+//                     last thing SOLD, not the last thing that arrived. So the
+//                     freshness key had to be a stamp only an arrival writes.
+//
+//                     ⚠️ It is added to the VIEWER list only (Mrs Fatima's dispatch
+//                     screen). NOT to the kiosk list: a sale is not an arrival, and
+//                     anything the kiosk may write, anyone holding the link may
+//                     write — nobody with a link gets to push a design to the front
+//                     of the catalogue on every screen.
+//
+//                     ⚠️ The page writes it in its OWN updateDoc, wrapped in
+//                     try/catch, exactly like colour: a rule that refuses one key
+//                     refuses the WHOLE write, and that write is the one that puts
+//                     the pieces on the shelf. Unpublished rules must never be able
+//                     to stop a shipment for the sake of a sort order.
 //
 //  v30  2026-09-28  + sewHours / sewRate REFUSED BY NAME. PUBLISH v30 — it
 //                     contains v16..v29 in full.
@@ -1416,9 +1443,16 @@ service cloud.firestore {
         //   تحمل مالًا، وشحنةٌ تصل بلونٍ يجب أن تُصلح فراغًا في سطرِ الكتالوج.
         //   ⚠️⚠️ ولا يزيد على القائمةِ 'price' بحال — هذا هو الحدُّ الذي يفصل
         //   «تُسعّر الجديدَ» عن «تُعيد تسعيرَ المحلّ كلِّه».
+        // ⚠️ 'lastArrivalAt' أُضيفت في v31 بأمر المالك: «أيُّ شيءٍ وصل جديد …
+        //   دائمًا يظهر هو الأوّل». وهي **ختمُ وقتٍ لا أكثر** تُرتّب به الشاشاتُ
+        //   الكتالوجَ وقائمةَ الملصقات، ولا تحمل مالًا ولا كميّةً ولا وصفًا.
+        //   ⚠️⚠️ ولا تُضاف إلى قائمة **الكشك** بحال: البيعُ والإرجاعُ ليسا وصولًا،
+        //   وكلُّ ما يُفتح للكشك يُفتح لكلِّ من يملك الرابط. فمن يملك الرابطَ لا
+        //   يستطيع أن يُقدّم تصميمًا إلى أوّلِ الكتالوج على كلِّ الشاشات.
         || (isViewer()
             && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['qty', 'size', 'type', 'fabric', 'colour', 'tone', 'canOrder', 'updatedAt']));
+                 .hasOnly(['qty', 'size', 'type', 'fabric', 'colour', 'tone', 'canOrder',
+                           'lastArrivalAt', 'updatedAt']));
     }
 
     // ---- abaya_product_costs (WHAT THE ABAYA COST US) -----------------------

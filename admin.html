@@ -13422,6 +13422,25 @@
         return catTsToMillis(v && v.createdAt) || catTsToMillis(v && v.updatedAt) || 0;
     }
     /**
+     * ⭐⭐⭐⭐⭐ «متى وصل هذا التصميمُ آخِرَ مرّة» — وهو مفتاحُ الترتيب في كلِّ شاشة.
+     *
+     * بأمر المالك: «أيُّ شيءٍ وصل جديد، سواء كتالوج أو باركود أو أيُّ شيء، دائمًا
+     *   يظهر هو الأوّل». فإعادةُ التعبئة **وصولٌ جديد** كالتصميمِ الجديد تمامًا،
+     *   وكانت قبل هذا لا تُقدّم التصميمَ خطوةً واحدة.
+     *
+     * ⚠️⚠️⚠️ ولا يُستعمل `updatedAt` مفتاحًا للحداثة بحال: تكتبه **كلُّ بيعةٍ** وكلُّ
+     *   إرجاعٍ وكلُّ تصحيحِ اسمٍ أو سعر. فالترتيبُ به يُعيد رصفَ الكتالوج طولَ
+     *   اليوم، ويتصدّره **آخرُ ما بِيع** لا آخرُ ما وصل — وهو عكسُ المطلوب تمامًا.
+     *   ولهذا يوجد حقلٌ خاصٌّ `lastArrivalAt` لا يكتبه إلّا وصولُ بضاعة.
+     * ⚠️ والقديمُ ينجو بلا مسّ: مستندٌ بلا `lastArrivalAt` يرجع إلى `catCreatedMs`
+     *   بالحرف — فلا يتبدّل ترتيبُ شيءٍ إلّا لِما وصل فعلًا بعد هذه الميزة.
+     */
+    function catFreshMs(v) {
+        const arrived = catTsToMillis(v && v.lastArrivalAt);
+        const made = catCreatedMs(v);
+        return arrived > made ? arrived : made;
+    }
+    /**
      * يُقسّم صفوفَ الكتالوج إلى أقسام، قسمٌ لكلِّ صنف.
      * يُعيد: `[{ key, items, newest }]`
      *
@@ -13450,7 +13469,7 @@
         bucket.forEach((items, key) => {
             if (typeof sortWithin === 'function') items.sort(sortWithin);
             let newest = 0;
-            items.forEach(p => { const m = Number(p.createdMs || 0); if (m > newest) newest = m; });
+            items.forEach(p => { const m = Number(p.freshMs || 0); if (m > newest) newest = m; });
             out.push({ key, items, newest });
         });
         out.sort((a, b) => {
@@ -14038,7 +14057,23 @@
         return ABAYA_SHOPS.reduce((a, sh) => a + (Number((p.qty || {})[abayaShopKey(sh)] || 0) || 0), 0);
     }
 
-    /** الصفوفُ المعروضةُ بعد البحث والمحلّ. */
+    /**
+     * الصفوفُ المعروضةُ بعد البحث والمحلّ — **والأحدثُ وصولًا أوّلًا**.
+     *
+     * ⭐⭐⭐⭐⭐ بأمر المالك: «أيُّ شيءٍ وصل جديد، سواء كتالوج أو باركود أو أيُّ شيء،
+     *   دائمًا يظهر هو الأوّل». وهذه الشاشةُ كانت **الوحيدةَ** المخالفة: ترتيبُها
+     *   أبجديٌّ بالباركود، تورثه من `abayaProducts` بلا ترتيبٍ خاصٍّ بها. فتصميمٌ
+     *   وصل اليومَ يقع حيث يقع حرفُ باركودِه — وهو يبحث عنه ليطبع ملصقَه **الآن**.
+     *
+     * ⚠️ ويُرتَّب **النسخةُ المُرشَّحة** لا `abayaProducts` نفسُها: تلك مرتَّبةٌ
+     *   بالباركود ويقرؤها لاقطُ الباركود والكتالوجُ ونوافذُ أخرى، وترتيبُها في
+     *   مكانها يُحرّك الأرضَ من تحت قارئٍ آخرَ لا علاقةَ له بالملصقات.
+     *   (ونفسُ ما تفعله شاشةُ الكتالوج بالحرف: تُرتّب ناتجَ `filter`.)
+     * ⚠️ والمفتاحُ الثاني الباركودُ: ترتيبٌ ثابتٌ لا يرقص بين رسمةٍ وأخرى حين
+     *   تتساوى الحداثة — وهي تتساوى كثيرًا، فشحنةٌ واحدةٌ تُدخل عشرةَ تصاميم.
+     * ⚠️ ولا أقسامَ هنا كالكتالوج عن قصد: المهمّةُ «أشّر على عدّةِ صفوفٍ واطبع»،
+     *   وعناوينُ الأقسام تُقطّع جدولَ التأشير. الترتيبُ وحدَه هو المطلوب.
+     */
     function lblRows() {
         const q = String((document.getElementById('lblSearch') || {}).value || '').trim().toUpperCase();
         const shop = (document.getElementById('lblShop') || {}).value || '';
@@ -14050,7 +14085,9 @@
             //   يكن اللونُ مشمولًا لعاد البحثُ فارغًا ولبدا أنّ المخزونَ خالٍ.
             return [p.code, p.name, p.type, p.colour, p.fabric, p.size]
                 .some(x => String(x || '').toUpperCase().includes(q));
-        });
+        }).sort((a, b) =>
+            (Number(b.freshMs || 0) - Number(a.freshMs || 0))
+            || String(a.code).localeCompare(String(b.code)));
     }
 
     window.renderLabelPicker = function() {
@@ -14920,7 +14957,7 @@
                     qty: abayaQtyMap(v.qty),
                     active: v.active !== false,
                     // ⭐ «متى دخل الكتالوج» — عليه يُبنى «الذي دخل حديثًا هو الأوّل».
-                    createdMs: catCreatedMs(v),
+                    freshMs: catFreshMs(v),
                     hasImage: v.hasImage === true
                 });
             });
@@ -15164,7 +15201,7 @@
                  *   الجدول ولا حسابَ أعمدته.
                  */
                 const acGroups = groupCatalogByType(rows, (a, b) =>
-                    (Number(b.createdMs || 0) - Number(a.createdMs || 0))
+                    (Number(b.freshMs || 0) - Number(a.freshMs || 0))
                     || String(a.code).localeCompare(String(b.code)));
                 body.innerHTML = acGroups.map(g =>
                     // ⚠️⚠️ colspan="13" **بعددِ أعمدةِ الجدول بالضبط**: رقمٌ أقلُّ
@@ -20923,7 +20960,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v217';
+        const APP_BUILD = 'v218';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;

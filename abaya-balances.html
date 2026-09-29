@@ -1672,6 +1672,25 @@
         return catTsToMillis(v && v.createdAt) || catTsToMillis(v && v.updatedAt) || 0;
     }
     /**
+     * ⭐⭐⭐⭐⭐ «متى وصل هذا التصميمُ آخِرَ مرّة» — وهو مفتاحُ الترتيب في كلِّ شاشة.
+     *
+     * بأمر المالك: «أيُّ شيءٍ وصل جديد، سواء كتالوج أو باركود أو أيُّ شيء، دائمًا
+     *   يظهر هو الأوّل». فإعادةُ التعبئة **وصولٌ جديد** كالتصميمِ الجديد تمامًا،
+     *   وكانت قبل هذا لا تُقدّم التصميمَ خطوةً واحدة.
+     *
+     * ⚠️⚠️⚠️ ولا يُستعمل `updatedAt` مفتاحًا للحداثة بحال: تكتبه **كلُّ بيعةٍ** وكلُّ
+     *   إرجاعٍ وكلُّ تصحيحِ اسمٍ أو سعر. فالترتيبُ به يُعيد رصفَ الكتالوج طولَ
+     *   اليوم، ويتصدّره **آخرُ ما بِيع** لا آخرُ ما وصل — وهو عكسُ المطلوب تمامًا.
+     *   ولهذا يوجد حقلٌ خاصٌّ `lastArrivalAt` لا يكتبه إلّا وصولُ بضاعة.
+     * ⚠️ والقديمُ ينجو بلا مسّ: مستندٌ بلا `lastArrivalAt` يرجع إلى `catCreatedMs`
+     *   بالحرف — فلا يتبدّل ترتيبُ شيءٍ إلّا لِما وصل فعلًا بعد هذه الميزة.
+     */
+    function catFreshMs(v) {
+        const arrived = catTsToMillis(v && v.lastArrivalAt);
+        const made = catCreatedMs(v);
+        return arrived > made ? arrived : made;
+    }
+    /**
      * يُقسّم صفوفَ الكتالوج إلى أقسام، قسمٌ لكلِّ صنف.
      * يُعيد: `[{ key, items, newest }]`
      *
@@ -1700,7 +1719,7 @@
         bucket.forEach((items, key) => {
             if (typeof sortWithin === 'function') items.sort(sortWithin);
             let newest = 0;
-            items.forEach(p => { const m = Number(p.createdMs || 0); if (m > newest) newest = m; });
+            items.forEach(p => { const m = Number(p.freshMs || 0); if (m > newest) newest = m; });
             out.push({ key, items, newest });
         });
         out.sort((a, b) => {
@@ -2516,7 +2535,7 @@
                     price: Number(v.price || 0) || 0,
                     discountPrice: Number(v.discountPrice || 0) || 0,
                     // ⭐ «متى دخل الكتالوج» — عليه يُبنى «الذي دخل حديثًا هو الأوّل».
-                    createdMs: catCreatedMs(v),
+                    freshMs: catFreshMs(v),
                     cost: costById[d.id] || 0,
                     qty: (v.qty && typeof v.qty === 'object') ? v.qty : {},
                     hasImage: v.hasImage === true
@@ -2659,7 +2678,7 @@
         //   المحلات، فيتغيّر ما لا علاقة له بالعرض.
         const catGroups = groupCatalogByType(rows, (a, b) => {
             // ١) الأحدثُ دخولًا إلى الكتالوج
-            const d = Number(b.createdMs || 0) - Number(a.createdMs || 0);
+            const d = Number(b.freshMs || 0) - Number(a.freshMs || 0);
             if (d) return d;
             // ٢) ثمّ ذواتُ التخفيض (أمرُه السابق، صار ثانيًا)
             const da = catHasDiscount(a) ? 0 : 1;
@@ -4744,6 +4763,29 @@
                             + '(publish the new rules and the next shipment will carry it):', e);
                     }
                 }
+                /**
+                 * ⭐⭐⭐⭐⭐ «وصلت الآن» — بأمر المالك: «أيُّ شيءٍ وصل جديد … دائمًا
+                 *   يظهر هو الأوّل». وإعادةُ التعبئة وصولٌ جديد، فتُقدَّم إلى أوّل
+                 *   الكتالوج وأوّلِ شاشةِ الملصقات كالتصميمِ الجديد تمامًا.
+                 *
+                 * ⚠️⚠️ وكتابةٌ ثالثةٌ منفصلةٌ لنفس سببِ اللون بالحرف: `lastArrivalAt`
+                 *   ليس في قائمةِ `hasOnly` حتى يَنشُر المالكُ القواعد، وقاعدةٌ ترفض
+                 *   حقلًا **ترفض الكتابةَ كلَّها** — أي تُوقف شحنةً عن رفِّ المحلّ من
+                 *   أجل ترتيبٍ في شاشة. فالكميّةُ تنتقل أوّلًا مهما كان حالُ القواعد.
+                 * ⚠️ ولا تُدمَج مع كتابةِ اللون وإن تشابه السبب: اللونُ يُقرأ على
+                 *   ثلاث شاشاتٍ ويُطبع، والترتيبُ راحةٌ. فربطُهما يُسقط الأهمَّ مع
+                 *   الأهون لو نُزع أحدُ المفتاحَين من القاعدة يومًا.
+                 * ⚠️⚠️ وتُكتب **دائمًا** لا «إن كانت فارغة» (خلافًا للون): اللونُ
+                 *   واقعٌ ثابتٌ يُصلح فراغًا، وهذه تعني «آخرُ مرّةٍ وصل» — وقيمةٌ
+                 *   قديمةٌ تبقى لأنها لم تُكتب تعني أنّ الشحنةَ لم تصل.
+                 */
+                try {
+                    await updateDoc(doc(db, 'abaya_products', a.productId),
+                        { lastArrivalAt: serverTimestamp() });
+                } catch (e) {
+                    console.error('The catalogue line will not jump to the front (the pieces DID '
+                        + 'arrive — publish the newest rules and the next shipment will):', e);
+                }
             } else {
                 /**
                  * ⚠️⚠️⚠️ الصورةُ تُكتب **قبل** إنشاءِ المنتج، وهذا ليس ترتيبًا
@@ -4809,6 +4851,11 @@
                     //   لها صورة يُنتج مربّعًا فارغًا على شاشة البياعة إلى الأبد.
                     hasImage: !!imgUrl,
                     createdAt: serverTimestamp(),
+                    // ⭐ «وصلت الآن» — تُكتب في الإنشاء نفسِه لا في كتابةٍ ثانية:
+                    //   قاعدةُ الإنشاء غيرُ محصورةٍ بحقول (كاللون فوق). ولولا ذلك
+                    //   لكان تصميمٌ جديدٌ يتصدّر بـ`createdAt` وحدَها على أيِّ حال —
+                    //   لكنّ الصريحَ أفضلُ من المُستنتَج، وهي مصدرُ الترتيب الآن.
+                    lastArrivalAt: serverTimestamp(),
                     updatedAt: serverTimestamp(),
                     updatedBy: who
                 });
