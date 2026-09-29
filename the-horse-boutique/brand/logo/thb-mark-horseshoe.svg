@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img"
+     aria-labelledby="t d">
+  <title id="t">The Horse Boutique — horseshoe seal</title>
+  <desc id="d">A horseshoe band pierced by six nail holes, used as a seal or stamp.</desc>
+
+  <!-- ===== HORSESHOE BAND ===================================================
+       Solid band cut from two concentric arcs sharing centre (120,140):
+         outer radius 72, inner radius 50, opening across the bottom.
+       The six nail holes are subpaths removed via fill-rule="evenodd", so the
+       shape stays a single path and works as a stamp on any background.
+       ==================================================================== -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M73.7 195.2
+    A72 72 0 1 1 166.3 195.2
+    L152.1 178.3
+    A50 50 0 1 0 87.9 178.3
+    Z
+    M64.7 165.8  a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0 Z
+    M57.7 119.1  a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0 Z
+    M84.5 87.2   a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0 Z
+    M145.5 87.2  a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0 Z
+    M172.3 119.1 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0 Z
+    M170.3 165.8 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0 Z
+  " />
+</svg>

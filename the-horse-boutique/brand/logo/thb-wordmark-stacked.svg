@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 200" role="img"
+     aria-label="THE HORSE BOUTIQUE">
+  <!-- ===== WORDMARK — stacked ===============================================
+       Two-line setting for narrow placements: the vertical lockup, tote gussets,
+       care cards, saddle-pad embroidery. Both lines are pinned to the same
+       optical width so the block reads as a justified rectangle.
+       See thb-wordmark.svg for the production outlining note.
+       ==================================================================== -->
+  <g font-family="Cormorant Garamond, EB Garamond, Georgia, Times New Roman, serif"
+     font-size="76" font-weight="500" fill="currentColor" text-anchor="middle">
+    <text x="310" y="78" textLength="520" lengthAdjust="spacing">THE HORSE</text>
+    <text x="310" y="166" textLength="520" lengthAdjust="spacing">BOUTIQUE</text>
+  </g>
+</svg>

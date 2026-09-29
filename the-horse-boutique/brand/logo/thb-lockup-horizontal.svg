@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 160" role="img"
+     aria-label="The Horse Boutique">
+  <!-- ===== PRIMARY HORIZONTAL LOCKUP =========================================
+       The default signature: mark, hairline rule, wordmark. Use this wherever
+       there is horizontal room — site header, invoices, email, shopfront fascia.
+       The hairline rule is structural, not decorative; it sets the optical
+       distance between mark and name so nobody has to eyeball the gap.
+       ==================================================================== -->
+
+  <!-- Mark, scaled to a 120-unit cap height -->
+  <g transform="translate(14 20) scale(0.5)">
+    <g stroke="currentColor" stroke-width="11" stroke-linecap="round"
+       stroke-linejoin="round" fill="none">
+      <path d="M107 61 V43 H133 V61" />
+      <path d="M58 184 C54 116 76 61 120 61 C164 61 186 116 182 184" />
+      <path d="M47 186 H193" />
+    </g>
+    <g stroke="currentColor" stroke-linecap="butt" fill="none">
+      <path d="M96 101 V159" stroke-width="10" />
+      <path d="M144 101 V159" stroke-width="10" />
+      <path d="M96 130 H144" stroke-width="5.5" />
+    </g>
+  </g>
+
+  <!-- Structural hairline -->
+  <path d="M168 40 V120" stroke="currentColor" stroke-width="1"
+        opacity="0.45" />
+
+  <!-- Wordmark -->
+  <text x="204" y="97"
+        textLength="866" lengthAdjust="spacing"
+        font-family="Cormorant Garamond, EB Garamond, Georgia, Times New Roman, serif"
+        font-size="56" font-weight="500" fill="currentColor"
+        >THE HORSE BOUTIQUE</text>
+</svg>

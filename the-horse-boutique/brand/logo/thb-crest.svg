@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img"
+     aria-labelledby="t d" fill="none">
+  <title id="t">The Horse Boutique — crest seal</title>
+  <desc id="d">A double-ruled roundel enclosing the stirrup-and-H mark, flanked by two lozenges.</desc>
+
+  <!-- ===== DOUBLE RULE ======================================================
+       The heavy/hairline ring pair is the classic luxury seal device: it
+       signals provenance without adding ornament. Use for embossing, wax
+       seals, dust bags, care cards and hot-foil on boxes.
+       ==================================================================== -->
+  <circle cx="120" cy="120" r="112" stroke="currentColor" stroke-width="2.5" />
+  <circle cx="120" cy="120" r="102" stroke="currentColor" stroke-width="1" />
+
+  <!-- Lozenges seated between the rules on the horizontal axis -->
+  <g fill="currentColor">
+    <path d="M8 120 L13 114.5 L18 120 L13 125.5 Z" />
+    <path d="M222 120 L227 114.5 L232 120 L227 125.5 Z" />
+  </g>
+
+  <!-- ===== ENCLOSED MARK ====================================================
+       The primary stirrup mark, scaled to sit inside the inner rule with the
+       clear space the guidelines require. Geometry is reused verbatim, so the
+       crest can never drift out of sync with the primary mark.
+       ==================================================================== -->
+  <g transform="translate(120 120) scale(0.62) translate(-120 -114.5)">
+    <g stroke="currentColor" stroke-width="11" stroke-linecap="round"
+       stroke-linejoin="round">
+      <path d="M107 61 V43 H133 V61" />
+      <path d="M58 184 C54 116 76 61 120 61 C164 61 186 116 182 184" />
+      <path d="M47 186 H193" />
+    </g>
+    <g stroke="currentColor" stroke-linecap="butt">
+      <path d="M96 101 V159" stroke-width="10" />
+      <path d="M144 101 V159" stroke-width="10" />
+      <path d="M96 130 H144" stroke-width="5.5" />
+    </g>
+  </g>
+</svg>

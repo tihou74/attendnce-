@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img"
+     aria-labelledby="t d" fill="none">
+  <title id="t">The Horse Boutique — bit mark</title>
+  <desc id="d">A jointed loose-ring snaffle bit: two rings joined by a central link.</desc>
+
+  <g stroke="currentColor" stroke-width="11" stroke-linecap="round">
+    <!-- Loose rings -->
+    <circle cx="57" cy="120" r="35" />
+    <circle cx="183" cy="120" r="35" />
+    <!-- Mouthpiece: two bars meeting at the centre joint -->
+    <path d="M92 120 H106" />
+    <path d="M134 120 H148" />
+  </g>
+
+  <!-- Centre joint of the jointed snaffle -->
+  <circle cx="120" cy="120" r="12" fill="none" stroke="currentColor"
+          stroke-width="9" />
+</svg>

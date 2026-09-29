@@ -1,0 +1,374 @@
+/* ==========================================================================
+   THE HORSE BOUTIQUE — Design Tokens
+   --------------------------------------------------------------------------
+   POSITIONING: maximum luxury. Oxblood, leather, brass, refined serif.
+   The reference tier is Hermès / Cavalleria Toscana / Sergio Grasso.
+
+   DUAL REGISTER ARCHITECTURE — معماريّة السجلّين
+   The identity carries one palette and two registers, so a broad brand mix
+   never produces a visual contradiction:
+
+     [default]                  HERITAGE  — السجل التراثي
+                                Serif leads. Oxblood + leather + brass.
+                                Wide tracking, sharp radii, generous space.
+                                Use for: saddlery, leather, apparel, gifting.
+
+     [data-register=performance] PERFORMANCE — السجل الرياضي
+                                Geometric sans leads. Same palette, shifted to
+                                graphite neutrals. Tighter tracking, flatter
+                                radii, denser grid.
+                                Use for: helmets, body protectors, technical.
+
+   Both registers share the SAME hues. The contemporary edge comes from
+   typography, tracking, density and neutral temperature — never from a new
+   colour. That is what keeps the two tiers reading as one house.
+   ========================================================================== */
+
+:root {
+  /* ----------------------------------------------------------------------
+     1. PRIMITIVE COLOUR — الألوان الأساسية
+     Palette rationale, drawn from equestrian material culture:
+       Oxblood ......... aged bridle leather, hunt livery, bordeaux
+       Saddle Leather .. vegetable-tanned tack, cognac
+       Stirrup Brass ... polished hardware, buckles, spurs, bits
+       Ivory ........... breeches, linen, sand arena
+       Ink ............. formal show attire, warm near-black
+       Paddock Green ... supporting heritage tone, used sparingly
+       Graphite ........ performance register neutrals
+     ---------------------------------------------------------------------- */
+
+  /* Oxblood — PRIMARY. The signature of the house. */
+  --thb-oxblood-950: #240609;
+  --thb-oxblood-900: #360b12;
+  --thb-oxblood-800: #46111b;
+  --thb-oxblood-700: #5c1624; /* ← brand primary */
+  --thb-oxblood-600: #6e1e2c;
+  --thb-oxblood-500: #85293a;
+  --thb-oxblood-400: #a34355;
+  --thb-oxblood-300: #c4737f;
+  --thb-oxblood-200: #e0aeb6;
+  --thb-oxblood-100: #f2dade;
+  --thb-oxblood-50: #fbf1f2;
+
+  /* Saddle Leather — SECONDARY */
+  --thb-leather-900: #33200f;
+  --thb-leather-800: #4c2f17;
+  --thb-leather-700: #6a431f;
+  --thb-leather-600: #8a5a2b; /* ← brand secondary */
+  --thb-leather-500: #a47139;
+  --thb-leather-400: #bc8c56;
+  --thb-leather-300: #d2ab80;
+  --thb-leather-200: #e6cfb1;
+  --thb-leather-100: #f4e8d8;
+
+  /* Stirrup Brass — ACCENT. Never more than ~5% of any layout. */
+  --thb-brass-800: #6f5429;
+  --thb-brass-700: #8a6a38;
+  --thb-brass-600: #a07f44;
+  --thb-brass-500: #b8944f; /* ← brand accent */
+  --thb-brass-400: #cbac72;
+  --thb-brass-300: #dcc493;
+  --thb-brass-200: #ebdcbb;
+  --thb-brass-100: #f6eeda;
+
+  /* Ivory — warm luxury surfaces. Luxury is never cool grey. */
+  --thb-ivory-50: #fdfbf7;
+  --thb-ivory-100: #f8f4ec; /* ← default page surface */
+  --thb-ivory-200: #efe8db;
+  --thb-ivory-300: #e2d8c6;
+  --thb-ivory-400: #cbbda4;
+
+  /* Ink — warm near-black text */
+  --thb-ink-950: #0c0a0b;
+  --thb-ink-900: #161214;
+  --thb-ink-800: #211b1e;
+  --thb-ink-700: #2f2629;
+  --thb-ink-600: #4a3f43;
+  --thb-ink-500: #6b5e63;
+  --thb-ink-400: #8f8388;
+  --thb-ink-300: #b6acaf;
+  --thb-ink-200: #d6cfd1;
+  --thb-ink-100: #ede8e9;
+
+  /* Paddock Green — supporting heritage tone (hunt / turf tradition) */
+  --thb-green-900: #0e2a22;
+  --thb-green-700: #17463a;
+  --thb-green-500: #2a6b58;
+  --thb-green-300: #7fb3a1;
+  --thb-green-100: #deede6;
+
+  /* Graphite — performance register neutrals only */
+  --thb-graphite-950: #0b0d0f;
+  --thb-graphite-900: #121417;
+  --thb-graphite-700: #24282d;
+  --thb-graphite-500: #3d434a;
+  --thb-graphite-300: #7d858e;
+  --thb-graphite-100: #d9dde1;
+  --thb-graphite-50: #f0f2f4;
+
+  /* Functional — status only, never decorative */
+  --thb-success: #1f6f4a;
+  --thb-warning: #9a6b12;
+  --thb-danger: #9b2c2c;
+  --thb-info: #24566f;
+
+  /* ----------------------------------------------------------------------
+     2. SEMANTIC COLOUR — الألوان الدلالية
+     Components MUST reference these, never the primitives above. This is
+     what makes the performance register and dark mode one-file changes.
+     ---------------------------------------------------------------------- */
+  --color-bg: var(--thb-ivory-100);
+  --color-bg-raised: var(--thb-ivory-50);
+  --color-bg-sunken: var(--thb-ivory-200);
+  --color-bg-inverse: var(--thb-oxblood-900);
+
+  --color-text: var(--thb-ink-900);
+  --color-text-muted: var(--thb-ink-600);
+  --color-text-subtle: var(--thb-ink-500);
+  --color-text-inverse: var(--thb-ivory-50);
+
+  --color-primary: var(--thb-oxblood-700);
+  --color-primary-hover: var(--thb-oxblood-800);
+  --color-primary-active: var(--thb-oxblood-900);
+  --color-on-primary: var(--thb-ivory-50);
+
+  --color-secondary: var(--thb-leather-600);
+  --color-secondary-hover: var(--thb-leather-700);
+  --color-on-secondary: var(--thb-ivory-50);
+
+  --color-accent: var(--thb-brass-500);
+  --color-accent-hover: var(--thb-brass-600);
+  --color-on-accent: var(--thb-oxblood-950);
+
+  --color-border: var(--thb-ivory-300);
+  --color-border-strong: var(--thb-ivory-400);
+  --color-border-accent: var(--thb-brass-400);
+
+  --color-focus-ring: var(--thb-brass-500);
+
+  /* ----------------------------------------------------------------------
+     3. TYPOGRAPHY — الخطوط
+     LATIN ONLY. The house sets its name in a single Latin wordmark; there is
+     no Arabic lockup and no bilingual pairing. Arabic may appear later in
+     running commerce copy only (never in the wordmark) — if that day comes,
+     add the faces here and nowhere else.
+
+     Production faces (both open-source, self-host as WOFF2 — no CDN):
+
+       HERITAGE register
+         Display .... Cormorant Garamond   high-contrast old-style serif;
+                                           saddlery heritage, engraved feel
+       PERFORMANCE register
+         Display .... Jost                 geometric sans, sharp, modern
+
+       SHARED
+         Text ....... Jost
+     ---------------------------------------------------------------------- */
+  --font-serif: "Cormorant Garamond", "EB Garamond", Georgia,
+    "Times New Roman", serif;
+  --font-sans: "Jost", "Futura", "Century Gothic", -apple-system, "Segoe UI",
+    Roboto, "Noto Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Register-aware roles — components use ONLY these two */
+  --font-display: var(--font-serif);
+  --font-body: var(--font-sans);
+
+  /* Type scale — 1.250 major third, 16px base */
+  --text-2xs: 0.694rem; /* 11.1px */
+  --text-xs: 0.781rem; /* 12.5px */
+  --text-sm: 0.875rem; /* 14px   */
+  --text-base: 1rem; /* 16px   */
+  --text-lg: 1.25rem; /* 20px   */
+  --text-xl: 1.563rem; /* 25px   */
+  --text-2xl: 1.953rem; /* 31.3px */
+  --text-3xl: 2.441rem; /* 39.1px */
+  --text-4xl: 3.052rem; /* 48.8px */
+  --text-5xl: 3.815rem; /* 61px   */
+  --text-6xl: 4.768rem; /* 76.3px */
+
+  --leading-tight: 1.1;
+  --leading-snug: 1.28;
+  --leading-normal: 1.55;
+  --leading-relaxed: 1.75;
+
+  --weight-light: 300;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* Letter-spacing. The luxury voice is unhurried and spaced. */
+  --tracking-tighter: -0.03em;
+  --tracking-tight: -0.015em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.08em;
+  --tracking-wider: 0.18em;
+  --tracking-widest: 0.34em; /* wordmark + eyebrow labels */
+
+  /* ----------------------------------------------------------------------
+     4. SPACE — المسافات (4px base grid)
+     Luxury reads as space. Defaults sit deliberately generous.
+     ---------------------------------------------------------------------- */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-1: 0.25rem; /*   4px */
+  --space-2: 0.5rem; /*   8px */
+  --space-3: 0.75rem; /*  12px */
+  --space-4: 1rem; /*  16px */
+  --space-5: 1.25rem; /*  20px */
+  --space-6: 1.5rem; /*  24px */
+  --space-8: 2rem; /*  32px */
+  --space-10: 2.5rem; /*  40px */
+  --space-12: 3rem; /*  48px */
+  --space-16: 4rem; /*  64px */
+  --space-20: 5rem; /*  80px */
+  --space-24: 6rem; /*  96px */
+  --space-32: 8rem; /* 128px */
+  --space-40: 10rem; /* 160px */
+
+  --section-y: var(--space-32); /* vertical rhythm between page sections */
+
+  /* ----------------------------------------------------------------------
+     5. RADIUS, BORDER, SHADOW — الحدود والظلال
+     Restrained. Luxury retail reads sharp, never bubbly.
+     ---------------------------------------------------------------------- */
+  --radius-none: 0;
+  --radius-sm: 1px;
+  --radius-md: 2px;
+  --radius-lg: 4px;
+  --radius-xl: 8px;
+  --radius-pill: 999px;
+
+  --border-hairline: 1px;
+  --border-thin: 1.5px;
+  --border-thick: 2px;
+
+  /* Warm-tinted shadows — never neutral grey against ivory */
+  --shadow-xs: 0 1px 2px rgba(22, 18, 20, 0.05);
+  --shadow-sm: 0 2px 8px rgba(22, 18, 20, 0.06);
+  --shadow-md: 0 8px 24px rgba(22, 18, 20, 0.08);
+  --shadow-lg: 0 20px 56px rgba(22, 18, 20, 0.11);
+  --shadow-hairline: 0 0 0 1px var(--color-border);
+
+  /* ----------------------------------------------------------------------
+     6. LAYOUT — التخطيط
+     ---------------------------------------------------------------------- */
+  --container-sm: 40rem;
+  --container-md: 52rem;
+  --container-lg: 68rem;
+  --container-xl: 80rem;
+  --gutter: var(--space-6);
+
+  /* Minimum clear space around the logo = 50% of the mark's height.
+     Tokenised so nobody has to guess. */
+  --logo-clearspace-ratio: 0.5;
+  --logo-min-width-mark: 24px; /* below this, legibility fails */
+  --logo-min-width-lockup: 120px;
+
+  /* ----------------------------------------------------------------------
+     7. MOTION — الحركة
+     Weighted and calm. Nothing bounces; this is a premium tack room.
+     ---------------------------------------------------------------------- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 160ms;
+  --duration-base: 280ms;
+  --duration-slow: 480ms;
+
+  /* ----------------------------------------------------------------------
+     8. Z-INDEX — الطبقات
+     ---------------------------------------------------------------------- */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-sticky: 100;
+  --z-overlay: 500;
+  --z-modal: 1000;
+  --z-toast: 1500;
+}
+
+/* ==========================================================================
+   PERFORMANCE REGISTER — السجل الرياضي
+   Same hues, contemporary edge. Apply to a section, a category page, or a
+   whole sub-brand:  <section data-register="performance">
+   ========================================================================== */
+[data-register="performance"] {
+  /* Neutrals shift warm-ivory → cool graphite */
+  --color-bg: var(--thb-graphite-50);
+  --color-bg-raised: #ffffff;
+  --color-bg-sunken: var(--thb-graphite-100);
+  --color-bg-inverse: var(--thb-graphite-900);
+
+  --color-text: var(--thb-graphite-900);
+  --color-text-muted: var(--thb-graphite-500);
+  --color-text-subtle: var(--thb-graphite-300);
+
+  --color-border: var(--thb-graphite-100);
+  --color-border-strong: var(--thb-graphite-300);
+
+  /* Oxblood stays, but deployed as a precise accent rather than a field */
+  --color-primary: var(--thb-oxblood-700);
+  --color-secondary: var(--thb-graphite-700);
+
+  /* Sans leads; the serif steps back */
+  --font-display: var(--font-sans);
+
+  /* Tighter, denser, flatter */
+  --tracking-widest: 0.2em;
+  --tracking-wider: 0.1em;
+  --radius-lg: 2px;
+  --radius-xl: 3px;
+  --section-y: var(--space-20);
+  --leading-tight: 1.05;
+}
+
+/* ==========================================================================
+   DARK / EVENING THEME — الوضع الليلي
+   Oxblood deepens to near-black; brass carries the hierarchy.
+   ========================================================================== */
+[data-theme="dark"] {
+  --color-bg: var(--thb-oxblood-950);
+  --color-bg-raised: var(--thb-oxblood-900);
+  --color-bg-sunken: #170406;
+  --color-bg-inverse: var(--thb-ivory-100);
+
+  --color-text: var(--thb-ivory-100);
+  --color-text-muted: var(--thb-oxblood-200);
+  --color-text-subtle: var(--thb-oxblood-300);
+  --color-text-inverse: var(--thb-ink-900);
+
+  --color-primary: var(--thb-brass-400);
+  --color-primary-hover: var(--thb-brass-300);
+  --color-primary-active: var(--thb-brass-200);
+  --color-on-primary: var(--thb-oxblood-950);
+
+  --color-secondary: var(--thb-leather-300);
+  --color-secondary-hover: var(--thb-leather-200);
+  --color-on-secondary: var(--thb-leather-900);
+
+  --color-accent: var(--thb-brass-400);
+  --color-accent-hover: var(--thb-brass-300);
+
+  --color-border: rgba(253, 251, 247, 0.14);
+  --color-border-strong: rgba(253, 251, 247, 0.26);
+}
+
+[data-theme="dark"][data-register="performance"],
+[data-theme="dark"] [data-register="performance"] {
+  --color-bg: var(--thb-graphite-950);
+  --color-bg-raised: var(--thb-graphite-900);
+  --color-bg-sunken: #060708;
+  --color-text: var(--thb-graphite-50);
+  --color-text-muted: var(--thb-graphite-300);
+  --color-border: rgba(240, 242, 244, 0.12);
+  --color-border-strong: rgba(240, 242, 244, 0.24);
+}
+
+/* Accessibility: honour reduced-motion. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}
