@@ -3799,7 +3799,7 @@
                 الحقيقيّةُ **داخلَ الدالّة** (الكلمةُ المكتوبةُ وبصمةُ الفحص)، فلا
                 تُغني عنها طريقةُ الربط ولا تُضعفها. -->
         <div class="card" style="border-color: var(--danger);">
-            <details id="abResetBox">
+            <details id="abResetBox" ontoggle="abResetFill()">
                 <summary style="cursor:pointer; font-weight:800; font-size:15px; color: var(--danger);">
                     <span data-icon="trash"></span> Clear the test data &mdash; put everything back to zero
                 </summary>
@@ -3819,6 +3819,18 @@
                         photos &middot; what the abayas cost &middot; the shipments &middot; Florinda's tasks
                         &middot; the restaurants. <b>Nothing outside the abaya sales is read or changed.</b>
                     </p>
+                </div>
+                <!-- ⚠️⚠️⚠️ اختيارُ المحلّ — بنصّه: «أنا فرعُ وست ولك كان تجريبًا،
+                     لذلك أريد أن أُكنسل كلَّ الفواتير». فالتجربةُ كانت **في محلٍّ
+                     واحد**، وفواتيرُ جلف مول حقيقيّة.
+                     🔴 والقيمةُ الفارغةُ تعني **ارفض** لا «كلّ المحلّات»: «الكلّ»
+                        قيمةٌ صريحةٌ يختارها بيده. قائمةٌ تبدأ على «الكلّ» تحذف
+                        شركةً كاملةً بضغطةٍ واحدةٍ من غافل. -->
+                <div style="margin:14px 0;">
+                    <label for="abResetShop" style="font-weight:800; font-size:13px;">Which shop was the testing in?</label>
+                    <select id="abResetShop" style="max-width:300px;"></select>
+                    <p class="card-sub" style="margin:6px 0 0;">Only that shop's invoices and till sessions go.
+                        <b>Every other shop is left exactly as it is.</b></p>
                 </div>
                 <button class="btn-ghost" id="abResetScan" onclick="abResetScanDo()"><span data-icon="search"></span> Check what is there</button>
                 <div id="abResetOut" style="margin-top:12px;"></div>
@@ -14799,6 +14811,8 @@
     //   مكتوبٌ على افتراضِ أنّ الخطأَ فيه لا يُصلَح: فايرستور لا رجعةَ فيه.
     // =====================================================================
     const AB_RESET_WORD = 'RESET';
+    /** قيمةُ «كلُّ المحلّات» — صريحةٌ لا فارغة. انظر التعليقَ فوق `abResetShop`. */
+    const AB_RESET_ALL = '__ALL_SHOPS__';
     /** ناتجُ آخرِ فحص. و`null` تعني «لم يُفحص» — ولا حذفَ بلا فحص. */
     let abResetFound = null;
 
@@ -14863,19 +14877,46 @@
         };
     }
 
-    /** بصمةُ ما وُجد — تُقارَن لحظةَ التنفيذ. ترتيبٌ ثابتٌ كي لا تختلف بلا تغيير. */
-    function abResetStamp(invoices, shifts) {
-        return (invoices || []).map(v => String(v.no || '')).sort().join(',')
+    /**
+     * بصمةُ ما وُجد — تُقارَن لحظةَ التنفيذ. ترتيبٌ ثابتٌ كي لا تختلف بلا تغيير.
+     * ⚠️ والمحلُّ **داخلَ البصمة**: فحصٌ لوست ولك ثمّ تبديلُ القائمة إلى جلف مول
+     *   وضغطُ الحذف كان سيحذف محلًّا لم يُعرَض عليه قطّ. فتُرفض العمليّةُ إن تغيّر.
+     */
+    function abResetStamp(invoices, shifts, scope) {
+        return String(scope || '') + '::'
+            + (invoices || []).map(v => String(v.no || '')).sort().join(',')
             + '||' + (shifts || []).map(v => String(v.id || '')).sort().join(',');
     }
+
+    /** ترشيحٌ بالمحلّ. `AB_RESET_ALL` وحدَها تعني كلَّ المحلّات — والفراغُ لا يعني شيئًا. */
+    function abResetPick(rows, scope) {
+        if (scope === AB_RESET_ALL) return (rows || []).slice();
+        return (rows || []).filter(v => String(v.shop || '') === String(scope));
+    }
+
+    window.abResetFill = function() {
+        const sel = document.getElementById('abResetShop');
+        if (!sel || sel.options.length) return;
+        sel.innerHTML = '<option value="">&mdash; choose &mdash;</option>'
+            + ABAYA_SHOPS.map(x => `<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('')
+            + `<option value="${AB_RESET_ALL}">Every shop (clear everything)</option>`;
+    };
 
     window.abResetScanDo = async function() {
         const out = document.getElementById('abResetOut');
         const opts = document.getElementById('abResetOpts');
         abResetSay('', '');
-        if (out) out.innerHTML = '<p class="card-sub">Reading...</p>';
+        abResetFill();
+        const scope = String((document.getElementById('abResetShop') || {}).value || '');
         if (opts) opts.style.display = 'none';
         abResetFound = null;
+        // 🔴 لا فحصَ بلا محلٍّ مختار — والفراغُ لا يُقرأ «الكلّ» بحال.
+        if (!scope) {
+            if (out) out.innerHTML = '';
+            abResetSay('Choose the shop first — the one you were testing in.', 'error');
+            return;
+        }
+        if (out) out.innerHTML = '<p class="card-sub">Reading...</p>';
         try {
             // ⚠️ يُقرأ من **الخادم** لا من المصفوفات المعروضة: تلك مُرشَّحةٌ بتاريخٍ
             //   ومحلٍّ، والحذفُ على أساسها كان سيترك فواتيرَ خارجَ المصفاة ويُوهم
@@ -14884,27 +14925,42 @@
                 getDocs(collection(db, ABAYA_INVOICES_COLL)),
                 getDocs(collection(db, ABAYA_SHIFTS_COLL))
             ]);
-            const invoices = []; invSnap.forEach(d => invoices.push(Object.assign({ no: d.id }, d.data() || {})));
-            const shifts = []; shSnap.forEach(d => shifts.push(Object.assign({ id: d.id }, d.data() || {})));
+            const allInv = []; invSnap.forEach(d => allInv.push(Object.assign({ no: d.id }, d.data() || {})));
+            const allSh = []; shSnap.forEach(d => allSh.push(Object.assign({ id: d.id }, d.data() || {})));
+            const invoices = abResetPick(allInv, scope);
+            const shifts = abResetPick(allSh, scope);
 
             const plan = abResetPlan(invoices);
             const money2 = (n) => money(Math.round((Number(n) || 0) * 100) / 100);
             const total = invoices.reduce((a, v) => a + (Number(v.total) || 0), 0);
-            const phones = Array.from(new Set(invoices
-                .map(v => String(v.customerPhone || '')).filter(Boolean)));
+            /**
+             * 🔴 زبونةٌ تُحذف **فقط إن لم يبقَ لها فاتورةٌ في محلٍّ آخر**.
+             * ⚠️ وإلّا: زبونةٌ اشترت في وست ولك (تجربة) وفي جلف مول (حقيقيّ) كان
+             *   حذفُها يقطع اسمَها ورقمَها عن فاتورةٍ **حقيقيّةٍ** باقيةٍ في النظام.
+             */
+            const goingPhones = new Set(invoices.map(v => String(v.customerPhone || '')).filter(Boolean));
+            const keptIds = new Set(invoices.map(v => String(v.no)));
+            allInv.forEach(v => {
+                if (keptIds.has(String(v.no))) return;
+                goingPhones.delete(String(v.customerPhone || ''));
+            });
+            const phones = Array.from(goingPhones);
             const dayShops = Array.from(new Set(invoices
                 .map(v => String(v.date || '') + '|' + String(v.shop || '')).filter(s => s !== '|')));
 
-            abResetFound = { invoices, shifts, plan, phones, dayShops, stamp: abResetStamp(invoices, shifts) };
+            abResetFound = { scope, invoices, shifts, plan, phones, dayShops,
+                stamp: abResetStamp(invoices, shifts, scope) };
+            const where2 = scope === AB_RESET_ALL ? 'any shop' : scope;
 
             if (!invoices.length && !shifts.length) {
-                if (out) out.innerHTML = `<p class="card-sub"><b>Nothing to clear.</b> There are no invoices `
-                    + `and no till sessions — the sales side is already at zero.</p>`;
+                if (out) out.innerHTML = `<p class="card-sub"><b>Nothing to clear for ${escapeHtml(where2)}.</b> `
+                    + `No invoices and no till sessions there — it is already at zero.</p>`;
                 return;
             }
             const pieces = plan.back.reduce((a, r) => a + r.qty, 0);
             if (out) {
-                out.innerHTML = `<p style="font-weight:800; font-size:13px; margin:0 0 8px;">This is what will go:</p>`
+                out.innerHTML = `<p style="font-weight:800; font-size:13px; margin:0 0 8px;">`
+                    + `This is what will go from <b dir="ltr">${escapeHtml(where2)}</b>:</p>`
                     + `<ul style="margin:0 0 10px 18px; font-size:13px; line-height:1.9;">`
                     + `<li><b>${invoices.length}</b> invoice(s), <b dir="ltr">${money2(total)} QAR</b> in total</li>`
                     + `<li><b>${shifts.length}</b> till session(s) and their Z reports</li>`
@@ -14932,7 +14988,12 @@
                           + `carry no product id, so no shelf can be credited for them.</p>` : '')
                     + (phones.length
                         ? `<p class="card-sub" style="margin-top:6px;"><b>${phones.length}</b> customer(s) `
-                          + `are attached to these invoices (only removed if you tick the box).</p>` : '');
+                          + `belong to these invoices only (only removed if you tick the box). Anyone who also `
+                          + `bought in another shop is kept.</p>` : '')
+                    + (scope !== AB_RESET_ALL
+                        ? `<p class="card-sub" style="margin-top:10px;">Every other shop is untouched.</p>`
+                        : `<p style="margin-top:10px; font-weight:800; color:var(--danger);">`
+                          + `⚠️ This is EVERY shop, not one.</p>`);
             }
             if (opts) opts.style.display = '';
             const w = document.getElementById('abResetWord');
@@ -14971,15 +15032,21 @@
                 getDocs(collection(db, ABAYA_INVOICES_COLL)),
                 getDocs(collection(db, ABAYA_SHIFTS_COLL))
             ]);
-            const invoices = []; invSnap.forEach(d => invoices.push(Object.assign({ no: d.id }, d.data() || {})));
-            const shifts = []; shSnap.forEach(d => shifts.push(Object.assign({ id: d.id }, d.data() || {})));
-            if (abResetStamp(invoices, shifts) !== abResetFound.stamp) {
+            const allInv = []; invSnap.forEach(d => allInv.push(Object.assign({ no: d.id }, d.data() || {})));
+            const allSh = []; shSnap.forEach(d => allSh.push(Object.assign({ id: d.id }, d.data() || {})));
+            // ⚠️ يُرشَّح بنفس المحلِّ الذي فُحص — لا بما في القائمة الآن: لو بدّلها
+            //   بعد الفحص فالبصمةُ تختلف وتُرفض العمليّةُ في السطر التالي.
+            const scope = String(abResetFound.scope || '');
+            const invoices = abResetPick(allInv, scope);
+            const shifts = abResetPick(allSh, scope);
+            if (abResetStamp(invoices, shifts, scope) !== abResetFound.stamp
+                || scope !== String((document.getElementById('abResetShop') || {}).value || '')) {
                 abResetFound = null;
                 const opts = document.getElementById('abResetOpts');
                 if (opts) opts.style.display = 'none';
-                abResetSay('⚠️ Something changed since you checked — a sale or a till may have '
-                    + 'just been recorded. NOTHING was deleted. Press "Check what is there" again and read '
-                    + 'the new list before confirming.', 'error');
+                abResetSay('⚠️ Something changed since you checked — a sale or a till may have just been '
+                    + 'recorded, or you changed the shop in the list. NOTHING was deleted. Press "Check what '
+                    + 'is there" again and read the new list before confirming.', 'error');
                 return;
             }
 
@@ -15048,7 +15115,8 @@
             if (opts) opts.style.display = 'none';
             const out = document.getElementById('abResetOut');
             if (out) out.innerHTML = '';
-            abResetSay(`Done. Deleted ${done.invoices} invoice(s), ${done.shifts} till session(s) `
+            abResetSay(`Done — ${scope === AB_RESET_ALL ? 'every shop' : scope}. `
+                + `Deleted ${done.invoices} invoice(s), ${done.shifts} till session(s) `
                 + `and ${done.moves} movement line(s).`
                 + (putBack ? ` Put ${done.back} piece(s) back on the shelves.` : ' No stock was changed.')
                 + (done.reports ? ` Deleted ${done.reports} daily report(s).` : '')
@@ -21324,7 +21392,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v219';
+        const APP_BUILD = 'v220';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
