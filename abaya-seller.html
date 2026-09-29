@@ -465,6 +465,32 @@
         background: var(--color-surface-2);
     }
     .snav button[aria-pressed="true"] .t { color: var(--color-brand-text); }
+    /* ⭐⭐⭐ زرُّ الرجوع — بأمر المالك: «يجب أن يكون هناك زرُّ بيك للبياعات لأنه
+       لا يوجد بيك».
+
+       ⚠️ **ثابتٌ في أسفل الشاشة** لا في أعلى الصفحة: شريطُ التبويبات لاصقٌ في
+          الأعلى فعلًا، لكنّ يدَ البياعةِ على الهاتف في الأسفل وهي واقفةٌ وزبونةٌ
+          أمامها. وزرٌّ لا تبلغه الإبهامُ زرٌّ غيرُ موجود.
+       ⚠️ ويظهر **فقط** حين تكون داخلَ قسمٍ غيرِ الرئيسيّ: زرُّ رجوعٍ في الشاشة
+          الرئيسيّة لا معنى له، ووجودُه الدائمُ يُدرَّب على تجاهله.
+       ⚠️ ولونٌ ثابتٌ `--wine-600` لا `--color-primary`: الثاني رمزٌ دلاليٌّ قد
+          يتبدّل بالوضع (وهو ما أوقعني في فخِّ الذهب في لوحة فاطمة). والأبيضُ على
+          العنّابيّ **10.16:1** بقياس ملفّ الهوية. */
+    .sback {
+        position: fixed; z-index: 40;
+        inset-inline-start: 50%; transform: translateX(-50%);
+        bottom: calc(14px + env(safe-area-inset-bottom));
+        width: auto; min-height: 46px; padding: 0 22px;
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        background: var(--wine-600, #73263A); color: #FFFFFF;
+        border: 1px solid var(--gold-400, #CAAD73);
+        border-radius: var(--radius-pill, 999px);
+        font-family: inherit; font-size: 14px; font-weight: 800;
+        box-shadow: 0 6px 20px rgba(92, 30, 46, .30);
+        cursor: pointer;
+    }
+    .sback:hover { background: var(--wine-700, #5C1E2E); }
+
     .snav .badge {
         display: inline-block; min-width: 18px; padding: 0 5px; margin-inline-start: 4px;
         border-radius: var(--radius-pill, 999px);
@@ -1087,6 +1113,11 @@
                 <span class="t">Goods arrived <span class="badge" id="navArrivalsBadge">0</span></span>
             </button>
         </nav>
+
+        <!-- ⭐⭐⭐ زرُّ الرجوع — بأمر المالك. يُخفى في الشاشة الرئيسيّة (انظر
+             `sbackPaint`)، ويعمل معه زرُّ الرجوع في الهاتف نفسِه. -->
+        <button type="button" class="sback hidden" id="sBack" aria-label="Back to my shift">
+            &#8592; Back</button>
 
         <div class="hidden" id="viewArrivals">
         <!-- ==================================================================
@@ -2276,8 +2307,21 @@
     };
     let sellerView = 'attend';
 
+    /**
+     * ⭐⭐⭐ الرجوع — بأمر المالك: «يجب أن يكون هناك زرُّ بيك للبياعات لأنه لا يوجد بيك».
+     * ⚠️ تُرفع الرايةُ أثناء الرجوع كي لا تُدفع حالةٌ جديدةٌ من أجل رجوعٍ — وإلّا
+     *   صار زرُّ الهاتف يتنقّل بين حالتَين إلى الأبد ولا يخرج من الصفحة أبدًا.
+     */
+    let sbackGoingBack = false;
+
+    function sbackPaint() {
+        const b = el('sBack');
+        if (b) b.classList.toggle('hidden', sellerView === 'attend');
+    }
+
     function showSellerView(which) {
         if (!SELLER_VIEWS[which]) which = 'attend';
+        const moved = sellerView !== which;
         // ⚠️⚠️ الكاميرا تُغلق عند مغادرة القسم: من فتحت الماسحَ ثمّ ضغطت «تقرير
         //   اليوم» كان بثُّ الكاميرا يبقى شغّالًا وضوءُها مشتعلًا بقيّةَ اليوم.
         if (typeof scCloseScanner === 'function') scCloseScanner();
@@ -2291,7 +2335,32 @@
         // ⚠️ التمريرُ إلى الأعلى: الأقسامُ طويلة، ومن ضغطت زرًّا وهي في أسفل الصفحة
         //   كانت ترى منتصفَ القسم الجديد فتظنّه ناقصًا.
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        sbackPaint();
+        /**
+         * ⚠️⚠️ وتُسجَّل الخطوةُ في تاريخ المتصفّح كي يعمل **زرُّ الرجوع في الهاتف
+         *   نفسِه**: بلا ذلك كان ضغطُه يُخرجها من الصفحة كلِّها — فتفقد جلستَها
+         *   ومحلَّها وسلّةً نصفَ مكتوبةٍ وزبونةٌ أمامها. وهذا أرجحُ ما عناه المالك
+         *   بقوله «لا يوجد بيك»، فيُعالَج الاثنان معًا: زرٌّ في الشاشة وزرُّ الجهاز.
+         * ⚠️ ولا تُدفع حالةٌ إلّا إن **تبدّل** القسمُ فعلًا: دفعُها في كلِّ رسمٍ
+         *   يُنتج تاريخًا من عشرات الخطوات المتشابهة لا يخرج منه ضغطٌ.
+         * ⚠️ وفي `try` صامت: بعض المتصفّحات تمنع `pushState` في سياقاتٍ معيّنة،
+         *   وفشلُه لا يجوز أن يُوقف تبديلَ القسم — وهو العملُ الحقيقيّ هنا.
+         */
+        if (moved && !sbackGoingBack) {
+            try { history.pushState({ sellerView: which }, ''); } catch (e) { /* لا يُعطّل */ }
+        }
     }
+
+    el('sBack').addEventListener('click', () => {
+        // ⚠️ رجوعٌ إلى الشاشة الرئيسيّة لا `history.back()`: الأخيرةُ قد تُخرجها من
+        //   الصفحة إن كان التاريخُ فارغًا (دخلت بالرابط مباشرةً). والوجهةُ معلومةٌ.
+        showSellerView('attend');
+    });
+    window.addEventListener('popstate', (ev) => {
+        const v = (ev.state && ev.state.sellerView) || 'attend';
+        sbackGoingBack = true;
+        try { showSellerView(v); } finally { sbackGoingBack = false; }
+    });
 
     function showStep(which) {
         // ⚠️ وتُغلق عند تغيير الخطوة كذلك (تغييرُ المحلّ · إرسالُ التقرير · الخروج):
@@ -5572,6 +5641,21 @@
             await tillLoad(true);
             setMsgHtml('tillMsg', `The till is open &mdash; <b class="ltr">${escapeHtml(id)}</b>. `
                 + `Every invoice from now until you close belongs to it.`, 'ok');
+            /**
+             * ⭐⭐⭐⭐ وتنتقل إلى «البيع» فورًا — بأمر المالك: «أوّلُ شيءٍ لمّا تفتح
+             *   تيل لكي تستطيع أن تبدأ البيع».
+             *
+             * والمعنى تشغيليٌّ لا تجميليّ: فتحُ الصندوق ليس عملًا بنفسه، بل هو
+             *   **إذنُ البدء**. وبقاؤها على شاشة الصندوق بعده يجعلها تقرأ أرقامًا
+             *   لا تحتاجها ثمّ تبحث عن التبويب.
+             * ⚠️⚠️ والتأكيدُ يُكرَّر في شاشة البيع: رسالةُ النجاح في `tillMsg`
+             *   **داخلَ قسم الصندوق**، فالانتقالُ يُخفيها — وهو نفسُ عطلِ الرسالةِ
+             *   خلفَ حجاب الدفع الذي أصلحتُه في `3ccb236`. فتُقال هنا أيضًا، وشريطُ
+             *   الجلسة يقولها بنفسه على أيِّ حال.
+             */
+            showSellerView('sell');
+            setMsgHtml('cpMsg', `The till is open &mdash; <b class="ltr">${escapeHtml(id)}</b>. `
+                + `You can start selling.`, 'ok');
         } catch (e) {
             console.error('Could not open the till:', e);
             // ⚠️ كلمةُ الخادم بنصّها: تخمينُ «القواعدُ لم تُنشر» أخفى عليّ عطلًا
