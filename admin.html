@@ -3782,6 +3782,78 @@
             </div>
             <p class="card-sub" id="abInvNote" style="margin-top:14px;"></p>
         </div>
+
+        <!-- ⭐⭐⭐⭐⭐ «يجب أن تكون لي ميزة هنا أن أجعل كلشي 0 لأني كنت فقط أجرّب»
+             — بأمر المالك.
+
+             ⚠️⚠️⚠️ وهذه **الميزةُ الوحيدةُ في النظام كلِّه التي تحذف سجلَّ مال**.
+                ولذلك بُنيت على أربعة حرّاسٍ لا واحد:
+                  ١) مطويّةٌ (`details`) فلا تُضغط بالمرور.
+                  ٢) لا تحذف قبل **فحصٍ** يُظهر ما سيُحذف بالعدد والاسم.
+                  ٣) كلمةٌ تُكتب باليد — لا زرُّ «موافق».
+                  ٤) وتُعيد القراءةَ لحظةَ التنفيذ وترفض **إن تغيّر شيء** بعد
+                     الفحص: بياعةٌ قد تبيع بيعةً **حقيقيّةً** وهو يقرأ هذه الشاشة،
+                     وحذفُها هو أسوأُ ما يمكن أن تفعله ميزةٌ اسمُها «تنظيف تجربة».
+             ⚠️ والربطُ بـ`onclick` كبقيّة هذه اللوحة (كلُّها كذلك) لا بمستمعٍ
+                مُسجَّل: كتبتُ أوّلَ مرّةٍ «لا onclick هنا» ثمّ صحّحتُها — الحرّاسُ
+                الحقيقيّةُ **داخلَ الدالّة** (الكلمةُ المكتوبةُ وبصمةُ الفحص)، فلا
+                تُغني عنها طريقةُ الربط ولا تُضعفها. -->
+        <div class="card" style="border-color: var(--danger);">
+            <details id="abResetBox">
+                <summary style="cursor:pointer; font-weight:800; font-size:15px; color: var(--danger);">
+                    <span data-icon="trash"></span> Clear the test data &mdash; put everything back to zero
+                </summary>
+                <p class="card-sub" style="margin-top:12px;">
+                    For after you have been <b>trying the system out</b>. It removes the test sales so the
+                    figures, the Z reports and the warnings above start from zero.
+                </p>
+                <div style="margin:12px 0; padding:12px; border:1px solid var(--border); border-radius:8px;">
+                    <b style="font-size:13px;">It deletes</b>
+                    <p class="card-sub" style="margin:4px 0 10px;">
+                        the invoices &middot; the till sessions and their Z reports &middot; the stock movement
+                        lines those invoices created.
+                    </p>
+                    <b style="font-size:13px;">It never touches</b>
+                    <p class="card-sub" style="margin:4px 0 0;">
+                        employees &middot; salaries &middot; attendance &middot; the abaya catalogue and its
+                        photos &middot; what the abayas cost &middot; the shipments &middot; Florinda's tasks
+                        &middot; the restaurants. <b>Nothing outside the abaya sales is read or changed.</b>
+                    </p>
+                </div>
+                <button class="btn-ghost" id="abResetScan" onclick="abResetScanDo()"><span data-icon="search"></span> Check what is there</button>
+                <div id="abResetOut" style="margin-top:12px;"></div>
+                <div id="abResetOpts" style="display:none; margin-top:14px; padding-top:14px; border-top:1px solid var(--border);">
+                    <label style="display:flex; gap:8px; align-items:flex-start; font-weight:700; font-size:13px;">
+                        <input type="checkbox" id="abResetBack" checked style="margin-top:3px;">
+                        <span>Put the pieces back on the shelves
+                            <span class="card-sub" style="display:block; font-weight:400;">The test sales took
+                            pieces off the shelf. Tick this and they go back, so your stock count is right
+                            again. Pieces sold as an ORDER never came off a shelf, so nothing goes back for
+                            them.</span></span>
+                    </label>
+                    <label style="display:flex; gap:8px; align-items:flex-start; font-weight:700; font-size:13px; margin-top:10px;">
+                        <input type="checkbox" id="abResetReports" style="margin-top:3px;">
+                        <span>Also delete the daily reports the saleswomen typed
+                            <span class="card-sub" style="display:block; font-weight:400;">⚠️ Those feed the
+                            monthly financial report. Leave this unticked unless you typed them while
+                            testing too.</span></span>
+                    </label>
+                    <label style="display:flex; gap:8px; align-items:flex-start; font-weight:700; font-size:13px; margin-top:10px;">
+                        <input type="checkbox" id="abResetCust" style="margin-top:3px;">
+                        <span>Also delete the customers those invoices created</span>
+                    </label>
+                    <div style="margin-top:16px;">
+                        <label for="abResetWord" style="font-weight:800; font-size:13px;">
+                            To confirm, type <b style="color:var(--danger);">RESET</b> here</label>
+                        <input type="text" id="abResetWord" autocomplete="off" spellcheck="false"
+                               placeholder="RESET" style="max-width:220px; text-transform:uppercase;">
+                    </div>
+                    <button class="btn-danger" id="abResetGo" onclick="abResetRun()" style="margin-top:12px;">
+                        <span data-icon="trash"></span> Delete it and start from zero</button>
+                </div>
+                <div class="status" id="abResetMsg" style="min-height:18px; font-size:13px; font-weight:700; margin-top:12px;"></div>
+            </details>
+        </div>
     </div>
 
 
@@ -5551,6 +5623,12 @@
     import {
         getFirestore, collection, addDoc, getDoc, getDocs, deleteDoc, doc, setDoc, updateDoc,
         query, orderBy, where, limit, writeBatch, serverTimestamp, onSnapshot,
+        // ⭐ increment: أُضيفت لأجل «اجعل كلشي 0» — إرجاعُ القطع إلى الرفّ.
+        // ⚠️ ولا يُقرأ العددُ ثمّ يُكتب مجموعُه: قراءةٌ ثمّ كتابةٌ تُهمل بيعةً تقع
+        //   بينهما، و`increment` تُجمع على الخادم فلا تُفقد شيئًا. وهذا النقصُ
+        //   أمسكه فحصُ الاستيراد لا عينُي — وهو نفسُ الفحص الذي بُني بعد عطل
+        //   `setDoc` الذي أضاع ثلاثَ فواتير.
+        increment,
         // ⭐⭐ getDocsFromServer: قراءةٌ تتجاوز الذاكرة المحليّة إجبارًا. تُستعمل
         // **فقط** إن عادت القراءة العادية فارغة، ولا يُبنى عليها وحدها أبدًا:
         // فشلُها لا يجوز أن يُنقص ما كان معروضًا.
@@ -14342,7 +14420,7 @@
                 body.innerHTML = `<tr><td colspan="13" style="text-align:center; color: var(--danger);">`
                     + `Could not read the invoices: ${escapeHtml(String((err && err.message) || err))}`
                     + (/permission/i.test(String(err && err.message))
-                        ? ' — the rules (v23) are not published yet.' : '')
+                        ? ' — the newest rules are not published yet.' : '')
                     + `</td></tr>`;
             }
         }
@@ -14580,7 +14658,7 @@
                 body.innerHTML = `<tr><td colspan="14" style="text-align:center; color: var(--danger);">`
                     + `Could not read the tills: ${escapeHtml(String((err && err.message) || err))}`
                     + (/permission/i.test(String(err && err.message))
-                        ? ' — the rules (v27) are not published yet.' : '')
+                        ? ' — the newest rules are not published yet.' : '')
                     + `</td></tr>`;
             }
         }
@@ -14713,6 +14791,292 @@
                 + `<br>A closed till cannot be reopened from the shop screen; correcting one is yours alone.`;
         }
     };
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ «أجعل كلشي 0» — تنظيفُ بيانات التجربة. بأمر المالك.
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️⚠️ الكودُ الوحيدُ في المشروع الذي **يحذف سجلَّ مال**. وكلُّ سطرٍ هنا
+    //   مكتوبٌ على افتراضِ أنّ الخطأَ فيه لا يُصلَح: فايرستور لا رجعةَ فيه.
+    // =====================================================================
+    const AB_RESET_WORD = 'RESET';
+    /** ناتجُ آخرِ فحص. و`null` تعني «لم يُفحص» — ولا حذفَ بلا فحص. */
+    let abResetFound = null;
+
+    /**
+     * رسالةُ هذه البطاقة.
+     * ⚠️⚠️ تُكتب `innerText` قصدًا، **ولا HTML في أيِّ رسالةٍ هنا**: لوحةُ الأدمن لا
+     *   تملك دالّةَ رسائلَ مشتركةً (كلُّ موضعٍ يكتب بنفسه `innerText` + لونًا)، وأنا
+     *   كتبتُ أوّلَ مرّةٍ `setStatus(...)` وهي **دالّةٌ لا وجودَ لها في هذا الملفّ
+     *   أصلًا** — اختراعُ اسمٍ من ملفٍّ آخر. فالتأكيدُ بالكلمات لا بالوسوم، ولا
+     *   يتكرّر عطلُ `setMsg` في شاشة البياعة (رسالةٌ بـ`<b>` تُقرأ حرفيًّا).
+     */
+    function abResetSay(msg, kind) {
+        const box = document.getElementById('abResetMsg');
+        if (!box) return;
+        box.innerText = msg || '';
+        box.style.color = kind === 'error' ? 'var(--danger)'
+            : kind === 'success' ? 'var(--success)'
+            : kind === 'loading' ? 'var(--text-dim)' : '';
+    }
+
+    /**
+     * ⭐ خطّةُ إرجاعِ القطع إلى الأرفف — دالّةٌ **صافيةٌ لا تكتب شيئًا**.
+     *
+     * ⚠️ وصفاؤها مقصودٌ: هذا أخطرُ حسابٍ في الميزة، وبفصلِه عن الكتابة يصير
+     *   قابلًا للتنفيذ في فحصٍ بحالاتٍ حقيقيّةٍ بلا لمسِ قاعدةِ بيانات.
+     *
+     * وقاعدتان لا تُنقضان، وكلتاهما تُنشئ مخزونًا وهميًّا لو أُهملت:
+     *   🔴 **فاتورةٌ مُرجَعةٌ سلفًا تُستثنى**: قطعُها عادت إلى الرفّ يومَ الإرجاع،
+     *      فإعادتُها ثانيةً تُضيف قطعًا لا وجودَ لها.
+     *   🔴 **وسطرُ «أوردر» يُستثنى**: لم يخرج من رفٍّ أصلًا (نفسُ حارسِ `cpRetDo`
+     *      بالحرف). وإرجاعُه يُنشئ قطعةً تظهر على الشاشة وليست في المحلّ.
+     * ⚠️ وسطرٌ بلا `productId` أو فاتورةٌ بلا محلٍّ **تُتجاهَل ولا تُخمَّن**: زيادةُ
+     *   كميّةٍ في رفٍّ مُخمَّنٍ خطأٌ لا يُكتشف إلّا بالجرد.
+     */
+    function abResetPlan(invoices) {
+        const back = new Map();
+        const skippedOrder = [];
+        const skippedReturned = [];
+        const noProduct = [];
+        (invoices || []).forEach(v => {
+            const shop = String(v.shop || '');
+            if (String(v.status || '') === 'returned') { skippedReturned.push(String(v.no || '')); return; }
+            (Array.isArray(v.lines) ? v.lines : []).forEach(l => {
+                const n = Math.floor(Number(l.qty)) || 0;
+                if (n <= 0) return;
+                if (String(l.kind || '') === 'order') {
+                    skippedOrder.push(`${n} × ${String(l.code || '')}`);
+                    return;
+                }
+                if (!l.productId || !shop) { noProduct.push(String(l.code || '?')); return; }
+                const k = l.productId + '|' + shop;
+                const cur = back.get(k)
+                    || { productId: String(l.productId), code: String(l.code || ''), shop, qty: 0 };
+                cur.qty += n;
+                back.set(k, cur);
+            });
+        });
+        return {
+            back: Array.from(back.values())
+                .sort((a, b) => String(a.code).localeCompare(String(b.code))),
+            skippedOrder, skippedReturned, noProduct
+        };
+    }
+
+    /** بصمةُ ما وُجد — تُقارَن لحظةَ التنفيذ. ترتيبٌ ثابتٌ كي لا تختلف بلا تغيير. */
+    function abResetStamp(invoices, shifts) {
+        return (invoices || []).map(v => String(v.no || '')).sort().join(',')
+            + '||' + (shifts || []).map(v => String(v.id || '')).sort().join(',');
+    }
+
+    window.abResetScanDo = async function() {
+        const out = document.getElementById('abResetOut');
+        const opts = document.getElementById('abResetOpts');
+        abResetSay('', '');
+        if (out) out.innerHTML = '<p class="card-sub">Reading...</p>';
+        if (opts) opts.style.display = 'none';
+        abResetFound = null;
+        try {
+            // ⚠️ يُقرأ من **الخادم** لا من المصفوفات المعروضة: تلك مُرشَّحةٌ بتاريخٍ
+            //   ومحلٍّ، والحذفُ على أساسها كان سيترك فواتيرَ خارجَ المصفاة ويُوهم
+            //   أنّ كلَّ شيءٍ نُظّف. «كلشي» تعني كلَّ شيء.
+            const [invSnap, shSnap] = await Promise.all([
+                getDocs(collection(db, ABAYA_INVOICES_COLL)),
+                getDocs(collection(db, ABAYA_SHIFTS_COLL))
+            ]);
+            const invoices = []; invSnap.forEach(d => invoices.push(Object.assign({ no: d.id }, d.data() || {})));
+            const shifts = []; shSnap.forEach(d => shifts.push(Object.assign({ id: d.id }, d.data() || {})));
+
+            const plan = abResetPlan(invoices);
+            const money2 = (n) => money(Math.round((Number(n) || 0) * 100) / 100);
+            const total = invoices.reduce((a, v) => a + (Number(v.total) || 0), 0);
+            const phones = Array.from(new Set(invoices
+                .map(v => String(v.customerPhone || '')).filter(Boolean)));
+            const dayShops = Array.from(new Set(invoices
+                .map(v => String(v.date || '') + '|' + String(v.shop || '')).filter(s => s !== '|')));
+
+            abResetFound = { invoices, shifts, plan, phones, dayShops, stamp: abResetStamp(invoices, shifts) };
+
+            if (!invoices.length && !shifts.length) {
+                if (out) out.innerHTML = `<p class="card-sub"><b>Nothing to clear.</b> There are no invoices `
+                    + `and no till sessions — the sales side is already at zero.</p>`;
+                return;
+            }
+            const pieces = plan.back.reduce((a, r) => a + r.qty, 0);
+            if (out) {
+                out.innerHTML = `<p style="font-weight:800; font-size:13px; margin:0 0 8px;">This is what will go:</p>`
+                    + `<ul style="margin:0 0 10px 18px; font-size:13px; line-height:1.9;">`
+                    + `<li><b>${invoices.length}</b> invoice(s), <b dir="ltr">${money2(total)} QAR</b> in total</li>`
+                    + `<li><b>${shifts.length}</b> till session(s) and their Z reports</li>`
+                    + `<li>the stock movement lines those invoices wrote</li>`
+                    + `</ul>`
+                    + (pieces > 0
+                        ? `<p style="font-weight:800; font-size:13px; margin:10px 0 6px;">`
+                          + `And ${pieces} piece(s) would go back on the shelves:</p>`
+                          + `<ul style="margin:0 0 0 18px; font-size:13px; line-height:1.8;">`
+                          + plan.back.map(r => `<li><b dir="ltr">${escapeHtml(r.code)}</b> &mdash; `
+                              + `<b>+${r.qty}</b> in ${escapeHtml(r.shop)}</li>`).join('')
+                          + `</ul>`
+                        : `<p class="card-sub">No pieces would go back on a shelf.</p>`)
+                    // ⚠️ المستثنياتُ تُقال بالعدد والسبب: صمتٌ هنا يجعله يعدّ الرفَّ
+                    //   بعد التنظيف فيجد أقلَّ مما توقّع ولا يعرف لماذا.
+                    + (plan.skippedOrder.length
+                        ? `<p class="card-sub" style="margin-top:10px;">⚠️ <b>${escapeHtml(plan.skippedOrder.join(' · '))}</b> `
+                          + `were sold as ORDERS — they never came off a shelf, so nothing goes back for them.</p>` : '')
+                    + (plan.skippedReturned.length
+                        ? `<p class="card-sub" style="margin-top:6px;">⚠️ <b>${plan.skippedReturned.length}</b> `
+                          + `invoice(s) were already returned, so their pieces went back at the time. `
+                          + `They will be deleted but nothing is added for them again.</p>` : '')
+                    + (plan.noProduct.length
+                        ? `<p class="card-sub" style="margin-top:6px;">⚠️ <b>${escapeHtml(plan.noProduct.join(', '))}</b> `
+                          + `carry no product id, so no shelf can be credited for them.</p>` : '')
+                    + (phones.length
+                        ? `<p class="card-sub" style="margin-top:6px;"><b>${phones.length}</b> customer(s) `
+                          + `are attached to these invoices (only removed if you tick the box).</p>` : '');
+            }
+            if (opts) opts.style.display = '';
+            const w = document.getElementById('abResetWord');
+            if (w) w.value = '';
+        } catch (e) {
+            console.error('The test-data scan failed:', e);
+            if (out) out.innerHTML = '';
+            abResetSay('Could not read it: ' + ((e && e.message) || e), 'error');
+        }
+    }
+
+    window.abResetRun = async function() {
+        if (!abResetFound) {
+            abResetSay('Press "Check what is there" first.', 'error');
+            return;
+        }
+        const w = String((document.getElementById('abResetWord') || {}).value || '').trim().toUpperCase();
+        if (w !== AB_RESET_WORD) {
+            abResetSay(`Type ${AB_RESET_WORD} in the box to confirm.`, 'error');
+            return;
+        }
+        const go = document.getElementById('abResetGo');
+        if (go) go.disabled = true;
+        abResetSay('Checking nothing has changed...', 'loading');
+        try {
+            /**
+             * 🔴🔴🔴 الحرسُ الأهمُّ في الميزة كلِّها.
+             *
+             * يُعاد القراءةُ من الخادم وتُقارن البصمةُ بما فُحص. فبين لحظةِ الفحص
+             *   ولحظةِ الضغط قد تكون بياعةٌ باعت بيعةً **حقيقيّةً** — وحذفُها هو
+             *   أسوأُ ما يمكن أن تفعله ميزةٌ اسمُها «تنظيف تجربة».
+             * ⚠️ ولا يُحذف «ما فُحص» وحدَه تجاوزًا للمشكلة: قائمةٌ قديمةٌ تعني أنّ
+             *   الجديدَ يبقى فيظنُّ التنظيفَ فشل. الرفضُ أصدقُ، والفحصُ ثانيةً رخيص.
+             */
+            const [invSnap, shSnap] = await Promise.all([
+                getDocs(collection(db, ABAYA_INVOICES_COLL)),
+                getDocs(collection(db, ABAYA_SHIFTS_COLL))
+            ]);
+            const invoices = []; invSnap.forEach(d => invoices.push(Object.assign({ no: d.id }, d.data() || {})));
+            const shifts = []; shSnap.forEach(d => shifts.push(Object.assign({ id: d.id }, d.data() || {})));
+            if (abResetStamp(invoices, shifts) !== abResetFound.stamp) {
+                abResetFound = null;
+                const opts = document.getElementById('abResetOpts');
+                if (opts) opts.style.display = 'none';
+                abResetSay('⚠️ Something changed since you checked — a sale or a till may have '
+                    + 'just been recorded. NOTHING was deleted. Press "Check what is there" again and read '
+                    + 'the new list before confirming.', 'error');
+                return;
+            }
+
+            const putBack = !!(document.getElementById('abResetBack') || {}).checked;
+            const delReports = !!(document.getElementById('abResetReports') || {}).checked;
+            const delCust = !!(document.getElementById('abResetCust') || {}).checked;
+            const plan = abResetPlan(invoices);
+            const done = { back: 0, invoices: 0, moves: 0, shifts: 0, reports: 0, customers: 0 };
+
+            /**
+             * ⚠️⚠️ الترتيبُ: تعود القطعُ **أوّلًا** ثمّ تُحذف الفاتورة — لا العكس.
+             *   الفاتورةُ هي المستندُ الذي يُعرف منه ماذا يُعاد، فحذفُها أوّلًا يُتلف
+             *   المعلومةَ نفسَها لو فشل ما بعدها.
+             * ⚠️ والإرجاعُ يُجمَع لكلِّ تصميمٍ ومحلٍّ مرّةً واحدةً قبل أيِّ حذف: كتابةٌ
+             *   واحدةٌ لكلِّ رفٍّ أقلُّ عرضةً للفشل في منتصفها من كتابةٍ لكلِّ سطر.
+             */
+            if (putBack) {
+                for (const r of plan.back) {
+                    await updateDoc(doc(db, 'abaya_products', r.productId), {
+                        ['qty.' + abayaShopKey(r.shop)]: increment(r.qty),
+                        updatedAt: serverTimestamp()
+                    });
+                    done.back += r.qty;
+                }
+            }
+            abResetSay('Deleting the invoices...', 'loading');
+            for (const v of invoices) {
+                // سطورُ الحركة لهذه الفاتورة — قبل حذفها كي يبقى رقمُها معروفًا.
+                try {
+                    const mv = await getDocs(query(collection(db, ABAYA_PRODUCT_MOVES_COLL),
+                        where('receiptNo', '==', String(v.no))));
+                    for (const d of mv.docs) { await deleteDoc(d.ref); done.moves += 1; }
+                } catch (e) { console.error('Movement lines for ' + v.no + ' were not deleted:', e); }
+                await deleteDoc(doc(db, ABAYA_INVOICES_COLL, String(v.no)));
+                done.invoices += 1;
+            }
+            for (const s of shifts) {
+                await deleteDoc(doc(db, ABAYA_SHIFTS_COLL, String(s.id)));
+                done.shifts += 1;
+            }
+            if (delCust) {
+                for (const p of abResetFound.phones) {
+                    try { await deleteDoc(doc(db, 'abaya_customers', p)); done.customers += 1; }
+                    catch (e) { console.error('Customer ' + p + ' was not deleted:', e); }
+                }
+            }
+            if (delReports) {
+                try {
+                    const rp = await getDocs(collection(db, 'abaya_sales_reports'));
+                    for (const d of rp.docs) {
+                        const r = d.data() || {};
+                        const k = String(r.date || '') + '|' + String(r.shop || '');
+                        // ⚠️ تُحذف تقاريرُ **نفسِ الأيّام والمحلّات** وحدَها لا كلُّها:
+                        //   تقريرٌ ليومٍ آخرَ ليس من التجربة، وهو يُغذّي التقريرَ المالي.
+                        if (abResetFound.dayShops.indexOf(k) >= 0) { await deleteDoc(d.ref); done.reports += 1; }
+                    }
+                } catch (e) { console.error('The daily reports were not deleted:', e); }
+            }
+
+            logAudit('abaya_test_data_cleared',
+                `invoices=${done.invoices} shifts=${done.shifts} moves=${done.moves} `
+                + `piecesBack=${done.back} reports=${done.reports} customers=${done.customers}`);
+
+            abResetFound = null;
+            const opts = document.getElementById('abResetOpts');
+            if (opts) opts.style.display = 'none';
+            const out = document.getElementById('abResetOut');
+            if (out) out.innerHTML = '';
+            abResetSay(`Done. Deleted ${done.invoices} invoice(s), ${done.shifts} till session(s) `
+                + `and ${done.moves} movement line(s).`
+                + (putBack ? ` Put ${done.back} piece(s) back on the shelves.` : ' No stock was changed.')
+                + (done.reports ? ` Deleted ${done.reports} daily report(s).` : '')
+                + (done.customers ? ` Deleted ${done.customers} customer(s).` : '')
+                + ' The figures above are reloading.', 'success');
+
+            // ⚠️ تُعاد القراءةُ فعلًا لا تُفرَّغ الجداولُ بالعرض: جدولٌ يُفرَّغ محليًّا
+            //   يُخفي ما لم يُحذف حقًّا ويُريه صفرًا كاذبًا.
+            abInvLoaded = false; abShiftsLoaded = false;
+            if (typeof loadAbayaInvoices === 'function') loadAbayaInvoices(true);
+            if (putBack) {
+                abayaCatalogLoaded = false;
+                if (typeof loadAbayaCatalog === 'function') loadAbayaCatalog();
+            }
+        } catch (e) {
+            console.error('The clear-up stopped part way:', e);
+            // ⚠️⚠️ ويُقال صريحًا أنّه **توقّف في المنتصف**: صمتٌ هنا يجعله يضغط
+            //   ثانيةً، وإعادةُ إرجاعِ القطع تُضاعفها على الرفّ.
+            abResetSay('⚠️ It stopped part way: ' + ((e && e.message) || e)
+                + ' — some of it may already be deleted. Press "Check what is there" again to see what is '
+                + 'left, and read the list before confirming: pieces already put back will NOT be added '
+                + 'twice for invoices that were deleted, but an invoice that was credited and not deleted '
+                + 'would be. Tell me the message if you are unsure.', 'error');
+            abResetFound = null;
+        } finally {
+            if (go) go.disabled = false;
+        }
+    }
 
     window.exportAbayaInvoicesExcel = function() {
         const rows = abInvRows();
@@ -16844,7 +17208,7 @@
                 body.innerHTML = `<tr><td colspan="10" style="text-align:center; color: var(--danger);">`
                     + `Could not read it: ${escapeHtml(String((err && err.message) || err))}`
                     + (/permission/i.test(String(err && err.message))
-                        ? ' &mdash; the new rules (v29) are not published yet.' : '')
+                        ? ' &mdash; the newest rules are not published yet.' : '')
                     + `</td></tr>`;
             }
         }
@@ -17149,7 +17513,7 @@
         } catch (e) {
             console.error('Could not save the intake:', e);
             fail(`Could not save: ${(e && e.message) || e}`
-                + (/permission/i.test(String(e && e.message)) ? ' — the new rules (v29) are not published yet.' : ''));
+                + (/permission/i.test(String(e && e.message)) ? ' — the newest rules are not published yet.' : ''));
         } finally {
             if (btn) btn.disabled = false;
         }
@@ -20960,7 +21324,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v218';
+        const APP_BUILD = 'v219';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
@@ -21042,7 +21406,7 @@
     function requestLoadErrorRow(msg, cols) {
         return `<tr><td colspan="${cols}" style="color: var(--danger); font-weight: 700; font-size: 12.5px; padding: 14px;">
             Could not read the requests: ${escapeHtml(msg)}<br>
-            <span style="font-weight: 400;">If this says missing or insufficient permissions, the security rules (v9) have not been published yet — nothing sent by the managers can be read until they are.</span>
+            <span style="font-weight: 400;">If this says missing or insufficient permissions, the newest security rules have not been published yet — nothing sent by the managers can be read until they are.</span>
         </td></tr>`;
     }
 
