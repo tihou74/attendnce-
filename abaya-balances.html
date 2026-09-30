@@ -1138,7 +1138,7 @@
             <!-- ⚠️ أربعة أعمدة عن قصد. الأعمدة التي حُذفت (رسوم البنك · بعد
                  الرسوم · قطع شانتون · العمولة · المستحق لها) إمّا مجموعُها في
                  البطاقات أعلاه، أو أنها شرطة فارغة في محلّين من ثلاثة لأن
-                 شانتون في محل واحد — أي ضجيجٌ يُخفي السطر المهم. -->
+                 شانتون لا تعرض في كل محل — أي ضجيجٌ يُخفي السطر المهم. -->
             <div class="tw">
                 <table>
                     <thead>
@@ -1226,7 +1226,7 @@
                 </div>
                 <p class="note" id="stNote"></p>
 
-                <!-- ⚠️ مخزن شانتون يظهر في محلّها وفي «الكل مجتمعين» فقط. إظهاره
+                <!-- ⚠️ مخزن شانتون يظهر في محلّاتها وفي «الكل مجتمعين» فقط. إظهاره
                      في محلٍّ لا تعرض فيه كان يُقرأ أن لها بضاعة هناك. -->
                 <div id="shWrap" class="hidden">
                     <p class="sect">Shanton's abayas &mdash; her goods, not yours</p>
@@ -1743,7 +1743,14 @@
         { key: 'sh_out_to_shop',     en: 'SHANTON — sent to another shop',      ar: 'شانتون — خرجت إلى محل آخر',  owner: 'shanton', needsShop: true,     sign: -1 },
         { key: 'sh_in_from_shop',    en: 'SHANTON — received from another shop', ar: 'شانتون — وصلت من محل آخر',  owner: 'shanton', needsShop: true,     sign: +1 }
     ];
-    const ABAYA_SHANTON_SHOPS = ['DOHA FESTIVAL CITY'];
+    // ⚠️ شانتون تعرض عبايتها في **بعض** المحلات لا كلِّها. وبقية المحلات لا
+    // يظهر لها قسمُها إطلاقًا، فلا تُسجَّل مبيعات باسمها في محل لا تعرض فيه.
+    //
+    // ⭐ وُست ووك أُضيف بأمر المالك (2026-09-30): «شانتون هي الحين فقط في دوحة
+    //   فيستفال سيتي، أريد تطبيق نفس ما هي مطبَّقة فيه على وست ووك».
+    // ⚠️⚠️ والقائمةُ **متطابقةٌ في ثلاثة ملفّات** (هذا · admin.html ·
+    //   abaya-seller.html) — وثمّة فحصٌ يُثبت تطابقَها، فلا تُعدَّل واحدةٌ وحدَها.
+    const ABAYA_SHANTON_SHOPS = ['DOHA FESTIVAL CITY', 'WEST WALK'];
     const ABAYA_ITEM_TO_STOCK = {
         abayaReady: 'abaya', kaftan: 'kaftan', shela: 'shela',
         inner: 'inner', travel: 'travel', jalabiya: 'jalabiya',
@@ -3415,7 +3422,7 @@
         notes.push(`Expenses (rent, salaries) are not included, so these are <b>sales and income, not profit</b>. `
             + `Cash in till is each shop's last reported figure, with its date beside it.`);
         if (unknown.n) {
-            notes.push(`<b class="down">${unknown.n} report(s) carry a shop name that is not one of the three above</b> — `
+            notes.push(`<b class="down">${unknown.n} report(s) carry a shop name that is not one of the shops above</b> — `
                 + `shown on their own line so the total still adds up.`);
         }
         el('acNote').innerHTML = notes.join('<br><br>');
@@ -3475,7 +3482,7 @@
 
         const notes = [];
         notes.push(`Compared against each shop's <b>own sales after the ${abayaRates.cardFeePercent}% bank charge</b>. `
-            + `Shanton's commission is <b>not</b> counted here — she displays in one shop only, so including it would `
+            + `Shanton's commission is <b>not</b> counted here — she does not display in every shop, so including it would `
             + `make that shop's target unfair.`);
         if (!tot.fullTarget) {
             notes.push(`<b class="wait">No target has been set yet.</b> The owner sets one for each shop from the dashboard.`);
@@ -3640,7 +3647,7 @@
         // وإلا قرأ من يفتح «دوحة فيستفال» مخزونَ الشركة كله كأنه مخزون المحل.
         // ولا يُقرأ من shPer بحال، فهو مبنيٌّ على محلّها.
         const mineShown = isAll ? grand : one.st.sum.now;
-        const whereShown = isAll ? 'the three shops' : stShop;
+        const whereShown = isAll ? `all ${ABAYA_SHOPS.length} shops` : stShop;
         shNotes.push(`<b>Both stocks together: ${mineShown + gs.now} piece(s)</b> `
             + `(${mineShown} yours in ${escapeHtml(whereShown)} + ${gs.now} Shanton's). `
             + `This combined figure is for information only and is never used in any money calculation — `

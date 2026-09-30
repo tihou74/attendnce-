@@ -2604,8 +2604,8 @@
             <h3><span data-icon="check"></span> Daily target &mdash; <span id="abTgDayLabel">&mdash;</span></h3>
             <p class="card-sub">
                 Compared against each shop's <b>own sales after the <span id="abTgCardPct">1.5</span>% bank charge</b>.
-                Shanton's commission is <b>not</b> counted here &mdash; she displays in one shop only, so including it
-                would make that shop's target unfair. Set the targets on the <b>Abaya &mdash; Monthly</b> tab.
+                Shanton's commission is <b>not</b> counted here &mdash; she does not display in every shop, so including it
+                would make her shops' targets unfair. Set the targets on the <b>Abaya &mdash; Monthly</b> tab.
             </p>
             <div class="controls" style="gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px;">
                 <button class="btn-ghost btn-sm" onclick="shiftAbayaTargetDay(-1)" title="Previous day">&#9664; Previous day</button>
@@ -13677,10 +13677,16 @@
     function catSectionLabel(key) {
         return key === CAT_NO_TYPE ? 'Not set · غير محدّد' : (abayaTypeLabel(key) || key);
     }
-    // ⚠️ شانتون تعرض عبايتها في محل واحد فقط. مصفوفة لا نصّ حتى يُضاف محل
-    // لاحقًا بلا تعديل منطق. وبقية المحلات لا يظهر لها قسمها إطلاقًا، فلا
-    // تُسجَّل مبيعات باسمها في محل لا تعرض فيه.
-    const ABAYA_SHANTON_SHOPS = ['DOHA FESTIVAL CITY'];
+    // ⚠️ شانتون تعرض عبايتها في **بعض** المحلات لا كلِّها. وبقية المحلات لا
+    // يظهر لها قسمُها إطلاقًا، فلا تُسجَّل مبيعات باسمها في محل لا تعرض فيه.
+    //
+    // ⭐ وُست ووك أُضيف بأمر المالك (2026-09-30): «شانتون هي الحين فقط في دوحة
+    //   فيستفال سيتي، أريد تطبيق نفس ما هي مطبَّقة فيه على وست ووك».
+    // ✅ وكونُها **مصفوفةً لا نصًّا** من أوّل يوم هو ما جعل الإضافة سطرًا واحدًا:
+    //   كلُّ المنطق (القسم في شاشة البياعة · حركات مخزنها · جدول المخزن · خانة
+    //   الجرد الافتتاحي · وسم «ليس محلَّها») يقرأ هذه القائمة بـ`includes`.
+    // ⚠️ ولا يُكتب اسمُ محلٍّ في منطقٍ بعد اليوم — يُضاف هنا وحدَه.
+    const ABAYA_SHANTON_SHOPS = ['DOHA FESTIVAL CITY', 'WEST WALK'];
     // ⚠️ owner يفصل مخزنَين لا مخزنًا واحدًا: بضاعتنا وبضاعة شانتون. خلطهما
     // يجعل قيمة مخزوننا أكبر من الحقيقة، لأن عباياتها ليست ملكنا.
     // وحركتا «وصلت منها» و«أُرجعت لها» ضروريتان: بلا الأولى لا يزيد مخزنها
@@ -18456,7 +18462,7 @@
             parts.push(`Her abayas held in the shops are tracked in <b>Shanton's stock</b> further down, `
                 + `separately from yours.`);
             if (unknown.n) {
-                parts.push(`<b style="color: var(--danger);">${unknown.n} report(s) carry a shop name that is not one of the three above</b> — `
+                parts.push(`<b style="color: var(--danger);">${unknown.n} report(s) carry a shop name that is not one of the shops above</b> — `
                     + `they are shown on their own line so the total still adds up. Check them on the Daily tab.`);
             }
             noteEl.innerHTML = parts.join('<br><br>');
@@ -18676,7 +18682,7 @@
         }
         notes.push(`<b>Shanton's abayas are not in the table above.</b> They are her goods, not yours, and counting them `
             + `would make your stock look bigger than it is. She has her own stock below, `
-            + `in <b>${ABAYA_SHANTON_SHOPS.join(', ')}</b> only &mdash; the shop where she displays.`);
+            + `in <b>${ABAYA_SHANTON_SHOPS.join(', ')}</b> only &mdash; the shop(s) where she displays.`);
         const el = document.getElementById('abStockNote');
         if (el) el.innerHTML = notes.join('<br><br>');
         // ⚠️ المجموع الكلي أعلاه على المحلات الثلاثة كلها، أما `per` فيُعاد
@@ -18736,7 +18742,7 @@
             // أُعيد بناؤه على محل شانتون وحده، وقراءته هنا كانت ستُظهر مخزوننا
             // في محل واحد وكأنه مخزون الشركة كله.
             shNotes.push(`<b>Both stocks together: ${g.now + gs.now} piece(s)</b> `
-                + `(${g.now} yours in the three shops + ${gs.now} Shanton's). `
+                + `(${g.now} yours across all ${ABAYA_SHOPS.length} shops + ${gs.now} Shanton's). `
                 + `This combined figure is shown for information only and is never used in any money calculation — `
                 + `the value of your stock is your own pieces alone.`);
             const shEl = document.getElementById('abShStockNote');
@@ -19693,7 +19699,7 @@
     // تارقت العبايات
     // ---------------------------------------------------------------------
     // ⚠️ المقارنة مع **مبيعات المحل بعد رسوم البنك** لا مع الدخل الحقيقي.
-    // السبب: الدخل الحقيقي يضمّ عمولة شانتون، وهي تعرض في محل واحد فقط —
+    // السبب: الدخل الحقيقي يضمّ عمولة شانتون، وهي لا تعرض في كل المحلات —
     // فإدخالها في المقارنة يجعل هدف ذلك المحل أسهل من هدف غيره بلا سبب.
     //
     // ⚠️ وقاعدة الحكم هي نفسها المعتمدة في تارقت المطاعم حرفيًّا:
@@ -21707,7 +21713,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v223';
+        const APP_BUILD = 'v224';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
