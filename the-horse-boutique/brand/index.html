@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>The Horse Boutique — Brand Identity Guidelines</title>
+    <meta
+      name="description"
+      content="Visual identity system for The Horse Boutique: logo suite, palette, typography and application rules."
+    />
+    <link rel="icon" href="logo/thb-favicon.svg" />
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="guidelines.css" />
+  </head>
+  <body>
+    <!-- ==================================================================
+         SPRITE — every mark defined once, referenced by <use>. Keeps the
+         geometry single-source and lets currentColor drive recolouring.
+         ================================================================== -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <!-- Primary: stirrup + H -->
+        <symbol id="mark-stirrup" viewBox="0 0 240 240" fill="none">
+          <g
+            stroke="currentColor"
+            stroke-width="11"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M107 61 V43 H133 V61" />
+            <path
+              d="M58 184 C54 116 76 61 120 61 C164 61 186 116 182 184"
+            />
+            <path d="M47 186 H193" />
+          </g>
+          <g stroke="currentColor" stroke-linecap="butt">
+            <path d="M96 101 V159" stroke-width="10" />
+            <path d="M144 101 V159" stroke-width="10" />
+            <path d="M96 130 H144" stroke-width="5.5" />
+          </g>
+        </symbol>
+
+        <!-- Secondary: jointed snaffle bit -->
+        <symbol id="mark-bit" viewBox="0 0 240 240" fill="none">
+          <g stroke="currentColor" stroke-width="11" stroke-linecap="round">
+            <circle cx="57" cy="120" r="35" />
+            <circle cx="183" cy="120" r="35" />
+            <path d="M92 120 H106" />
+            <path d="M134 120 H148" />
+          </g>
+          <circle
+            cx="120"
+            cy="120"
+            r="12"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="9"
+          />
+        </symbol>
+
+        <!-- Seal: horseshoe -->
+        <symbol id="mark-horseshoe" viewBox="0 0 240 240">
+          <path
+            fill="currentColor"
+            fill-rule="evenodd"
+            d="M73.7 195.2 A72 72 0 1 1 166.3 195.2 L152.1 178.3 A50 50 0 1 0 87.9 178.3 Z
+               M64.7 165.8 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0 Z
+               M57.7 119.1 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0 Z
+               M84.5 87.2 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0 Z
+               M145.5 87.2 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0 Z
+               M172.3 119.1 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0 Z
+               M170.3 165.8 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0 Z"
+          />
+        </symbol>
+
+        <!-- Crest seal -->
+        <symbol id="crest" viewBox="0 0 240 240" fill="none">
+          <circle
+            cx="120"
+            cy="120"
+            r="112"
+            stroke="currentColor"
+            stroke-width="2.5"
+          />
+          <circle
+            cx="120"
+            cy="120"
+            r="102"
+            stroke="currentColor"
+            stroke-width="1"
+          />
+          <g fill="currentColor">
+            <path d="M8 120 L13 114.5 L18 120 L13 125.5 Z" />
+            <path d="M222 120 L227 114.5 L232 120 L227 125.5 Z" />
+          </g>
+          <g transform="translate(120 120) scale(0.62) translate(-120 -114.5)">
+            <g
+              stroke="currentColor"
+              stroke-width="11"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M107 61 V43 H133 V61" />
+              <path
+                d="M58 184 C54 116 76 61 120 61 C164 61 186 116 182 184"
+              />
+              <path d="M47 186 H193" />
+            </g>
+            <g stroke="currentColor" stroke-linecap="butt">
+              <path d="M96 101 V159" stroke-width="10" />
+              <path d="M144 101 V159" stroke-width="10" />
+              <path d="M96 130 H144" stroke-width="5.5" />
+            </g>
+          </g>
+        </symbol>
+
+        <!-- Horizontal lockup -->
+        <symbol id="lockup-h" viewBox="0 0 1100 160">
+          <g transform="translate(14 20) scale(0.5)" fill="none">
+            <g
+              stroke="currentColor"
+              stroke-width="11"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M107 61 V43 H133 V61" />
+              <path
+                d="M58 184 C54 116 76 61 120 61 C164 61 186 116 182 184"
+              />
+              <path d="M47 186 H193" />
+            </g>
+            <g stroke="currentColor" stroke-linecap="butt">
+              <path d="M96 101 V159" stroke-width="10" />
+              <path d="M144 101 V159" stroke-width="10" />
+              <path d="M96 130 H144" stroke-width="5.5" />
+            </g>
+          </g>
+          <path
+            d="M168 40 V120"
+            stroke="currentColor"
+            stroke-width="1"
+            opacity="0.45"
+          />
+          <text
+            x="204"
+            y="97"
+            textLength="866"
+            lengthAdjust="spacing"
+            font-family="Cormorant Garamond, EB Garamond, Georgia, Times New Roman, serif"
+            font-size="56"
+            font-weight="500"
+            fill="currentColor"
+          >
+            THE HORSE BOUTIQUE
+          </text>
+        </symbol>
+
+        <!-- Vertical lockup -->
+        <symbol id="lockup-v" viewBox="0 0 620 420">
+          <g transform="translate(215 6) scale(0.79)" fill="none">
+            <g
+              stroke="currentColor"
+              stroke-width="11"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M107 61 V43 H133 V61" />
+              <path
+                d="M58 184 C54 116 76 61 120 61 C164 61 186 116 182 184"
+              />
+              <path d="M47 186 H193" />
+            </g>
+            <g stroke="currentColor" stroke-linecap="butt">
+              <path d="M96 101 V159" stroke-width="10" />
+              <path d="M144 101 V159" stroke-width="10" />
+              <path d="M96 130 H144" stroke-width="5.5" />
+            </g>
+          </g>
+          <path
+            d="M230 236 H390"
+            stroke="currentColor"
+            stroke-width="1"
+            opacity="0.45"
+          />
+          <g
+            font-family="Cormorant Garamond, EB Garamond, Georgia, Times New Roman, serif"
+            font-size="66"
+            font-weight="500"
+            fill="currentColor"
+            text-anchor="middle"
+          >
+            <text x="310" y="316" textLength="440" lengthAdjust="spacing">
+              THE HORSE
+            </text>
+            <text x="310" y="392" textLength="440" lengthAdjust="spacing">
+              BOUTIQUE
+            </text>
+          </g>
+        </symbol>
+
+        <!-- Wordmark only -->
+        <symbol id="wordmark" viewBox="0 0 1320 120">
+          <text
+            x="660"
+            y="86"
+            text-anchor="middle"
+            textLength="1240"
+            lengthAdjust="spacing"
+            font-family="Cormorant Garamond, EB Garamond, Georgia, Times New Roman, serif"
+            font-size="80"
+            font-weight="500"
+            fill="currentColor"
+          >
+            THE HORSE BOUTIQUE
+          </text>
+        </symbol>
+      </defs>
+    </svg>
+
+    <!-- ================================ HERO ========================== -->
+    <header class="hero">
+      <div class="wrap">
+        <svg class="hero__lockup" viewBox="0 0 620 420" aria-label="The Horse Boutique">
+          <use href="#lockup-v" />
+        </svg>
+        <hr class="hero__rule" />
+        <p class="hero__tag">Equestrian Equipment &middot; Est. 2026</p>
+        <p>
+          Visual identity system, version 0.1. Logo suite, palette, typography
+          and application rules.
+        </p>
+      </div>
+    </header>
+
+    <!-- ============================ POSITIONING ======================= -->
+    <section>
+      <div class="wrap">
+        <p class="eyebrow">01 &mdash; The idea</p>
+        <h2>A tack room, not a tack shop.</h2>
+        <p class="lede">
+          The identity is built on the three materials every rider already
+          trusts: oxblood leather, polished brass, and the ivory of clean
+          breeches. Nothing is invented; everything is quoted from the sport.
+        </p>
+        <p>
+          The mark is a stirrup iron holding the letter <strong>H</strong>. A
+          stirrup is the one object shared by every discipline and every price
+          point in the catalogue &mdash; dressage, jumping, endurance, or a
+          first pony. It is the point where rider and equipment meet, which is
+          precisely what a boutique does.
+        </p>
+        <p>
+          The house voice is unhurried. Wide letter-spacing, hairline rules,
+          generous margins, and a serif that has been used on saddlery brass
+          plates for two centuries. Restraint is the luxury signal &mdash; not
+          gradients, not gloss, not ornament.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================= LOGO SUITE ======================= -->
+    <section>
+      <div class="wrap">
+        <p class="eyebrow">02 &mdash; Logo suite</p>
+        <h2>One house, seven signatures.</h2>
+        <p>
+          Every mark below is pure vector geometry &mdash; no fonts, no raster,
+          no effects. They render identically at 16&nbsp;px in a browser tab and
+          at three metres on a storefront.
+        </p>
+
+        <div class="grid">
+          <div class="card">
+            <div class="card__art card__art--wide">
+              <svg viewBox="0 0 1100 160"><use href="#lockup-h" /></svg>
+            </div>
+            <p class="card__name">Horizontal lockup</p>
+            <p class="card__use">Primary signature. Site header, invoices, fascia.</p>
+          </div>
+
+          <div class="card">
+            <div class="card__art">
+              <svg viewBox="0 0 620 420" style="width: 128px">
+                <use href="#lockup-v" />
+              </svg>
+            </div>
+            <p class="card__name">Vertical lockup</p>
+            <p class="card__use">Square and portrait formats. Boxes, labels, avatars.</p>
+          </div>
+
+          <div class="card">
+            <div class="card__art">
+              <svg viewBox="0 0 240 240"><use href="#mark-stirrup" /></svg>
+            </div>
+            <p class="card__name">Stirrup mark</p>
+            <p class="card__use">Standalone symbol. App icon, embossing, stamps.</p>
+          </div>
+
+          <div class="card">
+            <div class="card__art">
+              <svg viewBox="0 0 240 240"><use href="#crest" /></svg>
+            </div>
+            <p class="card__name">Crest seal</p>
+            <p class="card__use">Provenance device. Wax seals, foil, care cards.</p>
+          </div>
+
+          <div class="card">
+            <div class="card__art">
+              <svg viewBox="0 0 240 240"><use href="#mark-bit" /></svg>
+            </div>
+            <p class="card__name">Bit mark</p>
+            <p class="card__use">Category icon for bits, bridles, reins.</p>
+          </div>
+
+          <div class="card">
+            <div class="card__art">
+              <svg viewBox="0 0 240 240"><use href="#mark-horseshoe" /></svg>
+            </div>
+            <p class="card__name">Horseshoe seal</p>
+            <p class="card__use">Solid stamp. Packing tape, tissue, gift wrap.</p>
+          </div>
+
+          <div class="card">
+            <div class="card__art card__art--wide">
+              <svg viewBox="0 0 1320 120"><use href="#wordmark" /></svg>
+            </div>
+            <p class="card__name">Wordmark</p>
+            <p class="card__use">Where the symbol already appears nearby.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================= CLEAR SPACE / SIZE =================== -->
+    <section>
+      <div class="wrap">
+        <p class="eyebrow">03 &mdash; Clear space &amp; minimum size</p>
+        <h2>Give it room.</h2>
+        <p>
+          Minimum clear space on every side equals <strong>half the height of
+          the mark</strong> (token: <code>--logo-clearspace-ratio: 0.5</code>).
+          Nothing enters that zone &mdash; not type, not imagery, not a page
+          edge.
+        </p>
+
+        <div class="clearspace">
+          <div class="clearspace__box">
+            <svg viewBox="0 0 240 240"><use href="#mark-stirrup" /></svg>
+          </div>
+        </div>
+
+        <h3 style="margin-top: var(--space-12)">Minimum sizes</h3>
+        <div class="sizes">
+          <figure>
+            <svg viewBox="0 0 240 240" style="width: 24px">
+              <use href="#mark-stirrup" />
+            </svg>
+            <figcaption>mark &mdash; 24px min</figcaption>
+          </figure>
+          <figure>
+            <svg viewBox="0 0 240 240" style="width: 40px">
+              <use href="#mark-stirrup" />
+            </svg>
+            <figcaption>40px</figcaption>
+          </figure>
+          <figure>
+            <svg viewBox="0 0 240 240" style="width: 64px">
+              <use href="#mark-stirrup" />
+            </svg>
+            <figcaption>64px</figcaption>
+          </figure>
+          <figure>
+            <svg viewBox="0 0 1100 160" style="width: 120px">
+              <use href="#lockup-h" />
+            </svg>
+            <figcaption>lockup &mdash; 120px min</figcaption>
+          </figure>
+          <figure>
+            <svg viewBox="0 0 1100 160" style="width: 220px">
+              <use href="#lockup-h" />
+            </svg>
+            <figcaption>220px</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== MISUSE ========================== -->
+    <section>
+      <div class="wrap">
+        <p class="eyebrow">04 &mdash; Correct use</p>
+        <h2>Five ways to ruin it.</h2>
+        <p>
+          The examples below are deliberately wrong. Each one is the mistake
+          most likely to reach print.
+        </p>
+
+        <div class="rules">
+          <div class="rule rule--do">
+            <div class="rule__art rule__art--correct">
+              <svg viewBox="0 0 240 240"><use href="#mark-stirrup" /></svg>
+            </div>
+            <div class="rule__body">
+              <p class="rule__verdict">Do</p>
+              <p>Ivory on oxblood. Full contrast, original proportions, no effects.</p>
+            </div>
+          </div>
+
+          <div class="rule rule--dont">
+            <div class="rule__art mis--stretch">
+              <svg viewBox="0 0 240 240" preserveAspectRatio="none">
+                <use href="#mark-stirrup" />
+              </svg>
+            </div>
+            <div class="rule__body">
+              <p class="rule__verdict">Don't</p>
+              <p>Never stretch or condense. Scale proportionally only.</p>
+            </div>
+          </div>
+
+          <div class="rule rule--dont">
+            <div class="rule__art mis--rotate">
+              <svg viewBox="0 0 240 240"><use href="#mark-stirrup" /></svg>
+            </div>
+            <div class="rule__body">
+              <p class="rule__verdict">Don't</p>
+              <p>Never rotate or tilt. The stirrup hangs level.</p>
+            </div>
+          </div>
+
+          <div class="rule rule--dont">
+            <div class="rule__art mis--recolour">
+              <svg viewBox="0 0 240 240"><use href="#mark-stirrup" /></svg>
+            </div>
+            <div class="rule__body">
+              <p class="rule__verdict">Don't</p>
+              <p>Never recolour outside the palette. Oxblood, ivory, brass, ink.</p>
+            </div>
+          </div>
+
+          <div class="rule rule--dont">
+            <div class="rule__art mis--shadow">
+              <svg viewBox="0 0 240 240"><use href="#mark-stirrup" /></svg>
+            </div>
+            <div class="rule__body">
+              <p class="rule__verdict">Don't</p>
+              <p>No shadows, bevels, glows or gradients on the mark.</p>
+            </div>
+          </div>
+
+          <div class="rule rule--dont">
+            <div class="rule__art rule__art--lowcontrast">
+              <svg viewBox="0 0 240 240"><use href="#mark-stirrup" /></svg>
+            </div>
+            <div class="rule__body">
+              <p class="rule__verdict">Don't</p>
+              <p>Never place tone-on-tone. The silhouette must stay legible.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== COLOUR ========================== -->
+    <section>
+      <div class="wrap">
+        <p class="eyebrow">05 &mdash; Colour</p>
+        <h2>Oxblood, leather, brass, ivory.</h2>
+        <p>
+          Four colours carry the house. Brass is an accent and must never
+          exceed roughly 5% of a layout &mdash; the moment gold spreads, the
+          brand reads costume rather than couture.
+        </p>
+
+        <div class="swatches">
+          <div class="swatch">
+            <div
+              class="swatch__chip"
+              style="background: var(--thb-oxblood-700)"
+            ></div>
+            <p class="swatch__name">Oxblood</p>
+            <p class="swatch__meta">#5C1624</p>
+            <p class="swatch__role">Primary. Fields, headers, the mark.</p>
+          </div>
+          <div class="swatch">
+            <div
+              class="swatch__chip"
+              style="background: var(--thb-leather-600)"
+            ></div>
+            <p class="swatch__name">Saddle Leather</p>
+            <p class="swatch__meta">#8A5A2B</p>
+            <p class="swatch__role">Secondary. Categories, packaging.</p>
+          </div>
+          <div class="swatch">
+            <div
+              class="swatch__chip"
+              style="background: var(--thb-brass-500)"
+            ></div>
+            <p class="swatch__name">Stirrup Brass</p>
+            <p class="swatch__meta">#B8944F</p>
+            <p class="swatch__role">Accent, max 5%. Rules, foil, eyebrows.</p>
+          </div>
+          <div class="swatch">
+            <div
+              class="swatch__chip"
+              style="background: var(--thb-ivory-100)"
+            ></div>
+            <p class="swatch__name">Breech Ivory</p>
+            <p class="swatch__meta">#F8F4EC</p>
+            <p class="swatch__role">Default surface. Never pure white.</p>
+          </div>
+          <div class="swatch">
+            <div
+              class="swatch__chip"
+              style="background: var(--thb-ink-900)"
+            ></div>
+            <p class="swatch__name">Ink</p>
+            <p class="swatch__meta">#161214</p>
+            <p class="swatch__role">Body text. Warm near-black.</p>
+          </div>
+          <div class="swatch">
+            <div
+              class="swatch__chip"
+              style="background: var(--thb-green-700)"
+            ></div>
+            <p class="swatch__name">Paddock Green</p>
+            <p class="swatch__meta">#17463A</p>
+            <p class="swatch__role">Supporting heritage tone. Sparing.</p>
+          </div>
+        </div>
+
+        <h3 style="margin-top: var(--space-12)">Distribution</h3>
+        <div class="ratio">
+          <span
+            style="
+              flex: 60;
+              background: var(--thb-ivory-100);
+              color: var(--thb-ink-700);
+            "
+            >Ivory 60</span
+          >
+          <span
+            style="
+              flex: 25;
+              background: var(--thb-oxblood-700);
+              color: var(--thb-ivory-50);
+            "
+            >Oxblood 25</span
+          >
+          <span
+            style="
+              flex: 10;
+              background: var(--thb-leather-600);
+              color: var(--thb-ivory-50);
+            "
+            >Leather 10</span
+          >
+          <span
+            style="
+              flex: 5;
+              background: var(--thb-brass-500);
+              color: var(--thb-oxblood-950);
+            "
+            >5</span
+          >
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ TYPOGRAPHY ======================== -->
+    <section>
+      <div class="wrap">
+        <p class="eyebrow">06 &mdash; Typography</p>
+        <h2>Cormorant Garamond &amp; Jost.</h2>
+        <p>
+          A high-contrast old-style serif for anything that carries the name,
+          and a geometric sans for anything a customer has to read quickly. Two
+          families, nothing more. Both are open-source and self-hosted &mdash;
+          no CDN, no licence fee, no tracking.
+        </p>
+
+        <div class="specimen">
+          <p class="specimen__label">Wordmark<br />0.34em tracking</p>
+          <p class="specimen__sample s-wordmark">The Horse Boutique</p>
+        </div>
+        <div class="specimen">
+          <p class="specimen__label">Display<br />Cormorant Garamond</p>
+          <p class="specimen__sample s-display">
+            Built for the arena, finished for the yard.
+          </p>
+        </div>
+        <div class="specimen">
+          <p class="specimen__label">Body<br />Jost Regular</p>
+          <p class="specimen__sample s-body">
+            Hand-finished bridlework in vegetable-tanned leather, with solid
+            brass hardware and stainless fittings. Every stitch is closed by
+            hand and every buckle is set to sit flat against the jaw.
+          </p>
+        </div>
+        <div class="specimen">
+          <p class="specimen__label">Label / UI<br />Jost Medium caps</p>
+          <p class="specimen__sample s-label">
+            Add to bag &middot; Size guide &middot; Free returns
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================= REGISTERS ======================== -->
+    <section>
+      <div class="wrap">
+        <p class="eyebrow">07 &mdash; The two registers</p>
+        <h2>One house, two voices.</h2>
+        <p>
+          A boutique that carries both hand-stitched leather and carbon-shell
+          helmets needs to speak in two tempos without splitting in half. Both
+          registers share the same palette and the same marks. Only the
+          typographic lead, the tracking, the density and the neutral
+          temperature change &mdash; never the hue. Apply with
+          <code>data-register="performance"</code>.
+        </p>
+
+        <div class="registers">
+          <div class="panel">
+            <p class="panel__kicker">Heritage &mdash; default</p>
+            <p class="panel__title">Calfskin Dressage Bridle</p>
+            <p class="panel__price">Made to order &middot; 6&ndash;8 weeks</p>
+            <a href="#" class="btn">Enquire</a>
+            <p class="panel__note">
+              Serif leads. Ivory ground, oxblood field, wide tracking, generous
+              space. For saddlery, leather, apparel and gifting.
+            </p>
+          </div>
+
+          <div class="panel" data-register="performance">
+            <p class="panel__kicker">Performance</p>
+            <p class="panel__title">Carbon Shell Competition Helmet</p>
+            <p class="panel__price">In stock &middot; 4 sizes</p>
+            <a href="#" class="btn">Add to bag</a>
+            <p class="panel__note">
+              Sans leads. Graphite neutrals, tighter tracking, flatter radii,
+              denser grid. For helmets, protection and technical equipment.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================== APPLICATIONS ======================= -->
+    <section>
+      <div class="wrap">
+        <p class="eyebrow">08 &mdash; Applications</p>
+        <h2>How it lives.</h2>
+        <p>
+          The mark is monochrome by rule: one ink, one ground. That is what
+          makes it survive foil, deboss, embroidery and laser engraving without
+          a single redraw.
+        </p>
+
+        <div class="apps">
+          <figure class="app-figure">
+            <div class="app app--oxblood">
+              <svg viewBox="0 0 620 420"><use href="#lockup-v" /></svg>
+            </div>
+            <p class="app__label">Box &mdash; ivory foil on oxblood</p>
+          </figure>
+          <figure class="app-figure">
+            <div class="app app--ivory">
+              <svg viewBox="0 0 1100 160"><use href="#lockup-h" /></svg>
+            </div>
+            <p class="app__label">Care card &mdash; oxblood on ivory</p>
+          </figure>
+          <figure class="app-figure">
+            <div class="app app--leather">
+              <svg viewBox="0 0 240 240" style="width: 44%">
+                <use href="#crest" />
+              </svg>
+            </div>
+            <p class="app__label">Leather deboss &mdash; crest seal</p>
+          </figure>
+          <figure class="app-figure">
+            <div class="app app--ink">
+              <svg viewBox="0 0 620 420"><use href="#lockup-v" /></svg>
+            </div>
+            <p class="app__label">Evening &mdash; brass on ink</p>
+          </figure>
+          <figure class="app-figure">
+            <div class="app app--brass">
+              <svg viewBox="0 0 240 240" style="width: 44%">
+                <use href="#mark-horseshoe" />
+              </svg>
+            </div>
+            <p class="app__label">Tissue stamp &mdash; horseshoe seal</p>
+          </figure>
+          <figure class="app-figure">
+            <div class="app app--graphite">
+              <svg viewBox="0 0 1100 160"><use href="#lockup-h" /></svg>
+            </div>
+            <p class="app__label">Performance &mdash; ivory on graphite</p>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== PENDING ========================= -->
+    <section>
+      <div class="wrap">
+        <p class="eyebrow">09 &mdash; Open items</p>
+        <h2>Awaiting the brand roster.</h2>
+        <div class="callout">
+          <h3>Blocked on input</h3>
+          <p>
+            The final calibration of this system depends on the roster of
+            brands the boutique carries under contract. That list has not been
+            received yet.
+          </p>
+          <p>
+            <strong>If the roster is Herm&egrave;s / Cavalleria Toscana /
+            Sergio Grasso tier</strong> &mdash; the heritage register becomes
+            the only register, brass moves to real foil, and the serif takes
+            every headline.
+            <strong>If it includes Kask / Samshield performance labels</strong>
+            &mdash; the performance register is promoted to equal status and
+            gets its own category architecture.
+            <strong>If the mix is broad</strong> &mdash; the dual-register
+            system above ships as designed.
+          </p>
+          <p>
+            A &ldquo;Brands We Carry&rdquo; section, a partner-logo lockup rule
+            and a co-branding clear-space spec will be added to this document
+            once the roster arrives.
+          </p>
+        </div>
+
+        <div class="callout" style="background: var(--thb-ivory-200); border-left-color: var(--color-text-subtle); border-color: var(--color-border)">
+          <h3 style="color: var(--color-text)">Deliberately not shipped</h3>
+          <p>
+            <strong>Horse-head silhouette.</strong> A head mark was drafted and
+            rejected. A convincing equine profile depends on the jowl mass and a
+            tight crop; two drafts read closer to a giraffe than a horse, and a
+            weak figurative mark would cost more credibility than the extra
+            asset is worth. The stirrup, bit and horseshoe already cover every
+            use a head mark would have served. If a head mark is still wanted it
+            should be drawn as a dedicated illustration and reviewed on its own,
+            not bundled into this release.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <svg viewBox="0 0 240 240" aria-hidden="true">
+        <use href="#mark-stirrup" />
+      </svg>
+      <p>The Horse Boutique &mdash; Visual Identity v0.1</p>
+      <p style="opacity: 0.6">
+        Marks are pure SVG geometry. Wordmark set in Cormorant Garamond;
+        convert to outlines before production.
+      </p>
+    </footer>
+  </body>
+</html>

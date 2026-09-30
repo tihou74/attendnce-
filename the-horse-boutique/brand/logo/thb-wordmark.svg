@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1320 120" role="img"
+     aria-label="THE HORSE BOUTIQUE">
+  <!-- ===== WORDMARK — single line ============================================
+       Cormorant Garamond, all caps, tracked to 0.34em. The wide tracking is
+       the single most important property of the wordmark: it is what makes the
+       name read as a house rather than a shop sign. Never tighten it.
+
+       PRODUCTION NOTE: this file uses live <text> so the tracking and scale
+       stay editable while the identity is being approved. Before any print,
+       signage, embroidery or foil run, convert the type to outlines
+       (Illustrator: Type > Create Outlines) and archive that file as
+       thb-wordmark-outlined.svg. Live text will substitute a fallback face on
+       any machine without Cormorant Garamond installed.
+
+       textLength pins the glyph span to 1240 units, so the lockup proportions
+       hold even when a fallback face renders the preview.
+       ==================================================================== -->
+  <text x="660" y="86" text-anchor="middle"
+        textLength="1240" lengthAdjust="spacing"
+        font-family="Cormorant Garamond, EB Garamond, Georgia, Times New Roman, serif"
+        font-size="80" font-weight="500" fill="currentColor"
+        >THE HORSE BOUTIQUE</text>
+</svg>

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 420" role="img"
+     aria-label="The Horse Boutique">
+  <!-- ===== VERTICAL LOCKUP ===================================================
+       Centred signature for square and portrait formats: social avatars, boxes,
+       dust bags, garment labels, stall plaques, print ads.
+       ==================================================================== -->
+
+  <!-- Mark, centred, 190-unit cap height -->
+  <g transform="translate(215 6) scale(0.79)">
+    <g stroke="currentColor" stroke-width="11" stroke-linecap="round"
+       stroke-linejoin="round" fill="none">
+      <path d="M107 61 V43 H133 V61" />
+      <path d="M58 184 C54 116 76 61 120 61 C164 61 186 116 182 184" />
+      <path d="M47 186 H193" />
+    </g>
+    <g stroke="currentColor" stroke-linecap="butt" fill="none">
+      <path d="M96 101 V159" stroke-width="10" />
+      <path d="M144 101 V159" stroke-width="10" />
+      <path d="M96 130 H144" stroke-width="5.5" />
+    </g>
+  </g>
+
+  <!-- Structural hairline, 88 units below the tread -->
+  <path d="M230 236 H390" stroke="currentColor" stroke-width="1"
+        opacity="0.45" />
+
+  <!-- Stacked wordmark -->
+  <g font-family="Cormorant Garamond, EB Garamond, Georgia, Times New Roman, serif"
+     font-size="66" font-weight="500" fill="currentColor" text-anchor="middle">
+    <text x="310" y="316" textLength="440" lengthAdjust="spacing">THE HORSE</text>
+    <text x="310" y="392" textLength="440" lengthAdjust="spacing">BOUTIQUE</text>
+  </g>
+</svg>

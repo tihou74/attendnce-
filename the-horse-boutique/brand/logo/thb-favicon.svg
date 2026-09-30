@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"
+     aria-label="The Horse Boutique">
+  <!-- ===== FAVICON / APP ICON ===============================================
+       Redrawn for small sizes rather than scaled down: the stirrup eye and the
+       thick/thin monogram contrast are dropped, and strokes are thickened so
+       the silhouette survives at 16px. Oxblood field, ivory mark.
+       ==================================================================== -->
+  <rect width="64" height="64" rx="4" fill="#5C1624" />
+
+  <g stroke="#FDFBF7" stroke-width="4" stroke-linecap="round"
+     stroke-linejoin="round" fill="none">
+    <!-- Stirrup: arch + tread -->
+    <path d="M17 47 C15.5 29 21 15 32 15 C43 15 48.5 29 47 47" />
+    <path d="M14 48 H50" />
+    <!-- Monogram H, single weight for small-size legibility -->
+    <path d="M25 26 V40" />
+    <path d="M39 26 V40" />
+    <path d="M25 33 H39" />
+  </g>
+</svg>
