@@ -910,20 +910,33 @@
     }
 
     // ---- منطق الحساب: نسخة مطابقة لما في admin.html ----------------------
+    // ⚠️⚠️⚠️ كلُّ لحظةٍ هنا تُبنى بتوقيت **قطر** لا بتوقيت الجهاز. الشرحُ المطوَّلُ
+    //   عند نظيرتها في admin.html: «السابعةُ مساءً» كانت سابعةَ الجهاز، فالرصيدُ
+    //   المعروضُ يختلف باختلاف ساعة الهاتف. ويجب أن تبقى الدالّتان متطابقتين
+    //   حرفًا بحرف في الملفَّين، وثمّة فحصٌ يُشغّلهما على نفس البيانات ويطالب
+    //   بتساوي المخرجات تحت ثلاثة توقيتاتٍ مختلفة.
+    function qatarAt(y, m, d, hour) {
+        return new Date(Date.UTC(y, m - 1, d, (Number(hour) || 0) - 3, 0, 0, 0));
+    }
+    // ⚠️ الاسمُ `monthLastDay` لا `daysInMonth`: في admin.html دالّةٌ بالاسم الثاني
+    //   توقّعُ نصًّا لا رقمين، والاسمان يجب أن يبقيا متطابقين في الملفَّين.
+    function monthLastDay(y, m) {
+        return new Date(Date.UTC(y, m, 0)).getUTCDate();
+    }
     function dateAtMidnight(iso) {
         const [y, m, d] = String(iso).split('-').map(Number);
-        return new Date(y, m - 1, d, 0, 0, 0, 0);
+        return qatarAt(y, m, d, 0);
     }
     function salesSettlementAt(dateISO) {
         const [y, m, d] = String(dateISO).split('-').map(Number);
-        return new Date(y, m - 1, d + SALES_SETTLEMENT_OFFSET_DAYS, SALES_SETTLEMENT_HOUR, 0, 0, 0);
+        return qatarAt(y, m, d + SALES_SETTLEMENT_OFFSET_DAYS, SALES_SETTLEMENT_HOUR);
     }
     function paymentDueAt(p) {
         if (p.paymentDate) return dateAtMidnight(p.paymentDate);
         const [y, m] = String(p.month).split('-').map(Number);
-        const lastDay = new Date(y, m, 0).getDate();
-        if (p.dayOfMonth) return new Date(y, m - 1, Math.min(Number(p.dayOfMonth), lastDay), 0, 0, 0, 0);
-        return new Date(y, m - 1, lastDay, 0, 0, 0, 0);
+        const lastDay = monthLastDay(y, m);
+        if (p.dayOfMonth) return qatarAt(y, m, Math.min(Number(p.dayOfMonth), lastDay), 0);
+        return qatarAt(y, m, lastDay, 0);
     }
     function salesReportSplit(r) {
         const cash = Number(r.cash) || 0;
@@ -977,8 +990,11 @@
         // «الداخل الليلة»: ما تاريخه اليوم نفسه ولم تصل ساعته بعد — يُفصل عن بقية
         // المستقبل، فالسؤال العملي هو: إن فتحتُ الشاشة قبل السابعة، ماذا سيدخل
         // الساعة السابعة؟ خلطه مع إيجار لاحق في الشهر يُفقده معناه.
-        const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-        const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        // ⚠️ «اليوم» يومُ قطر لا يومُ الجهاز — وإلا قارنّا مسطرتين مختلفتين.
+        const nowP = qatarParts(now);
+        const dayStart = qatarAt(Number(nowP.year), Number(nowP.month), Number(nowP.day), 0);
+        const dayEnd = new Date(
+            qatarAt(Number(nowP.year), Number(nowP.month), Number(nowP.day) + 1, 0).getTime() - 1);
         const arrivingToday = { bank: 0, cash: 0, delivery: 0 };
         let arrivingTodayCount = 0;
         let count = 0;

@@ -1931,19 +1931,42 @@
         const amountGroup = document.getElementById('amountGroup');
         const targetOrgGroup = document.getElementById('targetOrgGroup');
 
-        amountGroup.style.display = (type === 'Salary Advance') ? 'block' : 'none';
-        targetOrgGroup.style.display = (type === 'Salary Certificate' || type === 'Employment Certificate') ? 'block' : 'none';
+        const wantsAmount = (type === 'Salary Advance');
+        const wantsOrg = (type === 'Salary Certificate' || type === 'Employment Certificate');
+        amountGroup.style.display = wantsAmount ? 'block' : 'none';
+        targetOrgGroup.style.display = wantsOrg ? 'block' : 'none';
+        /**
+         * ⚠️⚠️ وتُفرَّغ الخانةُ المخفيّةُ — لم تكن تُفرَّغ. فمن كتب مبلغَ سلفةٍ ثمّ
+         *   بدّل النوعَ إلى «إجازة يوم كامل» كان يُرسل المبلغَ معها (الخانةُ مخفيّةٌ
+         *   وقيمتُها باقية)، فتقرأ السكرتيرةُ إجازةً عليها 500 ريال ولا تعرف ما هي.
+         * ⚠️ والحرسُ مزدوج: هنا في الشاشة، وفي `submitEmployeeRequest` التي لا
+         *   تحمل حقلًا لا يطلبه نوعُ الطلب. وخانةٌ واحدةٌ تُنسى في أحدهما لا تكفي.
+         */
+        if (!wantsAmount) { const a = document.getElementById('advanceAmount'); if (a) a.value = ''; }
+        if (!wantsOrg) { const o = document.getElementById('targetOrg'); if (o) o.value = ''; }
     }
 
     // Secure Request Handler with PIN verification
+    /**
+     * طلبُ الموظّف (إجازة · عذرُ تأخير · سلفة · شهادة).
+     *
+     * ⚠️ كان هذا **الكتابةَ الوحيدةَ في الصفحة بلا حارسِ ضغطٍ مزدوج** — كلُّ
+     *   الكتاباتِ الأخرى محروسةٌ برايةٍ أو بتعطيلِ زرّ. فضغطتان متتاليتان على
+     *   شاشةِ لمسٍ كانتا تُنشئان طلبَين متطابقَين، والصفحةُ **لا تستطيع قراءةَ
+     *   الطلبات** بالقاعدة (بقصد) فلا سبيلَ لاكتشاف التكرار من هنا.
+     */
+    let isSubmittingRequest = false;
+
     window.submitEmployeeRequest = async function() {
+        if (isSubmittingRequest) return;
+        const btn = document.getElementById('btnSubmitRequest');
         const empId = document.getElementById('leaveEmployeeSelect').value;
         const type = document.getElementById('requestType').value;
         const date = document.getElementById('leaveDate').value;
         const reason = document.getElementById('leaveReason').value.trim();
         const pinInput = document.getElementById('requestPinInput').value.trim();
 
-        const advanceAmount = document.getElementById('advanceAmount').value;
+        const advanceRaw = String(document.getElementById('advanceAmount').value || '').trim();
         const targetOrg = document.getElementById('targetOrg').value.trim();
 
         if (!empId) {
@@ -1954,6 +1977,35 @@
             showStatus("Please enter your PIN code to authorize this request.", "error");
             return;
         }
+        /**
+         * ⚠️⚠️ خانةُ المبلغ كانت تُكتب **نصًّا خامًّا بلا أيِّ تحقّق**: سلفةٌ تُرسل
+         *   بـ`"0"` أو `"-500"` أو فارغةً تمامًا، ثمّ تُقرأ في اللوحة كأنها مبلغ.
+         *   (وطلبُ البيتي كاش في نفس الصفحة يتحقّق بـ`Number` — فاختلف بابان
+         *   لنفس المعنى في ملفٍّ واحد.)
+         */
+        let amount = null;
+        if (type === 'Salary Advance') {
+            const n = Number(advanceRaw);
+            if (advanceRaw === '' || !isFinite(n) || n <= 0) {
+                showStatus("How much do you need? Enter an amount greater than zero.", "error");
+                return;
+            }
+            amount = n;
+        }
+        // ⚠️ والجهةُ لازمةٌ لشهادةٍ مُوجَّهة: «إلى مَن» فراغًا تجعل السكرتيرةَ تسأل.
+        if ((type === 'Salary Certificate' || type === 'Employment Certificate') && !targetOrg) {
+            showStatus("Who is the certificate for? Write the bank or the office name.", "error");
+            return;
+        }
+        /**
+         * ⚠️⚠️ التاريخُ كان اختياريًّا و**الفراغُ يُقرأ اليومَ بصمت** — أي أنّ
+         *   «إجازةَ يومٍ كامل» بلا تاريخٍ تُسجَّل إجازةً **اليوم**. فصار لازمًا
+         *   لِما يحتاجه فعلًا، ويبقى اختياريًّا للشهادات.
+         */
+        if ((type === 'Full Day Leave' || type === 'Delay Excuse') && !date) {
+            showStatus("Which day is this for? Choose the date.", "error");
+            return;
+        }
 
         const lockout = checkPinLockout(empId);
         if (lockout.locked) {
@@ -1961,27 +2013,43 @@
             return;
         }
 
-        showStatus("Verifying PIN & submitting request...", "loading");
-
-        const isPinValid = await verifyPin(empId, pinInput);
-        recordPinAttempt(empId, isPinValid);
-        if (!isPinValid) {
-            showStatus("Incorrect PIN code! Request denied.", "error");
-            return;
-        }
-
-        const emp = employees.find(e => e.id === empId);
-        const empName = emp ? emp.name : empId;
-
+        isSubmittingRequest = true;
+        if (btn) btn.disabled = true;
+        // ⚠️ ولا تُقال «submitting» قبل فحصِ الرقم السرّيّ: تُعلن إرسالًا قد يُرفض.
+        showStatus("Checking your PIN...", "loading");
         try {
+            /**
+             * ⚠️⚠️⚠️ الانتظارُ لتسجيلِ الدخول المجهول — وكان غائبًا هنا وحدَه.
+             *   بلا هذا: تفشل قراءةُ `employee_pins` لسببِ شبكةٍ أو صلاحيّة،
+             *   و`verifyPin` تُعيد `false` في `catch`، فيُقال للموظّف **«الرقم
+             *   السرّيُّ خطأ»** وتُحسب عليه محاولةٌ فاشلةٌ في قائمة الحجب — فيُحجَب
+             *   موظّفٌ بريءٌ عن طلبه بسبب انقطاعِ شبكة. وبقيّةُ الكتابات تنتظره.
+             */
+            if (typeof authReady !== 'undefined' && authReady) await authReady;
+
+            const isPinValid = await verifyPin(empId, pinInput);
+            recordPinAttempt(empId, isPinValid);
+            if (!isPinValid) {
+                showStatus("Incorrect PIN code! Request denied.", "error");
+                return;
+            }
+
+            const emp = employees.find(e => e.id === empId);
+            const empName = emp ? emp.name : empId;
+
+            showStatus("Sending your request...", "loading");
             await addDoc(collection(db, "leave_requests"), {
                 employeeId: empId,
                 employeeName: empName,
                 type: type,
                 date: date || formatDateEnglish(new Date()),
                 reason: reason || '-',
-                amount: advanceAmount || null,
-                directedTo: targetOrg || null,
+                // ⚠️ رقمٌ أو `null` — ولا نصٌّ. ولا يُحمل مبلغٌ على نوعٍ لا يطلبه:
+                //   كتابةُ مبلغٍ ثمّ تغييرُ النوع كانت تُرسله مع «إجازة يوم كامل»
+                //   لأنّ `toggleRequestFields` تُخفي الخانةَ ولا تُفرّغها.
+                amount: amount,
+                directedTo: (type === 'Salary Certificate' || type === 'Employment Certificate')
+                    ? targetOrg : null,
                 status: 'Pending',
                 timestamp: serverTimestamp()
             });
@@ -1994,7 +2062,15 @@
             document.getElementById('targetOrg').value = "";
             document.getElementById('leaveDate').value = "";
         } catch (e) {
-            showStatus("Error submitting request. Please try again.", "error");
+            // ⚠️ كان الخطأُ يُبتلع تمامًا (لا كونسول ولا رسالةُ الخادم)، فلا يُعرف
+            //   السببُ أبدًا. والرقمُ السرّيُّ كان يبقى في الخانة على جهازٍ مشترك.
+            console.error("Error submitting employee request:", e);
+            showStatus("Error submitting request: " + ((e && e.message) || e), "error");
+            const p = document.getElementById('requestPinInput');
+            if (p) p.value = "";
+        } finally {
+            isSubmittingRequest = false;
+            if (btn) btn.disabled = false;
         }
     };
 
@@ -2406,10 +2482,21 @@
             if (!snap.exists() || !Array.isArray(snap.data().sections) || !snap.data().sections.length) {
                 bodyEl.innerHTML = `<p style="color:#6c757d;">No training content has been added yet for this department. Please check with management (لم تتم إضافة محتوى تدريبي لهذا القسم بعد).</p>`;
                 trainingState.contentUpdatedAt = null;
-                // Nothing to read, so there's nothing to gate — allow
-                // acknowledgment anyway so the flow isn't a dead end, but the
-                // acknowledgment will simply record "no content existed yet".
-                document.getElementById('trainAckBtn').disabled = false;
+                /**
+                 * 🔴🔴 كان الزرُّ يُفتَح هنا «كي لا يكون المسارُ طريقًا مسدودًا»،
+                 *   فيُنتج إثباتَ **«قرأتُ وفهمتُ» لدليلٍ لا وجودَ له**.
+                 *
+                 * وهذا أسوأُ من طريقٍ مسدود لسببَين:
+                 *   ١) إثباتاتُ التدريب **لا تُعدَّل ولا تُحذف بالقاعدة**
+                 *      (`update, delete: if false`) — فالسجلُّ الكاذبُ **دائمٌ ولا
+                 *      يستطيع المالكُ نفسُه إزالته**.
+                 *   ٢) وهو مستندٌ قد يُستعمل في مسألةٍ تأديبيّةٍ أو أمامَ جهةٍ
+                 *      رسميّة: «وقّع أنه قرأ» عن نصٍّ لم يُكتب بعد.
+                 * فالزرُّ يبقى مغلقًا، ويُقال للموظّف إنّ لا شيءَ ليقرأه — وهذا
+                 *   طريقٌ مسدودٌ **صادق**.
+                 */
+                const ackBtn = document.getElementById('trainAckBtn');
+                if (ackBtn) ackBtn.disabled = true;
                 return;
             }
             const data = snap.data();
@@ -2505,6 +2592,27 @@
             return;
         }
         const btn = document.getElementById('trainAckBtn');
+        /**
+         * ⚠️⚠️ ولا تُسجَّل شهادةٌ ثانيةٌ لنفس النصّ.
+         *
+         * كانت الشاشةُ تُظهر لافتةَ «سجّلتَ هذا سلفًا» **ولا تمنع**، فكلُّ دخولٍ
+         *   وتمريرٍ يُنشئ مستندًا جديدًا. والإثباتاتُ **لا تُحذف بالقاعدة**، فتتراكم
+         *   نسخٌ دائمةٌ لا يستطيع أحدٌ تنظيفَها، وتقريرُ «من قرأ» يصير غيرَ قابلٍ
+         *   للعدّ.
+         * ⚠️ والشرطُ على **نفسِ نسخةِ النصّ**: لو عدّل المالكُ الدليلَ تغيّر
+         *   `contentUpdatedAt` فتُفتح الشهادةُ من جديد — وهذا هو المطلوب.
+         */
+        if (trainingState.alreadyAcknowledged) {
+            showStatus("You have already confirmed this exact guide. There is nothing more to do.", "success");
+            btn.disabled = true;
+            return;
+        }
+        // ⚠️ ولا شهادةَ بلا نصّ — حرسٌ ثانٍ في مسار الكتابة نفسِه، فلا يكفي
+        //   تعطيلُ الزرّ (زرٌّ يُفتح من أدوات المتصفّح يكتب مستندًا لا يُحذف).
+        if (!trainingState.contentUpdatedAt && !trainingState.contentDocId) {
+            showStatus("There is no training content to confirm yet.", "error");
+            return;
+        }
         btn.disabled = true;
         try {
             await addDoc(collection(db, "training_acknowledgments"), {
@@ -2513,7 +2621,10 @@
                 restaurant: trainingState.restaurant,
                 department: trainingState.department,
                 contentUpdatedAt: trainingState.contentUpdatedAt,
-                acknowledgedAt: new Date().toISOString(),
+                // ⚠️ بتوقيت قطر لا بساعةِ الجهاز الخامّة: `timestamp` ختمُ خادمٍ،
+                //   وهذا يُقرأ بالعين. وساعةُ جهازٍ مضبوطةٌ خطأً كانت تجعل الاثنين
+                //   يتناقضان على نفس المستند (نفسُ درسِ نافذة الليل).
+                acknowledgedAt: `${formatDateEnglish(new Date())} ${formatTimeEnglish(new Date())}`,
                 timestamp: serverTimestamp()
             });
             showStatus(`Thank you, ${trainingState.empName}! Your acknowledgment for ${TRAINING_DEPARTMENT_LABELS[trainingState.department] || trainingState.department} has been recorded.`, "success");
@@ -3031,12 +3142,24 @@
 
     window.submitWarningRequest = async function() {
         const empId = document.getElementById('warnEmployeeSelect').value;
-        const days = Number(document.getElementById('warnDays').value) || 0;
+        const daysRaw = String(document.getElementById('warnDays').value || '').trim();
+        const days = Number(daysRaw);
         const reason = document.getElementById('warnReason').value.trim();
         const btn = document.getElementById('btnSubmitWarn');
 
         if (!empId) { showStatus("Please choose the employee.", "error"); return; }
         if (!reason) { showStatus("Please write the reason.", "error"); return; }
+        /**
+         * ⚠️⚠️ الخانةُ الفارغةُ كانت تنهار إلى **صفر** وتمرّ (`Number(...) || 0`)،
+         *   فيُرسل إنذارٌ بخصمِ صفرِ يومٍ بصمت. والمديرُ لا يدري: أراد خصمًا وكتب
+         *   في الخانة الخطأ أو نسيها، والسكرتيرةُ تستلم إنذارًا بلا خصم.
+         *   فصار الفراغُ يُرفض، و**الصفرُ المكتوبُ صريحًا مقبول** (إنذارٌ بلا خصم
+         *   قرارٌ مشروع).
+         */
+        if (daysRaw === '') {
+            showStatus("How many days to deduct? Type 0 if this warning has no deduction.", "error");
+            return;
+        }
         if (!Number.isInteger(days) || days < 0 || days > 31) { showStatus("Days to deduct must be between 0 and 31.", "error"); return; }
         if (!reportState.branch || !reportState.managerId) { showStatus("Please start again from the branch.", "error"); return; }
 

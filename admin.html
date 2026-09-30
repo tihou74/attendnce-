@@ -39,7 +39,7 @@
      404، أو كاشٌ تالف) بقيت اللوحةُ مقروءةً بألوانها الصحيحة بدل أن تُعرض
      شفّافةً بلا شيء. وهذه هشاشةٌ كانت موجودةً قبل الألوان ولم تكن ظاهرة.
      ===================================================================== -->
-<link rel="stylesheet" href="./brand/design-tokens.css?v=158">
+<link rel="stylesheet" href="./brand/design-tokens.css">
 <!-- PDF export (replaces the old broken @media print approach) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -18117,7 +18117,14 @@
         const cardFee = num(r.cardSales) * (Number(abayaRates.cardFeePercent) || 0) / 100;
         // العمولة تُعاد حسابها من العدد بالنسبة السارية، ولا تُقرأ من المستند
         // كما هي: لو غيّر المالك مبلغ العمولة لاحقًا وجب أن تتبعه التقارير.
-        const shPieces = num(r.shTotalQty);
+        // ⚠️⚠️ وبما أنّنا لا نثق بالمستند فلا نثق بإشارته أيضًا: عددُ قطعٍ سالبٌ
+        //   يُنتج **عمولةً سالبة**، والسالبةُ تُقلب المعادلتين أدناه رأسًا على عقب:
+        //   ‏‎-3 قطعة بسعر 200 من محصَّلٍ 500 تُعطي عمولة ‎-600، فيصير المستحقُّ
+        //   لشانتون 1100 — أكثرَ ممّا حصّلتْه أصلًا — ودخلُنا يهبط 600 بلا سبب.
+        //   خانتا الإدخال (num في صفحة البياعة وabEditVal هنا) ترفضان السالب
+        //   اليوم، لكن صفحةَ البياعة مجهولةُ الدخول فما تكتبه يكتبه حاملُ الرابط،
+        //   والسقفُ والأرضُ أدناه موجودان لهذا الغرض نفسه فلتكن الإشارة معهما.
+        const shPieces = Math.max(0, num(r.shTotalQty));
         const perPiece = Number(abayaRates.shantonPerPiece) || SHANTON_DEFAULT_PER_PIECE;
         const shCollected = num(r.shTotalSales);
         const commission = Math.min(shPieces * perPiece, shCollected);
@@ -18556,7 +18563,9 @@
                 }
             });
             // عبايات شانتون المبيعة تُخصم من مخزنها لا من مخزننا
-            sh.sold += Number(r.shTotalQty) || 0;
+            // ⚠️ والأرضُ عند صفر كما في العمولة: عددٌ سالبٌ هنا **يزيد** المتوفّر
+            //   وهمًا (المبيعُ يُخصم، فسالبُ المبيع يُضيف).
+            sh.sold += Math.max(0, Number(r.shTotalQty) || 0);
             // ⭐⭐ الأكياس: ما استُعمل في اليوم يُخصم كما يُخصم المبيع. وما استُقبل
             // يزيد عبر الحركات أدناه («وصلت من مورّد» / «من محل آخر») — فالآلية
             // نفسها بلا استثناء. وهذا نصُّ طلب المالك: تنقص بالاستعمال وتزيد
@@ -20883,15 +20892,56 @@
     let salaryPayouts = {};   // { 'YYYY-MM': { paid, paidOn, amount, paidBy } }
     let cashMovements = [];   // تحويلات: كاش←بنك، ودليفري←بنك (شيكات)
 
-    function dateAtMidnight(iso) {
-        const [y, m, d] = String(iso).split('-').map(Number);
-        return new Date(y, m - 1, d, 0, 0, 0, 0);
+    /**
+     * ⭐⭐⭐⭐ لحظةٌ حقيقيّةٌ من تاريخٍ وساعةٍ **بتوقيت قطر** — لا بتوقيت الجهاز.
+     *
+     * ⚠️⚠️⚠️ كان كشفُ الحركة كلُّه يُبنى بـ`new Date(y, m-1, d, h)`، وهذه تُفسَّر
+     *   بتوقيت **الجهاز الذي يعرض الشاشة**. فمبيعاتُ يومٍ تدخل الحساب «اليوم
+     *   التالي السابعةَ مساءً» — سابعةَ مَن؟ على جهازٍ بتوقيت UTC صارت السابعةُ
+     *   مساءً UTC أي العاشرةَ مساءً في قطر، فمن السابعة إلى العاشرة يرى المالكُ
+     *   مبيعاتَ أمسٍ في خانة «سيدخل الليلة» وهي قد دخلت فعلًا. وعلى جهازٍ بتوقيت
+     *   دبي تدخل ساعةً قبل وقتها.
+     *
+     * ⚠️ والمبالغُ لا تتغيّر بهذا، إنّما يتغيّر **أيٌّ منها دخل وأيٌّ لم يدخل** —
+     *   أي الرصيدُ المعروضُ الآن، وهو الرقمُ الذي يقرِّر عليه المالكُ أيدفع أم
+     *   ينتظر. ونفسُ العطل أُصلح في `nightMinutesBetween` (ساعاتُ الليل كانت
+     *   تُحسب بساعة الجهاز فتُدفع 20.28 بدل 19.44).
+     *
+     * ⚠️ وهذا الملفُّ نفسُه يحمل شرحًا مطوّلًا للقاعدة عند `qatarParts`: «من يقرأ
+     *   تاريخًا كتبه غيرُه يجب أن يستعمل نفس تعريف اليوم». وكانت القاعدةُ مطبَّقةً
+     *   على حضور المدراء وغائبةً عن المال.
+     *
+     * قطر UTC+3 ثابتةٌ بلا توقيتٍ صيفيّ، فالحسابُ طرحُ ثلاثِ ساعاتٍ من UTC.
+     * و`Date.UTC` تتولّى تجاوزَ الشهر والسنة وحدَها (يومُ 32 يصير الأوّل، وساعةُ
+     * ‏‎-3 تصير التاسعةَ من مساء ما قبله) فلا يُحسب ذلك يدويًّا.
+     */
+    function qatarAt(y, m, d, hour) {
+        return new Date(Date.UTC(y, m - 1, d, (Number(hour) || 0) - 3, 0, 0, 0));
+    }
+    /**
+     * آخرُ يومٍ في شهر — حقيقةُ تقويمٍ لا لحظةُ زمن، فتُحسب بـUTC بلا أثرٍ للجهاز.
+     *
+     * ⚠️⚠️ الاسمُ `monthLastDay` لا `daysInMonth` بقصد: في هذا الملفِّ **دالّةٌ
+     *   باسم `daysInMonth` أصلًا** (سطر 5841) توقّعُ نصًّا `YYYY-MM` لا رقمين،
+     *   وهي في نفس نطاق هذا السكربت. فتسميةُ هذه بذلك الاسم تُعلنها مرّتين في
+     *   نطاقٍ واحد، والإعلانُ الأخيرُ يفوز — فكلُّ نداءٍ للأولى بنصٍّ يُعيد NaN
+     *   بلا خطأٍ ظاهر. (الأولى بلا نداءٍ اليوم — بقيّةُ صيغةِ الراتب قبل قاعدة
+     *   ÷30، والتعليقُ عند سطر 6088 يشرح ذلك — فلم يُكسر شيء، ولكنّ فخًّا كهذا
+     *   لا يُترك منصوبًا.)
+     */
+    function monthLastDay(y, m) {
+        return new Date(Date.UTC(y, m, 0)).getUTCDate();
     }
 
-    /** لحظة دخول مبيعات يوم معيّن إلى الحساب: اليوم التالي الساعة 7 مساءً. */
+    function dateAtMidnight(iso) {
+        const [y, m, d] = String(iso).split('-').map(Number);
+        return qatarAt(y, m, d, 0);
+    }
+
+    /** لحظة دخول مبيعات يوم معيّن إلى الحساب: اليوم التالي الساعة 7 مساءً بتوقيت قطر. */
     function salesSettlementAt(dateISO) {
         const [y, m, d] = String(dateISO).split('-').map(Number);
-        return new Date(y, m - 1, d + SALES_SETTLEMENT_OFFSET_DAYS, SALES_SETTLEMENT_HOUR, 0, 0, 0);
+        return qatarAt(y, m, d + SALES_SETTLEMENT_OFFSET_DAYS, SALES_SETTLEMENT_HOUR);
     }
 
     /**
@@ -20905,9 +20955,9 @@
     function paymentDueAt(p) {
         if (p.paymentDate) return dateAtMidnight(p.paymentDate);
         const [y, m] = String(p.month).split('-').map(Number);
-        const lastDay = new Date(y, m, 0).getDate();
-        if (p.dayOfMonth) return new Date(y, m - 1, Math.min(Number(p.dayOfMonth), lastDay), 0, 0, 0, 0);
-        return new Date(y, m - 1, lastDay, 0, 0, 0, 0);
+        const lastDay = monthLastDay(y, m);
+        if (p.dayOfMonth) return qatarAt(y, m, Math.min(Number(p.dayOfMonth), lastDay), 0);
+        return qatarAt(y, m, lastDay, 0);
     }
 
     /**
@@ -20953,8 +21003,15 @@
         // المستقبل عن قصد — لأن سؤال المالك عمليّ: إن فتح الشاشة الساعة 3 عصرًا
         // فماذا سيدخل الساعة 7 مساءً؟ خلط مبيعات الليلة مع إيجار يوم 23 يجعل
         // الرقم عديم الفائدة لهذا السؤال.
-        const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-        const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        // ⚠️ «اليوم» هنا يومُ قطر لا يومُ الجهاز: كلُّ اللحظات أعلاه صارت تُبنى
+        //   بتوقيت قطر، فلو بقيت نافذةُ اليوم بساعة الجهاز لقارنّا مسطرتين
+        //   مختلفتين — وبين منتصف الليل والثالثة صباحًا بتوقيت قطر يكون جهازٌ على
+        //   UTC في اليومِ السابق أصلًا، فتخلو خانةُ «سيدخل الليلة» أو تمتلئ بيومٍ
+        //   ليس اليوم.
+        const nowP = qatarParts(now);
+        const dayStart = qatarAt(Number(nowP.year), Number(nowP.month), Number(nowP.day), 0);
+        const dayEnd = new Date(
+            qatarAt(Number(nowP.year), Number(nowP.month), Number(nowP.day) + 1, 0).getTime() - 1);
         const arrivingToday = { bank: 0, cash: 0, delivery: 0 };
         let arrivingTodayCount = 0;
 
@@ -21713,7 +21770,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v224';
+        const APP_BUILD = 'v225';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
@@ -27801,41 +27858,73 @@
 
         statusEl.innerText = "Saving...";
         statusEl.style.color = "var(--warning)";
+        /**
+         * ⭐⭐⭐⭐⭐ أربعُ كتاباتٍ، وترتيبُها مقصودٌ، ومعها تراجعٌ عند الفشل.
+         *
+         * 🔴🔴🔴 كان الترتيبُ: بدلٌ ← بدلٌ ← خصمٌ ← **سجلُّ الإجازة آخرًا**، وبلا
+         *   تراجعٍ إطلاقًا. فلو أخفقت الكتابةُ الرابعةُ (شبكةٌ · صلاحيّةٌ · حدُّ
+         *   مستند) لبقي:
+         *     • 1,500 ر.ق بدلاتٍ **مدفوعةً**،
+         *     • وخصمَ 21 يومًا **قائمًا**،
+         *     • **وبلا سجلِّ إجازة** — أي أنّ `getLeaveCoveredDateSet` لا تُغطّي
+         *       الأيّامَ، فيرى محرّكُ الغياب عشرين يومًا غيرَ مشتغلةٍ ولا مغطّاة
+         *       **فيخصمها غيابًا كذلك**. فيُخصم الرجلُ **مرّتَين** عن نفس الإجازة.
+         *   والرسالةُ كانت «Error: …» وحدَها، فيظنُّ القارئُ أنّ شيئًا لم يُكتب.
+         *
+         * ⚠️ فصار **سجلُّ الإجازة أوّلًا**: لو أخفق ما بعده فالأيّامُ مغطّاةٌ على
+         *   الأقلّ ولا غيابَ يُخصم — والخللُ يصير «بدلٌ لم يُدفَع» وهو نقصٌ ظاهرٌ
+         *   يُطالب به الموظّف، لا خصمٌ مزدوجٌ صامتٌ لا يكتشفه أحد.
+         * ⚠️ ثمّ تُربط المعرّفاتُ بـ`updateDoc` أخيرًا، فيبقى الحذفُ قادرًا على
+         *   التنظيف.
+         * ⚠️⚠️ **ويُحاول التراجعُ فعلًا** بحذف ما أُنشئ بترتيبٍ معاكس. وما يتعذّر
+         *   حذفُه **يُسمّى بمجموعته ومعرّفه على الشاشة** — فلا يُترك المالكُ يظنّ
+         *   أنّ شيئًا لم يحدث وفي القاعدة بدلٌ مدفوع.
+         */
+        const created = [];
         try {
             const emp = allEmployees.find(e => e.id === empId);
             const totalSalary = emp ? (Number(emp.salary) || 0) : 0;
             const dailyRate = totalSalary / PAYROLL_DAYS_PER_MONTH;
             const deductionAmount = days * dailyRate;
 
-            // 1) Leave allowance payout (750 QAR)
-            const allowanceRef = await addDoc(collection(db, "allowance_payments"), {
-                employeeId: empId, date: startDate, amount: ANNUAL_LEAVE_ALLOWANCE_QAR,
-                kind: "Annual Leave Allowance", createdAt: serverTimestamp()
-            });
-            // 2) Air-ticket allowance payout (750 QAR)
-            const ticketRef = await addDoc(collection(db, "allowance_payments"), {
-                employeeId: empId, date: startDate, amount: ANNUAL_TICKET_ALLOWANCE_QAR,
-                kind: "Annual Air-Ticket Allowance", createdAt: serverTimestamp()
-            });
-            // 3) Deduction for the days away, dated on the leave start date so
-            // it only ever hits the payroll month the leave starts in.
-            const deductionRef = await addDoc(collection(db, "deductions"), {
-                employeeId: empId, date: startDate, type: "days", days, amount: 0,
-                note: `Annual leave (${days} day(s), ${startDate} to ${returnDate || '-'})`,
-                createdAt: serverTimestamp()
-            });
-
-            await addDoc(collection(db, "annual_leaves"), {
+            // 1) سجلُّ الإجازة أوّلًا — بلا معرّفاتٍ مرتبطةٍ بعد.
+            const leaveRef = await addDoc(collection(db, "annual_leaves"), {
                 employeeId: empId,
                 employeeName: emp ? emp.name : "",
                 startDate, returnDate, days,
                 leaveAllowance: ANNUAL_LEAVE_ALLOWANCE_QAR,
                 ticketAllowance: ANNUAL_TICKET_ALLOWANCE_QAR,
                 deductionAmount,
+                linkedAllowanceId: "", linkedTicketAllowanceId: "", linkedDeductionId: "",
+                createdAt: serverTimestamp()
+            });
+            created.push(["annual_leaves", leaveRef.id]);
+
+            // 2) بدلُ الإجازة (750)
+            const allowanceRef = await addDoc(collection(db, "allowance_payments"), {
+                employeeId: empId, date: startDate, amount: ANNUAL_LEAVE_ALLOWANCE_QAR,
+                kind: "Annual Leave Allowance", createdAt: serverTimestamp()
+            });
+            created.push(["allowance_payments", allowanceRef.id]);
+            // 3) بدلُ التذكرة (750)
+            const ticketRef = await addDoc(collection(db, "allowance_payments"), {
+                employeeId: empId, date: startDate, amount: ANNUAL_TICKET_ALLOWANCE_QAR,
+                kind: "Annual Air-Ticket Allowance", createdAt: serverTimestamp()
+            });
+            created.push(["allowance_payments", ticketRef.id]);
+            // 4) خصمُ أيّام الغياب، مؤرَّخٌ ببداية الإجازة فلا يُصيب إلّا شهرَها.
+            const deductionRef = await addDoc(collection(db, "deductions"), {
+                employeeId: empId, date: startDate, type: "days", days, amount: 0,
+                note: `Annual leave (${days} day(s), ${startDate} to ${returnDate || '-'})`,
+                createdAt: serverTimestamp()
+            });
+            created.push(["deductions", deductionRef.id]);
+
+            // 5) الربطُ — وبه يصير الحذفُ قادرًا على تنظيف الثلاثة.
+            await updateDoc(doc(db, "annual_leaves", leaveRef.id), {
                 linkedAllowanceId: allowanceRef.id,
                 linkedTicketAllowanceId: ticketRef.id,
-                linkedDeductionId: deductionRef.id,
-                createdAt: serverTimestamp()
+                linkedDeductionId: deductionRef.id
             });
 
             await loadDeductions();
@@ -27846,15 +27935,44 @@
             statusEl.style.color = "var(--success)";
             window.closeLeaveModal();
         } catch (error) {
-            statusEl.innerText = "Error: " + error.message;
+            // ⚠️ تراجعٌ بترتيبٍ معاكس، وما يتعذّر يُسمّى صريحًا.
+            const stuck = [];
+            for (const [coll, id] of created.slice().reverse()) {
+                try { await deleteDoc(doc(db, coll, id)); }
+                catch (e) { stuck.push(`${coll}/${id}`); }
+            }
+            await loadDeductions();
+            await loadAllowancePayments();
+            await loadAnnualLeaves();
+            if (stuck.length) {
+                statusEl.innerText = "PART OF IT WAS SAVED AND COULD NOT BE UNDONE: " + stuck.join(', ')
+                    + ". Original error: " + error.message
+                    + ". Tell the office these exact ids — they must be removed by hand before trying again.";
+                logAudit("Annual Leave FAILED — leftovers", `${empId}: ${stuck.join(', ')} — ${error.message}`);
+            } else {
+                statusEl.innerText = "Nothing was saved (everything was rolled back). Error: " + error.message;
+            }
             statusEl.style.color = "var(--danger)";
         }
     };
 
+    /**
+     * حذفُ إجازةٍ — ومعها بدلاها وخصمُها.
+     *
+     * 🔴 كان فشلُ أيِّ حذفٍ مرتبطٍ يُكتب في الكونسول **ويُكمل**، ثمّ يُحذف سجلُّ
+     *   الإجازة على أيِّ حال. فيبقى بدلُ 750 مدفوعًا **بلا سجلٍّ يشرحه**، ولا
+     *   سبيلَ لاكتشافه إلّا بمراجعةِ البدلات يدويًّا — والشاشةُ تقول «حُذف».
+     *   ويوم تُمنح الإجازةُ التاليةُ يُدفَع البدلُ **مرّةً ثانية**.
+     *
+     * ⚠️ فصار سجلُّ الإجازة يُحذف **آخرًا**: إن تعذّر حذفُ مرتبطٍ بقي السجلُّ
+     *   ويُعاد المحاولةُ، ولا يصير البدلُ يتيمًا مجهولَ السبب.
+     * ⚠️ وما يتعذّر حذفُه **يُسمّى بمجموعته ومعرّفه** ولا يُكتفى بالكونسول.
+     */
     window.deleteAnnualLeave = async function(leaveId) {
         const lv = allAnnualLeaves.find(x => x.id === leaveId);
         if (!confirm("Delete this annual leave record? This will also remove its linked leave allowance, ticket allowance, and deduction.")) return;
         try {
+            const stuck = [];
             if (lv) {
                 const cleanupIds = [
                     ["allowance_payments", lv.linkedAllowanceId],
@@ -27863,8 +27981,23 @@
                 ];
                 for (const [coll, id] of cleanupIds) {
                     if (!id) continue;
-                    try { await deleteDoc(doc(db, coll, id)); } catch (e) { console.error(`Error deleting linked ${coll} doc:`, e); }
+                    try { await deleteDoc(doc(db, coll, id)); }
+                    catch (e) { console.error(`Error deleting linked ${coll} doc:`, e); stuck.push(`${coll}/${id}`); }
                 }
+            }
+            /**
+             * ⚠️⚠️ ولا يُحذف سجلُّ الإجازة إن بقي مرتبطٌ عالقًا: حذفُه يقطع الخيطَ
+             *   الوحيدَ الذي يُعرف به أنّ ذلك البدلَ يتبع هذه الإجازة.
+             */
+            if (stuck.length) {
+                await loadDeductions();
+                await loadAllowancePayments();
+                await loadAnnualLeaves();
+                alert('The leave record was NOT deleted, on purpose.\n\n'
+                    + 'These linked records could not be removed:\n  ' + stuck.join('\n  ')
+                    + '\n\nThe leave record is kept so the link to them is not lost. '
+                    + 'Try again, or remove those records first.');
+                return;
             }
             await deleteDoc(doc(db, "annual_leaves", leaveId));
             logAudit("Annual Leave Deleted", `${lv ? (lv.employeeName || lv.employeeId) : leaveId} (id ${leaveId})`);
@@ -27926,7 +28059,34 @@
         // العاملة، المورّد). مستندُ الكتالوج يحمل الكوستَ النهائيَّ وحدَه ولا
         // يحمل منها شيئًا، فنسيانُ هذه المجموعتين في النسخة الاحتياطية يعني
         // فقدانَ **تاريخِ شرائنا كلِّه** بلا أن يُعاد بناؤه من أيّ شيء آخر.
-        "abaya_arrivals", "abaya_arrival_images"
+        "abaya_arrivals", "abaya_arrival_images",
+        /**
+         * 🔴🔴🔴 ونسيانُ السطر وقع **مرّةً ثالثةً** — وأثقلَ من الأولى والثانية.
+         *
+         * هذه سبعُ مجموعاتٍ لها قواعدُها في `firestore.rules` ولم تكن في النسخة
+         *   الاحتياطية إطلاقًا. أي أنّ استعادةً كاملةً كانت تُرجع كلَّ شيءٍ
+         *   **إلّا مبيعاتِ العبايات نفسَها**:
+         *
+         *   • `abaya_invoices`   — **كلُّ فاتورةِ بيعٍ**. أرقامُها ومبالغُها
+         *       وطرقُ دفعِها وزبوناتُها وأسطرُها. لا تُعاد من شيء.
+         *   • `abaya_shifts`     — **كلُّ ورديةِ صندوقٍ وتقريرِ Z مجمَّد**. وهي
+         *       السجلُّ الذي يُطابَق به الدرجُ، ومُجمَّدٌ بقصدٍ فلا يُحسب ثانيةً.
+         *   • `abaya_customers`  — دفترُ الأسماء والأرقام.
+         *   • `abaya_intake`     — البضاعةُ كما تُدخلها البياعة.
+         *   • `abaya_intake_images` — ⚠️ تحمل **الصورةَ نفسَها**، فلا نسخةَ أخرى.
+         *   • `abaya_shelf_tasks`— مهامُّ الرفوف وحلقةُ فلوريندا.
+         *   • `admin_users`      — قديمةٌ ومقفلة، وتُنسخ لأنّ نسخَها لا يُكلّف.
+         *
+         * ⚠️ والتعليقُ أعلاه يقول بنفسه إنّ هذا النسيانَ «وقع فعلًا مرّتين» —
+         *   ووقع ثالثةً لأنّ كلَّ مجموعةٍ جديدةٍ تُبنى في مكانٍ آخرَ من الملفّ،
+         *   وهذه القائمةُ بعيدةٌ عنها فلا يراها من يُضيف.
+         * ✅ **والحرسُ الآن فحصٌ لا تذكُّر**: `_test_audit.js` يقرأ كلَّ
+         *   `match /x/{...}` من القواعد ويُسقط الفحصَ إن لم تكن في هذه القائمة.
+         *   فأيُّ مجموعةٍ تُضاف مستقبلًا بلا نسخةٍ احتياطيّةٍ تُوقف الفحص.
+         */
+        "abaya_invoices", "abaya_shifts", "abaya_customers",
+        "abaya_intake", "abaya_intake_images", "abaya_shelf_tasks",
+        "admin_users"
     ];
     // =====================================================================
     // تعيين المدراء بضغطة

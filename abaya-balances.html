@@ -1981,7 +1981,10 @@
         const num = (v) => Number(v) || 0;
         const ownSales = num(r.totalSales);
         const cardFee = num(r.cardSales) * (Number(abayaRates.cardFeePercent) || 0) / 100;
-        const shPieces = num(r.shTotalQty);
+        // ⚠️⚠️ الأرضُ عند صفر مقصودة، وهي نفسُها في admin.html حرفًا بحرف: عددُ
+        //   قطعٍ سالبٌ يُنتج عمولةً سالبة، فيصير المستحقُّ لشانتون أكثرَ ممّا
+        //   حصّلتْه ودخلُنا يهبط. (الشرحُ المفصّل عند نظيرتها في اللوحة.)
+        const shPieces = Math.max(0, num(r.shTotalQty));
         const perPiece = Number(abayaRates.shantonPerPiece) || SHANTON_DEFAULT_PER_PIECE;
         const shCollected = num(r.shTotalSales);
         const commission = Math.min(shPieces * perPiece, shCollected);
@@ -2047,7 +2050,8 @@
                     out[orderKey].sold += q;
                 }
             });
-            sh.sold += Number(r.shTotalQty) || 0;
+            // ⚠️ الأرضُ عند صفر: عددٌ سالبٌ هنا يزيد المتوفّر وهمًا.
+            sh.sold += Math.max(0, Number(r.shTotalQty) || 0);
             // ⭐⭐ الأكياس: ما استُعمل في اليوم يُخصم كما يُخصم المبيع. وما استُقبل
             // يزيد عبر الحركات أدناه («وصلت من مورّد» / «من محل آخر») — فالآلية
             // نفسها بلا استثناء. وهذا نصُّ طلب المالك: تنقص بالاستعمال وتزيد
