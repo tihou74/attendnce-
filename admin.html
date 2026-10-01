@@ -1154,6 +1154,29 @@
     .brand-logos { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; justify-content: center; background: var(--surface); padding: 14px 20px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 24px; box-shadow: var(--shadow-sm); }
     .brand-logos img { height: 46px; object-fit: contain; }
     .brand-logos img.main-logo { height: 58px; }
+
+    /* ============ أقسامٌ مطويّةٌ تُفتح بالضغط ============
+       ⚠️ بطلب المالك: «ومرتَّب، وكل شيء مخفي لما تضغط يظهر». والرقمُ المهمُّ يبقى
+       في العنوان وهي مطويّة — شاشةٌ مطويّةٌ بلا أرقامٍ تُقرأ شاشةً فارغة. */
+    details.fold { margin: 0 0 18px; }
+    details.fold > summary {
+        cursor: pointer; list-style: none; padding: 14px 18px;
+        background: var(--surface-2); border: 1px solid var(--border);
+        border-radius: var(--radius-sm); font-weight: 800; font-size: 15px;
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    details.fold > summary::-webkit-details-marker { display: none; }
+    details.fold > summary:hover { border-color: var(--accent); }
+    details.fold > summary::after { content: '\25BC'; font-size: 11px; color: var(--text-dim); }
+    details.fold[open] > summary::after { content: '\25B2'; }
+    details.fold > summary .foldsum {
+        font-weight: 700; font-size: 13px; color: var(--text-dim);
+        margin-inline-start: auto; text-align: end;
+    }
+    details.fold[open] > summary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+    details.fold > .foldbody { border: 1px solid var(--border); border-top: 0;
+        border-radius: 0 0 var(--radius-sm) var(--radius-sm); padding: 4px 0 0; }
+    details.fold > .foldbody > .card { border: 0; margin: 0; box-shadow: none; }
 </style>
 </head>
 <body>
@@ -1433,6 +1456,10 @@
             <div class="rail-group" data-group="abaya">Al Sheikha Style</div>
             <button class="nav-tab-btn" data-tab="tab-abaya" data-biz="abaya" data-group="abaya"><span class="ic-slot" data-icon="fileText"></span><span class="tab-label">Abaya &mdash; Daily</span></button>
             <button class="nav-tab-btn" data-tab="tab-abaya-month" data-biz="abaya" data-group="abaya"><span class="ic-slot" data-icon="dollar"></span><span class="tab-label">Abaya &mdash; Monthly</span></button>
+            <!-- ⚠️ تبويبٌ بروحه بطلب المالك: «لماذا الستوك مخلوط مع عباية
+                 مونتلي؟ يجب أن يكون الستوك في نافذة مفصول». وموضعُه بعد الشهريّ
+                 وقبل الكتالوج: المخزونُ أقربُ إلى الكتالوج منه إلى المال. -->
+            <button class="nav-tab-btn" data-tab="tab-abaya-stock" data-biz="abaya" data-group="abaya"><span class="ic-slot" data-icon="database"></span><span class="tab-label">Abaya &mdash; Stock</span></button>
             <button class="nav-tab-btn" data-tab="tab-abaya-catalog" data-biz="abaya" data-group="abaya"><span class="ic-slot" data-icon="inbox"></span><span class="tab-label">Abaya &mdash; Catalogue</span></button>
             <!-- ⭐⭐⭐ «بضاعة جديدة وصلت» — بعد الكتالوج عن قصد: الوصولُ مرحلةٌ
                  **قبل** الكتالوج، لكنّ الكتالوجَ هو ما يُقرأ كلَّ يوم. -->
@@ -2755,56 +2782,6 @@
         </div>
 
         <!-- ---- الستوك ---- -->
-        <div class="card">
-            <h3><span data-icon="database"></span> Stock right now <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">الموجود في المحلات الآن</span></h3>
-            <p class="card-sub">
-                Opening count <b>plus</b> everything received <b>minus</b> everything sold and sent out.
-                Enter the opening count once, below, and this keeps itself up to date from the daily reports.
-            </p>
-            <!-- ⚠️ جدولان لسؤالين مختلفين، ولا يُدمجان:
-                 الأول «كم متوفر الآن» صنفًا صنفًا — وهو ما تريده لتعرف ماذا تُرسل.
-                 الثاني «كيف تحرّك» — وهو للمراجعة وحدها، ومنه تُكشف تحويلاتٌ
-                 لا تتطابق بين محلّين، فلا يُحذف من هذه اللوحة.
-                 ⚠️ ترويسة الأول تُبنى في الترميز من ABAYA_SHOPS. -->
-            <div class="table-container" style="margin-bottom: 20px;">
-                <table>
-                    <thead><tr id="abAvailHead"></tr></thead>
-                    <tbody id="abAvailBody"></tbody>
-                    <tfoot id="abAvailFoot"></tfoot>
-                </table>
-            </div>
-            <p class="card-sub" style="margin: 0 0 8px; font-weight: 700; color: var(--text);">
-                How the stock moved <span dir="rtl" style="font-weight:400; color:var(--text-dim);">&mdash; للمراجعة</span>
-            </p>
-            <div class="table-container">
-                <table>
-                    <thead><tr><th>Shop</th><th class="money-col">Opening</th><th class="money-col">Received</th><th class="money-col">Sold</th><th class="money-col">Sent out</th><th class="money-col">In stock now</th></tr></thead>
-                    <tbody id="abStockBody"></tbody>
-                    <tfoot id="abStockFoot"></tfoot>
-                </table>
-            </div>
-            <p class="card-sub" style="margin: 12px 0 0;" id="abStockNote"></p>
-        </div>
-
-        <!-- مخزن شانتون: مستقل تمامًا لأن البضاعة بضاعتها -->
-        <div class="card" style="border-left: 4px solid var(--warning);">
-            <h3><span data-icon="database"></span> Shanton's stock <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">مخزن شانتون</span></h3>
-            <p class="card-sub">
-                Her abayas held in your shops. <b>Not your property</b> and never part of your stock value.
-                It grows when <b>Mrs Fatima sends a shipment marked SHANTON</b> to that shop, and shrinks when one of her
-                abayas is sold, is returned to her, or moves to another shop. Shops no longer type
-                &ldquo;received from her&rdquo; by hand &mdash; the shipment records it, so a piece cannot be counted twice.
-            </p>
-            <div class="table-container">
-                <table>
-                    <thead><tr><th>Shop</th><th class="money-col">Opening</th><th class="money-col">Received</th><th class="money-col">Sold</th><th class="money-col">Returned / sent</th><th class="money-col">Held now</th></tr></thead>
-                    <tbody id="abShStockBody"></tbody>
-                    <tfoot id="abShStockFoot"></tfoot>
-                </table>
-            </div>
-            <p class="card-sub" style="margin: 12px 0 0;" id="abShStockNote"></p>
-        </div>
-
         <!-- ==============================================================
              ⭐⭐⭐⭐⭐ حسابُ شانتون — «كم لها عندنا، وكم دفعنا، وكم بقي»
              --------------------------------------------------------------
@@ -2907,28 +2884,6 @@
             <p class="card-sub" style="margin: 12px 0 0;" id="abShAcctNote"></p>
         </div>
 
-        <div class="card money-only">
-            <h3><span data-icon="edit"></span> Opening stock count <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">الجرد الافتتاحي</span></h3>
-            <p class="card-sub">
-                Count what is in each shop today, type it here with today's date, and press Save. Everything after that
-                date is added and subtracted automatically from the daily reports. You only do this once.
-            </p>
-            <div class="controls" style="align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-bottom: 14px;">
-                <div style="width: 190px;"><label for="abOpeningDate">Counted on</label><input type="date" id="abOpeningDate"></div>
-                <span id="abOpeningStatus" style="font-weight: 600; font-size: 13px;"></span>
-            </div>
-            <div class="table-container">
-                <table>
-                    <thead><tr><th>Shop</th><th id="abOpeningHeads"></th></tr></thead>
-                    <tbody id="abOpeningBody"></tbody>
-                </table>
-            </div>
-            <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
-                <button class="btn-success" onclick="saveAbayaOpening()"><span data-icon="save"></span> Save opening count</button>
-            </div>
-        </div>
-
-        <!-- ---- البياعات ---- -->
         <div class="card">
             <h3><span data-icon="users"></span> Saleswomen <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">البياعات</span></h3>
             <p class="card-sub">
@@ -3043,6 +2998,127 @@
          بالصنف (شانتون، دريس…) ويغذّي المال، وهذا يعدّ بالقطعة ولا يغذّي
          مالًا إطلاقًا. الاثنان صحيحان معًا لأنهما يجيبان سؤالين مختلفين.
          ================================================================== -->
+    <!-- ==================================================================
+         العبايات — المخزون، في نافذةٍ بروحه
+         ------------------------------------------------------------------
+         ⚠️⚠️ بطلب المالك: «لماذا الستوك مخلوط مع عباية مونتلي؟ يجب أن يكون
+           الستوك في نافذة مفصول، ومرتَّب، وكل شيء مخفي لما تضغط يظهر. الآن لم
+           أفهم شيئًا».
+         ⚠️ وبطاقةُ **حساب** شانتون بقيت في الشهريّ: هي مالٌ لا مخزون، وجمعُها
+           هنا يُعيد الخلطَ بوجهٍ آخر.
+         ⚠️ والأقسامُ مطويّةٌ، ورقمُها المهمُّ في عنوانها — فشاشةٌ مطويّةٌ بلا
+           أرقامٍ تُقرأ شاشةً فارغة، وهو نفسُ ما شكا منه.
+         ================================================================== -->
+    <div id="tab-abaya-stock" class="tab-content">
+        <div class="filter-section">
+            <h3><span data-icon="database"></span> Al Sheikha Style &mdash; Stock
+                <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">المخزون</span></h3>
+            <p class="card-sub" style="margin: 0 0 12px;">
+                How many pieces each shop is holding, by type. <b>Press a heading to open it.</b>
+                This counts what Mrs Fatima sent to each shop, so it agrees with the catalogue.
+            </p>
+            <div class="controls">
+                <button class="btn-ghost" onclick="loadAbayaData(); loadAbayaArrivals(true);"><span data-icon="refresh"></span> Refresh</button>
+            </div>
+        </div>
+
+        <details class="fold">
+            <summary><span><span data-icon="database"></span> Stock right now
+                <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">المخزون الآن</span></span>
+                <span class="foldsum" id="abStockSum">&mdash;</span></summary>
+            <div class="foldbody">
+        <div class="card">
+            <h3><span data-icon="database"></span> Stock right now <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">الموجود في المحلات الآن</span></h3>
+            <p class="card-sub">
+                Opening count <b>plus</b> everything received <b>minus</b> everything sold and sent out.
+                Enter the opening count once, below, and this keeps itself up to date from the daily reports.
+            </p>
+            <!-- ⚠️ جدولان لسؤالين مختلفين، ولا يُدمجان:
+                 الأول «كم متوفر الآن» صنفًا صنفًا — وهو ما تريده لتعرف ماذا تُرسل.
+                 الثاني «كيف تحرّك» — وهو للمراجعة وحدها، ومنه تُكشف تحويلاتٌ
+                 لا تتطابق بين محلّين، فلا يُحذف من هذه اللوحة.
+                 ⚠️ ترويسة الأول تُبنى في الترميز من ABAYA_SHOPS. -->
+            <div class="table-container" style="margin-bottom: 20px;">
+                <table>
+                    <thead><tr id="abAvailHead"></tr></thead>
+                    <tbody id="abAvailBody"></tbody>
+                    <tfoot id="abAvailFoot"></tfoot>
+                </table>
+            </div>
+            <p class="card-sub" style="margin: 0 0 8px; font-weight: 700; color: var(--text);">
+                How the stock moved <span dir="rtl" style="font-weight:400; color:var(--text-dim);">&mdash; للمراجعة</span>
+            </p>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Shop</th><th class="money-col">Opening</th><th class="money-col">Received</th><th class="money-col">Sold</th><th class="money-col">Sent out</th><th class="money-col">In stock now</th></tr></thead>
+                    <tbody id="abStockBody"></tbody>
+                    <tfoot id="abStockFoot"></tfoot>
+                </table>
+            </div>
+            <p class="card-sub" style="margin: 12px 0 0;" id="abStockNote"></p>
+        </div>
+
+        <!-- مخزن شانتون: مستقل تمامًا لأن البضاعة بضاعتها -->
+            </div>
+        </details>
+
+        <details class="fold">
+            <summary><span><span data-icon="database"></span> Shanton's stock &mdash; her goods
+                <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">مخزن شانتون</span></span>
+                <span class="foldsum" id="abShStockSum">&mdash;</span></summary>
+            <div class="foldbody">
+        <div class="card" style="border-left: 4px solid var(--warning);">
+            <h3><span data-icon="database"></span> Shanton's stock <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">مخزن شانتون</span></h3>
+            <p class="card-sub">
+                Her abayas held in your shops. <b>Not your property</b> and never part of your stock value.
+                It grows when <b>Mrs Fatima sends a shipment marked SHANTON</b> to that shop, and shrinks when one of her
+                abayas is sold, is returned to her, or moves to another shop. Shops no longer type
+                &ldquo;received from her&rdquo; by hand &mdash; the shipment records it, so a piece cannot be counted twice.
+            </p>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Shop</th><th class="money-col">Opening</th><th class="money-col">Received</th><th class="money-col">Sold</th><th class="money-col">Returned / sent</th><th class="money-col">Held now</th></tr></thead>
+                    <tbody id="abShStockBody"></tbody>
+                    <tfoot id="abShStockFoot"></tfoot>
+                </table>
+            </div>
+            <p class="card-sub" style="margin: 12px 0 0;" id="abShStockNote"></p>
+        </div>
+            </div>
+        </details>
+
+        <details class="fold">
+            <summary><span><span data-icon="edit"></span> Opening stock count
+                <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">الجرد الافتتاحي</span></span>
+                <span class="foldsum" id="abOpeningSum">&mdash;</span></summary>
+            <div class="foldbody">
+        <div class="card money-only">
+            <h3><span data-icon="edit"></span> Opening stock count <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">الجرد الافتتاحي</span></h3>
+            <p class="card-sub">
+                Count what is in each shop today, type it here with today's date, and press Save. Everything after that
+                date is added and subtracted automatically from the daily reports. You only do this once.
+            </p>
+            <div class="controls" style="align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-bottom: 14px;">
+                <div style="width: 190px;"><label for="abOpeningDate">Counted on</label><input type="date" id="abOpeningDate"></div>
+                <span id="abOpeningStatus" style="font-weight: 600; font-size: 13px;"></span>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Shop</th><th id="abOpeningHeads"></th></tr></thead>
+                    <tbody id="abOpeningBody"></tbody>
+                </table>
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
+                <button class="btn-success" onclick="saveAbayaOpening()"><span data-icon="save"></span> Save opening count</button>
+            </div>
+        </div>
+
+        <!-- ---- البياعات ---- -->
+            </div>
+        </details>
+
+    </div>
+
     <div id="tab-abaya-catalog" class="tab-content">
         <div class="filter-section">
             <h3><span data-icon="inbox"></span> Al Sheikha Style &mdash; Products Catalogue
@@ -7318,9 +7394,18 @@
         // يُغلق المتصفّح أو يُضغط Refresh. ولوحةٌ تعرض قائمةً قديمة وتُسمّيها
         // الحالية تكذب، والمالك ظنّ أن التقرير لم يُرسل أصلًا.
         // ⚠️ ويُعرض المحفوظ أولًا كي لا تبقى الشاشة فارغة أثناء القراءة.
-        if (tabId === 'tab-abaya' || tabId === 'tab-abaya-month') {
+        if (tabId === 'tab-abaya' || tabId === 'tab-abaya-month' || tabId === 'tab-abaya-stock') {
             if (abayaLoaded) renderAbayaAll();
             loadAbayaData();
+            // 🔴🔴 والشحناتُ تُقرأ معها إلزامًا، وهذا إصلاحُ عطلٍ أبلغ عنه المالك:
+            //   «ستوك شانتون أدخلتُه ولم يدخل». منذ v229 صار مخزونُها يُحسب من
+            //   الشحنات، وقائمةُ الشحنات كانت تُقرأ عند فتح **تبويب الوصولات
+            //   وحدَه** — وبطاقةُ المخزون في تبويبٍ آخر. فكانت القائمةُ فارغةً في
+            //   الذاكرة، و`abayaArrivalList()` يُعيد `[]`، فتظهر الشحناتُ صفرًا
+            //   **بلا رسالةِ خطأٍ واحدة**: الحسابُ نجح، إنّما على لا شيء.
+            // ⚠️ والدرسُ: دالّةُ حسابٍ اكتسبت مصدرَ بياناتٍ جديدًا يجب أن يُراجَع
+            //   **كلُّ** موضعٍ يُناديها، هل ذلك المصدرُ محمَّلٌ هناك أم لا.
+            loadAbayaArrivals();
         }
         // ⭐ الكتالوج: مجموعاتٌ مستقلّة تمامًا، فيُقرأ وحده ولا يُثقل تبويبَي
         // العبايات الآخرين. ⚠️ ويُعاد قراءته في كل فتحة لا مرّةً واحدة: البياعات
@@ -19158,7 +19243,7 @@
         const openMap = abayaOpening.opening[shop] || {};
         const out = {};
         ABAYA_STOCK_ITEMS.forEach(it => {
-            out[it.key] = { opening: Number(openMap[it.key]) || 0, received: 0, sold: 0, sentOut: 0,
+            out[it.key] = { opening: Number(openMap[it.key]) || 0, received: 0, fromShipment: 0, sold: 0, sentOut: 0,
                             // قطعُ الطلب التي جاءت من الورشة وخرجت للزبونة في اليوم نفسه
                             fromWorkshop: 0 };
         });
@@ -19212,7 +19297,38 @@
             });
         });
 
-        let sum = { opening: 0, received: 0, sold: 0, sentOut: 0, fromWorkshop: 0, now: 0 };
+        // ⚠️⚠️⚠️ وبضاعتُنا تُحسب من الشحنة كذلك، لا بضاعةُ شانتون وحدَها — وهذا
+        //   عطلٌ أبلغ عنه المالك بنصّه: «لماذا الستوك تبع وست ووك فاضي رغم أنّا
+        //   أرسلنا له بضاعة؟ يجب أن يكون الستوك والكتالوج متوافقَين».
+        //
+        //   والسببُ أنّ حركاتَ الاستلامِ محفوظةٌ **داخلَ التقارير اليوميّة**
+        //   (`r.movements`). فمحلٌّ لم تُرسل بياعتُه تقريرًا بعد — وهو حالُ محلٍّ
+        //   جديد — لا حركةَ له إطلاقًا، فيظهر مخزونُه **فارغًا** وإن كان رفُّه
+        //   مملوءًا. والكتالوجُ يعرف القطعَ (تزيد كميّتُه عند الإرسال) فيختلف
+        //   الرقمان، والمالكُ يرى شاشتين تتناقضان.
+        abayaArrivalList().forEach(a => {
+            if (!a || a.status !== ARRIVAL_SENT) return;
+            // ⚠️ وقطعُ الجردِ الافتتاحيِّ يُطبَّق هنا كما يُطبَّق على التقارير: ما
+            //   أُرسل قبل تاريخِ الجردِ داخلٌ في عدَدِه أصلًا. والتاريخُ يُقرأ من
+            //   `sentAt` وأوّلُ عشرةِ أحرفٍ منه هي اليوم؛ وغيابُه لا يُسقط الشحنةَ
+            //   (شحنةٌ بلا طابعٍ أُرسلت فعلًا) — يُقرأ أنّها بعد الجرد.
+            const sentDay = String(a.sentAt || '').slice(0, 10);
+            if (since && /^\d{4}-\d{2}-\d{2}$/.test(sentDay) && sentDay < since) return;
+            const got = shantonPiecesForShop(a, shop);
+            if (got <= 0) return;
+            if (isShantonArrival(a.source)) { sh.fromShipment += got; return; }
+            // ⚠️ والنوعُ يُقرأ من الشحنة: شحنةُ «دريس» تزيد مخزونَ الدريس لا العباية.
+            //   ونوعٌ غيرُ معروفٍ يُهمَل ولا يُرمى في أوّلِ صنف — رقمٌ في الخانة
+            //   الخطأ أسوأُ من رقمٍ ناقص.
+            const cell = out[a.type];
+            if (cell) cell.fromShipment += got;
+        });
+        sh.received += sh.fromShipment;
+        ABAYA_STOCK_ITEMS.forEach(it => {
+            if (out[it.key]) out[it.key].received += out[it.key].fromShipment;
+        });
+
+        let sum = { opening: 0, received: 0, fromShipment: 0, sold: 0, sentOut: 0, fromWorkshop: 0, now: 0 };
         ABAYA_STOCK_ITEMS.forEach(it => {
             const c = out[it.key];
             // ⚠️ fromWorkshop تُضاف لأن sold يحمل قطع الطلب أيضًا: فيُلغي أحدهما
@@ -19222,6 +19338,9 @@
             // الملابس، وجمعُ الأكياس معها يُنتج رقمًا لا يُقرأ. وسطرُها ظاهرٌ وحده.
             if (it.supply) return;
             sum.opening += c.opening; sum.received += c.received;
+            // ⚠️ يُجمع منفصلًا ليُفصَّل في الملاحظة: «كذا من شحنات، وكذا كتبته
+            //   البياعة». رقمٌ واحدٌ بمصدرَين يجب أن يُفصَّل وإلّا بدا أنّه تضاعف.
+            sum.fromShipment += c.fromShipment;
             sum.fromWorkshop += c.fromWorkshop;
             sum.sold += c.sold; sum.sentOut += c.sentOut; sum.now += c.now;
         });
@@ -19236,17 +19355,6 @@
         // ⚠️ ويُحتسب من لحظةِ **إرسالِ** السيدةِ فاطمةَ الشحنةَ إلى المحلّ
         //   (`status === ARRIVAL_SENT`)، لا من لحظةِ تسجيلِها في المستودع: ما لم
         //   يُرسَل لم يصل محلًّا بعد، فعدُّه يُظهر في المحلِّ ما ليس فيه.
-        abayaArrivalList().forEach(a => {
-            if (!a || !isShantonArrival(a.source) || a.status !== ARRIVAL_SENT) return;
-            // ⚠️ وقطعُ الجردِ الافتتاحيِّ يُطبَّق هنا كما يُطبَّق على التقارير: ما
-            //   أُرسل قبل تاريخِ الجردِ داخلٌ في عدَدِه أصلًا. والتاريخُ يُقرأ من
-            //   `sentAt` وأوّلُ عشرةِ أحرفٍ منه هي اليوم؛ وغيابُه لا يُسقط الشحنةَ
-            //   (شحنةٌ بلا طابعٍ أُرسلت فعلًا) — يُقرأ أنّها بعد الجرد.
-            const sentDay = String(a.sentAt || '').slice(0, 10);
-            if (since && /^\d{4}-\d{2}-\d{2}$/.test(sentDay) && sentDay < since) return;
-            sh.fromShipment += shantonPiecesForShop(a, shop);
-        });
-        sh.received += sh.fromShipment;
 
         sh.now = sh.opening + sh.received - sh.sold - sh.sentOut;
         // المجموع المدموج للعلم فقط، ولا يُستخدم في أي حساب مالي: قيمة مخزوننا
@@ -19308,12 +19416,15 @@
 
         const g = per.reduce((a, { st }) => ({
             opening: a.opening + st.sum.opening, received: a.received + st.sum.received,
+            fromShipment: a.fromShipment + st.sum.fromShipment,
             sold: a.sold + st.sum.sold, sentOut: a.sentOut + st.sum.sentOut, now: a.now + st.sum.now
-        }), { opening: 0, received: 0, sold: 0, sentOut: 0, now: 0 });
+        }), { opening: 0, received: 0, fromShipment: 0, sold: 0, sentOut: 0, now: 0 });
         const foot = document.getElementById('abStockFoot');
         if (foot) {
             foot.innerHTML = `<tr style="background: var(--surface-2); font-weight: 800;">
-                <td>ALL THREE SHOPS</td>
+                <!-- ⚠️ العددُ يُشتقّ من ABAYA_SHOPS لا يُكتب: «الثلاثة» بقيت مكتوبةً
+                     بعد أن صارت أربعةً، وقد صُحّح مثلُها مرّةً قبل اليوم. -->
+                <td>ALL ${ABAYA_SHOPS.length} SHOPS</td>
                 <td class="money-col">${g.opening}</td>
                 <td class="money-col">${g.received ? '+' + g.received : '—'}</td>
                 <td class="money-col">${g.sold ? '-' + g.sold : '—'}</td>
@@ -19341,8 +19452,36 @@
         notes.push(`<b>Shanton's abayas are not in the table above.</b> They are her goods, not yours, and counting them `
             + `would make your stock look bigger than it is. She has her own stock below, `
             + `in <b>${ABAYA_SHANTON_SHOPS.join(', ')}</b> only &mdash; the shop(s) where she displays.`);
+
+        // ⚠️⚠️⚠️ شاشةٌ تحتاج بياناتٍ لم تُحمَّل **تقول ذلك** ولا تعرض صفرًا. وهذا
+        //   بعينه ما أوقع المالكَ: رأى صفرًا فظنّ أنّ ما أدخله لم يُحفظ، والحقيقةُ
+        //   أنّ القائمةَ لم تُقرأ بعد. صفرٌ صامتٌ يُقرأ خبرًا، وهو ليس خبرًا.
+        if (!abayaArrivalsLoaded) {
+            notes.push(`<b style="color: var(--warning);">&#9888; The shipments have not been read yet</b>, so what `
+                + `Mrs Fatima sent to the shops is <b>not</b> in the figures above yet. They are loading &mdash; `
+                + `press Refresh in a moment. This is not a zero; it is "not counted yet".`);
+        } else if (g.received) {
+            // ⚠️⚠️ ومن أين جاء «الوارد» يُقال: هذا ما جعل المالكَ يسأل «لماذا ستوك
+            //   وست ووك فاضي؟». الحركاتُ محفوظةٌ داخلَ التقارير اليوميّة، ومحلٌّ لم
+            //   يُرسل تقريرًا بعد لا حركةَ له — فصار الوارد يُحسب من الشحنة كذلك،
+            //   ويُفصَّل المصدران كي لا يُقرأ الجمعُ تضاعفًا.
+            notes.push(`<b>Received</b> is <b>${g.fromShipment}</b> piece(s) from shipments Mrs Fatima sent, plus `
+                + `<b>${g.received - g.fromShipment}</b> piece(s) that the shops typed on their daily report. `
+                + `A shop that has not sent a daily report yet still shows its shipments &mdash; that is why this `
+                + `now agrees with the catalogue.`);
+        }
         const el = document.getElementById('abStockNote');
         if (el) el.innerHTML = notes.join('<br><br>');
+        // ⚠️ الرقمُ المهمُّ في عنوان القسم المطويّ: قسمٌ مطويٌّ بعنوانٍ بلا رقمٍ
+        //   يُقرأ شاشةً فارغة — وهو نفسُ ما شكا منه المالك («لم أفهم شيئًا»).
+        const sumEl = document.getElementById('abStockSum');
+        if (sumEl) sumEl.innerHTML = `<b>${g.now}</b> piece(s) in ${ABAYA_SHOPS.length} shop(s)`;
+        const openSum = document.getElementById('abOpeningSum');
+        if (openSum) {
+            openSum.innerHTML = abayaOpening.openingDate
+                ? `counted on <b>${escapeHtml(abayaOpening.openingDate)}</b>`
+                : `<b style="color: var(--warning);">not counted yet</b>`;
+        }
         // ⚠️ المجموع الكلي أعلاه على المحلات الثلاثة كلها، أما `per` فيُعاد
         // بناؤه أدناه على محلّ شانتون وحده. لا يُقرأ منه شيء لجدول بضاعتنا بعد
         // هذا السطر.
@@ -19373,8 +19512,11 @@
             }).join('');
             const gs = per.reduce((a, { st }) => ({
                 opening: a.opening + st.shanton.opening, received: a.received + st.shanton.received,
+                // ⚠️ `fromShipment` يُجمع كذلك: الملاحظةُ أدناه تفصّل المصدرَين،
+                //   وبلا جمعِه كانت تطبع `undefined`.
+                fromShipment: a.fromShipment + st.shanton.fromShipment,
                 sold: a.sold + st.shanton.sold, sentOut: a.sentOut + st.shanton.sentOut, now: a.now + st.shanton.now
-            }), { opening: 0, received: 0, sold: 0, sentOut: 0, now: 0 });
+            }), { opening: 0, received: 0, fromShipment: 0, sold: 0, sentOut: 0, now: 0 });
             const shFoot = document.getElementById('abShStockFoot');
             if (shFoot) {
                 shFoot.innerHTML = `<tr style="background: var(--surface-2); font-weight: 800;">
@@ -19390,10 +19532,24 @@
             // ⚠️ رصيدها سالبًا يعني بيعَ عبايات لم تُسجَّل واردةً منها.
             const neg = per.filter(x => x.st.shanton.now < 0);
             if (neg.length) {
+                // ⚠️⚠️ النصيحةُ كانت «اطلب من المحل إضافة سطر: شانتون — وصلت منها»
+                //   وهذا السطرُ **أُزيل من شاشة البياعة** في v229 بقرار المالك
+                //   (الشحنةُ تُقيّده). فالنصيحةُ صارت تُرسله إلى بابٍ أُغلق — وهو
+                //   نفسُ الخطأِ الذي وقع في رسالةِ «صحّحه في الكتالوج».
                 shNotes.push(`<b style="color: var(--danger);">Her stock is negative in ${neg.map(x => escapeHtml(x.shop)).join(' · ')}.</b> `
-                    + `That means abayas of hers were sold without ever being recorded as received from her. `
-                    + `Either enter her opening count below, or ask the shop to add a `
-                    + `<b>"SHANTON — received from her"</b> line for the pieces she brought.`);
+                    + `That means abayas of hers were sold without ever being recorded as received. Either enter her `
+                    + `<b>opening count</b> below for what she had already brought, or record the pieces as a `
+                    + `<b>shipment marked SHANTON</b> in "Abaya &mdash; New Arrivals" and have Mrs Fatima send it to that shop.`);
+            }
+            // ⚠️ من أين جاء الوارد: شحناتٌ أُرسلت، وسطورٌ كتبتها البياعاتُ قبل v229.
+            if (gs.received) {
+                shNotes.push(`<b>Received</b> is <b>${gs.fromShipment}</b> piece(s) from shipments marked SHANTON, plus `
+                    + `<b>${gs.received - gs.fromShipment}</b> piece(s) that shops typed by hand before the shipment `
+                    + `started recording it. Shops can no longer type it, so nothing is counted twice.`);
+            }
+            if (!abayaArrivalsLoaded) {
+                shNotes.push(`<b style="color: var(--warning);">&#9888; The shipments have not been read yet</b> &mdash; `
+                    + `anything Mrs Fatima sent is not counted above yet. Press Refresh in a moment.`);
             }
             // المجموع المدموج: يُعرض لأن المالك سأل عنه، ولا يُستخدم في أي حساب.
             // ⚠️ بضاعتنا تُؤخذ من `g` (المحلات الثلاثة) لا من `per` — فـ`per`
@@ -19405,6 +19561,10 @@
                 + `the value of your stock is your own pieces alone.`);
             const shEl = document.getElementById('abShStockNote');
             if (shEl) shEl.innerHTML = shNotes.join('<br><br>');
+            const shSum = document.getElementById('abShStockSum');
+            if (shSum) {
+                shSum.innerHTML = `<b${gs.now < 0 ? ' style="color: var(--danger);"' : ''}>${gs.now}</b> piece(s) of hers`;
+            }
         }
     };
 
@@ -22801,7 +22961,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v230';
+        const APP_BUILD = 'v231';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;

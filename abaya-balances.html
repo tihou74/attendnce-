@@ -2350,7 +2350,7 @@
         const openMap = abayaOpening.opening[shop] || {};
         const out = {};
         ABAYA_STOCK_ITEMS.forEach(it => {
-            out[it.key] = { opening: Number(openMap[it.key]) || 0, received: 0, sold: 0, sentOut: 0,
+            out[it.key] = { opening: Number(openMap[it.key]) || 0, received: 0, fromShipment: 0, sold: 0, sentOut: 0,
                             // قطعُ الطلب التي جاءت من الورشة وخرجت للزبونة في اليوم نفسه
                             fromWorkshop: 0 };
         });
@@ -2400,7 +2400,38 @@
             });
         });
 
-        let sum = { opening: 0, received: 0, sold: 0, sentOut: 0, fromWorkshop: 0, now: 0 };
+        // ⚠️⚠️⚠️ وبضاعتُنا تُحسب من الشحنة كذلك، لا بضاعةُ شانتون وحدَها — وهذا
+        //   عطلٌ أبلغ عنه المالك بنصّه: «لماذا الستوك تبع وست ووك فاضي رغم أنّا
+        //   أرسلنا له بضاعة؟ يجب أن يكون الستوك والكتالوج متوافقَين».
+        //
+        //   والسببُ أنّ حركاتَ الاستلامِ محفوظةٌ **داخلَ التقارير اليوميّة**
+        //   (`r.movements`). فمحلٌّ لم تُرسل بياعتُه تقريرًا بعد — وهو حالُ محلٍّ
+        //   جديد — لا حركةَ له إطلاقًا، فيظهر مخزونُه **فارغًا** وإن كان رفُّه
+        //   مملوءًا. والكتالوجُ يعرف القطعَ (تزيد كميّتُه عند الإرسال) فيختلف
+        //   الرقمان، والمالكُ يرى شاشتين تتناقضان.
+        abayaArrivalList().forEach(a => {
+            if (!a || a.status !== ARRIVAL_SENT) return;
+            // ⚠️ وقطعُ الجردِ الافتتاحيِّ يُطبَّق هنا كما يُطبَّق على التقارير: ما
+            //   أُرسل قبل تاريخِ الجردِ داخلٌ في عدَدِه أصلًا. والتاريخُ يُقرأ من
+            //   `sentAt` وأوّلُ عشرةِ أحرفٍ منه هي اليوم؛ وغيابُه لا يُسقط الشحنةَ
+            //   (شحنةٌ بلا طابعٍ أُرسلت فعلًا) — يُقرأ أنّها بعد الجرد.
+            const sentDay = String(a.sentAt || '').slice(0, 10);
+            if (since && /^\d{4}-\d{2}-\d{2}$/.test(sentDay) && sentDay < since) return;
+            const got = shantonPiecesForShop(a, shop);
+            if (got <= 0) return;
+            if (isShantonArrival(a.source)) { sh.fromShipment += got; return; }
+            // ⚠️ والنوعُ يُقرأ من الشحنة: شحنةُ «دريس» تزيد مخزونَ الدريس لا العباية.
+            //   ونوعٌ غيرُ معروفٍ يُهمَل ولا يُرمى في أوّلِ صنف — رقمٌ في الخانة
+            //   الخطأ أسوأُ من رقمٍ ناقص.
+            const cell = out[a.type];
+            if (cell) cell.fromShipment += got;
+        });
+        sh.received += sh.fromShipment;
+        ABAYA_STOCK_ITEMS.forEach(it => {
+            if (out[it.key]) out[it.key].received += out[it.key].fromShipment;
+        });
+
+        let sum = { opening: 0, received: 0, fromShipment: 0, sold: 0, sentOut: 0, fromWorkshop: 0, now: 0 };
         ABAYA_STOCK_ITEMS.forEach(it => {
             const c = out[it.key];
             // ⚠️ fromWorkshop تُضاف لأن sold يحمل قطع الطلب أيضًا: فيُلغي أحدهما
@@ -2410,6 +2441,9 @@
             // الملابس، وجمعُ الأكياس معها يُنتج رقمًا لا يُقرأ. وسطرُها ظاهرٌ وحده.
             if (it.supply) return;
             sum.opening += c.opening; sum.received += c.received;
+            // ⚠️ يُجمع منفصلًا ليُفصَّل في الملاحظة: «كذا من شحنات، وكذا كتبته
+            //   البياعة». رقمٌ واحدٌ بمصدرَين يجب أن يُفصَّل وإلّا بدا أنّه تضاعف.
+            sum.fromShipment += c.fromShipment;
             sum.fromWorkshop += c.fromWorkshop;
             sum.sold += c.sold; sum.sentOut += c.sentOut; sum.now += c.now;
         });
@@ -2424,17 +2458,6 @@
         // ⚠️ ويُحتسب من لحظةِ **إرسالِ** السيدةِ فاطمةَ الشحنةَ إلى المحلّ
         //   (`status === ARRIVAL_SENT`)، لا من لحظةِ تسجيلِها في المستودع: ما لم
         //   يُرسَل لم يصل محلًّا بعد، فعدُّه يُظهر في المحلِّ ما ليس فيه.
-        abayaArrivalList().forEach(a => {
-            if (!a || !isShantonArrival(a.source) || a.status !== ARRIVAL_SENT) return;
-            // ⚠️ وقطعُ الجردِ الافتتاحيِّ يُطبَّق هنا كما يُطبَّق على التقارير: ما
-            //   أُرسل قبل تاريخِ الجردِ داخلٌ في عدَدِه أصلًا. والتاريخُ يُقرأ من
-            //   `sentAt` وأوّلُ عشرةِ أحرفٍ منه هي اليوم؛ وغيابُه لا يُسقط الشحنةَ
-            //   (شحنةٌ بلا طابعٍ أُرسلت فعلًا) — يُقرأ أنّها بعد الجرد.
-            const sentDay = String(a.sentAt || '').slice(0, 10);
-            if (since && /^\d{4}-\d{2}-\d{2}$/.test(sentDay) && sentDay < since) return;
-            sh.fromShipment += shantonPiecesForShop(a, shop);
-        });
-        sh.received += sh.fromShipment;
 
         sh.now = sh.opening + sh.received - sh.sold - sh.sentOut;
         const combined = {
