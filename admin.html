@@ -3087,6 +3087,35 @@
             </div>
         </details>
 
+        <!-- ⚠️⚠️⚠️ المطابقة — بطلب المالك: «إذا رأينا الآن الستوك الموجود في
+             الكتالوج غير الستوك المذكور، يجب أن تجد حلًّا جذريًّا الآن».
+             والحلُّ الجذريُّ لعدّادَين مستقلّين ليس إخفاءَ أحدهما، بل مطابقةً **لا
+             يبقى معها فرقٌ مجهولُ السبب**. و«غيرُ مُفسَّر» هو الرقمُ الذي يجب أن
+             يكون صفرًا. -->
+        <details class="fold" open>
+            <summary><span><span data-icon="check"></span> Catalogue vs Stock &mdash; do they agree?
+                <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">مطابقة الكتالوج بالمخزون</span></span>
+                <span class="foldsum" id="abReconSum">&mdash;</span></summary>
+            <div class="foldbody">
+                <div class="card">
+                    <p class="card-sub" style="margin: 0 0 12px;">
+                        The catalogue counts <b>piece by piece</b> &mdash; it goes up when Mrs Fatima sends a shipment and
+                        down with every invoice. The stock table rebuilds the figure from the opening count, the
+                        movements and the daily reports. They should land on the same number.
+                        <b>Anything left as "not explained" is a real fault</b> &mdash; tell me and I will fix it.
+                    </p>
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Shop</th><th class="money-col">Catalogue</th><th class="money-col">Yours</th><th class="money-col">Shanton's</th><th class="money-col">Together</th><th class="money-col">Difference</th><th>Why</th></tr></thead>
+                            <tbody id="abReconBody"></tbody>
+                            <tfoot id="abReconFoot"></tfoot>
+                        </table>
+                    </div>
+                    <p class="card-sub" style="margin: 12px 0 0;" id="abReconNote"></p>
+                </div>
+            </div>
+        </details>
+
         <details class="fold">
             <summary><span><span data-icon="edit"></span> Opening stock count
                 <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">الجرد الافتتاحي</span></span>
@@ -7406,6 +7435,10 @@
             // ⚠️ والدرسُ: دالّةُ حسابٍ اكتسبت مصدرَ بياناتٍ جديدًا يجب أن يُراجَع
             //   **كلُّ** موضعٍ يُناديها، هل ذلك المصدرُ محمَّلٌ هناك أم لا.
             loadAbayaArrivals();
+            // ⚠️⚠️ والكتالوجُ معها: المطابقةُ تقرأ كميّاتَه، وبلا قراءتِه تُقارن
+            //   المخزونَ بصفرٍ فتُعلن فرقًا كاذبًا بحجم المخزونِ كلِّه. ويُقرأ
+            //   للتبويبَين الشهريِّ والمخزونِ معًا لأنّ المطابقةَ تُعرض في المخزون.
+            if (!abayaCatalogLoaded) loadAbayaCatalog();
         }
         // ⭐ الكتالوج: مجموعاتٌ مستقلّة تمامًا، فيُقرأ وحده ولا يُثقل تبويبَي
         // العبايات الآخرين. ⚠️ ويُعاد قراءته في كل فتحة لا مرّةً واحدة: البياعات
@@ -19265,6 +19298,93 @@
      *   كلُّها معروفةٌ للبرنامج لحظةَ الحساب — فإخفاؤها وتركُ المالكِ يُفتّش خطأٌ
      *   في العرض لا في الحساب. **ما يعرفه البرنامجُ ولا يقوله يُضيّع وقتَ صاحبه.**
      */
+
+    /** ⚠️ المُحوِّلُ وحدَه يختلف بين الملفَّين (اسمُ المتغيّر)، وما بعده متطابق. */
+    function abayaProductList() { return Array.isArray(abayaProducts) ? abayaProducts : []; }
+    /**
+     * ⭐⭐⭐⭐⭐ كميّاتُ الكتالوج لمحلٍّ واحد، مجموعةً بالنوع.
+     *
+     * ⚠️ الكتالوجُ يَعُدُّ قطعةً قطعة: يزيد عند الإرسال وينقص بكلِّ فاتورة. فهو
+     *   أدقُّ من إعادةِ البناء من التقارير — ولهذا يُطابَق به.
+     * ⚠️⚠️ ولا يُفرّق بضاعتَنا من بضاعة شانتون: كلتاهما سطرٌ في `abaya_products`.
+     *   فمجموعُه يُقابل **المجموعَ المدموج** (ملكُنا + ملكُها) لا ملكَنا وحدَه.
+     *   وهذا وحدَه يُفسّر فرقًا بحجم مخزونها، وقد يكون كلَّ ما رآه المالك.
+     * ⚠️ والتصاميمُ بلا نوعٍ (أُضيفت قبل ميزة النوع) تُعَدُّ وحدَها ولا تُرمى في
+     *   صنفٍ بالظنّ: قطعةٌ في الخانة الخطأ أسوأُ من قطعةٍ معلومةِ الجهل.
+     */
+    function abayaCatalogueStock(shop) {
+        const key = abayaShopKey(shop);
+        const byType = {};
+        let untyped = 0, total = 0;
+        abayaProductList().forEach(p => {
+            if (!p || !p.qty) return;
+            const n = Math.floor(Number(p.qty[key]) || 0);
+            if (n <= 0) return;
+            total += n;
+            const t = String(p.type || '');
+            if (t && ABAYA_STOCK_ITEMS.some(it => it.key === t)) {
+                byType[t] = (byType[t] || 0) + n;
+            } else {
+                untyped += n;
+            }
+        });
+        return { byType, untyped, total };
+    }
+
+    /**
+     * ⭐⭐⭐⭐⭐ المطابقة: الكتالوجُ مقابل شاشةِ المخزون، والفرقُ مُسمَّى السبب.
+     *
+     * ⚠️⚠️⚠️ بطلب المالك: «إذا رأينا الآن الستوك الموجود في الكتالوج غير الستوك
+     *   المذكور، يجب أن تجد حلًّا جذريًّا». والحلُّ الجذريُّ لعدّادَين مستقلّين ليس
+     *   إخفاءَ أحدهما — بل **مطابقةً لا يبقى معها فرقٌ مجهولُ السبب**. فكلُّ سببٍ
+     *   محتملٍ يُحسب ويُسمّى، وما بقي بعدها يُعلَن «غيرُ مُفسَّر» صريحًا.
+     */
+    function abayaStockReconcile(shop) {
+        const st = abayaStockFor(shop);
+        const cat = abayaCatalogueStock(shop);
+        const ex = abayaShipmentExclusions(shop);
+        // ⚠️⚠️⚠️ فرقٌ بين **تفسيرٍ محسوب** و**إشارةٍ تُذكر**، وخلطُهما أنتج رقمًا
+        //   لا معنى له في أوّل نسخة:
+        //     · التفسيرُ المحسوبُ: قطعٌ **نعلم يقينًا** أنّها في الكتالوج ولا سطرَ
+        //       لها في الجدول. هذه تُطرح من الفرق.
+        //     · الإشارةُ: ظرفٌ **قد** يُفسّر بعضَ الفرقِ ولا تُعرف كمّيّتُه. هذه
+        //       تُذكر للقارئ ولا تُطرح أبدًا.
+        //   وكنتُ عددتُ «أُرسلت قبل الجرد» تفسيرًا بكمّيّته، وهي إشارة: الجردُ
+        //   **مفروضٌ** أن يشملها. فإن شملها فلا فرق، وإن لم يشملها فالفرقُ هو نقصُ
+        //   الجرد لا عددُ الشحنة. فطرحُ ستٍّ من فرقٍ قدرُه اثنتان أعطى «‎-4 غيرُ
+        //   مُفسَّر» — وهو ما كشفه الفحص.
+        const causes = [];
+        // ١) تصاميمُ في الكتالوج بلا نوعٍ معروف: لا سطرَ لها، فتُنفخ بها الكتالوجُ يقينًا.
+        if (cat.untyped) causes.push({ key: 'untyped', pieces: cat.untyped });
+        // ٢) شحناتٌ بنوعٍ لا يُطابق أيَّ صنف: الكتالوجُ عدَّها والجدولُ أسقطها.
+        const badType = ex.unknownType.reduce((a, x) => a + x.pieces, 0);
+        if (badType) causes.push({ key: 'unknownType', pieces: badType });
+
+        const hints = [];
+        // ⚠️ بضاعةُ شانتون **ليست سببًا للفرق** هنا: المقارنةُ مع المجموعِ المدموج
+        //   فهي داخلةٌ في الطرفَين. تُذكر لأنّها أوّلُ ما يُظنُّ فرقًا.
+        if (st.shanton.now) hints.push({ key: 'shanton', pieces: st.shanton.now });
+        const beforeCount = ex.beforeCount.reduce((a, x) => a + x.pieces, 0);
+        if (beforeCount) hints.push({ key: 'beforeCount', pieces: beforeCount });
+
+        const explained = causes.reduce((a, c) => a + c.pieces, 0);
+        const diff = cat.total - (st.sum.now + st.shanton.now);
+        return {
+            catTotal: cat.total,
+            ourNow: st.sum.now,
+            herNow: st.shanton.now,
+            combined: st.sum.now + st.shanton.now,
+            diff,
+            // ⚠️ `unexplained` هو الرقمُ الوحيدُ الذي يُهمّ، ويجب أن يكون صفرًا. وما
+            //   لم يكن صفرًا فثمّة سببٌ لم نُحصِه — يُعلَن مجهولًا ولا يُلفَّق له تفسير.
+            unexplained: diff - explained,
+            causes,
+            hints,
+            catUntyped: cat.untyped,
+            byType: cat.byType
+        };
+    }
+
     function abayaShipmentExclusions(shop) {
         const since = abayaOpening.openingDate || '';
         const res = { waiting: 0, waitingPieces: 0, beforeCount: [], unknownType: [], noPlan: [] };
@@ -19571,6 +19691,7 @@
         //   يُقرأ شاشةً فارغة — وهو نفسُ ما شكا منه المالك («لم أفهم شيئًا»).
         const sumEl = document.getElementById('abStockSum');
         if (sumEl) sumEl.innerHTML = `<b>${g.now}</b> piece(s) in ${ABAYA_SHOPS.length} shop(s)`;
+        renderAbayaReconcile();
         const openSum = document.getElementById('abOpeningSum');
         if (openSum) {
             openSum.innerHTML = abayaOpening.openingDate
@@ -19662,6 +19783,116 @@
             }
         }
     };
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ المطابقة: الكتالوجُ مقابل شاشةِ المخزون
+    // ---------------------------------------------------------------------
+    // ⚠️ «غيرُ مُفسَّر» هو الرقمُ الوحيدُ الذي يُهمّ: ما لم يكن صفرًا فثمّة سببٌ لم
+    //   نُحصِه. ولا يُلفَّق له تفسير — يُعلَن مجهولًا بالأحمر.
+    // =====================================================================
+    // ⚠️ أسبابٌ **محسوبة** تُطرح من الفرق — يقينُها أنّ قطعَها في الكتالوج ولا سطرَ لها.
+    const AB_RECON_WHY = {
+        untyped: 'designs in the catalogue with no type, so they have no row here',
+        unknownType: 'shipments whose type matches no row'
+    };
+    // ⚠️ وإشاراتٌ تُذكر ولا تُطرح: ظرفٌ **قد** يُفسّر بعضَ الفرقِ ولا تُعرف كمّيّتُه.
+    const AB_RECON_HINT = {
+        shanton: "of the catalogue are Shanton's — already counted in \u201cTogether\u201d, so not a difference",
+        beforeCount: 'were sent before the stock count — your opening count is meant to include them, '
+            + 'so a leftover difference usually means the opening count is short by that much'
+    };
+
+    function renderAbayaReconcile() {
+        const body = document.getElementById('abReconBody');
+        if (!body) return;
+        // ⚠️ بلا الكتالوجِ لا مطابقةَ: يُقال ذلك ولا يُعرض فرقٌ كاذبٌ بحجم المخزون.
+        if (!abayaCatalogLoaded) {
+            body.innerHTML = `<tr><td colspan="7" style="color: var(--warning);">`
+                + `The catalogue has not been read yet, so there is nothing to compare against. `
+                + `It is loading — press Refresh in a moment.</td></tr>`;
+            const s0 = document.getElementById('abReconSum');
+            if (s0) s0.innerHTML = `<b style="color: var(--warning);">waiting for the catalogue</b>`;
+            const n0 = document.getElementById('abReconNote');
+            if (n0) n0.innerHTML = '';
+            const f0 = document.getElementById('abReconFoot');
+            if (f0) f0.innerHTML = '';
+            return;
+        }
+
+        const rows = ABAYA_SHOPS.map(shop => ({ shop, r: abayaStockReconcile(shop) }));
+        body.innerHTML = rows.map(({ shop, r }) => {
+            const why = r.causes.length
+                ? r.causes.map(c => `${c.pieces} &mdash; ${escapeHtml(AB_RECON_WHY[c.key] || c.key)}`).join('<br>')
+                : (r.diff === 0 ? '<span style="color: var(--success); font-weight: 700;">they agree</span>' : '');
+            const bad = r.unexplained !== 0;
+            return `<tr>
+                <td><b>${escapeHtml(shop)}</b></td>
+                <td class="money-col">${r.catTotal}</td>
+                <td class="money-col">${r.ourNow}</td>
+                <td class="money-col">${r.herNow}</td>
+                <td class="money-col"><b>${r.combined}</b></td>
+                <td class="money-col"><b style="color: ${bad ? 'var(--danger)' : (r.diff === 0 ? 'var(--success)' : 'var(--text-dim)')};">${r.diff > 0 ? '+' : ''}${r.diff}</b></td>
+                <td style="font-size: 12px;">${why || '<span style="color: var(--text-dim);">&mdash;</span>'}`
+                + (bad ? `<br><b style="color: var(--danger);">${r.unexplained > 0 ? '+' : ''}${r.unexplained} not explained</b>` : '')
+                + `</td></tr>`;
+        }).join('');
+
+        const tot = rows.reduce((a, { r }) => ({
+            cat: a.cat + r.catTotal, our: a.our + r.ourNow, her: a.her + r.herNow,
+            comb: a.comb + r.combined, diff: a.diff + r.diff, un: a.un + r.unexplained
+        }), { cat: 0, our: 0, her: 0, comb: 0, diff: 0, un: 0 });
+        const foot = document.getElementById('abReconFoot');
+        if (foot) {
+            foot.innerHTML = `<tr style="background: var(--surface-2); font-weight: 800;">
+                <td>ALL ${ABAYA_SHOPS.length} SHOPS</td>
+                <td class="money-col">${tot.cat}</td>
+                <td class="money-col">${tot.our}</td>
+                <td class="money-col">${tot.her}</td>
+                <td class="money-col">${tot.comb}</td>
+                <td class="money-col"><b style="color: ${tot.un ? 'var(--danger)' : 'var(--success)'};">${tot.diff > 0 ? '+' : ''}${tot.diff}</b></td>
+                <td>${tot.un ? `<b style="color: var(--danger);">${tot.un} not explained</b>` : '<span style="color: var(--success);">fully explained</span>'}</td>
+            </tr>`;
+        }
+        const sum = document.getElementById('abReconSum');
+        if (sum) {
+            sum.innerHTML = tot.un
+                ? `<b style="color: var(--danger);">${Math.abs(tot.un)} piece(s) not explained</b>`
+                : (tot.diff === 0
+                    ? `<b style="color: var(--success);">they agree exactly</b>`
+                    : `<b style="color: var(--success);">difference fully explained</b>`);
+        }
+        const note = document.getElementById('abReconNote');
+        if (note) {
+            const lines = [];
+            lines.push(`<b>Catalogue</b> counts every piece in the shops, <b>including Shanton's</b> — her abayas become `
+                + `catalogue lines too. So the catalogue is compared with <b>Together</b>, not with your own stock alone. `
+                + `That difference alone is usually the whole puzzle.`);
+            // ⚠️ الإشاراتُ تُعرض مُسمّاةً ومفصولةً عن الأسبابِ المحسوبة، كي لا يُظنَّ
+            //   أنّها طُرحت من الفرق. وهي التي تُرشد إلى الإصلاح الحقيقيّ.
+            const hintLines = [];
+            const seenH = new Set();
+            rows.forEach(({ shop, r }) => {
+                (r.hints || []).forEach(h => {
+                    const line = `<b>${h.pieces} piece(s)</b> in ${escapeHtml(shop)} `
+                        + escapeHtml(AB_RECON_HINT[h.key] || h.key);
+                    if (!seenH.has(line)) { seenH.add(line); hintLines.push(line); }
+                });
+            });
+            if (hintLines.length) {
+                lines.push(`<b>Worth knowing (not subtracted from the difference):</b><br>` + hintLines.join('<br>'));
+            }
+            if (tot.un) {
+                lines.push(`<b style="color: var(--danger);">${Math.abs(tot.un)} piece(s) are not explained by any known `
+                    + `cause.</b> That is a real fault, not a rounding. Tell me and I will find it — the likely causes `
+                    + `are a daily report whose sold quantity does not match the invoices, or a piece moved between `
+                    + `shops in the catalogue without a movement line.`);
+            } else if (tot.diff) {
+                lines.push(`<b style="color: var(--success);">Every piece of the difference is accounted for above.</b> `
+                    + `Nothing is missing.`);
+            }
+            note.innerHTML = lines.join('<br><br>');
+        }
+    }
 
     /**
      * تحويلات المحلات: «خرجت من فندوم إلى فيستفال» يجب أن يقابلها في فيستفال
@@ -23056,7 +23287,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v232';
+        const APP_BUILD = 'v233';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;

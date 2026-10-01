@@ -2353,6 +2353,93 @@
      *   كلُّها معروفةٌ للبرنامج لحظةَ الحساب — فإخفاؤها وتركُ المالكِ يُفتّش خطأٌ
      *   في العرض لا في الحساب. **ما يعرفه البرنامجُ ولا يقوله يُضيّع وقتَ صاحبه.**
      */
+
+    /** ⚠️ المُحوِّلُ وحدَه يختلف بين الملفَّين (اسمُ المتغيّر)، وما بعده متطابق. */
+    function abayaProductList() { return Array.isArray(catProducts) ? catProducts : []; }
+    /**
+     * ⭐⭐⭐⭐⭐ كميّاتُ الكتالوج لمحلٍّ واحد، مجموعةً بالنوع.
+     *
+     * ⚠️ الكتالوجُ يَعُدُّ قطعةً قطعة: يزيد عند الإرسال وينقص بكلِّ فاتورة. فهو
+     *   أدقُّ من إعادةِ البناء من التقارير — ولهذا يُطابَق به.
+     * ⚠️⚠️ ولا يُفرّق بضاعتَنا من بضاعة شانتون: كلتاهما سطرٌ في `abaya_products`.
+     *   فمجموعُه يُقابل **المجموعَ المدموج** (ملكُنا + ملكُها) لا ملكَنا وحدَه.
+     *   وهذا وحدَه يُفسّر فرقًا بحجم مخزونها، وقد يكون كلَّ ما رآه المالك.
+     * ⚠️ والتصاميمُ بلا نوعٍ (أُضيفت قبل ميزة النوع) تُعَدُّ وحدَها ولا تُرمى في
+     *   صنفٍ بالظنّ: قطعةٌ في الخانة الخطأ أسوأُ من قطعةٍ معلومةِ الجهل.
+     */
+    function abayaCatalogueStock(shop) {
+        const key = abayaShopKey(shop);
+        const byType = {};
+        let untyped = 0, total = 0;
+        abayaProductList().forEach(p => {
+            if (!p || !p.qty) return;
+            const n = Math.floor(Number(p.qty[key]) || 0);
+            if (n <= 0) return;
+            total += n;
+            const t = String(p.type || '');
+            if (t && ABAYA_STOCK_ITEMS.some(it => it.key === t)) {
+                byType[t] = (byType[t] || 0) + n;
+            } else {
+                untyped += n;
+            }
+        });
+        return { byType, untyped, total };
+    }
+
+    /**
+     * ⭐⭐⭐⭐⭐ المطابقة: الكتالوجُ مقابل شاشةِ المخزون، والفرقُ مُسمَّى السبب.
+     *
+     * ⚠️⚠️⚠️ بطلب المالك: «إذا رأينا الآن الستوك الموجود في الكتالوج غير الستوك
+     *   المذكور، يجب أن تجد حلًّا جذريًّا». والحلُّ الجذريُّ لعدّادَين مستقلّين ليس
+     *   إخفاءَ أحدهما — بل **مطابقةً لا يبقى معها فرقٌ مجهولُ السبب**. فكلُّ سببٍ
+     *   محتملٍ يُحسب ويُسمّى، وما بقي بعدها يُعلَن «غيرُ مُفسَّر» صريحًا.
+     */
+    function abayaStockReconcile(shop) {
+        const st = abayaStockFor(shop);
+        const cat = abayaCatalogueStock(shop);
+        const ex = abayaShipmentExclusions(shop);
+        // ⚠️⚠️⚠️ فرقٌ بين **تفسيرٍ محسوب** و**إشارةٍ تُذكر**، وخلطُهما أنتج رقمًا
+        //   لا معنى له في أوّل نسخة:
+        //     · التفسيرُ المحسوبُ: قطعٌ **نعلم يقينًا** أنّها في الكتالوج ولا سطرَ
+        //       لها في الجدول. هذه تُطرح من الفرق.
+        //     · الإشارةُ: ظرفٌ **قد** يُفسّر بعضَ الفرقِ ولا تُعرف كمّيّتُه. هذه
+        //       تُذكر للقارئ ولا تُطرح أبدًا.
+        //   وكنتُ عددتُ «أُرسلت قبل الجرد» تفسيرًا بكمّيّته، وهي إشارة: الجردُ
+        //   **مفروضٌ** أن يشملها. فإن شملها فلا فرق، وإن لم يشملها فالفرقُ هو نقصُ
+        //   الجرد لا عددُ الشحنة. فطرحُ ستٍّ من فرقٍ قدرُه اثنتان أعطى «‎-4 غيرُ
+        //   مُفسَّر» — وهو ما كشفه الفحص.
+        const causes = [];
+        // ١) تصاميمُ في الكتالوج بلا نوعٍ معروف: لا سطرَ لها، فتُنفخ بها الكتالوجُ يقينًا.
+        if (cat.untyped) causes.push({ key: 'untyped', pieces: cat.untyped });
+        // ٢) شحناتٌ بنوعٍ لا يُطابق أيَّ صنف: الكتالوجُ عدَّها والجدولُ أسقطها.
+        const badType = ex.unknownType.reduce((a, x) => a + x.pieces, 0);
+        if (badType) causes.push({ key: 'unknownType', pieces: badType });
+
+        const hints = [];
+        // ⚠️ بضاعةُ شانتون **ليست سببًا للفرق** هنا: المقارنةُ مع المجموعِ المدموج
+        //   فهي داخلةٌ في الطرفَين. تُذكر لأنّها أوّلُ ما يُظنُّ فرقًا.
+        if (st.shanton.now) hints.push({ key: 'shanton', pieces: st.shanton.now });
+        const beforeCount = ex.beforeCount.reduce((a, x) => a + x.pieces, 0);
+        if (beforeCount) hints.push({ key: 'beforeCount', pieces: beforeCount });
+
+        const explained = causes.reduce((a, c) => a + c.pieces, 0);
+        const diff = cat.total - (st.sum.now + st.shanton.now);
+        return {
+            catTotal: cat.total,
+            ourNow: st.sum.now,
+            herNow: st.shanton.now,
+            combined: st.sum.now + st.shanton.now,
+            diff,
+            // ⚠️ `unexplained` هو الرقمُ الوحيدُ الذي يُهمّ، ويجب أن يكون صفرًا. وما
+            //   لم يكن صفرًا فثمّة سببٌ لم نُحصِه — يُعلَن مجهولًا ولا يُلفَّق له تفسير.
+            unexplained: diff - explained,
+            causes,
+            hints,
+            catUntyped: cat.untyped,
+            byType: cat.byType
+        };
+    }
+
     function abayaShipmentExclusions(shop) {
         const since = abayaOpening.openingDate || '';
         const res = { waiting: 0, waitingPieces: 0, beforeCount: [], unknownType: [], noPlan: [] };
