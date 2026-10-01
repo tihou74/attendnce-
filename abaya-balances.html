@@ -879,6 +879,47 @@
         line-height: 1.8;
     }
 
+    /* ============ نافذة شانتون ============
+       ⚠️ إضافاتٌ قليلةٌ فوق `.catmodal`، ولا نسخةٌ ثانيةٌ منها: الصندوقُ أعرض
+       لأنّ جدول المخزون ستّةُ أعمدة، وترويسةُ الرصيد لأنّها الرقمُ الذي فُتحت
+       النافذةُ من أجله فلا يصحّ أن يكون سطرًا كبقيّة السطور. */
+    .catmodal .box.wide { max-width: 760px; }
+    .shbtn { width: 100%; margin: var(--space-4) 0 0; }
+    .shfoot { padding: 0 var(--space-4) var(--space-4); }
+    .shfoot button { width: 100%; }
+    .shfoot .note { margin: var(--space-3) 0 0; }
+    #shModalRows .sect:first-child { margin-top: 0; }
+    #shModalRows table { font-size: var(--text-xs); }
+    .shhead {
+        border: var(--border-hairline) solid var(--color-primary);
+        border-inline-start: 3px solid var(--color-primary);
+        border-radius: var(--radius-md); padding: var(--space-4);
+        background: var(--color-surface-2); margin: 0 0 var(--space-2);
+    }
+    .shhead .k {
+        margin: 0; font-size: var(--text-xs); font-weight: 700; letter-spacing: .06em;
+        text-transform: uppercase; color: var(--color-text-muted);
+    }
+    .shhead .v {
+        margin: 4px 0 0; font-size: 30px; font-weight: 800; line-height: 1.15;
+        direction: ltr; color: var(--ink-800);
+    }
+    .shhead .v span { font-size: var(--text-xs); font-weight: 700; margin-inline-start: 6px;
+        color: var(--color-text-muted); }
+    /* ⚠️ حالةُ «دُفع لها مقدَّمًا» تُلوَّن تحذيرًا لا خطرًا: ليست عطلًا، لكنها
+       تستحقّ النظر (دفعةٌ مقدَّمةٌ أو دفعةٌ أُدخلت مرّتين). */
+    .shhead.credit { border-color: var(--color-warning); border-inline-start-color: var(--color-warning); }
+    .shhead .s { margin: 8px 0 0; font-size: var(--text-xs); color: var(--color-text-muted); line-height: 1.7; }
+    /* ⚠️ أثناء التصوير: زرُّ الإغلاق وزرُّ التحميل لا معنى لهما على ورقة. */
+    .catmodal .box.pdfing .x,
+    .catmodal .box.pdfing .shfoot { display: none; }
+    .shwarn {
+        margin: var(--space-3) 0 0; padding: 10px 12px; border-radius: var(--radius-md);
+        background: var(--color-surface-2);
+        border-inline-start: 3px solid var(--color-danger);
+        font-size: var(--text-xs); line-height: 1.8; color: var(--color-text);
+    }
+
     /* ============ نافذة طلب الواتساب ============ */
     .catwa .opts { display: grid; gap: var(--space-3); grid-template-columns: 1fr; margin: 0 0 var(--space-4); }
     .catwa .opt {
@@ -1132,9 +1173,14 @@
                 <div class="card">
                     <h2>Due to Shanton</h2>
                     <p class="amt down" id="acDue">&mdash;<span class="cur">QAR</span></p>
-                    <p class="meta">In your till but <b>not yours</b>.</p>
+                    <!-- ⚠️⚠️ «هذا الشهر» مكتوبةٌ في الوصف بقصد: هذه البطاقةُ تُقلَّب
+                         بتقليب الشهر، أمّا رصيدُها الجاري فهو في النافذة. وبلا هذه
+                         الكلمتين يُقرأ الأصغرُ على أنّه كلُّ الدَّين فيُدفع ناقصًا. -->
+                    <p class="meta"><b>This month only</b> &mdash; in your till but <b>not yours</b>.
+                        Her running balance is in the details window.</p>
                 </div>
             </div>
+            <button type="button" class="ghost shbtn" id="shOpenFromAccount">Shanton &mdash; full details &amp; PDF</button>
             <!-- ⚠️ أربعة أعمدة عن قصد. الأعمدة التي حُذفت (رسوم البنك · بعد
                  الرسوم · قطع شانتون · العمولة · المستحق لها) إمّا مجموعُها في
                  البطاقات أعلاه، أو أنها شرطة فارغة في محلّين من ثلاثة لأن
@@ -1238,6 +1284,10 @@
                         </table>
                     </div>
                     <p class="note" id="shNote"></p>
+                    <!-- ⚠️ الزرُّ هنا وفي شاشة الحساب معًا بقصد: الباحثةُ عن شانتون
+                         تدخل من بابَين — من «ستوكها» أو من «المستحقّ لها». وبابٌ
+                         واحدٌ يعني أنّ نصفَ من يبحث لا يجد. -->
+                    <button type="button" class="ghost shbtn" id="shOpenFromStock">Shanton &mdash; full details &amp; PDF</button>
                 </div>
             </div>
         </div>
@@ -1390,6 +1440,29 @@
              صورةُ البطاقة مقصوصةٌ لتتساوى البطاقات، وهذه تُظهرها **كاملة**.
              ⚠️ وتُغلق بثلاث طرق: زرُّ الإغلاق، والضغط خارج الصندوق، وزرّ Escape —
              نافذةٌ لا تُغلق إلا بزرٍّ صغيرٍ في زاويةٍ تُحبس القارئ على الهاتف. -->
+        <!-- ============ نافذةُ شانتون — الحسابُ والمخزونُ والحركةُ والدفعات ============
+             ⚠️ تستعمل **نفس** أصناف `.catmodal` كبقيّة النوافذ: لا تنسيقَ جديدٌ
+             يُصان، ولا تختلف نافذةٌ عن أختها. والصندوقُ `wide` وحده إضافة، لأنّ
+             جدولَ المخزون ستّةُ أعمدةٍ لا يتّسع لها 520px.
+             ⚠️ ومحتوى النافذة كلُّه يُبنى في `shRenderModal()` لا في الترميز: هو
+             جداولُ مشتقّةٌ من البيانات، وكتابتُها هنا تعني ترميزًا ميتًا. -->
+        <div id="shModal" class="catmodal hidden" role="dialog" aria-modal="true" aria-labelledby="shModalTitle">
+            <div class="box wide" id="shModalBox">
+                <div class="top">
+                    <div>
+                        <h3 id="shModalTitle">Shanton &mdash; her account with you</h3>
+                        <span class="c" id="shModalSub">&mdash;</span>
+                    </div>
+                    <button type="button" class="x" id="shModalClose" aria-label="Close">&#10005; Close</button>
+                </div>
+                <div class="rows" id="shModalRows"></div>
+                <div class="shfoot">
+                    <button type="button" id="shPdfBtn">&#11015; Download as PDF</button>
+                    <p class="note" id="shPdfNote"></p>
+                </div>
+            </div>
+        </div>
+
         <div id="catModal" class="catmodal hidden" role="dialog" aria-modal="true" aria-labelledby="catModalName">
             <div class="box" id="catModalBox">
                 <div class="top">
@@ -2020,6 +2093,154 @@
         return t;
     }
 
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ حسابُ شانتون — «كم لها عندنا، وكم دفعنا لها، وكم بقي»
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️⚠️ قبل اليوم لم يكن في البرنامج **أيُّ** أثرٍ لدفعةٍ تُدفع لشانتون: لا
+    //   مجموعةٌ ولا خانةٌ ولا قاعدة. وكان `shDue` رقمًا مشتقًّا لا يُنقصه شيء —
+    //   فمهما دفع المالكُ لها بقيت الشاشةُ تعرض الدَّينَ نفسَه. وهذا أخطرُ ما
+    //   يكون في دينٍ متكرِّر: **دينٌ لا يُنقص يُدفع مرّتين**.
+    //
+    // ولفهمِ الحساب: شانتون تُعطينا بضاعتَها، فنبيعها، فنأخذ عمولتَنا عن كلِّ
+    // قطعةٍ (السعرُ في `abayaRates.shantonPerPiece`) والباقي لها. أي:
+    //
+    //        المستحقُّ لها = ما حُصِّل من بضاعتها − عمولتُنا
+    //        الباقي       = (الافتتاحيُّ + كلُّ المستحقِّ) − كلُّ ما دُفع لها
+    //
+    // ⚠️⚠️ والفرقُ بين رقمَين يتشابهان ويجب ألّا يُخلطا أبدًا:
+    //   · بطاقةُ «Due to Shanton» في شاشة الحساب = **مستحقُّ الشهر المعروض**،
+    //     أي كم من مالِ هذا الشهر في درجنا هو لها. تُقلَّب بتقليب الشهر.
+    //   · «Remaining to pay her» في نافذة شانتون = **رصيدُها الجاري منذ البداية
+    //     ناقصًا كلَّ ما دُفع**. لا علاقةَ له بشهرٍ معروض.
+    //   فالأوّلُ يُجيب «كم لها من هذا الشهر» والثاني «كم أحمل لها الآن». ولو
+    //   حُملا بعنوانٍ واحدٍ لقُرِئ الأصغرُ على أنّه كلُّ الدَّين فدُفع ناقصًا.
+    //
+    // ⚠️ والافتتاحيُّ (`openingDue`) ضروريٌّ كضرورته في كشف حركة المطاعم: لو
+    //   كانت بيننا وبينها حساباتٌ قبل أن يبدأ البرنامجُ بالتسجيل، فالرصيدُ
+    //   المحسوبُ من التقارير وحدَها ناقص. فيُكتب الرصيدُ القديمُ مرّةً واحدةً
+    //   بتاريخه، و**تُستثنى التقاريرُ التي قبل ذلك التاريخ** لأنّها مشمولةٌ فيه
+    //   أصلًا — وإلّا حُسبت مرّتين.
+    //
+    // ⚠️ ولا رقمَ من هذه الدوالِّ يُخزَّن في أيِّ مستند: كلُّها تُحسب من
+    //   التقارير بالنسبة السارية ومن دفترِ الدفعات. فلو صحّح المالكُ تقريرًا أو
+    //   غيّر سعرَ القطعة تبعه الحسابُ كلُّه بلا إعادةِ بناء.
+    // =====================================================================
+    const SHANTON_PAY_DOC = 'abaya_shanton_payments';
+    const SHANTON_PAY_METHODS = ['cash', 'bank'];
+    let shantonLedger = { openingDue: 0, openingDate: '', payments: [] };
+
+    /**
+     * قراءةُ سطورِ الدفعات بصرامة — ومع **تسميةِ** ما تعذّر قراءتُه.
+     *
+     * ⚠️⚠️ السطرُ الفاسدُ لا يُهمَل بصمت. إهمالُه يُنقص «المدفوع» فيُظهر دَينًا
+     *   **أكبرَ** من الحقيقة — ودَينٌ أكبرُ من الحقيقة يُدفع مرّتين. فيُعَدُّ في
+     *   `badPayments` ويُعرض عددُه على الشاشتين صريحًا.
+     */
+    function shantonPaymentsClean(raw) {
+        const arr = Array.isArray(raw) ? raw : [];
+        const list = [], bad = [];
+        arr.forEach((p, i) => {
+            const amount = Number(p && p.amount);
+            const date = String((p && p.date) || '');
+            if (!p || typeof p !== 'object'
+                || !isFinite(amount) || amount <= 0
+                || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                bad.push(i);
+                return;
+            }
+            list.push({
+                id: String(p.id || ''),
+                date,
+                amount,
+                // ⚠️ طريقةٌ مجهولةٌ تُقرأ «bank» ولا تُسقط الدفعة: المبلغُ هو
+                //   المال، والطريقةُ وصفٌ. إسقاطُ دفعةٍ لأنّ وصفَها غريبٌ يُضخّم الدَّين.
+                method: SHANTON_PAY_METHODS.includes(p.method) ? p.method : 'bank',
+                note: String(p.note || ''),
+                byName: String(p.byName || ''),
+                byEmail: String(p.byEmail || '')
+            });
+        });
+        // الأحدثُ أوّلًا — وعند تساوي اليوم يُفصل بالمعرّف ليثبت الترتيب.
+        list.sort((a, b) => String(b.date).localeCompare(String(a.date))
+            || String(b.id).localeCompare(String(a.id)));
+        return { list, bad };
+    }
+
+    /** تنظيفُ مستندِ الدفتر: أرقامٌ سالبةٌ أو تواريخُ غريبةٌ تُعاد إلى الصفر/الفراغ. */
+    function shantonLedgerClean(d) {
+        const o = (d && typeof d === 'object') ? d : {};
+        const od = Number(o.openingDue);
+        return {
+            openingDue: isFinite(od) && od > 0 ? od : 0,
+            openingDate: /^\d{4}-\d{2}-\d{2}$/.test(String(o.openingDate || '')) ? String(o.openingDate) : '',
+            payments: Array.isArray(o.payments) ? o.payments : []
+        };
+    }
+
+    /**
+     * الحسابُ كلُّه من تقاريرَ ودفتر. دالّةٌ **نقيّةٌ** بلا قراءةٍ ولا DOM، فتُفحَص
+     * بالتشغيل على بياناتٍ مُصطنعة.
+     *
+     * @param reports كلُّ تقارير العبايات (لا تُرشَّح بشهر — الرصيدُ جارٍ)
+     * @param ledger  مستندُ settings/abaya_shanton_payments كما هو
+     */
+    function shantonAccount(reports, ledger) {
+        const L = shantonLedgerClean(ledger);
+        const all = Array.isArray(reports) ? reports : [];
+        // ما قبل تاريخِ الافتتاحيِّ مشمولٌ فيه، فيُستثنى لئلّا يُحسب مرّتين.
+        const used = L.openingDate ? all.filter(r => String((r && r.date) || '') >= L.openingDate) : all;
+        const rows = used.map(abayaRow);
+        const t = abayaTotals(rows);
+        const { list, bad } = shantonPaymentsClean(L.payments);
+        const paid = list.reduce((a, p) => a + p.amount, 0);
+        const accrued = t.shDue;
+        const due = L.openingDue + accrued;
+        return {
+            openingDue: L.openingDue,
+            openingDate: L.openingDate,
+            skippedReports: all.length - used.length,
+            pieces: t.shPieces,
+            collected: t.shCollected,
+            commission: t.commission,
+            accrued,
+            due,
+            paid,
+            // ⚠️ قد يكون سالبًا، ولا يُقصَّ عند الصفر: سالبُه يعني أنّنا دفعنا لها
+            //   **أكثرَ** من المستحقّ (دفعةٌ مقدَّمة، أو دفعةٌ أُدخلت مرّتين). وقصُّه
+            //   يُخفي الأمرَين، وكلاهما يجب أن يُرى.
+            remaining: due - paid,
+            payments: list,
+            badPayments: bad.length,
+            lastPaidOn: list.length ? list[0].date : '',
+            reportCount: t.n,
+            dayCount: t.dayCount
+        };
+    }
+
+    /**
+     * حركاتُ شانتون مسطورةً من كلِّ التقارير — للتفصيل الذي يُعرض ويُطبع.
+     * ⚠️ تقرأ نفسَ `abayaMoveOwner` التي يقرؤها حسابُ الستوك، فلا يختلف سطرٌ
+     *   معروضٌ عن رقمٍ محسوب.
+     */
+    function shantonMoveLog(reports) {
+        const out = [];
+        (Array.isArray(reports) ? reports : []).forEach(r => {
+            (Array.isArray(r && r.movements) ? r.movements : []).forEach(m => {
+                if (abayaMoveOwner(m) !== 'shanton') return;
+                const kind = ABAYA_MOVE_KINDS.find(k => k.key === m.kind);
+                const qty = Number(m.qty) || 0;
+                if (!kind || qty <= 0) return;
+                out.push({
+                    date: String(r.date || ''), shop: String(r.shop || ''),
+                    kind: kind.key, label: kind.en, sign: kind.sign, qty,
+                    toShop: String(m.shop || ''), note: String(m.note || '')
+                });
+            });
+        });
+        out.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+        return out;
+    }
+
     function abayaStockFor(shop) {
         const since = abayaOpening.openingDate || '';
         const openMap = abayaOpening.opening[shop] || {};
@@ -2183,6 +2404,8 @@
         arvCloseImg();
         // ⚠️ ونافذةُ واتساب الورشة معها ولنفس السبب بالحرف.
         arvCloseWa();
+        // ⚠️ ونافذةُ شانتون معهما: تُفتح من قسمَين، فمغادرةُ أيٍّ منهما تُغلقها.
+        shCloseModal();
         // ⭐⭐ لوحة الحضور تُحمَّل عند فتحها لا مع كل دخول: هي القراءة الوحيدة التي
         // تُنزّل صورًا، فتحميلُها لمن جاء ليقرأ الأرقام وحدها إهدارٌ لبياناته.
         if (which === 'duty') {
@@ -3024,8 +3247,322 @@
         // ⚠️ ونافذةُ واتساب الورشة أُضيفت هنا **إلزامًا** كسابقتها: نسيانُ سطرِها
         //   كان سيجعلها النافذةَ الوحيدةَ التي لا يُغلقها Escape.
         if (!el('arvWaModal').classList.contains('hidden')) { arvCloseWa(); return; }
+        // ⚠️ ونافذةُ شانتون كذلك — نفسُ الإلزام، ولنفس السبب بالحرف.
+        if (!el('shModal').classList.contains('hidden')) { shCloseModal(); return; }
         if (!el('catModal').classList.contains('hidden')) { catCloseModal(); return; }
         if (!el('arvImgModal').classList.contains('hidden')) arvCloseImg();
+    });
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ نافذةُ شانتون — «كم لها عندنا، وما مرَّ على بضاعتها»
+    // ---------------------------------------------------------------------
+    // بطلب المالك: «نافذة فيها تفاصيل شانتون بروحها، وكم حساب عندنا الخاص
+    // بشانتون ولما أدفع لها».
+    //
+    // ⚠️⚠️ أربعةُ أقسامٍ تُجيب أربعةَ أسئلةٍ مختلفة، ولا يُدمج منها اثنان:
+    //   ١) الرصيد   — كم نحمل لها **الآن** (الرقمُ الذي فُتحت النافذةُ له).
+    //   ٢) شهرًا شهرًا — من أين تجمَّع ذلك الرصيد.
+    //   ٣) المخزون  — كم من بضاعتها عندنا، حركةً كاملةً لا «المتوفّر» وحدَه.
+    //   ٤) الدفعات  — متى دُفع لها وكم.
+    //
+    // ⚠️ ولا رقمَ هنا يُقرأ من مستند: كلُّه من `shantonAccount` و`abayaStockFor`
+    //   و`shantonMoveLog` — وهي نفسُها التي تُغذّي الشاشاتَ خلف النافذة. فلا
+    //   يختلف رقمٌ في النافذة عن رقمٍ تحتها، ولا يختلف الـPDF عن الشاشة.
+    // =====================================================================
+    function shCloseModal() {
+        el('shModal').classList.add('hidden');
+        document.body.style.overflow = '';
+        el('shPdfNote').innerText = '';
+    }
+
+    /** تفصيلُ شهرٍ شهرًا — من أين تجمَّع رصيدُها. الأحدثُ أوّلًا. */
+    function shantonByMonth(reports, limit) {
+        const by = new Map();
+        (Array.isArray(reports) ? reports : []).forEach(r => {
+            const m = String((r && r.date) || '').slice(0, 7);
+            if (!/^\d{4}-\d{2}$/.test(m)) return;
+            if (!by.has(m)) by.set(m, []);
+            by.get(m).push(r);
+        });
+        const out = [...by.keys()].sort((a, b) => b.localeCompare(a)).map(m => {
+            const t = abayaTotals(by.get(m).map(abayaRow));
+            return { month: m, pieces: t.shPieces, collected: t.shCollected,
+                     commission: t.commission, hers: t.shDue };
+        // ⚠️ الشهورُ التي لا بضاعةَ لها فيها تُسقَط: سطرٌ بأصفارٍ يُطيل الجدولَ
+        //   ولا يُضيف خبرًا، والسؤالُ «من أين تجمَّع» لا يُجيبه صفر.
+        }).filter(x => x.pieces > 0 || x.collected > 0);
+        return (limit && out.length > limit) ? out.slice(0, limit) : out;
+    }
+
+    const SH_MONTHS_SHOWN = 12;
+    const SH_MOVES_SHOWN = 30;
+
+    function shRenderModal() {
+        const acc = shantonAccount(allAbayaReports, shantonLedger);
+        const credit = acc.remaining < -0.005;
+        const parts = [];
+
+        // ---- ١) الرصيد
+        parts.push(`<div class="shhead${credit ? ' credit' : ''}">
+            <p class="k">${credit ? 'Paid to her in advance' : 'Remaining to pay her'}</p>
+            <p class="v">${money(Math.abs(acc.remaining))}<span>QAR</span></p>
+            <p class="s">Became hers <b>${money(acc.due)}</b> &nbsp;&middot;&nbsp; Paid <b>${money(acc.paid)}</b>
+                ${acc.lastPaidOn ? `&nbsp;&middot;&nbsp; last paid ${escapeHtml(dateLabel(acc.lastPaidOn))}` : ''}</p>
+        </div>`);
+        parts.push(`<div class="r"><span class="k">Her pieces sold, all time</span><span class="v">${acc.pieces}</span></div>`);
+        parts.push(`<div class="r"><span class="k">Collected from her abayas</span><span class="v">${money(acc.collected)}</span></div>`);
+        parts.push(`<div class="r"><span class="k">Our commission (${abayaRates.shantonPerPiece}/piece)</span><span class="v">${money(acc.commission)}</span></div>`);
+        if (acc.openingDue) {
+            parts.push(`<div class="r"><span class="k">Balance before ${escapeHtml(acc.openingDate)}</span><span class="v">${money(acc.openingDue)}</span></div>`);
+        }
+        if (credit) {
+            parts.push(`<p class="shwarn">She has been paid <b>${money(Math.abs(acc.remaining))} QAR</b> more than she is owed.
+                That is either a payment in advance, or the same payment recorded twice.</p>`);
+        }
+        if (acc.badPayments) {
+            parts.push(`<p class="shwarn"><b>${acc.badPayments} payment row(s) could not be read</b> and are not counted
+                as paid &mdash; so the remaining above looks <b>bigger</b> than it is. Tell the owner.</p>`);
+        }
+
+        // ---- ٢) شهرًا شهرًا
+        const months = shantonByMonth(allAbayaReports, SH_MONTHS_SHOWN);
+        parts.push(`<p class="sect">Where it came from &mdash; month by month</p>`);
+        parts.push(`<div class="tw"><table>
+            <thead><tr><th>Month</th><th class="n">Pieces</th><th class="n">Collected</th>
+                <th class="n">Our commission</th><th class="n">Became hers</th></tr></thead>
+            <tbody>${months.length ? months.map(m => `<tr>
+                <td><b>${escapeHtml(m.month)}</b></td>
+                <td class="n">${m.pieces}</td>
+                <td class="n">${money(m.collected)}</td>
+                <td class="n">${money(m.commission)}</td>
+                <td class="n"><b>${money(m.hers)}</b></td></tr>`).join('')
+            : `<tr><td colspan="5" style="color: var(--color-text-muted);">No abaya of hers has been sold yet.</td></tr>`}</tbody>
+        </table></div>`);
+
+        // ---- ٣) المخزون، حركةً كاملة
+        parts.push(`<p class="sect">Her stock in your shops &mdash; the full movement</p>`);
+        const shopRows = ABAYA_SHANTON_SHOPS.map(shop => ({ shop, s: abayaStockFor(shop).shanton }));
+        const tot = shopRows.reduce((a, r) => ({
+            opening: a.opening + r.s.opening, received: a.received + r.s.received,
+            sold: a.sold + r.s.sold, sentOut: a.sentOut + r.s.sentOut, now: a.now + r.s.now
+        }), { opening: 0, received: 0, sold: 0, sentOut: 0, now: 0 });
+        parts.push(`<div class="tw"><table>
+            <thead><tr><th>Shop</th><th class="n">Opening</th><th class="n">Received</th>
+                <th class="n">Sold</th><th class="n">Returned / sent</th><th class="n">Held now</th></tr></thead>
+            <tbody>${shopRows.map(({ shop, s }) => `<tr>
+                <td><b>${escapeHtml(shop)}</b></td>
+                <td class="n">${s.opening}</td>
+                <td class="n">${s.received}</td>
+                <td class="n">${s.sold}</td>
+                <td class="n">${s.sentOut}</td>
+                <td class="n"><b${s.now < 0 ? ' style="color: var(--color-danger);"' : ''}>${s.now}</b></td></tr>`).join('')}</tbody>
+            <tfoot><tr><td>TOTAL</td><td class="n">${tot.opening}</td><td class="n">${tot.received}</td>
+                <td class="n">${tot.sold}</td><td class="n">${tot.sentOut}</td><td class="n">${tot.now}</td></tr></tfoot>
+        </table></div>`);
+        if (tot.now < 0) {
+            parts.push(`<p class="shwarn">A negative number means abayas of hers were sold without ever being
+                recorded as <b>received from her</b>. The pieces are real; the receiving line is missing.</p>`);
+        }
+
+        // ---- ٤) حركاتها سطرًا سطرًا
+        const log = shantonMoveLog(allAbayaReports);
+        const shown = log.slice(0, SH_MOVES_SHOWN);
+        parts.push(`<p class="sect">Every movement of her goods${log.length > shown.length
+            ? ` &mdash; newest ${shown.length} of ${log.length}` : ''}</p>`);
+        parts.push(`<div class="tw"><table>
+            <thead><tr><th>Day</th><th>Shop</th><th>What happened</th><th class="n">Pieces</th></tr></thead>
+            <tbody>${shown.length ? shown.map(m => `<tr>
+                <td>${escapeHtml(dateLabel(m.date))}</td>
+                <td>${escapeHtml(m.shop)}</td>
+                <td>${escapeHtml(m.label)}${m.toShop ? ` &rarr; ${escapeHtml(m.toShop)}` : ''}</td>
+                <td class="n"><b>${m.sign < 0 ? '&minus;' : '+'}${m.qty}</b></td></tr>`).join('')
+            : `<tr><td colspan="4" style="color: var(--color-text-muted);">Nothing recorded yet.</td></tr>`}</tbody>
+        </table></div>`);
+
+        // ---- ٥) الدفعات
+        parts.push(`<p class="sect">What has been paid to her</p>`);
+        parts.push(`<div class="tw"><table>
+            <thead><tr><th>Day</th><th class="n">Amount</th><th>From</th><th>Note</th></tr></thead>
+            <tbody>${acc.payments.length ? acc.payments.map(p => `<tr>
+                <td>${escapeHtml(dateLabel(p.date))}</td>
+                <td class="n"><b>${money(p.amount)}</b></td>
+                <td>${p.method === 'cash' ? 'Cash' : 'Bank'}</td>
+                <td>${escapeHtml(p.note) || '<span style="color: var(--color-text-muted);">&mdash;</span>'}</td></tr>`).join('')
+            : `<tr><td colspan="4" style="color: var(--color-text-muted);">No payment has been recorded yet.</td></tr>`}</tbody>
+            ${acc.payments.length ? `<tfoot><tr><td>TOTAL PAID</td><td class="n">${money(acc.paid)}</td><td colspan="2"></td></tr></tfoot>` : ''}
+        </table></div>`);
+
+        parts.push(`<p class="sub">She gives you the goods and you pay her after they sell: every abaya of hers that
+            is sold leaves you <b>${abayaRates.shantonPerPiece} QAR</b> and the rest becomes hers.
+            <b>Remaining to pay</b> is her balance since the beginning, after everything already paid &mdash;
+            it is not the figure on the monthly card, which covers one month only.
+            Payments are recorded by the owner.</p>`);
+
+        el('shModalRows').innerHTML = parts.join('');
+        el('shModalSub').textContent = `${acc.reportCount} report(s) · ${acc.dayCount} day(s)`
+            + (acc.openingDate ? ` · since ${acc.openingDate}` : '');
+    }
+
+    function shOpenModal() {
+        shRenderModal();
+        el('shModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        el('shModalClose').focus();
+    }
+
+    // =====================================================================
+    // ⭐⭐⭐⭐ تحميلُ النافذة PDF
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️⚠️ **صورةٌ لا نصّ**، وهذا قرارٌ لا تفضيل: `jsPDF` في هذا المشروع لا
+    //   يكتب عربيةً (لا خطَّ عربيًّا مُضمَّنًا فيه)، والنصُّ العربيُّ يخرج مربّعاتٍ
+    //   أو معكوسًا. فتُصوَّر النافذةُ كما تُرى — فيخرج الـPDF مطابقًا للشاشة حرفًا
+    //   بحرف، عربيَّها وإنجليزيَّها وأرقامَها.
+    //
+    // ⚠️⚠️ والمكتبتان تُحمَّلان **عند أوّل ضغطة** لا مع الصفحة: هذه الصفحة تُفتح
+    //   على هاتف السيدة فاطمة كلَّ يوم، وتحميلُ مكتبتَي رسمٍ (نحو 400KB) في كلِّ
+    //   فتحةٍ من أجل زرٍّ يُضغط مرّةً في الشهر إهدارٌ لبياناتها. ونطاقُ cdnjs
+    //   مُدرَجٌ في `CACHEABLE_HOSTS` في `sw.js` فتُخزَّن بعد أوّل مرّة.
+    //
+    // ⚠️⚠️ والتقطيعُ على صفحاتٍ **مقصود**: في هذا المشروع دالّةُ PDF أخرى
+    //   (`downloadPDFReport` في لوحة المالك) تقصُّ كلَّ ما زاد على صفحةِ A4
+    //   واحدةٍ — عطلٌ موثَّقٌ في تعليقها. فلا يُنسخ هنا: الصورةُ تُقسَّم إلى صفحاتٍ
+    //   بعددِ ما تحتاج، وحسابُ حدِّ الصفحة من عرضِ الصورة نفسِها لا من رقمٍ ثابت.
+    // =====================================================================
+    const SH_PDF_LIBS = [
+        'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
+    ];
+    let shPdfLibsReady = false;
+    let shPdfBusy = false;
+
+    function shLoadScript(src) {
+        return new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = src;
+            s.async = true;
+            s.onload = () => resolve();
+            s.onerror = () => reject(new Error('the drawing library could not be downloaded'));
+            document.head.appendChild(s);
+        });
+    }
+
+    async function shEnsurePdfLibs() {
+        if (shPdfLibsReady) return;
+        // ⚠️ بالترتيب لا بالتوازي: jsPDF أصغر وقد يسبق، ثم نجد html2canvas غائبةً
+        //   فنعلن فشلًا وقد نجح نصفُ التحميل.
+        for (const src of SH_PDF_LIBS) await shLoadScript(src);
+        if (typeof window.html2canvas !== 'function') throw new Error('the drawing library did not start');
+        if (!(window.jspdf && typeof window.jspdf.jsPDF === 'function')) throw new Error('the PDF library did not start');
+        shPdfLibsReady = true;
+    }
+
+    /**
+     * حدودُ تقطيعِ الصورة على صفحاتِ A4 — دالّةٌ **نقيّةٌ** بلا رسمٍ ولا DOM.
+     *
+     * ⚠️⚠️ أُخرجت من حلقةِ الرسم عن قصد: التقطيعُ هو بعينه موضعُ العطل في دالّةِ
+     *   PDF الأخرى في هذا المشروع (تقصُّ ما زاد على صفحة). فتُفحَص وحدَها
+     *   بأرقامٍ معروفة، والخاصّيّةُ المطلوبةُ واحدة: **مجموعُ ارتفاعاتِ القطع
+     *   يساوي ارتفاعَ الصورة بالضبط** — أي لا بكسلَ واحدٌ يُفقد.
+     */
+    function shPdfSlices(canvasW, canvasH, availW, availH) {
+        const out = [];
+        if (!(canvasW > 0 && canvasH > 0 && availW > 0 && availH > 0)) return out;
+        const pxPerMm = canvasW / availW;
+        const sliceH = Math.max(1, Math.floor(availH * pxPerMm));
+        for (let y = 0; y < canvasH; y += sliceH) {
+            const h = Math.min(sliceH, canvasH - y);
+            out.push({ y, h, mmH: h / pxPerMm });
+        }
+        return out;
+    }
+
+    async function shDownloadPdf() {
+        const btn = el('shPdfBtn');
+        const note = el('shPdfNote');
+        const say = (m) => { if (note) note.innerHTML = m; };
+        if (shPdfBusy) return;
+        shPdfBusy = true;
+        if (btn) btn.disabled = true;
+        say('Preparing the PDF&hellip;');
+
+        const box = el('shModalBox');
+        const p = qatarParts(new Date());
+        const stampISO = `${p.year}-${p.month}-${p.day}`;
+
+        // ⚠️⚠️ طابعُ اللحظة يُدسُّ في الصندوق **قبل التصوير**: ورقةٌ تُحفظ وتُرسل
+        //   وتُقرأ بعد أسبوع، ورقمُ رصيدٍ بلا تاريخه يُقرأ أنّه رصيدُ اللحظة.
+        //   ويُحسب وقتَ الضغط لا وقتَ فتح النافذة، فقد تبقى مفتوحةً ساعات.
+        const stamp = document.createElement('p');
+        stamp.className = 'sub';
+        stamp.style.cssText = 'margin-top: var(--space-4); font-weight: 700;';
+        stamp.textContent = `Shanton — account printed on ${stampISO} at ${p.hour}:${p.minute} Qatar time`;
+        el('shModalRows').appendChild(stamp);
+
+        // ⚠️ الصندوقُ مقصوصٌ بـ`max-height: 92vh` ويُمرَّر بالإصبع، والتصويرُ يأخذ
+        //   ما بداخل الحدِّ فقط — فيخرج الـPDF ناقصًا بلا أن ينبّه شيء. فتُرفع
+        //   القيودُ أثناء التصوير وتُعاد في `finally` حتى لو فشل.
+        const prev = { maxHeight: box.style.maxHeight, overflowY: box.style.overflowY };
+        box.style.maxHeight = 'none';
+        box.style.overflowY = 'visible';
+        // وزرُّ الإغلاق وزرُّ التحميل لا معنى لهما على ورقة.
+        box.classList.add('pdfing');
+
+        try {
+            await shEnsurePdfLibs();
+            const canvas = await window.html2canvas(box, {
+                backgroundColor: getComputedStyle(box).backgroundColor || '#ffffff',
+                scale: 2,
+                useCORS: true,
+                scrollX: 0,
+                scrollY: 0
+            });
+
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+            const MARGIN = 10;
+            const availW = pdf.internal.pageSize.getWidth() - MARGIN * 2;
+            const availH = pdf.internal.pageSize.getHeight() - MARGIN * 2;
+            const slices = shPdfSlices(canvas.width, canvas.height, availW, availH);
+            if (!slices.length) throw new Error('the window measured as empty');
+
+            slices.forEach((s, i) => {
+                const part = document.createElement('canvas');
+                part.width = canvas.width;
+                part.height = s.h;
+                const ctx = part.getContext('2d');
+                // ⚠️ خلفيةٌ بيضاءُ تحت القطعة: قطعةٌ شفّافةٌ تُطبع سوداءَ على بعض
+                //   القارئات.
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, part.width, part.height);
+                ctx.drawImage(canvas, 0, s.y, canvas.width, s.h, 0, 0, canvas.width, s.h);
+                if (i > 0) pdf.addPage();
+                pdf.addImage(part.toDataURL('image/png'), 'PNG', MARGIN, MARGIN, availW, s.mmH);
+            });
+
+            pdf.save(`Shanton-account-${stampISO}.pdf`);
+            say(`Downloaded &mdash; ${slices.length} page(s), as at ${stampISO} ${p.hour}:${p.minute}.`);
+        } catch (e) {
+            // ⚠️ السببُ يُقال، ولا يُقال «حدث خطأ»: أغلبُ الفشل هنا انقطاعُ شبكةٍ
+            //   عند تحميل المكتبة، وهو شيءٌ تفهمه وتُعيد المحاولةَ بعده.
+            say(`<b>The PDF was not made</b> &mdash; ${escapeHtml(e.message || 'unknown reason')}. `
+                + `It needs the internet the first time. Everything on the screen is still correct; `
+                + `you can take a screenshot meanwhile.`);
+        } finally {
+            box.classList.remove('pdfing');
+            box.style.maxHeight = prev.maxHeight;
+            box.style.overflowY = prev.overflowY;
+            if (stamp.parentNode) stamp.parentNode.removeChild(stamp);
+            shPdfBusy = false;
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    el('shOpenFromStock').addEventListener('click', shOpenModal);
+    el('shOpenFromAccount').addEventListener('click', shOpenModal);
+    el('shModalClose').addEventListener('click', shCloseModal);
+    el('shPdfBtn').addEventListener('click', shDownloadPdf);
+    el('shModal').addEventListener('click', (ev) => {
+        if (!ev.target.closest('#shModalBox')) shCloseModal();
     });
 
     // =====================================================================
@@ -3665,16 +4202,22 @@
     async function loadAll() {
         el('dataError').innerText = '';
         try {
-            const [repSnap, rateSnap, openSnap, tgSnap] = await Promise.all([
+            const [repSnap, rateSnap, openSnap, tgSnap, shPaySnap] = await Promise.all([
                 getDocs(collection(db, "abaya_sales_reports")),
                 getDoc(doc(db, "settings", "abaya_rates")),
                 getDoc(doc(db, "settings", "abaya_stock_opening")),
-                getDoc(doc(db, "settings", "abaya_targets"))
+                getDoc(doc(db, "settings", "abaya_targets")),
+                // ⚠️ دفترُ ما دُفع لشانتون: تُقرأ ولا تُكتب من هذه الصفحة. القواعدُ
+                //   تسمح للمُشاهِدة بقراءة `settings` ولا تسمح لها بالكتابة فيها —
+                //   فالتسجيلُ في لوحة المالك وحدَها، وهذا مقصود: هو الذي يدفع.
+                getDoc(doc(db, "settings", SHANTON_PAY_DOC))
             ]);
 
             allAbayaReports = [];
             repSnap.forEach(d => allAbayaReports.push({ id: d.id, ...d.data() }));
             allAbayaReports.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+
+            shantonLedger = shantonLedgerClean(shPaySnap.exists() ? shPaySnap.data() : null);
 
             if (rateSnap.exists()) {
                 const d = rateSnap.data();

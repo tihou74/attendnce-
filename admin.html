@@ -2804,6 +2804,76 @@
             <p class="card-sub" style="margin: 12px 0 0;" id="abShStockNote"></p>
         </div>
 
+        <!-- ==============================================================
+             ⭐⭐⭐⭐⭐ حسابُ شانتون — «كم لها عندنا، وكم دفعنا، وكم بقي»
+             --------------------------------------------------------------
+             ⚠️⚠️⚠️ قبل هذه البطاقة لم يكن في البرنامج أيُّ أثرٍ لدفعةٍ تُدفع لها.
+               فمهما دفع المالكُ بقي «Due to Shanton» كما هو — ودَينٌ لا يُنقص
+               يُدفع مرّتين.
+
+             ⚠️⚠️ ولا تُخلط بين رقمَين:
+               · بطاقةُ «Due to Shanton» في الأعلى = مستحقُّ **المدى المعروض**
+                 (From/To)، أي كم من مالِ تلك الأيام في الدرج هو لها.
+               · «Remaining» هنا = رصيدُها **الجاري منذ البداية** ناقصًا كلَّ ما
+                 دُفع. لا يتغيّر بتقليب التواريخ فوق.
+
+             ⚠️ والدفعاتُ تُحفظ في `settings/abaya_shanton_payments` — مستندٌ في
+               مجموعةٍ **مشمولةٍ بالقواعد المنشورة أصلًا**، فالميزةُ تعمل بلا
+               انتظار نشرةِ قواعدَ جديدة. والسيدة فاطمة تقرؤها ولا تكتبها.
+             ============================================================== -->
+        <div class="card money-only" style="border-left: 4px solid var(--accent);">
+            <h3><span data-icon="dollar"></span> Shanton's account <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">حساب شانتون</span></h3>
+            <p class="card-sub">
+                She gives us the goods; we sell them, keep <b id="abShPerPieceEcho">&mdash;</b> QAR per abaya, and the rest is hers.
+                This is her <b>running balance since the beginning</b> &mdash; it does <b>not</b> follow the From/To dates above.
+            </p>
+
+            <div class="stats">
+                <div class="stat-box"><div class="stat-icon" data-icon="dollar"></div><div><h3>Became hers (all time)</h3><p id="abShDueAll">0 QAR</p></div></div>
+                <div class="stat-box"><div class="stat-icon" data-icon="check"></div><div><h3>Paid to her</h3><p id="abShPaid">0 QAR</p></div></div>
+                <div class="stat-box"><div class="stat-icon" data-icon="alertTriangle"></div><div><h3>Remaining to pay</h3><p id="abShRemain">0 QAR</p></div></div>
+            </div>
+
+            <!-- ---- الرصيدُ الافتتاحيُّ: ما كان لها قبل أن يبدأ البرنامج ---- -->
+            <h4 style="margin: 18px 0 6px; font-size: 14px;">Balance before the system started</h4>
+            <p class="card-sub" style="margin: 0 0 8px;">
+                Only if you already owed her something on the day you started recording. Reports dated
+                <b>before</b> that date are then left out, because this figure already contains them.
+                Leave it empty if you started from zero.
+            </p>
+            <div class="controls" style="align-items: flex-end; gap: 10px; flex-wrap: wrap;">
+                <div style="width: 200px;"><label for="abShOpenDue">Owed to her then (QAR)</label><input type="number" id="abShOpenDue" step="0.01" min="0"></div>
+                <div style="width: 180px;"><label for="abShOpenDate">On this date</label><input type="date" id="abShOpenDate"></div>
+                <button class="btn-ghost" onclick="saveShantonOpening()"><span data-icon="save"></span> Save opening balance</button>
+                <span id="abShOpenStatus" style="font-weight: 600; font-size: 13px;"></span>
+            </div>
+
+            <!-- ---- تسجيلُ دفعة ---- -->
+            <h4 style="margin: 22px 0 6px; font-size: 14px;">Record a payment you made to her</h4>
+            <div class="controls" style="align-items: flex-end; gap: 10px; flex-wrap: wrap;">
+                <div style="width: 170px;"><label for="abShPayDate">Date paid</label><input type="date" id="abShPayDate"></div>
+                <div style="width: 160px;"><label for="abShPayAmount">Amount (QAR)</label><input type="number" id="abShPayAmount" step="0.01" min="0"></div>
+                <div style="width: 150px;"><label for="abShPayMethod">Paid from</label>
+                    <select id="abShPayMethod">
+                        <option value="bank">Bank</option>
+                        <option value="cash">Cash</option>
+                    </select>
+                </div>
+                <div style="flex: 1; min-width: 200px;"><label for="abShPayNote">Note (optional)</label><input type="text" id="abShPayNote" maxlength="120" placeholder="cheque no., which months, …"></div>
+                <button class="btn-success" id="abShPayBtn" onclick="addShantonPayment()"><span data-icon="save"></span> Record payment</button>
+                <span id="abShPayStatus" style="font-weight: 600; font-size: 13px;"></span>
+            </div>
+
+            <div class="table-container" style="margin-top: 14px;">
+                <table>
+                    <thead><tr><th>Date</th><th class="money-col">Amount</th><th>From</th><th>Note</th><th>Recorded by</th><th></th></tr></thead>
+                    <tbody id="abShPayBody"></tbody>
+                    <tfoot id="abShPayFoot"></tfoot>
+                </table>
+            </div>
+            <p class="card-sub" style="margin: 12px 0 0;" id="abShAcctNote"></p>
+        </div>
+
         <div class="card money-only">
             <h3><span data-icon="edit"></span> Opening stock count <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">الجرد الافتتاحي</span></h3>
             <p class="card-sub">
@@ -17953,7 +18023,7 @@
         const body = document.getElementById('abReportsBody');
         if (body) body.innerHTML = `<tr><td colspan="13" style="text-align:center;">Loading...</td></tr>`;
         try {
-            const [repSnap, selSnap, rateSnap, openSnap, tgSnap] = await Promise.all([
+            const [repSnap, selSnap, rateSnap, openSnap, tgSnap, shPaySnap] = await Promise.all([
                 // ⚠️⚠️⚠️ قراءةٌ صريحة بلا orderBy: فايرستور **يُسقط بصمتٍ** كل
                 // مستندٍ لا يحمل الحقل المرتَّب به. فتقريرٌ بلا `timestamp`
                 // (انقطاعُ شبكةٍ وقت الكتابة، أو مستندٌ صُنع بأي طريقة أخرى) كان
@@ -17966,12 +18036,17 @@
                 getDocs(collection(db, "abaya_sellers")),
                 getDoc(doc(db, "settings", "abaya_rates")),
                 getDoc(doc(db, "settings", "abaya_stock_opening")),
-                getDoc(doc(db, "settings", "abaya_targets"))
+                getDoc(doc(db, "settings", "abaya_targets")),
+                // دفترُ ما دُفع لشانتون. ⚠️ مستندٌ قد لا يوجد بعد (ولا دفعةَ أصلًا)
+                //   فيُقرأ غيابُه دفترًا فارغًا لا خطأً.
+                getDoc(doc(db, "settings", SHANTON_PAY_DOC))
             ]);
 
             allAbayaReports = [];
             repSnap.forEach(d => allAbayaReports.push({ id: d.id, ...d.data() }));
             allAbayaReports.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+
+            shantonLedger = shantonLedgerClean(shPaySnap.exists() ? shPaySnap.data() : null);
 
             abayaSellers = [];
             selSnap.forEach(d => abayaSellers.push({ id: d.id, ...d.data() }));
@@ -18088,6 +18163,7 @@
         renderAbayaOpeningEditor();
         renderAbayaTargetEditor();
         renderAbayaTarget();
+        renderShantonAccount();
         const cEl = document.getElementById('abCardRate');
         if (cEl) cEl.value = abayaRates.cardFeePercent;
         const pEl = document.getElementById('abPerPiece');
@@ -18159,6 +18235,154 @@
         });
         t.dayCount = t.days.size;
         return t;
+    }
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ حسابُ شانتون — «كم لها عندنا، وكم دفعنا لها، وكم بقي»
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️⚠️ قبل اليوم لم يكن في البرنامج **أيُّ** أثرٍ لدفعةٍ تُدفع لشانتون: لا
+    //   مجموعةٌ ولا خانةٌ ولا قاعدة. وكان `shDue` رقمًا مشتقًّا لا يُنقصه شيء —
+    //   فمهما دفع المالكُ لها بقيت الشاشةُ تعرض الدَّينَ نفسَه. وهذا أخطرُ ما
+    //   يكون في دينٍ متكرِّر: **دينٌ لا يُنقص يُدفع مرّتين**.
+    //
+    // ولفهمِ الحساب: شانتون تُعطينا بضاعتَها، فنبيعها، فنأخذ عمولتَنا عن كلِّ
+    // قطعةٍ (السعرُ في `abayaRates.shantonPerPiece`) والباقي لها. أي:
+    //
+    //        المستحقُّ لها = ما حُصِّل من بضاعتها − عمولتُنا
+    //        الباقي       = (الافتتاحيُّ + كلُّ المستحقِّ) − كلُّ ما دُفع لها
+    //
+    // ⚠️⚠️ والفرقُ بين رقمَين يتشابهان ويجب ألّا يُخلطا أبدًا:
+    //   · بطاقةُ «Due to Shanton» في شاشة الحساب = **مستحقُّ الشهر المعروض**،
+    //     أي كم من مالِ هذا الشهر في درجنا هو لها. تُقلَّب بتقليب الشهر.
+    //   · «Remaining to pay her» في نافذة شانتون = **رصيدُها الجاري منذ البداية
+    //     ناقصًا كلَّ ما دُفع**. لا علاقةَ له بشهرٍ معروض.
+    //   فالأوّلُ يُجيب «كم لها من هذا الشهر» والثاني «كم أحمل لها الآن». ولو
+    //   حُملا بعنوانٍ واحدٍ لقُرِئ الأصغرُ على أنّه كلُّ الدَّين فدُفع ناقصًا.
+    //
+    // ⚠️ والافتتاحيُّ (`openingDue`) ضروريٌّ كضرورته في كشف حركة المطاعم: لو
+    //   كانت بيننا وبينها حساباتٌ قبل أن يبدأ البرنامجُ بالتسجيل، فالرصيدُ
+    //   المحسوبُ من التقارير وحدَها ناقص. فيُكتب الرصيدُ القديمُ مرّةً واحدةً
+    //   بتاريخه، و**تُستثنى التقاريرُ التي قبل ذلك التاريخ** لأنّها مشمولةٌ فيه
+    //   أصلًا — وإلّا حُسبت مرّتين.
+    //
+    // ⚠️ ولا رقمَ من هذه الدوالِّ يُخزَّن في أيِّ مستند: كلُّها تُحسب من
+    //   التقارير بالنسبة السارية ومن دفترِ الدفعات. فلو صحّح المالكُ تقريرًا أو
+    //   غيّر سعرَ القطعة تبعه الحسابُ كلُّه بلا إعادةِ بناء.
+    // =====================================================================
+    const SHANTON_PAY_DOC = 'abaya_shanton_payments';
+    const SHANTON_PAY_METHODS = ['cash', 'bank'];
+    let shantonLedger = { openingDue: 0, openingDate: '', payments: [] };
+
+    /**
+     * قراءةُ سطورِ الدفعات بصرامة — ومع **تسميةِ** ما تعذّر قراءتُه.
+     *
+     * ⚠️⚠️ السطرُ الفاسدُ لا يُهمَل بصمت. إهمالُه يُنقص «المدفوع» فيُظهر دَينًا
+     *   **أكبرَ** من الحقيقة — ودَينٌ أكبرُ من الحقيقة يُدفع مرّتين. فيُعَدُّ في
+     *   `badPayments` ويُعرض عددُه على الشاشتين صريحًا.
+     */
+    function shantonPaymentsClean(raw) {
+        const arr = Array.isArray(raw) ? raw : [];
+        const list = [], bad = [];
+        arr.forEach((p, i) => {
+            const amount = Number(p && p.amount);
+            const date = String((p && p.date) || '');
+            if (!p || typeof p !== 'object'
+                || !isFinite(amount) || amount <= 0
+                || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                bad.push(i);
+                return;
+            }
+            list.push({
+                id: String(p.id || ''),
+                date,
+                amount,
+                // ⚠️ طريقةٌ مجهولةٌ تُقرأ «bank» ولا تُسقط الدفعة: المبلغُ هو
+                //   المال، والطريقةُ وصفٌ. إسقاطُ دفعةٍ لأنّ وصفَها غريبٌ يُضخّم الدَّين.
+                method: SHANTON_PAY_METHODS.includes(p.method) ? p.method : 'bank',
+                note: String(p.note || ''),
+                byName: String(p.byName || ''),
+                byEmail: String(p.byEmail || '')
+            });
+        });
+        // الأحدثُ أوّلًا — وعند تساوي اليوم يُفصل بالمعرّف ليثبت الترتيب.
+        list.sort((a, b) => String(b.date).localeCompare(String(a.date))
+            || String(b.id).localeCompare(String(a.id)));
+        return { list, bad };
+    }
+
+    /** تنظيفُ مستندِ الدفتر: أرقامٌ سالبةٌ أو تواريخُ غريبةٌ تُعاد إلى الصفر/الفراغ. */
+    function shantonLedgerClean(d) {
+        const o = (d && typeof d === 'object') ? d : {};
+        const od = Number(o.openingDue);
+        return {
+            openingDue: isFinite(od) && od > 0 ? od : 0,
+            openingDate: /^\d{4}-\d{2}-\d{2}$/.test(String(o.openingDate || '')) ? String(o.openingDate) : '',
+            payments: Array.isArray(o.payments) ? o.payments : []
+        };
+    }
+
+    /**
+     * الحسابُ كلُّه من تقاريرَ ودفتر. دالّةٌ **نقيّةٌ** بلا قراءةٍ ولا DOM، فتُفحَص
+     * بالتشغيل على بياناتٍ مُصطنعة.
+     *
+     * @param reports كلُّ تقارير العبايات (لا تُرشَّح بشهر — الرصيدُ جارٍ)
+     * @param ledger  مستندُ settings/abaya_shanton_payments كما هو
+     */
+    function shantonAccount(reports, ledger) {
+        const L = shantonLedgerClean(ledger);
+        const all = Array.isArray(reports) ? reports : [];
+        // ما قبل تاريخِ الافتتاحيِّ مشمولٌ فيه، فيُستثنى لئلّا يُحسب مرّتين.
+        const used = L.openingDate ? all.filter(r => String((r && r.date) || '') >= L.openingDate) : all;
+        const rows = used.map(abayaRow);
+        const t = abayaTotals(rows);
+        const { list, bad } = shantonPaymentsClean(L.payments);
+        const paid = list.reduce((a, p) => a + p.amount, 0);
+        const accrued = t.shDue;
+        const due = L.openingDue + accrued;
+        return {
+            openingDue: L.openingDue,
+            openingDate: L.openingDate,
+            skippedReports: all.length - used.length,
+            pieces: t.shPieces,
+            collected: t.shCollected,
+            commission: t.commission,
+            accrued,
+            due,
+            paid,
+            // ⚠️ قد يكون سالبًا، ولا يُقصَّ عند الصفر: سالبُه يعني أنّنا دفعنا لها
+            //   **أكثرَ** من المستحقّ (دفعةٌ مقدَّمة، أو دفعةٌ أُدخلت مرّتين). وقصُّه
+            //   يُخفي الأمرَين، وكلاهما يجب أن يُرى.
+            remaining: due - paid,
+            payments: list,
+            badPayments: bad.length,
+            lastPaidOn: list.length ? list[0].date : '',
+            reportCount: t.n,
+            dayCount: t.dayCount
+        };
+    }
+
+    /**
+     * حركاتُ شانتون مسطورةً من كلِّ التقارير — للتفصيل الذي يُعرض ويُطبع.
+     * ⚠️ تقرأ نفسَ `abayaMoveOwner` التي يقرؤها حسابُ الستوك، فلا يختلف سطرٌ
+     *   معروضٌ عن رقمٍ محسوب.
+     */
+    function shantonMoveLog(reports) {
+        const out = [];
+        (Array.isArray(reports) ? reports : []).forEach(r => {
+            (Array.isArray(r && r.movements) ? r.movements : []).forEach(m => {
+                if (abayaMoveOwner(m) !== 'shanton') return;
+                const kind = ABAYA_MOVE_KINDS.find(k => k.key === m.kind);
+                const qty = Number(m.qty) || 0;
+                if (!kind || qty <= 0) return;
+                out.push({
+                    date: String(r.date || ''), shop: String(r.shop || ''),
+                    kind: kind.key, label: kind.en, sign: kind.sign, qty,
+                    toShop: String(m.shop || ''), note: String(m.note || '')
+                });
+            });
+        });
+        out.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+        return out;
     }
 
     function filteredAbayaReports() {
@@ -19701,6 +19925,221 @@
             show(`Saved. Every abaya report is now calculated with ${card}% and ${Math.round(per)} QAR per abaya.`, 'var(--success)');
         } catch (e) {
             show('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    // =====================================================================
+    // ⭐⭐⭐⭐ حسابُ شانتون في لوحة المالك — تسجيلُ الدفعات وعرضُ الباقي
+    // ---------------------------------------------------------------------
+    // ⚠️ الكتابةُ للمالكِ وحدَه (`canEditAbayaSetup`) كالجردِ الافتتاحيِّ والنسب،
+    //   لأنّ دفعةً واحدةً تُنقص دَينًا حقيقيًّا. والقواعدُ تسمح للمحاسب أيضًا، فلو
+    //   أراد المالكُ توسيعَها فسطرٌ واحدٌ يكفي — ولا تُوسَّع بالظنّ.
+    // =====================================================================
+    function renderShantonAccount() {
+        const acc = shantonAccount(allAbayaReports, shantonLedger);
+        const put = (id, v) => { const e = document.getElementById(id); if (e) e.innerText = v; };
+
+        put('abShPerPieceEcho', String(abayaRates.shantonPerPiece));
+        put('abShDueAll', money(acc.due) + ' QAR');
+        put('abShPaid', money(acc.paid) + ' QAR');
+        // ⚠️ السالبُ يُكتب بكلماتٍ لا بإشارةٍ وحدَها: «‎-500 QAR» تُقرأ خطأَ عرضٍ،
+        //   و«paid in advance» تُقرأ حقيقةً — وهي حقيقةٌ يجب أن تُلاحظ.
+        put('abShRemain', acc.remaining < -0.005
+            ? `${money(Math.abs(acc.remaining))} QAR paid in advance`
+            : money(acc.remaining) + ' QAR');
+
+        const od = document.getElementById('abShOpenDue');
+        if (od && document.activeElement !== od) od.value = acc.openingDue ? acc.openingDue : '';
+        const odt = document.getElementById('abShOpenDate');
+        if (odt && document.activeElement !== odt) odt.value = acc.openingDate || '';
+
+        const body = document.getElementById('abShPayBody');
+        const foot = document.getElementById('abShPayFoot');
+        if (body) {
+            body.innerHTML = acc.payments.length
+                ? acc.payments.map(p => `<tr>
+                        <td>${escapeHtml(salesDateLabel(p.date))}</td>
+                        <td class="money-col"><b>${money(p.amount)}</b></td>
+                        <td>${p.method === 'cash' ? 'Cash' : 'Bank'}</td>
+                        <td>${escapeHtml(p.note) || '<span style="color:var(--text-faint);">&mdash;</span>'}</td>
+                        <td style="font-size:12px; color:var(--text-dim);">${escapeHtml(p.byName || p.byEmail || '&mdash;')}</td>
+                        <td><button class="btn-danger btn-sm" onclick="deleteShantonPayment('${escapeHtml(p.id)}')">Delete</button></td>
+                    </tr>`).join('')
+                : `<tr><td colspan="6" style="color:var(--text-faint);">No payment to her has been recorded yet.</td></tr>`;
+        }
+        if (foot) {
+            foot.innerHTML = acc.payments.length
+                ? `<tr><td>TOTAL PAID — ${acc.payments.length} payment(s)</td>
+                     <td class="money-col">${money(acc.paid)}</td><td colspan="4"></td></tr>`
+                : '';
+        }
+
+        const notes = [];
+        notes.push(`<b>Became hers</b> = everything collected from her abayas minus our `
+            + `${abayaRates.shantonPerPiece} QAR per piece, over <b>${acc.reportCount} report(s)</b>`
+            + `${acc.openingDue ? `, on top of the ${money(acc.openingDue)} QAR opening balance` : ''}. `
+            + `It is recalculated from the reports every time &mdash; correct a report and this follows.`);
+        if (acc.openingDate) {
+            notes.push(`Reports dated before <b>${escapeHtml(acc.openingDate)}</b> are left out on purpose: the `
+                + `opening balance already contains them. <b>${acc.skippedReports} report(s)</b> are excluded.`);
+        }
+        if (acc.remaining < -0.005) {
+            notes.push(`<b style="color:var(--warning);">She has been paid ${money(Math.abs(acc.remaining))} QAR more than `
+                + `she is owed.</b> That is either a payment in advance, or the same payment entered twice &mdash; check the list.`);
+        }
+        if (acc.badPayments) {
+            notes.push(`<b style="color:var(--danger);">${acc.badPayments} payment row(s) could not be read</b> `
+                + `(no date, or an amount that is not a number) and are <b>not</b> counted in the total paid. `
+                + `That makes the remaining look bigger than it is &mdash; which is how a debt gets paid twice. Tell me and I will fix the record.`);
+        }
+        notes.push(`Paying her is recorded here by the owner only. This figure ignores the From/To dates at the top of the tab.`);
+        const nEl = document.getElementById('abShAcctNote');
+        if (nEl) nEl.innerHTML = notes.join('<br><br>');
+    }
+
+    /** يُعيد المستندَ كما هو على الخادم الآن — لئلّا تُمحى دفعةٌ سُجّلت من جهازٍ آخر. */
+    async function readShantonLedgerFresh() {
+        const snap = await getDoc(doc(db, "settings", SHANTON_PAY_DOC));
+        return shantonLedgerClean(snap.exists() ? snap.data() : null);
+    }
+
+    window.saveShantonOpening = async function() {
+        const st = document.getElementById('abShOpenStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        if (!canEditAbayaSetup()) { show('Only the owner can change this.', 'var(--danger)'); return; }
+
+        const rawDue = (document.getElementById('abShOpenDue').value || '').trim();
+        const date = (document.getElementById('abShOpenDate').value || '').trim();
+        const due = rawDue === '' ? 0 : Number(rawDue);
+        if (!isFinite(due) || due < 0) { show('The opening balance must be zero or more.', 'var(--danger)'); return; }
+        // ⚠️ مبلغٌ بلا تاريخٍ لا يُقبل: التاريخُ هو ما يمنع حسابَ التقاريرِ القديمةِ
+        //   مرّتين. ولو قُبل بلا تاريخٍ لجُمع المبلغُ **فوق** كلِّ التقارير.
+        if (due > 0 && !date) {
+            show('An opening balance needs the date it was owed on, or the old reports get counted twice.', 'var(--danger)');
+            return;
+        }
+        if (!confirm(due > 0
+            ? `Record that you owed Shanton ${money(due)} QAR on ${date}?\n\n`
+              + `Every abaya report dated before ${date} will then be left out of her account, `
+              + `because this figure already includes them.`
+            : `Clear the opening balance?\n\nHer account will then be calculated from every report on file.`)) return;
+
+        show('Saving...', 'var(--warning)');
+        try {
+            const fresh = await readShantonLedgerFresh();
+            await setDoc(doc(db, "settings", SHANTON_PAY_DOC), {
+                openingDue: due, openingDate: due > 0 ? date : '',
+                payments: fresh.payments,
+                updatedAt: serverTimestamp(),
+                updatedBy: (currentUser && currentUser.email) || 'unknown'
+            }, { merge: true });
+            logAudit("Shanton Opening Balance", due > 0 ? `${money(due)} QAR as of ${date}` : 'cleared');
+            shantonLedger = { openingDue: due, openingDate: due > 0 ? date : '', payments: fresh.payments };
+            renderShantonAccount();
+            show('Saved.', 'var(--success)');
+        } catch (e) {
+            show('NOT saved — ' + e.message, 'var(--danger)');
+        }
+    };
+
+    // ⚠️ حارسُ الإرسالِ المزدوج: دفعتان بنفس المبلغ في نفس اليوم **مشروعتان**،
+    //   فلا يُمنع التكرارُ بمعرّفٍ حتميّ. والنقرتانِ السريعتان تُمنعان بهذا وحدَه.
+    let isSavingShPay = false;
+    window.addShantonPayment = async function() {
+        const st = document.getElementById('abShPayStatus');
+        const btn = document.getElementById('abShPayBtn');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        if (isSavingShPay) return;
+        if (!canEditAbayaSetup()) { show('Only the owner can record a payment.', 'var(--danger)'); return; }
+
+        const date = (document.getElementById('abShPayDate').value || '').trim();
+        const amount = Number((document.getElementById('abShPayAmount').value || '').trim());
+        const method = document.getElementById('abShPayMethod').value === 'cash' ? 'cash' : 'bank';
+        const note = (document.getElementById('abShPayNote').value || '').trim();
+
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { show('Pick the date you paid her.', 'var(--danger)'); return; }
+        if (!isFinite(amount) || amount <= 0) { show('The amount must be more than zero.', 'var(--danger)'); return; }
+        if (date > todayISO()) { show('That date is in the future.', 'var(--danger)'); return; }
+
+        const before = shantonAccount(allAbayaReports, shantonLedger);
+        if (!confirm(`Record a payment of ${money(amount)} QAR to Shanton on ${date} (${method})?\n\n`
+            + `Remaining now:  ${money(before.remaining)} QAR\n`
+            + `After this:     ${money(before.remaining - amount)} QAR`
+            + (amount > before.remaining + 0.005
+                ? `\n\n⚠️ This is MORE than she is owed. She would be ${money(amount - before.remaining)} QAR in credit.`
+                : ''))) return;
+
+        isSavingShPay = true;
+        if (btn) btn.disabled = true;
+        show('Saving...', 'var(--warning)');
+        try {
+            // ⚠️ يُقرأ الخادمُ أوّلًا ثم يُضاف السطر: الدفعاتُ قائمةٌ في مستندٍ
+            //   واحد، فالكتابةُ من ذاكرةٍ قديمةٍ تمحو دفعةً سجّلها جهازٌ آخر.
+            const fresh = await readShantonLedgerFresh();
+            const row = {
+                id: `p${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                date, amount, method, note,
+                byEmail: (currentUser && currentUser.email) || 'unknown',
+                byName: (currentUser && currentUser.displayName) || '',
+                createdAtISO: new Date().toISOString()
+            };
+            await setDoc(doc(db, "settings", SHANTON_PAY_DOC), {
+                openingDue: fresh.openingDue, openingDate: fresh.openingDate,
+                payments: fresh.payments.concat([row]),
+                updatedAt: serverTimestamp(),
+                updatedBy: row.byEmail
+            }, { merge: true });
+            logAudit("Shanton Payment Recorded", `${money(amount)} QAR on ${date} (${method})${note ? ' — ' + note : ''}`);
+            shantonLedger = { openingDue: fresh.openingDue, openingDate: fresh.openingDate,
+                              payments: fresh.payments.concat([row]) };
+            document.getElementById('abShPayAmount').value = '';
+            document.getElementById('abShPayNote').value = '';
+            renderShantonAccount();
+            const after = shantonAccount(allAbayaReports, shantonLedger);
+            show(`Recorded. Remaining to pay her: ${money(after.remaining)} QAR.`, 'var(--success)');
+        } catch (e) {
+            // ⚠️ المبلغُ يبقى مكتوبًا عند الفشل: إفراغُه يُخفي ما كان يُسجّل،
+            //   فيُعاد إدخالُه بالذاكرة — أو لا يُعاد.
+            show('NOT recorded — ' + e.message + '. Nothing was saved; the amount is still in the box.', 'var(--danger)');
+        } finally {
+            isSavingShPay = false;
+            if (btn) btn.disabled = false;
+        }
+    };
+
+    window.deleteShantonPayment = async function(id) {
+        const st = document.getElementById('abShPayStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        if (!canEditAbayaSetup()) { show('Only the owner can delete a payment.', 'var(--danger)'); return; }
+
+        const hit = shantonPaymentsClean(shantonLedger.payments).list.find(p => p.id === id);
+        if (!hit) { show('That payment is no longer in the list — refresh.', 'var(--danger)'); return; }
+        // ⚠️ سجلُّ مالٍ يُحذف: يُسمّى بتاريخه ومبلغه في التأكيد، ويُقال ماذا يصير
+        //   بالباقي. و«هل أنت متأكد» وحدَها لا تُخبر أحدًا بشيء.
+        if (!confirm(`Delete the payment of ${money(hit.amount)} QAR dated ${hit.date}?\n\n`
+            + `What is owed to her goes back UP by ${money(hit.amount)} QAR.\n\n`
+            + `Do this only if the payment was entered by mistake. It is recorded in the audit log.`)) return;
+
+        show('Deleting...', 'var(--warning)');
+        try {
+            const fresh = await readShantonLedgerFresh();
+            const kept = fresh.payments.filter(p => String(p && p.id) !== String(id));
+            if (kept.length === fresh.payments.length) {
+                show('That payment was already removed by someone else. Nothing changed.', 'var(--warning)');
+                shantonLedger = fresh; renderShantonAccount(); return;
+            }
+            await setDoc(doc(db, "settings", SHANTON_PAY_DOC), {
+                openingDue: fresh.openingDue, openingDate: fresh.openingDate,
+                payments: kept,
+                updatedAt: serverTimestamp(),
+                updatedBy: (currentUser && currentUser.email) || 'unknown'
+            }, { merge: true });
+            logAudit("Shanton Payment DELETED", `${money(hit.amount)} QAR dated ${hit.date} (${hit.method})${hit.note ? ' — ' + hit.note : ''}`);
+            shantonLedger = { openingDue: fresh.openingDue, openingDate: fresh.openingDate, payments: kept };
+            renderShantonAccount();
+            show('Deleted.', 'var(--success)');
+        } catch (e) {
+            show('NOT deleted — ' + e.message, 'var(--danger)');
         }
     };
 
@@ -21770,7 +22209,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v225';
+        const APP_BUILD = 'v226';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
