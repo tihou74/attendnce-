@@ -5507,6 +5507,55 @@
      المديرون الثلاثة يملكونها لأنهم من أرسل التقرير. الحذف ليس هنا: تصحيح رقم
      خاطئ شيء، وإزالة مال دخل شيء آخر يبقى للمالك والمحاسب. -->
 <!-- Modal: تصحيح تقرير عبايات. يمسّ المال والستوك معًا، فتأكيدٌ وسجلُّ تدقيق. -->
+<!-- ==================================================================
+     تصحيحُ «من أين وصلت الشحنة» — المورّدُ أو شانتون
+     ------------------------------------------------------------------
+     بطلب المالك: «حتى في الكتالوج افتح لي الخيار لأعدّل على المورّد، في بعض
+     الأحيان أخطاء من غير قصد».
+
+     ⚠️⚠️⚠️ ولا يُخزَّن المورّدُ على سطر الكتالوج بحال: يبقى على الشحنة وحدَها.
+       نسخُه إلى الكتالوج كان سيُنشئ رقمَين لحقيقةٍ واحدة — وهو بعينه العطلُ
+       الذي يمنعه حارسُ «Edit» على شحنةٍ أُرسلت. فالنافذةُ تُفتح من البابَين
+       (قائمةِ الشحنات وسطرِ الكتالوج) وتُعدّل **الشحنةَ** في الحالتين.
+
+     ⚠️⚠️ وتعمل على شحنةٍ أُرسلت كذلك، بخلاف «Edit»: المورّدُ لم ينتقل إلى
+       الكتالوج فلا يوجد رقمٌ ثانٍ يُخالفه. وهذا هو الفرقُ الذي يُبرّر استثناءً
+       لهذه الخانتين وحدَهما، ولا يُوسَّع إلى الأرقام.
+
+     ⚠️ وتصميمٌ واحدٌ قد تكون له شحناتٌ عدّة (إعادةُ تعبئة): فتُعرض كلُّها
+       لتُختار، ولا يُفترض أنّها واحدة.
+     ================================================================== -->
+<div id="arvOriginModal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 620px;">
+        <div class="modal-header">
+            <h2><span data-icon="edit"></span> Where did it come from?</h2>
+            <button class="close-modal" onclick="closeArrivalOrigin()"><span data-icon="x"></span> Close</button>
+        </div>
+        <p class="card-sub" style="margin: 0 0 14px;">
+            Only <b>who sent it</b> is changed here &mdash; no figure is touched. This is the one place it is
+            stored, so correcting it here corrects it everywhere.
+        </p>
+        <div style="margin-bottom: 14px;">
+            <label for="arvOrgPick">Shipment</label>
+            <select id="arvOrgPick" onchange="onArrivalOriginPicked()"></select>
+        </div>
+        <div class="date-group" style="align-items: flex-end;">
+            <div style="width: 230px;"><label for="arvOrgSource">Where from</label>
+                <select id="arvOrgSource" onchange="onArrivalOriginPreview()"></select>
+            </div>
+            <div style="flex: 1; min-width: 190px;"><label for="arvOrgSupplier">Supplier / name</label>
+                <input type="text" id="arvOrgSupplier" maxlength="80" autocomplete="off">
+            </div>
+        </div>
+        <p class="card-sub" id="arvOrgNote" style="margin: 14px 0 0;"></p>
+        <div style="display: flex; gap: 10px; align-items: center; margin-top: 18px; flex-wrap: wrap;">
+            <button class="btn-success" id="arvOrgSaveBtn" onclick="saveArrivalOrigin()"><span data-icon="save"></span> Save the supplier</button>
+            <button class="btn-ghost" onclick="closeArrivalOrigin()">Cancel</button>
+            <span id="arvOrgStatus" style="font-weight: 600; font-size: 13px;"></span>
+        </div>
+    </div>
+</div>
+
 <div id="abayaEditModal" class="modal-overlay">
     <div class="modal-card">
         <div class="modal-header">
@@ -15981,6 +16030,14 @@
                               : '<span style="color: var(--warning); font-weight: 700;">Hidden</span>'}</td>`
                         + `<td style="white-space: nowrap;">`
                         + `<button class="btn-ghost btn-sm" onclick="editAbayaProduct('${escapeHtml(p.id)}')">Edit</button> `
+                        // ⚠️⚠️ زرُّ «المورّد» هنا بطلب المالك: «حتى في الكتالوج افتح
+                        //   لي الخيار لأعدّل على المورّد، في بعض الأحيان أخطاء من غير
+                        //   قصد». ولا يُخزَّن المورّدُ على سطر الكتالوج بحال — يبقى
+                        //   على الشحنة وحدَها (مصدرٌ واحدٌ للحقيقة)، وهذا الزرُّ
+                        //   يفتح شحناتَ هذا التصميم ليُصحَّح فيها. ويظهر فقط إن
+                        //   وُجدت له شحنةٌ، فزرٌّ لا يفتح شيئًا أسوأُ من غيابه.
+                        + (abayaArrivals.some(a => a && a.productId === p.id)
+                            ? `<button class="btn-ghost btn-sm" onclick="openArrivalOrigin('', '${escapeJsAttr(p.id)}')">Supplier</button> ` : '')
                         + `<button class="btn-danger btn-sm" onclick="deleteAbayaProduct('${escapeHtml(p.id)}')">Delete</button>`
                         + `</td></tr>`;
                 };
@@ -17026,6 +17083,9 @@
                         + `<td>${where}</td>`
                         + `<td style="white-space: nowrap;">`
                         + `<button class="btn-ghost btn-sm" onclick="editAbayaArrival('${escapeJsAttr(a.id)}')">Edit</button> `
+                        // ⚠️ ويعمل **حتى على شحنةٍ أُرسلت**، بخلاف «Edit»: المورّدُ لم
+                        //   ينتقل إلى الكتالوج، فمنعُ تصحيحِه كان منعًا بلا سبب.
+                        + `<button class="btn-ghost btn-sm" onclick="openArrivalOrigin('${escapeJsAttr(a.id)}', '')">Supplier</button> `
                         + `<button class="btn-danger btn-sm" onclick="deleteAbayaArrival('${escapeJsAttr(a.id)}')">Delete</button>`
                         + `</td></tr>`;
                 }).join('');
@@ -17249,10 +17309,16 @@
         //   وكميّتُه على رفّ محلٍّ، فتعديلُ رقمِه هنا يجعل الشاشتين تقولان رقمين
         //   لشيءٍ واحد. التصحيحُ يكون في الكتالوج نفسِه.
         if (a.status === ARRIVAL_SENT) {
+            // ⚠️⚠️ الرسالةُ كانت تقول «صحّحه في الكتالوج» وحدَها، وهي **تُضلّل** في
+            //   شِقٍّ منها: الكتالوجُ لا يحمل المورّدَ إطلاقًا، فمن جاء يُصحّح اسمَ
+            //   مورّدٍ وُجّه إلى شاشةٍ لا تستطيعه ثمّ لم يجد شيئًا. فصار يُفصَّل:
+            //   الأرقامُ في الكتالوج، والمورّدُ هنا بزرِّه.
             alert(`This shipment was already sent to ${a.sentShop || 'a shop'}.\n\n`
                 + `Its cost and its quantity are now on the catalogue line for ${a.code}, so changing the figures `
                 + `here would leave two different numbers for one thing.\n\n`
-                + `Correct it in "Abaya — Catalogue" instead.`);
+                + `• To fix a FIGURE (cost, price, quantity): do it in "Abaya — Catalogue".\n`
+                + `• To fix WHO IT CAME FROM (supplier, or Shanton): press the "Supplier" button `
+                + `on this row — that one still works after sending.`);
             return;
         }
         arvEditingId = id;
@@ -17479,6 +17545,163 @@
             console.error('Error saving the arrival:', e);
             fail(`Could not save: ${e.message}`
                 + (/permission/i.test(String(e.message)) ? ' — the new rules have not been published yet.' : ''));
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    };
+
+    // =====================================================================
+    // ⭐⭐⭐⭐ تصحيحُ «من أين وصلت» — ولو كانت الشحنةُ قد أُرسلت
+    // ---------------------------------------------------------------------
+    // ⚠️ خانتان فقط: المصدرُ والاسم. ولا رقمٌ يُمسّ — لا كوست ولا عدد ولا سعر.
+    //   وهذا ما يجعل الاستثناءَ من حارسِ «شحنةٌ أُرسلت لا تُعدَّل» صحيحًا: الأرقامُ
+    //   انتقلت إلى الكتالوج فلها هناك مصدرٌ ثانٍ، والمورّدُ لم ينتقل.
+    // =====================================================================
+    let arvOrgIds = [];
+    window.openArrivalOrigin = function(arrivalId, productId) {
+        if (!canEditAbayaSetup()) { alert('Only the owner can change this.'); return; }
+        const pick = document.getElementById('arvOrgPick');
+        const srcSel = document.getElementById('arvOrgSource');
+        const st = document.getElementById('arvOrgStatus');
+        if (st) st.innerText = '';
+
+        // شحنةٌ بعينها، أو كلُّ شحنات تصميمٍ واحد (الأحدثُ أوّلًا).
+        const list = arrivalId
+            ? abayaArrivals.filter(a => a && a.id === arrivalId)
+            : abayaArrivals.filter(a => a && a.productId === productId);
+        if (!list.length) {
+            alert('No shipment is on file for this design, so there is nothing to correct here.');
+            return;
+        }
+        list.sort((a, b) => String(b.arrivedAt || '').localeCompare(String(a.arrivedAt || '')));
+        arvOrgIds = list.map(a => a.id);
+
+        // ⚠️ قائمةُ المصادرِ تُبنى من `ARRIVAL_SOURCES` لا بيدٍ: مصدرٌ يُضاف يومًا
+        //   يظهر هنا وحدَه ولا يُنسى.
+        if (srcSel) {
+            srcSel.innerHTML = ARRIVAL_SOURCES.map(s =>
+                `<option value="${escapeHtml(s.key)}">${escapeHtml(s.en)} &middot; ${escapeHtml(s.ar)}</option>`).join('');
+        }
+        if (pick) {
+            pick.innerHTML = list.map(a => {
+                const when = String(a.arrivedAt || '').slice(0, 10);
+                return `<option value="${escapeHtml(a.id)}">`
+                    + `${escapeHtml(a.code)} — ${a.pieces} pc`
+                    + (when ? ` — ${escapeHtml(when)}` : '')
+                    + ` — now: ${escapeHtml(arrivalSourceLabel(arrivalSourceOf(a.source)) || 'A supplier')}`
+                    + (a.status === ARRIVAL_SENT ? ' — sent' : ' — in the store')
+                    + `</option>`;
+            }).join('');
+            // خانةٌ واحدةٌ لا تُعرض كقائمةِ اختيار: لا شيءَ يُختار منها.
+            pick.parentNode.style.display = list.length > 1 ? '' : 'none';
+        }
+        onArrivalOriginPicked();
+        document.getElementById('arvOriginModal').style.display = 'flex';
+        paintIcons(document.getElementById('arvOriginModal'));
+    };
+
+    window.closeArrivalOrigin = function() {
+        document.getElementById('arvOriginModal').style.display = 'none';
+    };
+
+    window.onArrivalOriginPicked = function() {
+        const id = (document.getElementById('arvOrgPick') || {}).value;
+        const a = abayaArrivals.find(x => x && x.id === id);
+        if (!a) return;
+        const srcSel = document.getElementById('arvOrgSource');
+        if (srcSel) srcSel.value = arrivalSourceOf(a.source);
+        const sup = document.getElementById('arvOrgSupplier');
+        if (sup) sup.value = a.supplier || '';
+        onArrivalOriginPreview();
+    };
+
+    /** يقول **قبل** الحفظ ما سيتغيّر فعلًا — ولا يُترك الأثرُ ليُكتشف بعده. */
+    window.onArrivalOriginPreview = function() {
+        const note = document.getElementById('arvOrgNote');
+        if (!note) return;
+        const a = abayaArrivals.find(x => x && x.id === (document.getElementById('arvOrgPick') || {}).value);
+        if (!a) { note.innerHTML = ''; return; }
+        const was = arrivalSourceOf(a.source);
+        const now = arrivalSourceOf((document.getElementById('arvOrgSource') || {}).value);
+        const parts = [];
+        if (was === now) {
+            parts.push(`Where it came from is unchanged. Only the written name would be saved.`);
+            note.style.color = '';
+        } else if (now === ARRIVAL_SOURCE_SHANTON) {
+            parts.push(`<b>It becomes Shanton's goods.</b> Its <b>${a.pieces}</b> piece(s) will be counted into `
+                + `<b>her</b> stock${a.status === ARRIVAL_SENT ? ' in the shop it was sent to' : ' once you send it'}, `
+                + `not ours.`);
+            note.style.color = 'var(--warning)';
+        } else {
+            parts.push(`<b>It stops being Shanton's goods.</b> Its <b>${a.pieces}</b> piece(s) will come out of `
+                + `her stock and count as ours.`);
+            note.style.color = 'var(--warning)';
+        }
+        // ⚠️ الكوستُ لا يُلمَس هنا، ويُقال ذلك صريحًا: كوستُ بضاعتها مُشتقٌّ من
+        //   سعر البيع، وكوستُ بضاعتِنا سعرُ شراء. فتبديلُ المصدرِ على شحنةٍ أُرسلت
+        //   يترك على سطر الكتالوج كوستًا محسوبًا بالقاعدة الأخرى — ولا يُصحَّح
+        //   من هنا بصمت (ذلك يُنشئ رقمَين لشيءٍ واحد).
+        if (was !== now && a.status === ARRIVAL_SENT) {
+            parts.push(`⚠️ No figure is changed here. The <b>cost on the catalogue line for `
+                + `${escapeHtml(a.code)}</b> was worked out under the old rule, so check it in `
+                + `"Abaya — Catalogue" after saving.`);
+        }
+        note.innerHTML = parts.join('<br><br>');
+    };
+
+    window.saveArrivalOrigin = async function() {
+        const st = document.getElementById('arvOrgStatus');
+        const btn = document.getElementById('arvOrgSaveBtn');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        if (!canEditAbayaSetup()) { show('Only the owner can change this.', 'var(--danger)'); return; }
+
+        const id = (document.getElementById('arvOrgPick') || {}).value;
+        const a = abayaArrivals.find(x => x && x.id === id);
+        if (!a) { show('That shipment is no longer in the list — refresh.', 'var(--danger)'); return; }
+        const nextSrc = arrivalSourceOf((document.getElementById('arvOrgSource') || {}).value);
+        const nextSup = String((document.getElementById('arvOrgSupplier') || {}).value || '').trim().slice(0, 80);
+        const wasSrc = arrivalSourceOf(a.source);
+        if (wasSrc === nextSrc && nextSup === String(a.supplier || '')) {
+            show('Nothing changed.', 'var(--warning)');
+            return;
+        }
+
+        if (!confirm(`Shipment ${a.code} — ${a.pieces} piece(s)\n\n`
+            + `From:  ${arrivalSourceLabel(wasSrc)}${a.supplier ? ` (${a.supplier})` : ''}\n`
+            + `To:    ${arrivalSourceLabel(nextSrc)}${nextSup ? ` (${nextSup})` : ''}\n\n`
+            + (wasSrc !== nextSrc
+                ? (nextSrc === ARRIVAL_SOURCE_SHANTON
+                    ? `Its ${a.pieces} piece(s) will count into SHANTON's stock, not ours.\n\n`
+                    : `Its ${a.pieces} piece(s) will come OUT of Shanton's stock and count as ours.\n\n`)
+                : '')
+            + `No cost, price or quantity is changed. It is recorded in the audit log.`)) return;
+
+        if (btn) btn.disabled = true;
+        show('Saving...', 'var(--warning)');
+        try {
+            // ⚠️⚠️ خانتان فقط تُكتبان. ولا تُستعمل صيغةُ «اكتب كلَّ المستند» بحال:
+            //   هذه النافذةُ لا تعرف بقيّةَ حقوله (كوستٌ وسعرٌ وتوزيعٌ وصورة)،
+            //   فكتابتُها كاملةً من هنا تمحو ما لم تقرأه.
+            await updateDoc(doc(db, ABAYA_ARRIVALS_COLL, id), {
+                source: nextSrc,
+                supplier: nextSup,
+                originFixedAt: serverTimestamp(),
+                originFixedBy: (currentUser && currentUser.email) || 'unknown'
+            });
+            logAudit("Abaya Arrival Origin Corrected",
+                `${a.code} (${a.pieces} pc): ${wasSrc}${a.supplier ? ` "${a.supplier}"` : ''}`
+                + ` -> ${nextSrc}${nextSup ? ` "${nextSup}"` : ''}`
+                + (a.status === ARRIVAL_SENT ? ' — already sent, Shanton stock affected' : ''));
+            await loadAbayaArrivals(true);
+            // ⚠️ ويُعاد رسمُ شاشةِ العبايات كذلك: مخزونُ شانتون محسوبٌ من الشحنات،
+            //   فتصحيحُ مصدرٍ يُغيّر عددَه — ولو لم يُعَد الرسمُ لبقي الرقمُ القديمُ
+            //   معروضًا وبدا أنّ التصحيحَ لم يُؤثّر.
+            if (typeof renderAbayaAll === 'function') renderAbayaAll();
+            if (typeof renderAbayaCatalog === 'function') renderAbayaCatalog();
+            onArrivalOriginPicked();
+            show('Saved.', 'var(--success)');
+        } catch (e) {
+            show('NOT saved — ' + e.message, 'var(--danger)');
         } finally {
             if (btn) btn.disabled = false;
         }
@@ -22578,7 +22801,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v229';
+        const APP_BUILD = 'v230';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
