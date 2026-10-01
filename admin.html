@@ -13974,6 +13974,23 @@
     //   الجرد الافتتاحي · وسم «ليس محلَّها») يقرأ هذه القائمة بـ`includes`.
     // ⚠️ ولا يُكتب اسمُ محلٍّ في منطقٍ بعد اليوم — يُضاف هنا وحدَه.
     const ABAYA_SHANTON_SHOPS = ['DOHA FESTIVAL CITY', 'WEST WALK'];
+    /**
+     * ⭐⭐⭐⭐⭐ محلاتُ **نقاطِ البيع** — بكلام المالك حرفًا:
+     *   «مبدئيًّا الكتالوجُ هو فقط الآن لمحلِّ وست ووك، ونقاطُ البيع تستعملها بياعةُ
+     *    وست ووك. أمّا باقي المحلاتِ فلحدِّ الساعة لا تستعمل نقاطَ البيع، ولم أُسجّل
+     *    بضاعتَهم بالبرنامج ولا الباركود — فالستوكُ الذي أدخلتُه يدويًّا بالأرقام
+     *    يتبع للمحلاتِ الأخرى.»
+     *
+     * ⚠️⚠️⚠️ وهذا هو تفسيرُ كلِّ «الفرق» الذي رآه: محلٌّ لا باركودَ لبضاعته كتالوجُه
+     *   **صفرٌ بحقّ**، ومخزونُه الجردُ اليدويّ. فمقارنةُ الرقمَين فيه تُعلن فرقًا
+     *   يساوي مخزونَه كلَّه — **إنذارٌ كاذبٌ** يُضيّع وقتَه ويُخفي الإنذارَ الصحيح.
+     *   فالمقارنةُ تُجرى في محلِّ نقاطِ البيع وحدَه، ويُقال للباقي سببُ إعفائه.
+     *
+     * ⚠️ وتُضاف محلاتٌ هنا حين تبدأ الباركودَ — سطرٌ واحد. والمالكُ ذكر أنّه سيُغلق
+     *   محلَّين بعد شهر، فالقائمةُ تكبر أو تصغر بسطرٍ لا بتعديلِ منطق.
+     */
+    const ABAYA_POS_SHOPS = ['WEST WALK'];
+    const isPosShop = (shop) => ABAYA_POS_SHOPS.includes(String(shop || ''));
     // ⚠️ owner يفصل مخزنَين لا مخزنًا واحدًا: بضاعتنا وبضاعة شانتون. خلطهما
     // يجعل قيمة مخزوننا أكبر من الحقيقة، لأن عباياتها ليست ملكنا.
     // وحركتا «وصلت منها» و«أُرجعت لها» ضروريتان: بلا الأولى لا يزيد مخزنها
@@ -19368,10 +19385,16 @@
             const n = Math.floor(Number(p.qty[key]) || 0);
             if (n <= 0) return;
             res.total += n;
-            const who = owner.get(String(p.id || '')) || 'unknown';
+            // ⚠️⚠️ «إذا كان موردٌ آخرُ فالبضاعةُ تحسب لنا» — بأمر المالك. فسطرُ
+            //   كتالوجٍ لا شحنةَ له (أُضيف بيدٍ أو قبل ميزة الشحنات) **لنا**، ولا
+            //   يُترك معلَّقًا بلا مالك. وكان يُعَدُّ «مجهولًا» فيُنقص من الطرفَين
+            //   ويظهر رقمًا معلَّقًا بلا فائدة.
+            // ⚠️ أمّا `mixed` (وصل من مورّدٍ **ومن** شانتون) فيبقى مُعلَنًا: قاعدةُ
+            //   المالكِ تحسم «غيرَ المعروف» لا «المعروفَ المتناقض». والقطعةُ هنا قد
+            //   تكون لها فعلًا، ونسبُها إلينا بالظنّ يُنقص دَينَها.
+            const who = owner.get(String(p.id || '')) || 'own';
             if (who === 'shanton') { res.shanton += n; return; }
             if (who === 'mixed') { res.mixed += n; return; }
-            if (who === 'unknown') { res.unknown += n; return; }
             res.own.total += n;
             const t = String(p.type || '');
             if (t && ABAYA_STOCK_ITEMS.some(it => it.key === t)) {
@@ -19417,6 +19440,8 @@
         //   يُحسب يقينًا لا يُطرح.
         const badType = ex.unknownType.reduce((a, x) => a + x.pieces, 0);
         const hints = [];
+        // ⚠️ محلٌّ لا يستعمل نقاطَ البيع: يُعفى من المقارنة ويُقال سببُه.
+        if (!isPosShop(shop)) hints.push({ key: 'notPos', pieces: st.sum.now });
         // ⚠️⚠️⚠️ «سطرٌ بلا شحنة» و«مِلكٌ مُلتبس» **ليسا سببَين للفرق**: قطعُهما
         //   مُستثناةٌ من الطرفَين أصلًا (لا تدخل `catOur` ولا `catHer`)، فلا تُنتج
         //   فرقًا في أيٍّ منهما. وطرحُها — كما فعلتُ أوّلًا — يُنقص من فرقٍ لم
@@ -19440,6 +19465,9 @@
             catUnknown: cat.unknown,
             // ⚠️ «لمن هذه القطع؟» — رقمٌ مستقلٌّ لا يُجمع مع الفرق.
             unattributed: cat.mixed + cat.unknown,
+            // ⚠️ هل تُجرى المقارنةُ في هذا المحلّ أصلًا؟ محلٌّ بلا نقاطِ بيعٍ كتالوجُه
+            //   صفرٌ بحقّ، فالفرقُ فيه ليس خللًا — ويُقال ذلك ولا يُعلَن إنذارًا.
+            posShop: isPosShop(shop),
             ourNow: st.sum.now,
             herNow: st.shanton.now,
             combined: st.sum.now + st.shanton.now,
@@ -19450,7 +19478,10 @@
             // ⚠️ `unexplained` هو الرقمُ الوحيدُ الذي يُهمّ، ويجب أن يكون صفرًا. ويُجمع
             //   الفرقانِ **بقيمتهما المطلقة**: فرقٌ ‎+3 في طرفٍ و‎-3 في آخرَ ليس صفرًا،
             //   إنّما خطأان يُلغي أحدُهما الآخرَ في الظاهر. وهذا ما يُخفيه الجمعُ الساذج.
-            unexplained: (Math.abs(ourDiff) + Math.abs(herDiff)) - explained,
+            // ⚠️ ولا «غيرَ مُفسَّرٍ» في محلٍّ لا يستعمل نقاطَ البيع: لا شيءَ يُقارن.
+            unexplained: isPosShop(shop)
+                ? (Math.abs(ourDiff) + Math.abs(herDiff)) - explained
+                : 0,
             causes,
             hints,
             catUntyped: cat.own.untyped,
@@ -19872,6 +19903,8 @@
     };
     // ⚠️ وإشاراتٌ تُذكر ولا تُطرح: ظرفٌ **قد** يُفسّر بعضَ الفرقِ ولا تُعرف كمّيّتُه.
     const AB_RECON_HINT = {
+        notPos: 'are this shop\u2019s manual count. It does not use the till or barcodes yet, so its catalogue is '
+            + 'empty on purpose and there is nothing to compare',
         beforeCount: 'were sent before the stock count — your opening count is meant to include them, '
             + 'so a leftover difference usually means the opening count is short by that much',
         noShipment: 'are catalogue lines with no shipment on file, so nobody can say whose they are',
@@ -19902,6 +19935,20 @@
         const rows = ABAYA_SHOPS.map(shop => ({ shop, r: abayaStockReconcile(shop, ownerMap) }));
         const cell = (d) => `<b style="color: ${d === 0 ? 'var(--success)' : 'var(--danger)'};">${d > 0 ? '+' : ''}${d}</b>`;
         body.innerHTML = rows.map(({ shop, r }) => {
+            // ⚠️⚠️ محلٌّ بلا نقاطِ بيعٍ يُقال سببُ إعفائه ولا يُعرض له فرقٌ بالأحمر:
+            //   كتالوجُه صفرٌ **بحقّ** (لا باركودَ لبضاعته بعد)، وإعلانُ فرقٍ بحجم
+            //   مخزونِه كلِّه إنذارٌ كاذبٌ يُدرّب صاحبَه على تجاهل الإنذارات.
+            if (!r.posShop) {
+                return `<tr style="opacity: .72;">
+                    <td><b>${escapeHtml(shop)}</b></td>
+                    <td class="money-col" colspan="2" style="text-align: center; color: var(--text-dim);">no barcodes yet</td>
+                    <td class="money-col">&mdash;</td>
+                    <td class="money-col">${r.catHer}</td>
+                    <td class="money-col">${r.herNow}</td>
+                    <td class="money-col">&mdash;</td>
+                    <td style="font-size: 12px;">Manual count of <b>${r.ourNow}</b> piece(s) &mdash;
+                        this shop does not use the till yet, so there is nothing to compare.</td></tr>`;
+            }
             const why = r.causes.length
                 ? r.causes.map(c => `${c.pieces} &mdash; ${escapeHtml(AB_RECON_WHY[c.key] || c.key)}`).join('<br>')
                 : ((r.ourDiff === 0 && r.herDiff === 0)
@@ -19920,7 +19967,9 @@
                 + `</td></tr>`;
         }).join('');
 
-        const tot = rows.reduce((a, { r }) => ({
+        // ⚠️ المجموعُ على محلاتِ نقاطِ البيع وحدَها: جمعُ محلٍّ بلا باركودٍ يُفسد
+        //   المجموعَ بفرقٍ ليس خللًا — وهو بعينه ما كان يُربك القراءة.
+        const tot = rows.filter(({ r }) => r.posShop).reduce((a, { r }) => ({
             catOur: a.catOur + r.catOur, our: a.our + r.ourNow, ourDiff: a.ourDiff + r.ourDiff,
             catHer: a.catHer + r.catHer, her: a.her + r.herNow, herDiff: a.herDiff + r.herDiff,
             un: a.un + r.unexplained
@@ -19928,7 +19977,7 @@
         const foot = document.getElementById('abReconFoot');
         if (foot) {
             foot.innerHTML = `<tr style="background: var(--surface-2); font-weight: 800;">
-                <td>ALL ${ABAYA_SHOPS.length} SHOPS</td>
+                <td>${ABAYA_POS_SHOPS.join(' + ')} (till shops only)</td>
                 <td class="money-col">${tot.catOur}</td>
                 <td class="money-col">${tot.our}</td>
                 <td class="money-col">${cell(tot.ourDiff)}</td>
@@ -19950,9 +19999,14 @@
         if (note) {
             const lines = [];
             // ⚠️ الفصلُ صار ممكنًا بكلام المالك: «بضاعةُ شانتون موردُها شانتون».
+            // ⚠️ النطاقُ يُقال أوّلًا: مَن يُقارن ومَن لا يُقارن ولماذا. وبلا ذلك قُرئ
+            //   الفرقُ في محلٍّ بلا باركودٍ خللًا، وهو العملُ الصحيح.
+            lines.push(`<b>Only ${ABAYA_POS_SHOPS.join(', ')} is compared</b> &mdash; it is the shop using the till and `
+                + `the barcodes. The other shops have no barcodes registered yet, so their catalogue is empty on `
+                + `purpose and their stock is the manual count you typed. Nothing to compare there, and no fault.`);
             lines.push(`Your goods and Shanton's are told apart by the <b>supplier of the shipment</b> that created the `
-                + `catalogue line &mdash; so each side is compared with its own stock. `
-                + `<b>Both "Diff" columns should read 0.</b>`);
+                + `catalogue line &mdash; anything not from Shanton counts as yours. `
+                + `<b>Both "Diff" columns should read 0 for ${ABAYA_POS_SHOPS.join(', ')}.</b>`);
             // ⚠️ الإشاراتُ تُعرض مُسمّاةً ومفصولةً عن الأسبابِ المحسوبة، كي لا يُظنَّ
             //   أنّها طُرحت من الفرق. وهي التي تُرشد إلى الإصلاح الحقيقيّ.
             const hintLines = [];
@@ -19969,7 +20023,7 @@
             }
             // ⚠️ «لمن هذه القطع؟» سؤالٌ مستقلٌّ عن «أين ذهبت؟»، فيُعرض رقمًا مستقلًّا
             //   ولا يُجمع مع الفرق. وجمعُهما كان يُنتج أرقامًا سالبةً لا معنى لها.
-            const unatt = rows.reduce((a, { r }) => a + r.unattributed, 0);
+            const unatt = rows.reduce((a, { r }) => a + (r.posShop ? r.unattributed : 0), 0);
             if (unatt) {
                 lines.push(`<b style="color: var(--warning);">${unatt} piece(s) cannot be attributed to either side</b> `
                     + `&mdash; no shipment on file, or the design arrived from both a supplier and Shanton. `
@@ -19995,6 +20049,13 @@
      * يظهر إلا بالمطابقة، ولهذا كُتبت.
      */
     function abayaTransferMismatches() {
+        // ⚠️⚠️⚠️ تحويلٌ إلى محلِّ نقاطِ البيع **لا يُقابله سطرُ استلام**، بنصِّ وصفِ
+        //   المالك للعمل: «إذا أرسل أيُّ محلٍّ بضاعةً إلى وست ووك وكتب أنّه أرسل
+        //   إليها، تنقص البضاعةُ من ذلك المحل. لكنّ وست ووك يُدخلها **بضاعةً جديدةً
+        //   بالصور والكتالوج** والمدام ترسلها إليها فتزيد الكمية.»
+        //   فالخارجُ حركةٌ والداخلُ **شحنةٌ**، ولا يُقابل أحدُهما الآخر. وإعلانُ ذلك
+        //   «قطعٌ اختفت بين محلّين» إنذارٌ كاذبٌ على عملٍ صحيح — وهو أسوأُ من لا
+        //   إنذار، لأنّه يُدرّب صاحبَه على تجاهلِ الإنذارات.
         const since = abayaOpening.openingDate || '';
         const outMap = new Map(), inMap = new Map();
         allAbayaReports.forEach(r => {
@@ -20022,6 +20083,12 @@
             const o = outMap.get(k) || 0, i = inMap.get(k) || 0;
             if (o === i) return;
             const [from, to, item, own] = k.split('|');
+            // ⚠️⚠️ الوجهةُ محلُّ نقاطِ بيع ⇒ لا يُنتظر سطرُ استلامٍ أصلًا: يُدخلها
+            //   بضاعةً جديدةً بالكتالوج والمدامُ ترسلها. فالنقصُ هنا هو العملُ
+            //   الصحيحُ لا خلل. (الشرحُ في رأس الدالّة.)
+            // ⚠️ ويُشترط `i === 0`: لو سجّل المحلُّ استلامًا **جزئيًّا** فثمّة خلطُ
+            //   طريقتَين في شحنةٍ واحدة، وذلك يُعلَن ولا يُعفى.
+            if (isPosShop(to) && i === 0) return;
             const it = ABAYA_STOCK_ITEMS.find(x => x.key === item);
             out.push({ from, to, item: it ? it.en : item, owner: own,
                        label: (own === 'shanton' ? 'SHANTON ' : '') + (it ? it.en : item),
@@ -23382,7 +23449,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v234';
+        const APP_BUILD = 'v235';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
