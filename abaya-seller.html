@@ -1611,6 +1611,20 @@
             <input type="date" id="repDate">
         </div>
 
+        <!-- ⭐⭐⭐⭐⭐ لوحةُ «التقريرُ يُعبّئ نفسَه» — لمحلِّ نقاطِ البيع وحدَه.
+             ⚠️ تبقى مخفيّةً تمامًا في المحلاتِ التي تُدخل تقريرَها يدويًّا، فلا
+               تُربكها بزرٍّ لا يعني لها شيئًا. (`isPosShop`) -->
+        <div class="panel hidden" id="repAutoPanel" style="border-inline-start: 3px solid var(--color-primary);">
+            <h2>&#9889; Filled from the till</h2>
+            <p class="ar">Your till already knows what you sold today and how it was paid, so this report fills
+                itself. <b>Only the note and the cash left in the drawer are yours to type.</b>
+                Check the figures, then send as usual.</p>
+            <div class="bar" style="margin-top: var(--space-3);">
+                <button class="ghost" id="repAutoBtn">&#8635; Fill from the till again</button>
+            </div>
+            <p class="note" id="repAutoMsg"></p>
+        </div>
+
         <!-- ---- مبيعات الشيخة ستايل ---- -->
         <div class="panel">
             <h2>Al Sheikha Style sales</h2>
@@ -1982,6 +1996,33 @@
         { key: 'perfume',       en: 'Perfume',                   ar: 'عطور' }
     ];
     // أنواع البضاعة في حركة المخزون — بلا تفريق بين جاهز وطلب: الحركة قطعة.
+    /**
+     * ⭐⭐⭐⭐⭐ محلاتُ نقاطِ البيع — نسخةٌ مطابقةٌ لما في admin.html وabaya-balances.html.
+     * ⚠️ هذه المحلاتُ وحدَها يُعبّئ تقريرَها اليوميَّ الصندوقُ تلقائيًّا. وغيرُها
+     *   يُدخله بيدٍ كما كان **بلا تغييرٍ حرفٍ واحد** — بنصِّ طلب المالك: «أمّا
+     *   المحلاتُ الأخرى فتبقى كما هي تُدخل التقريرَ يدويًّا لأنّها لا تستعمل
+     *   نقاطَ البيع».
+     */
+    const ABAYA_POS_SHOPS = ['WEST WALK'];
+    const isPosShop = (shop) => ABAYA_POS_SHOPS.includes(String(shop || ''));
+
+    /**
+     * ⭐⭐⭐⭐ نوعُ المخزون ← خانةُ التقرير، للبيعِ الجاهزِ وللطلب.
+     * ⚠️ خريطةٌ **صريحةٌ** لا تُشتقّ بلصقِ «Order» على الاسم: «دريس» و«عطور»
+     *   لا سطرَ طلبٍ لهما بقرار المالك، والاشتقاقُ كان سيُنتج مفتاحًا لا وجودَ له
+     *   فيضيع مالُ السطر بصمت.
+     */
+    const ABAYA_TYPE_TO_ITEM = {
+        abaya:    { shelf: 'abayaReady',    order: 'abayaOrder' },
+        kaftan:   { shelf: 'kaftan',        order: 'kaftanOrder' },
+        shela:    { shelf: 'shela',         order: 'shelaOrder' },
+        inner:    { shelf: 'inner',         order: 'innerOrder' },
+        travel:   { shelf: 'travel',        order: 'travelOrder' },
+        jalabiya: { shelf: 'jalabiya',      order: 'jalabiyaOrder' },
+        dress:    { shelf: 'dress',         order: 'dress' },
+        perfume:  { shelf: 'perfume',       order: 'perfume' }
+    };
+
     const ABAYA_STOCK_ITEMS = [
         { key: 'abaya',    en: 'Abaya',             ar: 'عباية' },
         { key: 'kaftan',   en: 'Kaftan',            ar: 'قفطان' },
@@ -2345,6 +2386,15 @@
         //   كانت ترى منتصفَ القسم الجديد فتظنّه ناقصًا.
         window.scrollTo({ top: 0, behavior: 'smooth' });
         sbackPaint();
+        // ⭐⭐⭐ التقريرُ يُعبّئ نفسَه عند فتحه — لمحلِّ نقاطِ البيع وحدَه.
+        // ⚠️⚠️ ومرّةً واحدةً في الجلسة (`repAutoRan`): إعادتُها في كلِّ فتحةٍ للقسم
+        //   كانت ستمحو رقمًا صحّحته بيدها بعد التعبئة — وهي تُقلّب الأقسامَ وهي
+        //   تُراجع. والزرُّ تحت يدها متى شاءت أن تُعيدها.
+        const ap = el('repAutoPanel');
+        if (ap) ap.classList.toggle('hidden', !isPosShop(state.shop));
+        if (which === 'report' && isPosShop(state.shop) && !repAutoRan) {
+            repAutoFill(false);
+        }
         /**
          * ⚠️⚠️ وتُسجَّل الخطوةُ في تاريخ المتصفّح كي يعمل **زرُّ الرجوع في الهاتف
          *   نفسِه**: بلا ذلك كان ضغطُه يُخرجها من الصفحة كلِّها — فتفقد جلستَها
@@ -2539,6 +2589,206 @@
         out.totalQty = items.totalQty;
         out.totalItemAmount = items.totalAmount;
         return out;
+    }
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ التقريرُ اليوميُّ يُعبّئ نفسَه من الصندوق — لمحلِّ نقاطِ البيع
+    // ---------------------------------------------------------------------
+    // بنصِّ طلب المالك: «حتى لا تكون هنالك لخبطة، يجب أن يمتلئَ التقريرُ اليوميُّ
+    // أوتوماتيكيًّا حسب القطعِ التي باعتها وحسب الفلوسِ التي دخلت للمحل، وتبقى لها
+    // فقط خانةُ النوت وخانةُ الباقي تملأهما يدويًّا، ثمّ ترسل التقريرَ بالواتساب».
+    //
+    // ⚠️⚠️⚠️ ولماذا هذا **حلٌّ جذريٌّ** لا تسهيلٌ: الفرقُ بين الكتالوج وشاشةِ المخزون
+    //   كان مصدرُه **عدّادان** — الفواتيرُ تُنقص الكتالوجَ، والتقريرُ المكتوبُ بيدٍ
+    //   يُنقص المخزون. فرقمٌ يُكتب بيدٍ عن بيعٍ سجّله الصندوقُ هو مصدرُ الاختلاف
+    //   كلِّه. فإن وُلد التقريرُ **من الفواتير** سقط الاختلافُ من أصله.
+    //
+    // ⚠️⚠️ ومالُ شانتون يُفصل عن مالنا هنا فصلًا تامًّا، وهو أخطرُ ما في الدالّة:
+    //   فاتورةٌ واحدةٌ قد تحمل قطعةً لنا وقطعةً لها. فلو جُمع المالُ كلُّه في خانةِ
+    //   المحلِّ لضاع دَينُها، ولو جُمع في خانتها لنُسب إليها مالٌ ليس لها. فيُقسَم
+    //   بنسبةِ قيمةِ القطع، ويُحسب نصيبُها أوّلًا ويكون نصيبُنا **الباقي** —
+    //   فالمجموعُ يساوي المحصَّلَ بالضبط ولا يخلق التقريبُ ريالًا ولا يُفقده.
+    //
+    // ⚠️ والرسوم (تعديلٌ وتوصيل) **لنا كلُّها**: خدمةُ المحلِّ لا بضاعةُ شانتون.
+    // ⚠️ والدالّةُ **نقيّةٌ** بلا قراءةٍ ولا DOM، فتُفحَص بالتشغيل على أرقامٍ معروفة.
+    // =====================================================================
+    function repBuildFromInvoices(invoices, products, shop, dateISO) {
+        const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+        const owner = new Map(), type = new Map();
+        (Array.isArray(products) ? products : []).forEach(p => {
+            if (!p || !p.id) return;
+            owner.set(String(p.id), p.goodsOwner === 'shanton' ? 'shanton' : 'own');
+            type.set(String(p.id), String(p.type || ''));
+        });
+
+        const out = {
+            items: {}, cash: 0, card: 0, altFee: 0, deliveryFee: 0,
+            shQtyReady: 0, shQtyOrder: 0, shAmtReady: 0, shAmtOrder: 0, shCash: 0, shCard: 0,
+            invoiceCount: 0, returnedCount: 0, unknownTypes: [], unknownProducts: 0, pieces: 0
+        };
+
+        (Array.isArray(invoices) ? invoices : []).forEach(inv => {
+            if (!inv || typeof inv !== 'object') return;
+            if (String(inv.shop || '') !== String(shop)) return;
+            if (String(inv.at || '').slice(0, 10) !== String(dateISO)) return;
+            // ⚠️ المُرجَعةُ بالكامل لا تُحسب. والإرجاعُ في هذا البرنامج كلُّه أو لا
+            //   شيء (لا إرجاعَ جزئيٌّ بعد)، فالشرطُ على الحالةِ يكفي ولا يُخمَّن.
+            if (String(inv.status || '') === 'returned') { out.returnedCount++; return; }
+            out.invoiceCount++;
+
+            const lines = Array.isArray(inv.lines) ? inv.lines : [];
+            let goodsOurs = 0, goodsHers = 0;
+            lines.forEach(l => {
+                if (!l) return;
+                const qty = Math.floor(Number(l.qty) || 0);
+                const amt = r2(l.lineTotal);
+                if (qty <= 0) return;
+                const pid = String(l.productId || '');
+                const who = owner.get(pid) || 'own';
+                if (!owner.has(pid)) out.unknownProducts++;
+                const isOrder = String(l.kind || '') === 'order';
+                out.pieces += qty;
+                if (who === 'shanton') {
+                    goodsHers += amt;
+                    if (isOrder) { out.shQtyOrder += qty; out.shAmtOrder = r2(out.shAmtOrder + amt); }
+                    else { out.shQtyReady += qty; out.shAmtReady = r2(out.shAmtReady + amt); }
+                    return;
+                }
+                goodsOurs += amt;
+                const t = type.get(pid) || '';
+                const map = ABAYA_TYPE_TO_ITEM[t];
+                if (!map) {
+                    // ⚠️ نوعٌ لا خانةَ له: **يُسمّى ولا يُرمى في أوّلِ خانة.** مالٌ في
+                    //   الخانة الخطأ أسوأُ من مالٍ معلومِ الغياب، والمجموعُ سيختلف
+                    //   عن الكاش فتظهر رسالةُ «المجموعان لا يتساويان» بلا تفسير.
+                    if (!out.unknownTypes.some(u => u.code === String(l.code || ''))) {
+                        out.unknownTypes.push({ code: String(l.code || ''), type: t || '(empty)', qty, amt });
+                    }
+                    return;
+                }
+                const key = isOrder ? map.order : map.shelf;
+                const cur = out.items[key] || { qty: 0, amt: 0 };
+                cur.qty += qty; cur.amt = r2(cur.amt + amt);
+                out.items[key] = cur;
+            });
+
+            // ---- المال: الرسومُ لنا، والباقي يُقسَم بنسبةِ قيمةِ القطع
+            const fees = r2((Number(inv.altFee) || 0) + (Number(inv.deliveryFee) || 0));
+            out.altFee = r2(out.altFee + (Number(inv.altFee) || 0));
+            out.deliveryFee = r2(out.deliveryFee + (Number(inv.deliveryFee) || 0));
+            const pay = (inv.payment && typeof inv.payment === 'object') ? inv.payment : {};
+            const payCash = r2(pay.cash), payCard = r2(pay.card);
+            const collected = r2(payCash + payCard);
+            const goods = r2(collected - fees);
+            const base = goodsOurs + goodsHers;
+            // ⚠️ نصيبُها يُحسب أوّلًا ونصيبُنا **الباقي**: فالمجموعُ يساوي المحصَّلَ
+            //   بالضبط مهما فعل التقريبُ. والعكسُ (حسابُ نصيبنا ثمّ الباقي لها)
+            //   كان يُلقي كسرَ التقريبِ عليها — وهو مالُ غيرِنا.
+            const hers = (base > 0 && goodsHers > 0) ? r2(goods * (goodsHers / base)) : 0;
+            const ours = r2(collected - hers);
+            // وتقسيمُ كلِّ نصيبٍ على كاش/كارد بنسبةِ الفاتورة، والكارد = الباقي.
+            const cashRatio = collected > 0 ? (payCash / collected) : 1;
+            const herCash = r2(hers * cashRatio), herCard = r2(hers - herCash);
+            const ourCash = r2(ours * cashRatio), ourCard = r2(ours - ourCash);
+            out.shCash = r2(out.shCash + herCash); out.shCard = r2(out.shCard + herCard);
+            out.cash = r2(out.cash + ourCash); out.card = r2(out.card + ourCard);
+        });
+        return out;
+    }
+
+    // ---- تطبيقُ الأرقام على الخانات ومعها القراءةُ من فايرستور -------------
+    let repAutoRan = false;
+    let repAutoBusy = false;
+
+    /**
+     * ⚠️⚠️ ما يبقى بيدها، ولا يُكتب فوقه بحال:
+     *   · `repNote`     — كلامُها.
+     *   · `cashOnHand`  — «الباقي» في الدرج؛ الصندوقُ لا يعرف ما أخذته أو صرفته.
+     *   · `bagsUsed`    — عددٌ لا بيع، لا سبيل للصندوق إليه.
+     *   · `walkInsLocal/Expat` — زائراتٌ لا مبيعات، تُعَدُّ بالعين.
+     *   وتُقال هذه صريحًا على الشاشة كي لا تُنتظر تعبئتُها فتُرسَل فارغة.
+     */
+    const REP_MANUAL_FIELDS = ['repNote', 'cashOnHand', 'bagsUsed', 'walkInsLocal', 'walkInsExpat'];
+
+    async function repAutoFill(byHand) {
+        const say = (m, c) => setMsg('repAutoMsg', m, c || 'ok');
+        if (!isPosShop(state.shop)) return;
+        if (repAutoBusy) return;
+        repAutoBusy = true;
+        const btn = el('repAutoBtn');
+        if (btn) btn.disabled = true;
+        try {
+            const dateISO = (el('repDate') && el('repDate').value) || todayISO();
+            // ⚠️⚠️ استعلامٌ بحقلٍ واحدٍ (`at >= اليوم`) عن قصد: فايرستور يحتاج فهرسًا
+            //   مركّبًا لو جُمع شرطُ المحلِّ مع مدى التاريخ، وفهرسٌ غيرُ منشورٍ يعني
+            //   شاشةً تُرمى بخطأٍ عند أوّلِ استعمال. والترشيحُ بالمحلِّ يجري هنا،
+            //   والمقروءُ يومٌ واحدٌ فلا يكبر مع الزمن.
+            const snap = await getDocs(query(collection(db, ABAYA_INVOICES_COLL),
+                                             where('at', '>=', String(dateISO))));
+            const invoices = [];
+            snap.forEach(d => invoices.push({ id: d.id, ...d.data() }));
+            const b = repBuildFromInvoices(invoices, cpProducts, state.shop, dateISO);
+
+            if (!b.invoiceCount) {
+                say(b.returnedCount
+                    ? `No sale is recorded for ${dateISO} — ${b.returnedCount} invoice(s) were returned in full. `
+                      + `Nothing was changed; type the report by hand if you need to.`
+                    : `The till has no invoice for ${dateISO} yet, so nothing was filled. `
+                      + `Sell from the till and press this button again.`, 'warn');
+                return;
+            }
+
+            // ---- الخانات
+            const put = (id, v) => { const e = el(id); if (e) e.value = (Number(v) || 0) ? String(v) : ''; };
+            // ⚠️ معرّفاتُ الخانات في الصفحة `qty_<key>` و`amt_<key>` — تُبنى من
+            //   القائمةِ نفسِها لا بيدٍ، فنوعٌ يُضاف يومًا يُعبَّأ وحدَه.
+            ABAYA_ITEMS.forEach(it => {
+                const got = b.items[it.key] || { qty: 0, amt: 0 };
+                put(`qty_${it.key}`, got.qty);
+                put(`amt_${it.key}`, got.amt);
+            });
+            put('cashSales', b.cash);
+            put('cardSales', b.card);
+            put('altFee', b.altFee);
+            put('deliveryFee', b.deliveryFee);
+            put('shQtyReady', b.shQtyReady);
+            put('shQtyOrder', b.shQtyOrder);
+            put('shAmtReady', b.shAmtReady);
+            put('shAmtOrder', b.shAmtOrder);
+            put('shCash', b.shCash);
+            put('shCard', b.shCard);
+            recalc();
+
+            const bits = [];
+            bits.push(`Filled from <b>${b.invoiceCount} invoice(s)</b> on ${escapeHtml(dateISO)} — `
+                + `<b>${b.pieces} piece(s)</b>, cash <b>${money(b.cash)}</b>, card <b>${money(b.card)}</b>.`);
+            if (b.shQtyReady + b.shQtyOrder) {
+                bits.push(`Shanton: <b>${b.shQtyReady + b.shQtyOrder} piece(s)</b>, `
+                    + `<b>${money(b.shCash + b.shCard)} QAR</b> — kept in her own boxes, not in the shop's.`);
+            }
+            if (b.returnedCount) bits.push(`${b.returnedCount} returned invoice(s) were left out, as they should be.`);
+            // ⚠️ وما تعذّر يُقال بالباركود: ليس خطأَها، ولا يُترك لتكتشفه برسالةِ
+            //   «المجموعان لا يتساويان» بلا سبب.
+            if (b.unknownTypes.length) {
+                bits.push(`<b>&#9888; ${b.unknownTypes.length} piece(s) could not be placed</b>: `
+                    + b.unknownTypes.map(u => `${escapeHtml(u.code)} (type "${escapeHtml(u.type)}")`).join(' · ')
+                    + `. Their money is NOT in the boxes above — add it by hand and tell the owner to fix the type.`);
+            }
+            bits.push(`<b>Still yours to type:</b> the note, the cash left in the drawer, the bags used, `
+                + `and the walk-ins. The till cannot know those.`);
+            setMsgHtml('repAutoMsg', bits.join('<br><br>'), b.unknownTypes.length ? 'warn' : 'ok');
+            repAutoRan = true;
+        } catch (e) {
+            console.error('Could not fill the report from the till:', e);
+            // ⚠️ ولا يُعطَّل التقريرُ بحال: تفشل التعبئةُ فتُكتب بيدٍ كما كانت دائمًا.
+            say(/permission/i.test(String(e && e.message))
+                ? 'The invoices are not readable yet, so the report was not filled. Type it by hand as usual.'
+                : 'The till could not be read just now, so nothing was filled. Type it by hand as usual, '
+                  + 'or press the button again.', 'warn');
+        } finally {
+            repAutoBusy = false;
+            if (btn) btn.disabled = false;
+        }
     }
 
     /** الرسوم والأكياس. ⚠️ الرسوم مالٌ، والأكياس عددٌ — ولا يُخلطان بحال. */
@@ -3013,6 +3263,8 @@
         loadFlorindaTasks(true);
     }
     el('btnBackShop').addEventListener('click', () => showStep('stepShop'));
+    // ⚠️ `byHand = true`: يُعيد التعبئةَ بطلبها صريحًا — بعد بيعةٍ جديدةٍ أو إرجاع.
+    el('repAutoBtn').addEventListener('click', () => repAutoFill(true));
     // ---- أزرارُ التنقّل بين الأقسام -------------------------------------
     el('navAttend').addEventListener('click', () => showSellerView('attend'));
     el('navTill').addEventListener('click', () => {
@@ -3188,6 +3440,12 @@
                     qty: (v.qty && typeof v.qty === 'object') ? v.qty : {},
                     // ⭐ «متى دخل الكتالوج» — عليه يُبنى «الذي دخل حديثًا هو الأوّل».
                     freshMs: catFreshMs(v),
+                    // ⭐⭐⭐ مالكُ القطعة: بضاعتُنا أم بضاعةُ شانتون. تُكتب لحظةَ
+                    //   إنشاءِ السطر في لوحة السيدة فاطمة من مورّدِ الشحنة.
+                    // ⚠️⚠️ والغائبُ يُقرأ «لنا» بأمر المالك: «إذا كان موردٌ آخرُ
+                    //   فالبضاعةُ تحسب لنا». وسطورُ الكتالوج التي أُنشئت قبل هذه
+                    //   الميزةِ لا تحمل الوسمَ، فلا يصحّ أن تبقى بلا مالك.
+                    goodsOwner: v.goodsOwner === 'shanton' ? 'shanton' : 'own',
                     hasImage: v.hasImage === true
                 });
             });
