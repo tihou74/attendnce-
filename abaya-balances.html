@@ -2345,6 +2345,53 @@
     /** ⚠️ المُحوِّلُ وحدَه يختلف بين الملفَّين (اسمُ المتغيّر)، وما بعده متطابق. */
     function abayaArrivalList() { return Array.isArray(arrivals) ? arrivals : []; }
 
+    /**
+     * ⭐⭐⭐⭐⭐ «أين الخللُ؟» — لماذا لا تظهر شحنةٌ في مخزون هذا المحلّ.
+     *
+     * ⚠️⚠️ كُتبت بعد أن سأل المالكُ السؤالَ نفسَه مرّتين («لماذا ستوك وست ووك
+     *   فاضي»، ثمّ «للحين العبايات والجلابيات لا تظهر، أين الخلل»). والأسبابُ
+     *   كلُّها معروفةٌ للبرنامج لحظةَ الحساب — فإخفاؤها وتركُ المالكِ يُفتّش خطأٌ
+     *   في العرض لا في الحساب. **ما يعرفه البرنامجُ ولا يقوله يُضيّع وقتَ صاحبه.**
+     */
+    function abayaShipmentExclusions(shop) {
+        const since = abayaOpening.openingDate || '';
+        const res = { waiting: 0, waitingPieces: 0, beforeCount: [], unknownType: [], noPlan: [] };
+        abayaArrivalList().forEach(a => {
+            if (!a) return;
+            const code = String(a.code || '—');
+            const pieces = Math.floor(Number(a.pieces) || 0);
+            // ١) لم تُرسل بعد: ليست في محلٍّ أصلًا. تُعَدُّ عامّةً لا لكلِّ محلّ.
+            if (a.status !== ARRIVAL_SENT) {
+                res.waiting++;
+                res.waitingPieces += pieces;
+                return;
+            }
+            // ٢) أُرسلت ولا نصيبَ لهذا المحلّ منها — وهذا ليس خللًا، فيُسكت عنه.
+            const got = shantonPiecesForShop(a, shop);
+            if (got <= 0) {
+                // ⚠️ إلّا حالةً واحدة: أُرسلت ولا توزيعَ مُهيكَلٌ لها ولا اسمُ محلٍّ
+                //   يُطابق — فقطعُها في لا مكان. وهذه خللٌ يجب أن يُقال.
+                const hasPlan = a.sentPlan && typeof a.sentPlan === 'object'
+                    && Object.keys(a.sentPlan).length > 0;
+                if (!hasPlan && !String(a.sentShop || '').trim()) {
+                    res.noPlan.push({ code, pieces });
+                }
+                return;
+            }
+            // ٣) أُرسلت قبل تاريخ الجرد: مشمولةٌ في عدَدِه، فتُستثنى بحقّ — ويُقال.
+            const sentDay = String(a.sentAt || '').slice(0, 10);
+            if (since && /^\d{4}-\d{2}-\d{2}$/.test(sentDay) && sentDay < since) {
+                res.beforeCount.push({ code, pieces: got, day: sentDay });
+                return;
+            }
+            // ٤) نوعٌ لا يُطابق أيَّ صنفٍ في الجدول: لا سطرَ لها فتسقط بصمت.
+            if (!isShantonArrival(a.source) && !ABAYA_STOCK_ITEMS.some(it => it.key === a.type)) {
+                res.unknownType.push({ code, pieces: got, type: String(a.type || '(empty)') });
+            }
+        });
+        return res;
+    }
+
     function abayaStockFor(shop) {
         const since = abayaOpening.openingDate || '';
         const openMap = abayaOpening.opening[shop] || {};
@@ -5039,6 +5086,13 @@
         }
         renderArrivals();
         renderArrivalBadge();
+        // ⚠️⚠️⚠️ والمخزونُ يُعاد رسمُه: صار يُحسب من الشحنات (v231)، وهذه القراءةُ
+        //   غيرُ متزامنة. فالشاشةُ تُرسم عند الدخول **قبل** أن تصل القائمةُ، فتُحسب
+        //   على فراغٍ وتُعرض أصفارًا، ولا شيءَ يُعيد رسمَها — فيبقى الصفرُ معروضًا
+        //   دقائقَ. ولا رسالةَ خطأ: الحسابُ نجح على لا شيء.
+        // ⚠️ ويُعاد رسمُ المخزون وحدَه لا الشاشةُ كلُّها: `render()` تلمس الحسابَ
+        //   والتارقتَ وتُعيد ضبطَ الطابع، ولا علاقةَ للوصولات بها.
+        if (typeof renderStock === 'function') renderStock();
     }
 
     /** العددُ على الزرّ — يُحدَّث بعد كلِّ قراءةٍ وبعد كلِّ إرسال. */

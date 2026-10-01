@@ -7413,6 +7413,12 @@
         if (tabId === 'tab-abaya-catalog') {
             if (abayaCatalogLoaded) renderAbayaCatalog();
             loadAbayaCatalog();
+            // ⚠️⚠️ والشحناتُ معها إلزامًا: زرُّ «Supplier» على سطر الكتالوج يظهر
+            //   بشرطِ وجودِ شحنةٍ لذلك التصميم (`abayaArrivals.some(...)`). وهذا
+            //   التبويبُ لم يكن يقرأ الشحناتِ إطلاقًا، فالقائمةُ فارغةٌ والشرطُ
+            //   كاذبٌ دائمًا — **فالزرُّ لم يظهر مرّةً واحدة** وإن كان مكتوبًا.
+            //   وهو ما جعل المالكَ يطلب تعديلَ المورّد مرّتين.
+            loadAbayaArrivals();
         }
         // ⭐ الوصولات: تُعاد قراءتها في كل فتحة كالكتالوج — السيدةُ فاطمة تُرسل
         // شحناتٍ طولَ اليوم، وشاشةٌ تقول «في الانتظار» وقد أُرسلت تكذب.
@@ -16928,6 +16934,19 @@
             abayaArrivalsLoadedAt = new Date();
             if (force) arvImageCache.clear();
             renderAbayaArrivals();
+            // ⚠️⚠️⚠️ ومعها يُعاد رسمُ **كلِّ** من يقرأ هذه القائمة. وهذا إصلاحُ
+            //   العطلِ من جذره بعد أن ظهر ثلاث مرّات:
+            //     · مخزونُ شانتون صفرًا (v229)
+            //     · مخزونُنا في وست ووك فارغًا (v231)
+            //     · وزرُّ «Supplier» في الكتالوج لا يظهر إطلاقًا — شرطُه
+            //       `abayaArrivals.some(...)` على قائمةٍ فارغة.
+            //   كنتُ أُصلح كلَّ موضعٍ بنفسه فيظهر رابع. والصوابُ أنّ **القارئَ
+            //   يُبلَّغ من المُحمِّل**: القائمةُ تُقرأ بلا تزامن، فمن رسم قبلها رسم
+            //   على فراغٍ ولا شيءَ يُعيده. فهنا تُبلَّغ الشاشاتُ كلُّها مرّةً واحدة.
+            // ⚠️ وبحراسةِ وجودِ الدالّة: هذا الملفُّ يُحمَّل لأدوارٍ لا تُعرض لها كلُّ
+            //   الشاشات، فنداءُ دالّةٍ غائبةٍ يُسقط القراءةَ نفسَها.
+            if (abayaLoaded && typeof renderAbayaAll === 'function') renderAbayaAll();
+            if (abayaCatalogLoaded && typeof renderAbayaCatalog === 'function') renderAbayaCatalog();
         } catch (e) {
             console.error('Error loading the arrivals:', e);
             if (body) {
@@ -19238,6 +19257,53 @@
     /** ⚠️ المُحوِّلُ وحدَه يختلف بين الملفَّين (اسمُ المتغيّر)، وما بعده متطابق. */
     function abayaArrivalList() { return Array.isArray(abayaArrivals) ? abayaArrivals : []; }
 
+    /**
+     * ⭐⭐⭐⭐⭐ «أين الخللُ؟» — لماذا لا تظهر شحنةٌ في مخزون هذا المحلّ.
+     *
+     * ⚠️⚠️ كُتبت بعد أن سأل المالكُ السؤالَ نفسَه مرّتين («لماذا ستوك وست ووك
+     *   فاضي»، ثمّ «للحين العبايات والجلابيات لا تظهر، أين الخلل»). والأسبابُ
+     *   كلُّها معروفةٌ للبرنامج لحظةَ الحساب — فإخفاؤها وتركُ المالكِ يُفتّش خطأٌ
+     *   في العرض لا في الحساب. **ما يعرفه البرنامجُ ولا يقوله يُضيّع وقتَ صاحبه.**
+     */
+    function abayaShipmentExclusions(shop) {
+        const since = abayaOpening.openingDate || '';
+        const res = { waiting: 0, waitingPieces: 0, beforeCount: [], unknownType: [], noPlan: [] };
+        abayaArrivalList().forEach(a => {
+            if (!a) return;
+            const code = String(a.code || '—');
+            const pieces = Math.floor(Number(a.pieces) || 0);
+            // ١) لم تُرسل بعد: ليست في محلٍّ أصلًا. تُعَدُّ عامّةً لا لكلِّ محلّ.
+            if (a.status !== ARRIVAL_SENT) {
+                res.waiting++;
+                res.waitingPieces += pieces;
+                return;
+            }
+            // ٢) أُرسلت ولا نصيبَ لهذا المحلّ منها — وهذا ليس خللًا، فيُسكت عنه.
+            const got = shantonPiecesForShop(a, shop);
+            if (got <= 0) {
+                // ⚠️ إلّا حالةً واحدة: أُرسلت ولا توزيعَ مُهيكَلٌ لها ولا اسمُ محلٍّ
+                //   يُطابق — فقطعُها في لا مكان. وهذه خللٌ يجب أن يُقال.
+                const hasPlan = a.sentPlan && typeof a.sentPlan === 'object'
+                    && Object.keys(a.sentPlan).length > 0;
+                if (!hasPlan && !String(a.sentShop || '').trim()) {
+                    res.noPlan.push({ code, pieces });
+                }
+                return;
+            }
+            // ٣) أُرسلت قبل تاريخ الجرد: مشمولةٌ في عدَدِه، فتُستثنى بحقّ — ويُقال.
+            const sentDay = String(a.sentAt || '').slice(0, 10);
+            if (since && /^\d{4}-\d{2}-\d{2}$/.test(sentDay) && sentDay < since) {
+                res.beforeCount.push({ code, pieces: got, day: sentDay });
+                return;
+            }
+            // ٤) نوعٌ لا يُطابق أيَّ صنفٍ في الجدول: لا سطرَ لها فتسقط بصمت.
+            if (!isShantonArrival(a.source) && !ABAYA_STOCK_ITEMS.some(it => it.key === a.type)) {
+                res.unknownType.push({ code, pieces: got, type: String(a.type || '(empty)') });
+            }
+        });
+        return res;
+    }
+
     function abayaStockFor(shop) {
         const since = abayaOpening.openingDate || '';
         const openMap = abayaOpening.opening[shop] || {};
@@ -19460,7 +19526,36 @@
             notes.push(`<b style="color: var(--warning);">&#9888; The shipments have not been read yet</b>, so what `
                 + `Mrs Fatima sent to the shops is <b>not</b> in the figures above yet. They are loading &mdash; `
                 + `press Refresh in a moment. This is not a zero; it is "not counted yet".`);
-        } else if (g.received) {
+        }
+        // ⚠️ «أين الخلل؟» يُجاب على الشاشة. والمحلُّ المقصودُ هو المُختارُ في الجدول،
+        //   وإن كان العرضُ لكلِّ المحلات فُحص كلُّ محلٍّ على حدة.
+        const exShops = ABAYA_SHOPS;
+        const exLines = [];
+        exShops.forEach(s => {
+            const ex = abayaShipmentExclusions(s);
+            ex.beforeCount.forEach(x => exLines.push(`<b>${escapeHtml(s)}</b>: shipment <b>${escapeHtml(x.code)}</b> `
+                + `(${x.pieces} pc) was sent on ${escapeHtml(x.day)}, <b>before</b> the stock count of `
+                + `${escapeHtml(abayaOpening.openingDate)} — so it is already inside the opening numbers and is `
+                + `not added again.`));
+            ex.unknownType.forEach(x => exLines.push(`<b style="color: var(--danger);">${escapeHtml(s)}</b>: shipment `
+                + `<b>${escapeHtml(x.code)}</b> (${x.pieces} pc) has the type "<b>${escapeHtml(x.type)}</b>", which is `
+                + `not one of the rows above, so it appears nowhere. Fix its type in "Abaya — New Arrivals".`));
+            ex.noPlan.forEach(x => exLines.push(`<b style="color: var(--danger);">Shipment ${escapeHtml(x.code)}</b> `
+                + `(${x.pieces} pc) is marked sent but carries <b>no shop</b> — its pieces are in no shop's stock.`));
+        });
+        // ⚠️ تُزال التكراراتُ: «بلا محلّ» لا تخصُّ محلًّا فتظهر مع كلِّ واحد.
+        const seen = new Set();
+        const uniq = exLines.filter(l => (seen.has(l) ? false : (seen.add(l), true)));
+        if (uniq.length) {
+            notes.push(`<b>Shipments that are NOT in the figures above, and why:</b><br>` + uniq.join('<br>'));
+        }
+        const exAll = abayaShipmentExclusions(ABAYA_SHOPS[0] || '');
+        if (exAll.waiting) {
+            notes.push(`<b>${exAll.waiting} shipment(s)</b> (${exAll.waitingPieces} piece(s)) are still `
+                + `<b>in the store</b> &mdash; Mrs Fatima has not sent them to a shop yet, so they are in no `
+                + `shop's stock. That is correct, not a fault.`);
+        }
+        if (g.received) {
             // ⚠️⚠️ ومن أين جاء «الوارد» يُقال: هذا ما جعل المالكَ يسأل «لماذا ستوك
             //   وست ووك فاضي؟». الحركاتُ محفوظةٌ داخلَ التقارير اليوميّة، ومحلٌّ لم
             //   يُرسل تقريرًا بعد لا حركةَ له — فصار الوارد يُحسب من الشحنة كذلك،
@@ -22961,7 +23056,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v231';
+        const APP_BUILD = 'v232';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
