@@ -2320,6 +2320,70 @@
     }
 
     /**
+     * ⭐⭐⭐⭐⭐ كشفُ حسابِ شانتون شهرًا بشهر — بطلب المالك:
+     *   «لما تظهر بالنس شانتون اظهر كل شهر بروحه، والبالنس الخاص بالمحل يتبع من
+     *    شهر لشهر».
+     *
+     * ولا تناقضَ بين الطلبَين وإن بدا: لكلِّ شهرٍ **رصيدٌ مفتوحٌ** وحركتُه و**رصيدٌ
+     * مُغلَق**، والمُغلَقُ يصير مفتوحَ الذي بعده. فيُقرأ الشهرُ وحدَه، ويتتابع الرصيدُ
+     * في الوقت نفسِه. وهذا هو كشفُ الحسابِ المعروفُ في المحاسبة، لا اختراعَ فيه.
+     *
+     * ⚠️⚠️ والدفعةُ تُنسب إلى شهرِ **تاريخِها** لا إلى الشهرِ الذي تُسدّده: دفعةٌ في
+     *   ٥ نوفمبر عن مبيعات أكتوبر تظهر في نوفمبر. ولا سبيلَ لغيرِ ذلك بلا أن
+     *   يُخصِّص المالكُ كلَّ دفعةٍ لشهرٍ بيده — ونسبُها بالظنّ يُنتج شهرًا يبدو
+     *   مسدَّدًا وآخرَ يبدو متأخّرًا، وكلاهما كذب. ويبقى **الرصيدُ المتتابعُ** صحيحًا
+     *   في الحالتَين، وهو الرقمُ الذي يُدفع عليه.
+     *
+     * ⚠️ والشهورُ تُجمع من الحركةِ **ومن الدفعات** معًا: شهرٌ دُفع فيه ولا بيعَ له
+     *   يجب أن يظهر، وإلّا اختفت دفعةٌ من الكشف وبدا الرصيدُ ينقص بلا سبب.
+     */
+    function shantonMonthlyStatement(reports, ledger) {
+        const L = shantonLedgerClean(ledger);
+        const since = L.openingDate;
+        const all = Array.isArray(reports) ? reports : [];
+        const used = since ? all.filter(r => String((r && r.date) || '') >= since) : all;
+
+        const accrued = new Map();
+        const addAcc = (m, v) => {
+            if (!/^\d{4}-\d{2}$/.test(m) || !(v > 0)) return;
+            accrued.set(m, (accrued.get(m) || 0) + v);
+        };
+        used.forEach(r => addAcc(String((r && r.date) || '').slice(0, 7), abayaRow(r).shDue));
+
+        // قيودُ الشهورِ السابقة تدخل شهرَها، وبنفسِ قطعِ تاريخِ الافتتاحيّ.
+        const openMonth = since ? since.slice(0, 7) : '';
+        shantonAdjustmentsClean(L.adjustments).list.forEach(a => {
+            if (openMonth && a.month < openMonth) return;
+            addAcc(a.month, a.hers);
+        });
+
+        const paid = new Map();
+        shantonPaymentsClean(L.payments).list.forEach(p => {
+            const m = p.date.slice(0, 7);
+            paid.set(m, (paid.get(m) || 0) + p.amount);
+        });
+
+        const months = [...new Set([...accrued.keys(), ...paid.keys()])].sort();
+        const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+        let bal = L.openingDue;
+        const rows = months.map(m => {
+            const a = r2(accrued.get(m) || 0), p = r2(paid.get(m) || 0);
+            const opening = r2(bal);
+            bal = r2(opening + a - p);
+            return { month: m, opening, accrued: a, paid: p, closing: bal };
+        });
+        // ⚠️ الأحدثُ أوّلًا كبقيّةِ الشاشات، وكلُّ سطرٍ يحمل مفتوحَه ومُغلَقَه فلا
+        //   يُربك الترتيبُ قراءتَه.
+        rows.reverse();
+        return {
+            rows,
+            openingDue: L.openingDue,
+            // ⚠️ يجب أن يساوي `shantonAccount(...).remaining` حرفًا — وفحصٌ يُطالب به.
+            closing: r2(bal)
+        };
+    }
+
+    /**
      * حركاتُ شانتون مسطورةً من كلِّ التقارير — للتفصيل الذي يُعرض ويُطبع.
      * ⚠️ تقرأ نفسَ `abayaMoveOwner` التي يقرؤها حسابُ الستوك، فلا يختلف سطرٌ
      *   معروضٌ عن رقمٍ محسوب.
@@ -3760,19 +3824,44 @@
         }
 
         // ---- ٢) شهرًا شهرًا
-        const months = shantonByMonth(allAbayaReports, SH_MONTHS_SHOWN);
-        parts.push(`<p class="sect">Where it came from &mdash; month by month</p>`);
+        // ---- ٢) كشفُ الحساب شهرًا بشهر — بطلب المالك: «اظهر كل شهر بروحه،
+        //         والبالنس يتبع من شهر لشهر». فلكلِّ شهرٍ مفتوحُه ومُغلَقُه.
+        // ⚠️ المُغلَقُ يصير مفتوحَ الذي بعده، فالعينُ تتبع الرصيدَ سطرًا سطرًا.
+        const stmt = shantonMonthlyStatement(allAbayaReports, shantonLedger);
+        const stRows = stmt.rows.slice(0, SH_MONTHS_SHOWN);
+        parts.push(`<p class="sect">Her account &mdash; month by month${stmt.rows.length > stRows.length
+            ? ` (newest ${stRows.length} of ${stmt.rows.length})` : ''}</p>`);
         parts.push(`<div class="tw"><table>
-            <thead><tr><th>Month</th><th class="n">Pieces</th><th class="n">Collected</th>
-                <th class="n">Our commission</th><th class="n">Became hers</th></tr></thead>
-            <tbody>${months.length ? months.map(m => `<tr>
+            <thead><tr><th>Month</th><th class="n">Brought forward</th><th class="n">Became hers</th>
+                <th class="n">Paid</th><th class="n">Left at month end</th></tr></thead>
+            <tbody>${stRows.length ? stRows.map(m => `<tr>
                 <td><b>${escapeHtml(m.month)}</b></td>
-                <td class="n">${m.pieces}</td>
-                <td class="n">${money(m.collected)}</td>
-                <td class="n">${money(m.commission)}</td>
-                <td class="n"><b>${money(m.hers)}</b></td></tr>`).join('')
-            : `<tr><td colspan="5" style="color: var(--color-text-muted);">No abaya of hers has been sold yet.</td></tr>`}</tbody>
+                <td class="n" style="color: var(--color-text-muted);">${money(m.opening)}</td>
+                <td class="n">${m.accrued ? money(m.accrued) : '&mdash;'}</td>
+                <td class="n" style="color: var(--color-success, green);">${m.paid ? money(m.paid) : '&mdash;'}</td>
+                <td class="n"><b>${money(m.closing)}</b></td></tr>`).join('')
+            : `<tr><td colspan="5" style="color: var(--color-text-muted);">Nothing has happened on her account yet.</td></tr>`}</tbody>
         </table></div>`);
+        parts.push(`<p class="sub"><b>Each month on its own line</b>, and what is left at the end of a month is what
+            the next month starts with &mdash; so you can read one month alone and still follow the balance.
+            A payment shows in the month it was <b>made</b>, even if it settles an earlier month; the
+            <b>running balance is right either way</b>.</p>`);
+
+        // ---- ٢أ) وتفصيلُ ما بِيع في كلِّ شهر (قطعٌ ومحصَّلٌ وعمولتُنا)
+        const months = shantonByMonth(allAbayaReports, SH_MONTHS_SHOWN);
+        if (months.length) {
+            parts.push(`<p class="sect">What was sold of hers &mdash; month by month</p>`);
+            parts.push(`<div class="tw"><table>
+                <thead><tr><th>Month</th><th class="n">Pieces</th><th class="n">Collected</th>
+                    <th class="n">Our commission</th><th class="n">Became hers</th></tr></thead>
+                <tbody>${months.map(m => `<tr>
+                    <td><b>${escapeHtml(m.month)}</b></td>
+                    <td class="n">${m.pieces}</td>
+                    <td class="n">${money(m.collected)}</td>
+                    <td class="n">${money(m.commission)}</td>
+                    <td class="n"><b>${money(m.hers)}</b></td></tr>`).join('')}</tbody>
+            </table></div>`);
+        }
 
         // ---- ٢ب) شهورٌ قيَّدها المالكُ بيده (ما قبل أن يُسجّل البرنامج)
         // ⚠️ جدولٌ منفصلٌ لا مدموجٌ في الذي فوقه: ذاك محسوبٌ من تقاريرَ وهذا مكتوبٌ
@@ -4406,7 +4495,8 @@
             dueMeta.innerHTML = (inCredit
                 ? `She has been paid <b>more</b> than she is owed.`
                 : `Her <b>running balance</b> &mdash; it does <b>not</b> reset when a new month starts, `
-                  + `and only goes down when a payment to her is recorded.`)
+                  + `and only goes down when a payment to her is recorded. `
+                  + `The details window shows it <b>month by month</b>.`)
                 + ` This month added <b>${money(all.shDue)}</b>`
                 + (shAcc.paid ? `, and <b>${money(shAcc.paid)}</b> has been paid in total` : '')
                 + `. Tap below for the detail.`;

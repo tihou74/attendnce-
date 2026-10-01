@@ -18912,6 +18912,70 @@
     }
 
     /**
+     * ⭐⭐⭐⭐⭐ كشفُ حسابِ شانتون شهرًا بشهر — بطلب المالك:
+     *   «لما تظهر بالنس شانتون اظهر كل شهر بروحه، والبالنس الخاص بالمحل يتبع من
+     *    شهر لشهر».
+     *
+     * ولا تناقضَ بين الطلبَين وإن بدا: لكلِّ شهرٍ **رصيدٌ مفتوحٌ** وحركتُه و**رصيدٌ
+     * مُغلَق**، والمُغلَقُ يصير مفتوحَ الذي بعده. فيُقرأ الشهرُ وحدَه، ويتتابع الرصيدُ
+     * في الوقت نفسِه. وهذا هو كشفُ الحسابِ المعروفُ في المحاسبة، لا اختراعَ فيه.
+     *
+     * ⚠️⚠️ والدفعةُ تُنسب إلى شهرِ **تاريخِها** لا إلى الشهرِ الذي تُسدّده: دفعةٌ في
+     *   ٥ نوفمبر عن مبيعات أكتوبر تظهر في نوفمبر. ولا سبيلَ لغيرِ ذلك بلا أن
+     *   يُخصِّص المالكُ كلَّ دفعةٍ لشهرٍ بيده — ونسبُها بالظنّ يُنتج شهرًا يبدو
+     *   مسدَّدًا وآخرَ يبدو متأخّرًا، وكلاهما كذب. ويبقى **الرصيدُ المتتابعُ** صحيحًا
+     *   في الحالتَين، وهو الرقمُ الذي يُدفع عليه.
+     *
+     * ⚠️ والشهورُ تُجمع من الحركةِ **ومن الدفعات** معًا: شهرٌ دُفع فيه ولا بيعَ له
+     *   يجب أن يظهر، وإلّا اختفت دفعةٌ من الكشف وبدا الرصيدُ ينقص بلا سبب.
+     */
+    function shantonMonthlyStatement(reports, ledger) {
+        const L = shantonLedgerClean(ledger);
+        const since = L.openingDate;
+        const all = Array.isArray(reports) ? reports : [];
+        const used = since ? all.filter(r => String((r && r.date) || '') >= since) : all;
+
+        const accrued = new Map();
+        const addAcc = (m, v) => {
+            if (!/^\d{4}-\d{2}$/.test(m) || !(v > 0)) return;
+            accrued.set(m, (accrued.get(m) || 0) + v);
+        };
+        used.forEach(r => addAcc(String((r && r.date) || '').slice(0, 7), abayaRow(r).shDue));
+
+        // قيودُ الشهورِ السابقة تدخل شهرَها، وبنفسِ قطعِ تاريخِ الافتتاحيّ.
+        const openMonth = since ? since.slice(0, 7) : '';
+        shantonAdjustmentsClean(L.adjustments).list.forEach(a => {
+            if (openMonth && a.month < openMonth) return;
+            addAcc(a.month, a.hers);
+        });
+
+        const paid = new Map();
+        shantonPaymentsClean(L.payments).list.forEach(p => {
+            const m = p.date.slice(0, 7);
+            paid.set(m, (paid.get(m) || 0) + p.amount);
+        });
+
+        const months = [...new Set([...accrued.keys(), ...paid.keys()])].sort();
+        const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+        let bal = L.openingDue;
+        const rows = months.map(m => {
+            const a = r2(accrued.get(m) || 0), p = r2(paid.get(m) || 0);
+            const opening = r2(bal);
+            bal = r2(opening + a - p);
+            return { month: m, opening, accrued: a, paid: p, closing: bal };
+        });
+        // ⚠️ الأحدثُ أوّلًا كبقيّةِ الشاشات، وكلُّ سطرٍ يحمل مفتوحَه ومُغلَقَه فلا
+        //   يُربك الترتيبُ قراءتَه.
+        rows.reverse();
+        return {
+            rows,
+            openingDue: L.openingDue,
+            // ⚠️ يجب أن يساوي `shantonAccount(...).remaining` حرفًا — وفحصٌ يُطالب به.
+            closing: r2(bal)
+        };
+    }
+
+    /**
      * حركاتُ شانتون مسطورةً من كلِّ التقارير — للتفصيل الذي يُعرض ويُطبع.
      * ⚠️ تقرأ نفسَ `abayaMoveOwner` التي يقرؤها حسابُ الستوك، فلا يختلف سطرٌ
      *   معروضٌ عن رقمٍ محسوب.
@@ -23524,7 +23588,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v237';
+        const APP_BUILD = 'v238';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
