@@ -2127,7 +2127,10 @@
     // =====================================================================
     const SHANTON_PAY_DOC = 'abaya_shanton_payments';
     const SHANTON_PAY_METHODS = ['cash', 'bank'];
-    let shantonLedger = { openingDue: 0, openingDate: '', payments: [] };
+    // ⚠️ الشكلُ المُعلَنُ يُطابق الشكلَ الحقيقيَّ حرفًا: `adjustments` مذكورةٌ هنا
+    //   وإن كان `shantonLedgerClean` يتحمّل غيابَها. شكلٌ مُعلَنٌ ناقصٌ يُقرأ على
+    //   أنّه كلُّ ما في الدفتر، فيُنسى في مسارِ كتابةٍ لاحقٍ — فيُمحى.
+    let shantonLedger = { openingDue: 0, openingDate: '', payments: [], adjustments: [] };
 
     /**
      * قراءةُ سطورِ الدفعات بصرامة — ومع **تسميةِ** ما تعذّر قراءتُه.
@@ -2166,6 +2169,47 @@
         return { list, bad };
     }
 
+    /**
+     * قيودُ الشهورِ السابقة — «بعنا لها في سبتمبر وليس له تقريرٌ في البرنامج».
+     *
+     * ⚠️⚠️⚠️ لماذا قيدٌ صريحٌ ولا تُختلق تقاريرُ يوميّة: التقريرُ اليوميُّ مستندٌ
+     *   تكتبه البياعةُ ويحمل كاشًا وكاردًا وقطعًا وحركاتٍ ويُغذّي المخزونَ
+     *   والتارقتَ ودخلَ المحلّ. فاختلاقُ تقريرٍ لشهرٍ مضى من أجل رقمٍ واحدٍ
+     *   يُفسد كلَّ تلك الشاشات ويُدخل في المخزون قطعًا لم تُستلم. فالقيدُ سطرٌ
+     *   **باسمه** في دفتر شانتون وحدَه: يظهر مُسمًّى «قيدُ المالك لشهرٍ سابق»،
+     *   ولا يمسُّ تقريرًا ولا مخزونًا ولا تارقتًا.
+     *
+     * ⚠️ و`hers` هو المبلغُ الذي صار لها — يُدخله المالكُ مباشرةً لا يُحسب. لأنّ
+     *   الماضيَ معروفُ نتيجتِه، وحسابُه بقاعدةِ اليومِ قد يُخالف ما اتُّفق عليه
+     *   حينها. والقطعُ والمحصَّلُ للسجلِّ لا للحساب.
+     */
+    function shantonAdjustmentsClean(raw) {
+        const arr = Array.isArray(raw) ? raw : [];
+        const list = [], bad = [];
+        arr.forEach((a, i) => {
+            const hers = Number(a && a.hers);
+            const month = String((a && a.month) || '');
+            // ⚠️ السالبُ والصفرُ مرفوضان: القيدُ إثباتُ مالٍ صار لها. وتصحيحُ قيدٍ
+            //   يكون بحذفه وإعادته، لا بقيدٍ سالبٍ يُعمّي الجدول.
+            if (!a || typeof a !== 'object'
+                || !isFinite(hers) || hers <= 0
+                || !/^\d{4}-\d{2}$/.test(month)) {
+                bad.push(i);
+                return;
+            }
+            const n = (v) => { const x = Number(v); return isFinite(x) && x > 0 ? x : 0; };
+            list.push({
+                id: String(a.id || ''), month, hers,
+                pieces: Math.round(n(a.pieces)), collected: n(a.collected),
+                shop: String(a.shop || ''), note: String(a.note || ''),
+                byName: String(a.byName || ''), byEmail: String(a.byEmail || '')
+            });
+        });
+        list.sort((a, b) => String(b.month).localeCompare(String(a.month))
+            || String(b.id).localeCompare(String(a.id)));
+        return { list, bad };
+    }
+
     /** تنظيفُ مستندِ الدفتر: أرقامٌ سالبةٌ أو تواريخُ غريبةٌ تُعاد إلى الصفر/الفراغ. */
     function shantonLedgerClean(d) {
         const o = (d && typeof d === 'object') ? d : {};
@@ -2173,7 +2217,8 @@
         return {
             openingDue: isFinite(od) && od > 0 ? od : 0,
             openingDate: /^\d{4}-\d{2}-\d{2}$/.test(String(o.openingDate || '')) ? String(o.openingDate) : '',
-            payments: Array.isArray(o.payments) ? o.payments : []
+            payments: Array.isArray(o.payments) ? o.payments : [],
+            adjustments: Array.isArray(o.adjustments) ? o.adjustments : []
         };
     }
 
@@ -2194,11 +2239,25 @@
         const { list, bad } = shantonPaymentsClean(L.payments);
         const paid = list.reduce((a, p) => a + p.amount, 0);
         const accrued = t.shDue;
-        const due = L.openingDue + accrued;
+
+        // قيودُ الشهورِ السابقة — ويُطبَّق عليها **نفسُ** قطعِ تاريخِ الافتتاحيّ
+        // المطبَّقِ على التقارير. ⚠️ قاعدةٌ واحدةٌ لا قاعدتان: الافتتاحيُّ يشمل كلَّ
+        // ما قبله، فقيدٌ لشهرٍ قبله محسوبٌ فيه أصلًا — وجمعُه فوقه يُضاعفه.
+        const adj = shantonAdjustmentsClean(L.adjustments);
+        const openMonth = L.openingDate ? L.openingDate.slice(0, 7) : '';
+        const adjUsed = openMonth ? adj.list.filter(a => a.month >= openMonth) : adj.list;
+        const adjustedHers = adjUsed.reduce((a, x) => a + x.hers, 0);
+
+        const due = L.openingDue + accrued + adjustedHers;
         return {
             openingDue: L.openingDue,
             openingDate: L.openingDate,
             skippedReports: all.length - used.length,
+            adjustments: adjUsed,
+            adjustedHers,
+            adjustedPieces: adjUsed.reduce((a, x) => a + x.pieces, 0),
+            badAdjustments: adj.bad.length,
+            skippedAdjustments: adj.list.length - adjUsed.length,
             pieces: t.shPieces,
             collected: t.shCollected,
             commission: t.commission,
@@ -3312,6 +3371,9 @@
         parts.push(`<div class="r"><span class="k">Her pieces sold, all time</span><span class="v">${acc.pieces}</span></div>`);
         parts.push(`<div class="r"><span class="k">Collected from her abayas</span><span class="v">${money(acc.collected)}</span></div>`);
         parts.push(`<div class="r"><span class="k">Our commission (${abayaRates.shantonPerPiece}/piece)</span><span class="v">${money(acc.commission)}</span></div>`);
+        if (acc.adjustedHers) {
+            parts.push(`<div class="r"><span class="k">From months recorded by hand</span><span class="v">${money(acc.adjustedHers)}</span></div>`);
+        }
         if (acc.openingDue) {
             parts.push(`<div class="r"><span class="k">Balance before ${escapeHtml(acc.openingDate)}</span><span class="v">${money(acc.openingDue)}</span></div>`);
         }
@@ -3338,6 +3400,30 @@
                 <td class="n"><b>${money(m.hers)}</b></td></tr>`).join('')
             : `<tr><td colspan="5" style="color: var(--color-text-muted);">No abaya of hers has been sold yet.</td></tr>`}</tbody>
         </table></div>`);
+
+        // ---- ٢ب) شهورٌ قيَّدها المالكُ بيده (ما قبل أن يُسجّل البرنامج)
+        // ⚠️ جدولٌ منفصلٌ لا مدموجٌ في الذي فوقه: ذاك محسوبٌ من تقاريرَ وهذا مكتوبٌ
+        //   بيد، وخلطُهما يُخفي أيُّ رقمٍ من أين. والسؤالُ «من أين تجمَّع» يستحقّ
+        //   جوابًا يُميّز المصدرَين.
+        if (acc.adjustments.length) {
+            parts.push(`<p class="sect">Months recorded by hand &mdash; before the program was keeping them</p>`);
+            parts.push(`<div class="tw"><table>
+                <thead><tr><th>Month</th><th class="n">Became hers</th><th class="n">Pieces</th>
+                    <th>Shop</th><th>Note</th></tr></thead>
+                <tbody>${acc.adjustments.map(a => `<tr>
+                    <td><b>${escapeHtml(a.month)}</b></td>
+                    <td class="n"><b>${money(a.hers)}</b></td>
+                    <td class="n">${a.pieces || '&mdash;'}</td>
+                    <td>${escapeHtml(a.shop) || '<span style="color: var(--color-text-muted);">all</span>'}</td>
+                    <td>${escapeHtml(a.note) || '<span style="color: var(--color-text-muted);">&mdash;</span>'}</td></tr>`).join('')}</tbody>
+                <tfoot><tr><td>TOTAL BY HAND</td><td class="n">${money(acc.adjustedHers)}</td>
+                    <td class="n">${acc.adjustedPieces || ''}</td><td colspan="2"></td></tr></tfoot>
+            </table></div>`);
+        }
+        if (acc.badAdjustments) {
+            parts.push(`<p class="shwarn"><b>${acc.badAdjustments} hand-recorded month(s) could not be read</b>
+                and are not counted. Tell the owner.</p>`);
+        }
 
         // ---- ٣) المخزون، حركةً كاملة
         parts.push(`<p class="sect">Her stock in your shops &mdash; the full movement</p>`);

@@ -2848,6 +2848,38 @@
                 <span id="abShOpenStatus" style="font-weight: 600; font-size: 13px;"></span>
             </div>
 
+            <!-- ---- قيدُ شهرٍ سابقٍ لا تقريرَ له في البرنامج ----
+                 ⚠️⚠️ بطلب المالك: «بعنا لشانتون في شهر سبتمبر، افتح لي سبتمبر
+                   أعدّل عليه ليكون الحساب مطابقًا فعلًا». ولا تقريرَ يوميَّ لسبتمبر
+                   يُعدَّل، واللوحةُ لا تُنشئ تقاريرَ (ولا يصحّ أن تُنشئ: التقريرُ
+                   يحمل كاشًا وقطعًا وحركاتٍ ويُغذّي المخزونَ والتارقتَ، فاختلاقُه
+                   من أجل رقمٍ واحدٍ يُفسد كلَّ تلك الشاشات ويُدخل مخزونًا لم يُستلم).
+                 ⚠️ فالقيدُ سطرٌ **باسمه** في دفترِ شانتون وحدَه. -->
+            <h4 style="margin: 22px 0 6px; font-size: 14px;">A past month that has no report in the system</h4>
+            <p class="card-sub" style="margin: 0 0 8px;">
+                For months you sold her abayas before this program was recording them &mdash; September, for example.
+                Type what <b>became hers</b> that month; you know the figure, so it is taken as you enter it and not
+                recalculated. The pieces and the collected amount are for the record only.
+                <b>This does not create a daily report</b> and does not touch stock or targets.
+            </p>
+            <div class="controls" style="align-items: flex-end; gap: 10px; flex-wrap: wrap;">
+                <div style="width: 150px;"><label for="abShAdjMonth">Month</label><input type="month" id="abShAdjMonth"></div>
+                <div style="width: 165px;"><label for="abShAdjHers">Became hers (QAR)</label><input type="number" id="abShAdjHers" step="0.01" min="0"></div>
+                <div style="width: 120px;"><label for="abShAdjPieces">Pieces</label><input type="number" id="abShAdjPieces" step="1" min="0" placeholder="optional"></div>
+                <div style="width: 160px;"><label for="abShAdjCollected">Collected (QAR)</label><input type="number" id="abShAdjCollected" step="0.01" min="0" placeholder="optional"></div>
+                <div style="width: 180px;"><label for="abShAdjShop">Shop</label><select id="abShAdjShop"></select></div>
+                <div style="flex: 1; min-width: 180px;"><label for="abShAdjNote">Note (optional)</label><input type="text" id="abShAdjNote" maxlength="120"></div>
+                <button class="btn-accent" id="abShAdjBtn" onclick="addShantonAdjustment()"><span data-icon="save"></span> Record the month</button>
+                <span id="abShAdjStatus" style="font-weight: 600; font-size: 13px;"></span>
+            </div>
+            <div class="table-container" style="margin-top: 12px;">
+                <table>
+                    <thead><tr><th>Month</th><th class="money-col">Became hers</th><th class="money-col">Pieces</th><th class="money-col">Collected</th><th>Shop</th><th>Note</th><th></th></tr></thead>
+                    <tbody id="abShAdjBody"></tbody>
+                    <tfoot id="abShAdjFoot"></tfoot>
+                </table>
+            </div>
+
             <!-- ---- تسجيلُ دفعة ---- -->
             <h4 style="margin: 22px 0 6px; font-size: 14px;">Record a payment you made to her</h4>
             <div class="controls" style="align-items: flex-end; gap: 10px; flex-wrap: wrap;">
@@ -18271,7 +18303,10 @@
     // =====================================================================
     const SHANTON_PAY_DOC = 'abaya_shanton_payments';
     const SHANTON_PAY_METHODS = ['cash', 'bank'];
-    let shantonLedger = { openingDue: 0, openingDate: '', payments: [] };
+    // ⚠️ الشكلُ المُعلَنُ يُطابق الشكلَ الحقيقيَّ حرفًا: `adjustments` مذكورةٌ هنا
+    //   وإن كان `shantonLedgerClean` يتحمّل غيابَها. شكلٌ مُعلَنٌ ناقصٌ يُقرأ على
+    //   أنّه كلُّ ما في الدفتر، فيُنسى في مسارِ كتابةٍ لاحقٍ — فيُمحى.
+    let shantonLedger = { openingDue: 0, openingDate: '', payments: [], adjustments: [] };
 
     /**
      * قراءةُ سطورِ الدفعات بصرامة — ومع **تسميةِ** ما تعذّر قراءتُه.
@@ -18310,6 +18345,47 @@
         return { list, bad };
     }
 
+    /**
+     * قيودُ الشهورِ السابقة — «بعنا لها في سبتمبر وليس له تقريرٌ في البرنامج».
+     *
+     * ⚠️⚠️⚠️ لماذا قيدٌ صريحٌ ولا تُختلق تقاريرُ يوميّة: التقريرُ اليوميُّ مستندٌ
+     *   تكتبه البياعةُ ويحمل كاشًا وكاردًا وقطعًا وحركاتٍ ويُغذّي المخزونَ
+     *   والتارقتَ ودخلَ المحلّ. فاختلاقُ تقريرٍ لشهرٍ مضى من أجل رقمٍ واحدٍ
+     *   يُفسد كلَّ تلك الشاشات ويُدخل في المخزون قطعًا لم تُستلم. فالقيدُ سطرٌ
+     *   **باسمه** في دفتر شانتون وحدَه: يظهر مُسمًّى «قيدُ المالك لشهرٍ سابق»،
+     *   ولا يمسُّ تقريرًا ولا مخزونًا ولا تارقتًا.
+     *
+     * ⚠️ و`hers` هو المبلغُ الذي صار لها — يُدخله المالكُ مباشرةً لا يُحسب. لأنّ
+     *   الماضيَ معروفُ نتيجتِه، وحسابُه بقاعدةِ اليومِ قد يُخالف ما اتُّفق عليه
+     *   حينها. والقطعُ والمحصَّلُ للسجلِّ لا للحساب.
+     */
+    function shantonAdjustmentsClean(raw) {
+        const arr = Array.isArray(raw) ? raw : [];
+        const list = [], bad = [];
+        arr.forEach((a, i) => {
+            const hers = Number(a && a.hers);
+            const month = String((a && a.month) || '');
+            // ⚠️ السالبُ والصفرُ مرفوضان: القيدُ إثباتُ مالٍ صار لها. وتصحيحُ قيدٍ
+            //   يكون بحذفه وإعادته، لا بقيدٍ سالبٍ يُعمّي الجدول.
+            if (!a || typeof a !== 'object'
+                || !isFinite(hers) || hers <= 0
+                || !/^\d{4}-\d{2}$/.test(month)) {
+                bad.push(i);
+                return;
+            }
+            const n = (v) => { const x = Number(v); return isFinite(x) && x > 0 ? x : 0; };
+            list.push({
+                id: String(a.id || ''), month, hers,
+                pieces: Math.round(n(a.pieces)), collected: n(a.collected),
+                shop: String(a.shop || ''), note: String(a.note || ''),
+                byName: String(a.byName || ''), byEmail: String(a.byEmail || '')
+            });
+        });
+        list.sort((a, b) => String(b.month).localeCompare(String(a.month))
+            || String(b.id).localeCompare(String(a.id)));
+        return { list, bad };
+    }
+
     /** تنظيفُ مستندِ الدفتر: أرقامٌ سالبةٌ أو تواريخُ غريبةٌ تُعاد إلى الصفر/الفراغ. */
     function shantonLedgerClean(d) {
         const o = (d && typeof d === 'object') ? d : {};
@@ -18317,7 +18393,8 @@
         return {
             openingDue: isFinite(od) && od > 0 ? od : 0,
             openingDate: /^\d{4}-\d{2}-\d{2}$/.test(String(o.openingDate || '')) ? String(o.openingDate) : '',
-            payments: Array.isArray(o.payments) ? o.payments : []
+            payments: Array.isArray(o.payments) ? o.payments : [],
+            adjustments: Array.isArray(o.adjustments) ? o.adjustments : []
         };
     }
 
@@ -18338,11 +18415,25 @@
         const { list, bad } = shantonPaymentsClean(L.payments);
         const paid = list.reduce((a, p) => a + p.amount, 0);
         const accrued = t.shDue;
-        const due = L.openingDue + accrued;
+
+        // قيودُ الشهورِ السابقة — ويُطبَّق عليها **نفسُ** قطعِ تاريخِ الافتتاحيّ
+        // المطبَّقِ على التقارير. ⚠️ قاعدةٌ واحدةٌ لا قاعدتان: الافتتاحيُّ يشمل كلَّ
+        // ما قبله، فقيدٌ لشهرٍ قبله محسوبٌ فيه أصلًا — وجمعُه فوقه يُضاعفه.
+        const adj = shantonAdjustmentsClean(L.adjustments);
+        const openMonth = L.openingDate ? L.openingDate.slice(0, 7) : '';
+        const adjUsed = openMonth ? adj.list.filter(a => a.month >= openMonth) : adj.list;
+        const adjustedHers = adjUsed.reduce((a, x) => a + x.hers, 0);
+
+        const due = L.openingDue + accrued + adjustedHers;
         return {
             openingDue: L.openingDue,
             openingDate: L.openingDate,
             skippedReports: all.length - used.length,
+            adjustments: adjUsed,
+            adjustedHers,
+            adjustedPieces: adjUsed.reduce((a, x) => a + x.pieces, 0),
+            badAdjustments: adj.bad.length,
+            skippedAdjustments: adj.list.length - adjUsed.length,
             pieces: t.shPieces,
             collected: t.shCollected,
             commission: t.commission,
@@ -19974,6 +20065,35 @@
                 : '';
         }
 
+        // ---- قيودُ الشهورِ السابقة
+        const shopSel = document.getElementById('abShAdjShop');
+        if (shopSel && !shopSel.options.length) {
+            shopSel.innerHTML = `<option value="">All / not specified</option>`
+                + ABAYA_SHANTON_SHOPS.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+        }
+        const aBody = document.getElementById('abShAdjBody');
+        const aFoot = document.getElementById('abShAdjFoot');
+        if (aBody) {
+            aBody.innerHTML = acc.adjustments.length
+                ? acc.adjustments.map(a => `<tr>
+                        <td><b>${escapeHtml(a.month)}</b></td>
+                        <td class="money-col"><b>${money(a.hers)}</b></td>
+                        <td class="money-col">${a.pieces || '<span style="color:var(--text-faint);">&mdash;</span>'}</td>
+                        <td class="money-col">${a.collected ? money(a.collected) : '<span style="color:var(--text-faint);">&mdash;</span>'}</td>
+                        <td>${escapeHtml(a.shop) || '<span style="color:var(--text-faint);">&mdash;</span>'}</td>
+                        <td>${escapeHtml(a.note) || '<span style="color:var(--text-faint);">&mdash;</span>'}</td>
+                        <td><button class="btn-danger btn-sm" onclick="deleteShantonAdjustment('${escapeHtml(a.id)}')">Delete</button></td>
+                    </tr>`).join('')
+                : `<tr><td colspan="7" style="color:var(--text-faint);">No past month has been recorded.</td></tr>`;
+        }
+        if (aFoot) {
+            aFoot.innerHTML = acc.adjustments.length
+                ? `<tr><td>TOTAL — ${acc.adjustments.length} month(s)</td>
+                     <td class="money-col">${money(acc.adjustedHers)}</td>
+                     <td class="money-col">${acc.adjustedPieces || ''}</td><td colspan="4"></td></tr>`
+                : '';
+        }
+
         const notes = [];
         notes.push(`<b>Became hers</b> = everything collected from her abayas minus our `
             + `${abayaRates.shantonPerPiece} QAR per piece, over <b>${acc.reportCount} report(s)</b>`
@@ -19986,6 +20106,20 @@
         if (acc.remaining < -0.005) {
             notes.push(`<b style="color:var(--warning);">She has been paid ${money(Math.abs(acc.remaining))} QAR more than `
                 + `she is owed.</b> That is either a payment in advance, or the same payment entered twice &mdash; check the list.`);
+        }
+        if (acc.adjustedHers) {
+            notes.push(`<b>${money(acc.adjustedHers)} QAR</b> of what became hers comes from `
+                + `<b>${acc.adjustments.length} past month(s)</b> you typed in by hand, not from daily reports. `
+                + `Those are listed above with their months.`);
+        }
+        if (acc.skippedAdjustments) {
+            notes.push(`<b style="color:var(--warning);">${acc.skippedAdjustments} past-month entr(ies) are before `
+                + `${escapeHtml(acc.openingDate)} and are left out</b>, because the opening balance already contains them. `
+                + `Same rule as the reports &mdash; nothing is counted twice.`);
+        }
+        if (acc.badAdjustments) {
+            notes.push(`<b style="color:var(--danger);">${acc.badAdjustments} past-month entr(ies) could not be read</b> `
+                + `(no month, or an amount that is not a positive number) and are not counted.`);
         }
         if (acc.badPayments) {
             notes.push(`<b style="color:var(--danger);">${acc.badPayments} payment row(s) could not be read</b> `
@@ -20027,18 +20161,139 @@
         show('Saving...', 'var(--warning)');
         try {
             const fresh = await readShantonLedgerFresh();
+            // ⚠️⚠️ كلُّ قائمةٍ تُكتب صريحةً من النسخة الطازجة — ولا يُعتمد على
+            //   `merge` وحدَه في الإبقاء عليها: `merge: true` يُبقي ما لم يُذكر
+            //   اليومَ، فلو صار يومًا `merge: false` لمُحيت القائمةُ المنسيّةُ بصمت.
+            //   والصمتُ هنا يعني ضياعَ دفعاتٍ أو شهورٍ مقيَّدةٍ بلا أن ينبّه شيء.
             await setDoc(doc(db, "settings", SHANTON_PAY_DOC), {
                 openingDue: due, openingDate: due > 0 ? date : '',
                 payments: fresh.payments,
+                adjustments: fresh.adjustments,
                 updatedAt: serverTimestamp(),
                 updatedBy: (currentUser && currentUser.email) || 'unknown'
             }, { merge: true });
             logAudit("Shanton Opening Balance", due > 0 ? `${money(due)} QAR as of ${date}` : 'cleared');
-            shantonLedger = { openingDue: due, openingDate: due > 0 ? date : '', payments: fresh.payments };
+            shantonLedger = { openingDue: due, openingDate: due > 0 ? date : '',
+                              payments: fresh.payments, adjustments: fresh.adjustments };
             renderShantonAccount();
             show('Saved.', 'var(--success)');
         } catch (e) {
             show('NOT saved — ' + e.message, 'var(--danger)');
+        }
+    };
+
+    let isSavingShAdj = false;
+    window.addShantonAdjustment = async function() {
+        const st = document.getElementById('abShAdjStatus');
+        const btn = document.getElementById('abShAdjBtn');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        if (isSavingShAdj) return;
+        if (!canEditAbayaSetup()) { show('Only the owner can record this.', 'var(--danger)'); return; }
+
+        const month = (document.getElementById('abShAdjMonth').value || '').trim();
+        const hers = Number((document.getElementById('abShAdjHers').value || '').trim());
+        const piecesRaw = (document.getElementById('abShAdjPieces').value || '').trim();
+        const collRaw = (document.getElementById('abShAdjCollected').value || '').trim();
+        const shop = document.getElementById('abShAdjShop').value || '';
+        const note = (document.getElementById('abShAdjNote').value || '').trim();
+
+        if (!/^\d{4}-\d{2}$/.test(month)) { show('Pick the month.', 'var(--danger)'); return; }
+        if (!isFinite(hers) || hers <= 0) { show('What became hers must be more than zero.', 'var(--danger)'); return; }
+        const pieces = piecesRaw === '' ? 0 : Number(piecesRaw);
+        const collected = collRaw === '' ? 0 : Number(collRaw);
+        if (!isFinite(pieces) || pieces < 0) { show('Pieces must be zero or more.', 'var(--danger)'); return; }
+        if (!isFinite(collected) || collected < 0) { show('The collected amount must be zero or more.', 'var(--danger)'); return; }
+        // ⚠️ ما صار لها لا يزيد على ما حُصِّل: الزيادةُ تعني أنّنا ندفع لها من
+        //   جيبنا فوق ما دخل — وهو إمّا خطأُ إدخالٍ أو اتفاقٌ آخر يُقال صريحًا.
+        if (collected > 0 && hers > collected + 0.005) {
+            show(`What became hers (${money(hers)}) is more than what was collected (${money(collected)}). Check the two figures.`, 'var(--danger)');
+            return;
+        }
+        if (month > todayISO().slice(0, 7)) { show('That month has not happened yet.', 'var(--danger)'); return; }
+
+        // ⚠️ شهرٌ له تقاريرُ في البرنامج أصلًا: يُنبَّه بالقطع لا يُمنع بصمت —
+        //   فالقيدُ فوق تقاريرَ موجودةٍ يَعُدُّ نفسَ المال مرّتين.
+        const already = allAbayaReports.filter(r => String(r.date || '').slice(0, 7) === month
+            && ((Number(r.shTotalQty) || 0) > 0 || (Number(r.shTotalSales) || 0) > 0));
+        const dup = shantonAdjustmentsClean(shantonLedger.adjustments).list.find(a => a.month === month);
+        const before = shantonAccount(allAbayaReports, shantonLedger);
+        if (!confirm(`Record that ${money(hers)} QAR became Shanton's in ${month}?\n\n`
+            + `Remaining to pay her now:  ${money(before.remaining)} QAR\n`
+            + `After this:                ${money(before.remaining + hers)} QAR\n\n`
+            + (already.length
+                ? `⚠️ WARNING — ${month} already has ${already.length} daily report(s) carrying her figures. `
+                  + `Those are already in her account. Recording this on top counts the same money TWICE.\n\n`
+                : '')
+            + (dup ? `⚠️ WARNING — ${month} is already recorded by hand for ${money(dup.hers)} QAR. This adds a second entry.\n\n` : '')
+            + `This is recorded in the audit log.`)) return;
+
+        isSavingShAdj = true;
+        if (btn) btn.disabled = true;
+        show('Saving...', 'var(--warning)');
+        try {
+            const fresh = await readShantonLedgerFresh();
+            const row = {
+                id: `a${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                month, hers, pieces: Math.round(pieces), collected, shop, note,
+                byEmail: (currentUser && currentUser.email) || 'unknown',
+                byName: (currentUser && currentUser.displayName) || '',
+                createdAtISO: new Date().toISOString()
+            };
+            await setDoc(doc(db, "settings", SHANTON_PAY_DOC), {
+                openingDue: fresh.openingDue, openingDate: fresh.openingDate,
+                payments: fresh.payments,
+                adjustments: fresh.adjustments.concat([row]),
+                updatedAt: serverTimestamp(),
+                updatedBy: row.byEmail
+            }, { merge: true });
+            logAudit("Shanton Past Month Recorded", `${month}: ${money(hers)} QAR became hers`
+                + `${pieces ? `, ${Math.round(pieces)} piece(s)` : ''}${shop ? ` — ${shop}` : ''}${note ? ` — ${note}` : ''}`);
+            shantonLedger = { openingDue: fresh.openingDue, openingDate: fresh.openingDate,
+                              payments: fresh.payments, adjustments: fresh.adjustments.concat([row]) };
+            ['abShAdjHers', 'abShAdjPieces', 'abShAdjCollected', 'abShAdjNote'].forEach(id => {
+                const e = document.getElementById(id); if (e) e.value = '';
+            });
+            renderShantonAccount();
+            show(`Recorded. ${month} now adds ${money(hers)} QAR to her account.`, 'var(--success)');
+        } catch (e) {
+            show('NOT recorded — ' + e.message + '. Nothing was saved.', 'var(--danger)');
+        } finally {
+            isSavingShAdj = false;
+            if (btn) btn.disabled = false;
+        }
+    };
+
+    window.deleteShantonAdjustment = async function(id) {
+        const st = document.getElementById('abShAdjStatus');
+        const show = (m, c) => { if (st) { st.innerText = m; st.style.color = c; } };
+        if (!canEditAbayaSetup()) { show('Only the owner can delete this.', 'var(--danger)'); return; }
+
+        const hit = shantonAdjustmentsClean(shantonLedger.adjustments).list.find(a => a.id === id);
+        if (!hit) { show('That entry is no longer in the list — refresh.', 'var(--danger)'); return; }
+        if (!confirm(`Delete the hand-recorded month ${hit.month} (${money(hit.hers)} QAR)?\n\n`
+            + `What is owed to her goes DOWN by ${money(hit.hers)} QAR.\n\nIt is recorded in the audit log.`)) return;
+
+        show('Deleting...', 'var(--warning)');
+        try {
+            const fresh = await readShantonLedgerFresh();
+            const kept = fresh.adjustments.filter(a => String(a && a.id) !== String(id));
+            if (kept.length === fresh.adjustments.length) {
+                show('It was already removed by someone else. Nothing changed.', 'var(--warning)');
+                shantonLedger = fresh; renderShantonAccount(); return;
+            }
+            await setDoc(doc(db, "settings", SHANTON_PAY_DOC), {
+                openingDue: fresh.openingDue, openingDate: fresh.openingDate,
+                payments: fresh.payments, adjustments: kept,
+                updatedAt: serverTimestamp(),
+                updatedBy: (currentUser && currentUser.email) || 'unknown'
+            }, { merge: true });
+            logAudit("Shanton Past Month DELETED", `${hit.month}: ${money(hit.hers)} QAR`);
+            shantonLedger = { openingDue: fresh.openingDue, openingDate: fresh.openingDate,
+                              payments: fresh.payments, adjustments: kept };
+            renderShantonAccount();
+            show('Deleted.', 'var(--success)');
+        } catch (e) {
+            show('NOT deleted — ' + e.message, 'var(--danger)');
         }
     };
 
@@ -20086,12 +20341,13 @@
             await setDoc(doc(db, "settings", SHANTON_PAY_DOC), {
                 openingDue: fresh.openingDue, openingDate: fresh.openingDate,
                 payments: fresh.payments.concat([row]),
+                adjustments: fresh.adjustments,
                 updatedAt: serverTimestamp(),
                 updatedBy: row.byEmail
             }, { merge: true });
             logAudit("Shanton Payment Recorded", `${money(amount)} QAR on ${date} (${method})${note ? ' — ' + note : ''}`);
             shantonLedger = { openingDue: fresh.openingDue, openingDate: fresh.openingDate,
-                              payments: fresh.payments.concat([row]) };
+                              payments: fresh.payments.concat([row]), adjustments: fresh.adjustments };
             document.getElementById('abShPayAmount').value = '';
             document.getElementById('abShPayNote').value = '';
             renderShantonAccount();
@@ -20131,11 +20387,13 @@
             await setDoc(doc(db, "settings", SHANTON_PAY_DOC), {
                 openingDue: fresh.openingDue, openingDate: fresh.openingDate,
                 payments: kept,
+                adjustments: fresh.adjustments,
                 updatedAt: serverTimestamp(),
                 updatedBy: (currentUser && currentUser.email) || 'unknown'
             }, { merge: true });
             logAudit("Shanton Payment DELETED", `${money(hit.amount)} QAR dated ${hit.date} (${hit.method})${hit.note ? ' — ' + hit.note : ''}`);
-            shantonLedger = { openingDue: fresh.openingDue, openingDate: fresh.openingDate, payments: kept };
+            shantonLedger = { openingDue: fresh.openingDue, openingDate: fresh.openingDate,
+                              payments: kept, adjustments: fresh.adjustments };
             renderShantonAccount();
             show('Deleted.', 'var(--success)');
         } catch (e) {
@@ -22209,7 +22467,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v226';
+        const APP_BUILD = 'v227';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
