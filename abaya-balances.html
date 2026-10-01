@@ -2436,7 +2436,14 @@
             // ⚠️ أمّا `mixed` (وصل من مورّدٍ **ومن** شانتون) فيبقى مُعلَنًا: قاعدةُ
             //   المالكِ تحسم «غيرَ المعروف» لا «المعروفَ المتناقض». والقطعةُ هنا قد
             //   تكون لها فعلًا، ونسبُها إلينا بالظنّ يُنقص دَينَها.
-            const who = owner.get(String(p.id || '')) || 'own';
+            // ⚠️⚠️⚠️ الوسمُ المخزَّنُ على السطر أوّلًا، ثمّ الاستنتاجُ من الشحنة.
+            //   والترتيبُ مقصود: `goodsOwner` هو ما **تقرؤه شاشةُ البياعة** (لا تصل
+            //   إلى الشحنات بالقواعد)، فلو حكمنا هنا بالاستنتاج وحكمت هي بالوسم
+            //   لاختلف المِلكُ بين شاشتَين — وذلك يُفسد مالَ شانتون في التقرير.
+            //   فمصدرُ الحقيقةِ واحدٌ: الوسمُ إن وُجد.
+            const stored = String((p && p.goodsOwner) || '');
+            const who = (stored === 'shanton' || stored === 'own')
+                ? stored : (owner.get(String(p.id || '')) || 'own');
             if (who === 'shanton') { res.shanton += n; return; }
             if (who === 'mixed') { res.mixed += n; return; }
             res.own.total += n;
@@ -2687,11 +2694,51 @@
         //   يُرسَل لم يصل محلًّا بعد، فعدُّه يُظهر في المحلِّ ما ليس فيه.
 
         sh.now = sh.opening + sh.received - sh.sold - sh.sentOut;
+
+        // ===================================================================
+        // ⭐⭐⭐⭐⭐ محلُّ نقاطِ البيع: **المتوفّرُ هو الكتالوجُ نفسُه**
+        // -------------------------------------------------------------------
+        // بنصِّ طلب المالك: «يجب أن يكون نفسُ ما هو موجودٌ في الكتالوج موجودًا في
+        // الستوك. هذا مهمٌّ جدًّا.»
+        //
+        // ⚠️⚠️⚠️ والسببُ أنّ ما قبلَ هذا السطرِ **إعادةُ بناءٍ** للرقم: جردٌ افتتاحيٌّ
+        //   + حركاتٌ + تقاريرُ يوميّة. وكلُّ حلقةٍ فيها قابلةٌ للسقوط: تاريخُ جردٍ
+        //   يقطع شحناتٍ أُرسلت قبله، أو نوعٌ لا يُطابق، أو تقريرٌ لم يُرسَل. أمّا
+        //   الكتالوجُ فيَعُدُّ **قطعةً قطعة**: يزيد لحظةَ إرسالِ السيدةِ فاطمةَ
+        //   الشحنةَ، وينقص بكلِّ فاتورةٍ على الجهاز. فهو الحقيقةُ لا التقديرُ.
+        //
+        // ⚠️⚠️ ولماذا صار هذا آمنًا اليوم ولم يكن أمس: `goodsOwner` على سطرِ
+        //   الكتالوج (v236) يُفرّق بضاعتَنا من بضاعتها. وبلاه كانت القراءةُ من
+        //   الكتالوج تخلط المِلكَين — وذلك خطأٌ أكبرُ من الفرق.
+        //
+        // ⚠️ والأكياسُ (`supply`) تبقى على الحركات: ليست في الكتالوج أصلًا.
+        // ⚠️ وقطعٌ في الكتالوج بلا نوعٍ معروفٍ تُحفظ في `catUntyped` وتُعرض سطرًا
+        //   باسمها — فلا قطعةَ تضيع من المجموع، والمجموعُ يساوي الكتالوجَ بالضبط.
+        // ===================================================================
+        let catUntyped = 0, catMixed = 0, catDriven = false;
+        if (isPosShop(shop)) {
+            catDriven = true;
+            const cat = abayaCatalogueStock(shop);
+            catUntyped = cat.own.untyped;
+            catMixed = cat.mixed;
+            ABAYA_STOCK_ITEMS.forEach(it => {
+                const c = out[it.key];
+                if (!c || it.supply) return;
+                c.catNow = Math.floor(Number(cat.own.byType[it.key]) || 0);
+                c.now = c.catNow;
+            });
+            sh.now = cat.shanton;
+            // ⚠️ ويُعاد بناءُ المجموعِ من الأرقامِ الجديدة: جمعُ ما قبلَ التبديل
+            //   يُنتج مجموعًا لا يساوي سطورَه — وهو أسوأُ من رقمٍ خاطئٍ واحد.
+            sum.now = ABAYA_STOCK_ITEMS.reduce((a, it) =>
+                a + ((out[it.key] && !it.supply) ? out[it.key].now : 0), 0) + catUntyped + catMixed;
+        }
+        // ⚠️ يُحسب **بعد** تبديلِ المتوفّر بالكتالوج، وإلّا جمع أرقامًا قديمة.
         const combined = {
             opening: sum.opening + sh.opening, received: sum.received + sh.received,
             sold: sum.sold + sh.sold, sentOut: sum.sentOut + sh.sentOut, now: sum.now + sh.now
         };
-        return { items: out, sum, shanton: sh, combined };
+        return { items: out, sum, shanton: sh, combined, catDriven, catUntyped, catMixed };
     }
 
     function abayaTargetRowFor(dateISO, shop) {
@@ -3150,6 +3197,11 @@
                     discountPrice: Number(v.discountPrice || 0) || 0,
                     // ⭐ «متى دخل الكتالوج» — عليه يُبنى «الذي دخل حديثًا هو الأوّل».
                     freshMs: catFreshMs(v),
+                    // ⭐⭐⭐ مالكُ القطعة كما كُتب على السطر لحظةَ إنشائه. ⚠️ يُقرأ
+                    //   هنا إلزامًا: بلا قراءتِه يحكم هذا الملفُّ بالاستنتاج من
+                    //   الشحنة وتحكم شاشةُ البياعة بالوسم، فيختلف المِلكُ بين
+                    //   شاشتَين — ويُفسد مالَ شانتون في التقرير اليوميّ.
+                    goodsOwner: v.goodsOwner === 'shanton' ? 'shanton' : (v.goodsOwner === 'own' ? 'own' : ''),
                     cost: costById[d.id] || 0,
                     qty: (v.qty && typeof v.qty === 'object') ? v.qty : {},
                     hasImage: v.hasImage === true
