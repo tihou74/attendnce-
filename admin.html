@@ -3106,7 +3106,18 @@
                     </p>
                     <div class="table-container">
                         <table>
-                            <thead><tr><th>Shop</th><th class="money-col">Catalogue</th><th class="money-col">Yours</th><th class="money-col">Shanton's</th><th class="money-col">Together</th><th class="money-col">Difference</th><th>Why</th></tr></thead>
+                            <!-- ⚠️ عمودان لكلِّ مِلكٍ وفرقُه بجانبه: الفصلُ بكلام المالك
+                                 «بضاعةُ شانتون موردُها شانتون». والمقارنةُ المدموجةُ كانت
+                                 تُخفي فرقًا ‎+3 هنا و‎-3 هناك فيبدو صفرًا وكلاهما خطأ. -->
+                            <thead><tr>
+                                <th rowspan="2">Shop</th>
+                                <th colspan="3" style="text-align: center;">Yours</th>
+                                <th colspan="3" style="text-align: center;">Shanton's</th>
+                                <th rowspan="2">Why</th>
+                            </tr><tr>
+                                <th class="money-col">Catalogue</th><th class="money-col">Stock</th><th class="money-col">Diff</th>
+                                <th class="money-col">Catalogue</th><th class="money-col">Stock</th><th class="money-col">Diff</th>
+                            </tr></thead>
                             <tbody id="abReconBody"></tbody>
                             <tfoot id="abReconFoot"></tfoot>
                         </table>
@@ -19312,23 +19323,64 @@
      * ⚠️ والتصاميمُ بلا نوعٍ (أُضيفت قبل ميزة النوع) تُعَدُّ وحدَها ولا تُرمى في
      *   صنفٍ بالظنّ: قطعةٌ في الخانة الخطأ أسوأُ من قطعةٍ معلومةِ الجهل.
      */
-    function abayaCatalogueStock(shop) {
+    /**
+     * ⭐⭐⭐⭐⭐ مالكُ كلِّ سطرٍ في الكتالوج — بكلام المالك: «بضاعةُ شانتون موردُها شانتون».
+     *
+     * ⚠️⚠️ ولا حقلَ جديدٌ على المستند، ولا نشرُ قواعد: المِلكُ **يُستنتَج** من مورّدِ
+     *   الشحنةِ التي أنشأت السطر. (وحقلٌ مخزَّنٌ كان أنظفَ، لكنّ تحديثَ
+     *   `abaya_products` مقيَّدٌ بقائمةٍ بيضاءَ في القواعد المنشورة، فإضافتُه تُنتظر
+     *   نشرةً — والاستنتاجُ يعمل اليوم.)
+     *
+     * ⚠️ وتُبنى الخريطةُ بمرورٍ **واحد** على الشحنات لا بمرورٍ لكلِّ تصميم: التصاميمُ
+     *   بالمئات والشحناتُ بالمئات، والضربُ بينهما يُثقل شاشةً تُفتح على هاتف.
+     *
+     * ⚠️⚠️ و`mixed` ليست حالةً تُخمَّن بل تُعلَن: تصميمٌ وصل مرّةً من مورّدٍ ومرّةً من
+     *   شانتون لا يُعرف مالكُ قطعِه الباقية، فيُسمّى صريحًا. وتخمينُه يُخطئ في
+     *   الملكيّة — وهي أخطرُ من خطأٍ في العدد.
+     */
+    function abayaOwnerByProduct() {
+        const m = new Map();
+        abayaArrivalList().forEach(a => {
+            if (!a) return;
+            const pid = String(a.productId || '');
+            if (!pid) return;
+            const who = isShantonArrival(a.source) ? 'shanton' : 'own';
+            const cur = m.get(pid);
+            m.set(pid, !cur ? who : (cur === who ? who : 'mixed'));
+        });
+        return m;
+    }
+
+    /**
+     * كميّاتُ الكتالوج لمحلٍّ واحد — **مفصولةً بالمالك** وبالنوع.
+     * ⚠️ `unknown` = سطرٌ لا شحنةَ له (أُضيف بيدٍ أو قبل ميزة الشحنات). يُعَدُّ وحدَه
+     *   ولا يُنسب إلى أحدٍ بالظنّ.
+     */
+    function abayaCatalogueStock(shop, ownerMap) {
         const key = abayaShopKey(shop);
-        const byType = {};
-        let untyped = 0, total = 0;
+        const owner = ownerMap || abayaOwnerByProduct();
+        const res = {
+            own: { byType: {}, untyped: 0, total: 0 },
+            shanton: 0, mixed: 0, unknown: 0, total: 0
+        };
         abayaProductList().forEach(p => {
             if (!p || !p.qty) return;
             const n = Math.floor(Number(p.qty[key]) || 0);
             if (n <= 0) return;
-            total += n;
+            res.total += n;
+            const who = owner.get(String(p.id || '')) || 'unknown';
+            if (who === 'shanton') { res.shanton += n; return; }
+            if (who === 'mixed') { res.mixed += n; return; }
+            if (who === 'unknown') { res.unknown += n; return; }
+            res.own.total += n;
             const t = String(p.type || '');
             if (t && ABAYA_STOCK_ITEMS.some(it => it.key === t)) {
-                byType[t] = (byType[t] || 0) + n;
+                res.own.byType[t] = (res.own.byType[t] || 0) + n;
             } else {
-                untyped += n;
+                res.own.untyped += n;
             }
         });
-        return { byType, untyped, total };
+        return res;
     }
 
     /**
@@ -19339,9 +19391,9 @@
      *   إخفاءَ أحدهما — بل **مطابقةً لا يبقى معها فرقٌ مجهولُ السبب**. فكلُّ سببٍ
      *   محتملٍ يُحسب ويُسمّى، وما بقي بعدها يُعلَن «غيرُ مُفسَّر» صريحًا.
      */
-    function abayaStockReconcile(shop) {
+    function abayaStockReconcile(shop, ownerMap) {
         const st = abayaStockFor(shop);
-        const cat = abayaCatalogueStock(shop);
+        const cat = abayaCatalogueStock(shop, ownerMap);
         const ex = abayaShipmentExclusions(shop);
         // ⚠️⚠️⚠️ فرقٌ بين **تفسيرٍ محسوب** و**إشارةٍ تُذكر**، وخلطُهما أنتج رقمًا
         //   لا معنى له في أوّل نسخة:
@@ -19353,35 +19405,56 @@
         //   **مفروضٌ** أن يشملها. فإن شملها فلا فرق، وإن لم يشملها فالفرقُ هو نقصُ
         //   الجرد لا عددُ الشحنة. فطرحُ ستٍّ من فرقٍ قدرُه اثنتان أعطى «‎-4 غيرُ
         //   مُفسَّر» — وهو ما كشفه الفحص.
+        // ⚠️⚠️⚠️ مطابقتان **منفصلتان** بعد أن صار المِلكُ معروفًا: كلُّ طرفٍ يُقابل
+        //   نظيرَه. والمقارنةُ المدموجةُ كانت تُخفي أنّ أحدَ الطرفَين ناقصٌ والآخرَ
+        //   زائدٌ بنفس القدر — فيبدو الفرقُ صفرًا وكلاهما خطأ.
         const causes = [];
-        // ١) تصاميمُ في الكتالوج بلا نوعٍ معروف: لا سطرَ لها، فتُنفخ بها الكتالوجُ يقينًا.
-        if (cat.untyped) causes.push({ key: 'untyped', pieces: cat.untyped });
-        // ٢) شحناتٌ بنوعٍ لا يُطابق أيَّ صنف: الكتالوجُ عدَّها والجدولُ أسقطها.
+        // ١) تصاميمُنا بلا نوعٍ معروف: في الكتالوج ولا سطرَ لها في الجدول.
+        if (cat.own.untyped) causes.push({ key: 'untyped', pieces: cat.own.untyped });
+        // ٢) شحناتٌ بنوعٍ لا يُطابق أيَّ صنف.
+        // ⚠️ وشحنةٌ بنوعٍ غريبٍ تُذكر إشارةً لا سببًا محسوبًا: أثرُها على الفرق يتوقّف
+        //   على نوعِ **سطرِ الكتالوج** لا نوعِ الشحنة، وهما قد يختلفان. فما لا
+        //   يُحسب يقينًا لا يُطرح.
         const badType = ex.unknownType.reduce((a, x) => a + x.pieces, 0);
-        if (badType) causes.push({ key: 'unknownType', pieces: badType });
-
         const hints = [];
-        // ⚠️ بضاعةُ شانتون **ليست سببًا للفرق** هنا: المقارنةُ مع المجموعِ المدموج
-        //   فهي داخلةٌ في الطرفَين. تُذكر لأنّها أوّلُ ما يُظنُّ فرقًا.
-        if (st.shanton.now) hints.push({ key: 'shanton', pieces: st.shanton.now });
+        // ⚠️⚠️⚠️ «سطرٌ بلا شحنة» و«مِلكٌ مُلتبس» **ليسا سببَين للفرق**: قطعُهما
+        //   مُستثناةٌ من الطرفَين أصلًا (لا تدخل `catOur` ولا `catHer`)، فلا تُنتج
+        //   فرقًا في أيٍّ منهما. وطرحُها — كما فعلتُ أوّلًا — يُنقص من فرقٍ لم
+        //   تُسبّبه فيُنتج «‎-7 غيرُ مُفسَّر»، وهو رقمٌ لا معنى له.
+        //   فهما جوابُ سؤالٍ **آخر**: «لمن هذه القطع؟» لا «أين ذهبت؟». ويُعرضان
+        //   رقمًا مستقلًّا باسم `unattributed`، ولا يُجمعان مع الفرق.
+        if (cat.unknown) hints.push({ key: 'noShipment', pieces: cat.unknown });
+        if (cat.mixed) hints.push({ key: 'mixedOwner', pieces: cat.mixed });
         const beforeCount = ex.beforeCount.reduce((a, x) => a + x.pieces, 0);
+        if (badType) hints.push({ key: 'unknownType', pieces: badType });
         if (beforeCount) hints.push({ key: 'beforeCount', pieces: beforeCount });
 
+        const ourDiff = cat.own.total - st.sum.now;
+        const herDiff = cat.shanton - st.shanton.now;
         const explained = causes.reduce((a, c) => a + c.pieces, 0);
-        const diff = cat.total - (st.sum.now + st.shanton.now);
         return {
             catTotal: cat.total,
+            catOur: cat.own.total,
+            catHer: cat.shanton,
+            catMixed: cat.mixed,
+            catUnknown: cat.unknown,
+            // ⚠️ «لمن هذه القطع؟» — رقمٌ مستقلٌّ لا يُجمع مع الفرق.
+            unattributed: cat.mixed + cat.unknown,
             ourNow: st.sum.now,
             herNow: st.shanton.now,
             combined: st.sum.now + st.shanton.now,
-            diff,
-            // ⚠️ `unexplained` هو الرقمُ الوحيدُ الذي يُهمّ، ويجب أن يكون صفرًا. وما
-            //   لم يكن صفرًا فثمّة سببٌ لم نُحصِه — يُعلَن مجهولًا ولا يُلفَّق له تفسير.
-            unexplained: diff - explained,
+            // ⚠️ فرقُ كلِّ طرفٍ على حدة — وهذا ما طلبه المالك.
+            ourDiff,
+            herDiff,
+            diff: cat.total - (st.sum.now + st.shanton.now),
+            // ⚠️ `unexplained` هو الرقمُ الوحيدُ الذي يُهمّ، ويجب أن يكون صفرًا. ويُجمع
+            //   الفرقانِ **بقيمتهما المطلقة**: فرقٌ ‎+3 في طرفٍ و‎-3 في آخرَ ليس صفرًا،
+            //   إنّما خطأان يُلغي أحدُهما الآخرَ في الظاهر. وهذا ما يُخفيه الجمعُ الساذج.
+            unexplained: (Math.abs(ourDiff) + Math.abs(herDiff)) - explained,
             causes,
             hints,
-            catUntyped: cat.untyped,
-            byType: cat.byType
+            catUntyped: cat.own.untyped,
+            byType: cat.own.byType
         };
     }
 
@@ -19793,13 +19866,18 @@
     // ⚠️ أسبابٌ **محسوبة** تُطرح من الفرق — يقينُها أنّ قطعَها في الكتالوج ولا سطرَ لها.
     const AB_RECON_WHY = {
         untyped: 'designs in the catalogue with no type, so they have no row here',
-        unknownType: 'shipments whose type matches no row'
+        unknownType: 'shipments whose type matches no row',
+        noShipment: 'catalogue lines with no shipment on file, so no one can say whose they are',
+        mixedOwner: 'designs that arrived BOTH from a supplier and from Shanton — ownership cannot be told'
     };
     // ⚠️ وإشاراتٌ تُذكر ولا تُطرح: ظرفٌ **قد** يُفسّر بعضَ الفرقِ ولا تُعرف كمّيّتُه.
     const AB_RECON_HINT = {
-        shanton: "of the catalogue are Shanton's — already counted in \u201cTogether\u201d, so not a difference",
         beforeCount: 'were sent before the stock count — your opening count is meant to include them, '
-            + 'so a leftover difference usually means the opening count is short by that much'
+            + 'so a leftover difference usually means the opening count is short by that much',
+        noShipment: 'are catalogue lines with no shipment on file, so nobody can say whose they are',
+        mixedOwner: 'are designs that arrived BOTH from a supplier and from Shanton — ownership cannot be told, '
+            + 'so they are left out of both sides',
+        unknownType: 'are shipments whose type matches no row in the stock table'
     };
 
     function renderAbayaReconcile() {
@@ -19807,7 +19885,7 @@
         if (!body) return;
         // ⚠️ بلا الكتالوجِ لا مطابقةَ: يُقال ذلك ولا يُعرض فرقٌ كاذبٌ بحجم المخزون.
         if (!abayaCatalogLoaded) {
-            body.innerHTML = `<tr><td colspan="7" style="color: var(--warning);">`
+            body.innerHTML = `<tr><td colspan="8" style="color: var(--warning);">`
                 + `The catalogue has not been read yet, so there is nothing to compare against. `
                 + `It is loading — press Refresh in a moment.</td></tr>`;
             const s0 = document.getElementById('abReconSum');
@@ -19819,38 +19897,45 @@
             return;
         }
 
-        const rows = ABAYA_SHOPS.map(shop => ({ shop, r: abayaStockReconcile(shop) }));
+        // ⚠️ خريطةُ المِلك تُبنى **مرّةً واحدةً** وتُمرَّر لكلِّ محلّ، لا مرّةً لكلِّ محلّ.
+        const ownerMap = abayaOwnerByProduct();
+        const rows = ABAYA_SHOPS.map(shop => ({ shop, r: abayaStockReconcile(shop, ownerMap) }));
+        const cell = (d) => `<b style="color: ${d === 0 ? 'var(--success)' : 'var(--danger)'};">${d > 0 ? '+' : ''}${d}</b>`;
         body.innerHTML = rows.map(({ shop, r }) => {
             const why = r.causes.length
                 ? r.causes.map(c => `${c.pieces} &mdash; ${escapeHtml(AB_RECON_WHY[c.key] || c.key)}`).join('<br>')
-                : (r.diff === 0 ? '<span style="color: var(--success); font-weight: 700;">they agree</span>' : '');
+                : ((r.ourDiff === 0 && r.herDiff === 0)
+                    ? '<span style="color: var(--success); font-weight: 700;">they agree</span>' : '');
             const bad = r.unexplained !== 0;
             return `<tr>
                 <td><b>${escapeHtml(shop)}</b></td>
-                <td class="money-col">${r.catTotal}</td>
+                <td class="money-col">${r.catOur}</td>
                 <td class="money-col">${r.ourNow}</td>
+                <td class="money-col">${cell(r.ourDiff)}</td>
+                <td class="money-col">${r.catHer}</td>
                 <td class="money-col">${r.herNow}</td>
-                <td class="money-col"><b>${r.combined}</b></td>
-                <td class="money-col"><b style="color: ${bad ? 'var(--danger)' : (r.diff === 0 ? 'var(--success)' : 'var(--text-dim)')};">${r.diff > 0 ? '+' : ''}${r.diff}</b></td>
+                <td class="money-col">${cell(r.herDiff)}</td>
                 <td style="font-size: 12px;">${why || '<span style="color: var(--text-dim);">&mdash;</span>'}`
-                + (bad ? `<br><b style="color: var(--danger);">${r.unexplained > 0 ? '+' : ''}${r.unexplained} not explained</b>` : '')
+                + (bad ? `<br><b style="color: var(--danger);">${Math.abs(r.unexplained)} not explained</b>` : '')
                 + `</td></tr>`;
         }).join('');
 
         const tot = rows.reduce((a, { r }) => ({
-            cat: a.cat + r.catTotal, our: a.our + r.ourNow, her: a.her + r.herNow,
-            comb: a.comb + r.combined, diff: a.diff + r.diff, un: a.un + r.unexplained
-        }), { cat: 0, our: 0, her: 0, comb: 0, diff: 0, un: 0 });
+            catOur: a.catOur + r.catOur, our: a.our + r.ourNow, ourDiff: a.ourDiff + r.ourDiff,
+            catHer: a.catHer + r.catHer, her: a.her + r.herNow, herDiff: a.herDiff + r.herDiff,
+            un: a.un + r.unexplained
+        }), { catOur: 0, our: 0, ourDiff: 0, catHer: 0, her: 0, herDiff: 0, un: 0 });
         const foot = document.getElementById('abReconFoot');
         if (foot) {
             foot.innerHTML = `<tr style="background: var(--surface-2); font-weight: 800;">
                 <td>ALL ${ABAYA_SHOPS.length} SHOPS</td>
-                <td class="money-col">${tot.cat}</td>
+                <td class="money-col">${tot.catOur}</td>
                 <td class="money-col">${tot.our}</td>
+                <td class="money-col">${cell(tot.ourDiff)}</td>
+                <td class="money-col">${tot.catHer}</td>
                 <td class="money-col">${tot.her}</td>
-                <td class="money-col">${tot.comb}</td>
-                <td class="money-col"><b style="color: ${tot.un ? 'var(--danger)' : 'var(--success)'};">${tot.diff > 0 ? '+' : ''}${tot.diff}</b></td>
-                <td>${tot.un ? `<b style="color: var(--danger);">${tot.un} not explained</b>` : '<span style="color: var(--success);">fully explained</span>'}</td>
+                <td class="money-col">${cell(tot.herDiff)}</td>
+                <td>${tot.un ? `<b style="color: var(--danger);">${Math.abs(tot.un)} not explained</b>` : '<span style="color: var(--success);">fully explained</span>'}</td>
             </tr>`;
         }
         const sum = document.getElementById('abReconSum');
@@ -19864,9 +19949,10 @@
         const note = document.getElementById('abReconNote');
         if (note) {
             const lines = [];
-            lines.push(`<b>Catalogue</b> counts every piece in the shops, <b>including Shanton's</b> — her abayas become `
-                + `catalogue lines too. So the catalogue is compared with <b>Together</b>, not with your own stock alone. `
-                + `That difference alone is usually the whole puzzle.`);
+            // ⚠️ الفصلُ صار ممكنًا بكلام المالك: «بضاعةُ شانتون موردُها شانتون».
+            lines.push(`Your goods and Shanton's are told apart by the <b>supplier of the shipment</b> that created the `
+                + `catalogue line &mdash; so each side is compared with its own stock. `
+                + `<b>Both "Diff" columns should read 0.</b>`);
             // ⚠️ الإشاراتُ تُعرض مُسمّاةً ومفصولةً عن الأسبابِ المحسوبة، كي لا يُظنَّ
             //   أنّها طُرحت من الفرق. وهي التي تُرشد إلى الإصلاح الحقيقيّ.
             const hintLines = [];
@@ -19881,12 +19967,21 @@
             if (hintLines.length) {
                 lines.push(`<b>Worth knowing (not subtracted from the difference):</b><br>` + hintLines.join('<br>'));
             }
+            // ⚠️ «لمن هذه القطع؟» سؤالٌ مستقلٌّ عن «أين ذهبت؟»، فيُعرض رقمًا مستقلًّا
+            //   ولا يُجمع مع الفرق. وجمعُهما كان يُنتج أرقامًا سالبةً لا معنى لها.
+            const unatt = rows.reduce((a, { r }) => a + r.unattributed, 0);
+            if (unatt) {
+                lines.push(`<b style="color: var(--warning);">${unatt} piece(s) cannot be attributed to either side</b> `
+                    + `&mdash; no shipment on file, or the design arrived from both a supplier and Shanton. `
+                    + `They are in the catalogue but in neither stock column. Fix them with the <b>Supplier</b> button `
+                    + `on the shipment, and they will fall into place.`);
+            }
             if (tot.un) {
                 lines.push(`<b style="color: var(--danger);">${Math.abs(tot.un)} piece(s) are not explained by any known `
                     + `cause.</b> That is a real fault, not a rounding. Tell me and I will find it — the likely causes `
                     + `are a daily report whose sold quantity does not match the invoices, or a piece moved between `
                     + `shops in the catalogue without a movement line.`);
-            } else if (tot.diff) {
+            } else if (tot.ourDiff || tot.herDiff) {
                 lines.push(`<b style="color: var(--success);">Every piece of the difference is accounted for above.</b> `
                     + `Nothing is missing.`);
             }
@@ -23287,7 +23382,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v233';
+        const APP_BUILD = 'v234';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;

@@ -2367,23 +2367,64 @@
      * ⚠️ والتصاميمُ بلا نوعٍ (أُضيفت قبل ميزة النوع) تُعَدُّ وحدَها ولا تُرمى في
      *   صنفٍ بالظنّ: قطعةٌ في الخانة الخطأ أسوأُ من قطعةٍ معلومةِ الجهل.
      */
-    function abayaCatalogueStock(shop) {
+    /**
+     * ⭐⭐⭐⭐⭐ مالكُ كلِّ سطرٍ في الكتالوج — بكلام المالك: «بضاعةُ شانتون موردُها شانتون».
+     *
+     * ⚠️⚠️ ولا حقلَ جديدٌ على المستند، ولا نشرُ قواعد: المِلكُ **يُستنتَج** من مورّدِ
+     *   الشحنةِ التي أنشأت السطر. (وحقلٌ مخزَّنٌ كان أنظفَ، لكنّ تحديثَ
+     *   `abaya_products` مقيَّدٌ بقائمةٍ بيضاءَ في القواعد المنشورة، فإضافتُه تُنتظر
+     *   نشرةً — والاستنتاجُ يعمل اليوم.)
+     *
+     * ⚠️ وتُبنى الخريطةُ بمرورٍ **واحد** على الشحنات لا بمرورٍ لكلِّ تصميم: التصاميمُ
+     *   بالمئات والشحناتُ بالمئات، والضربُ بينهما يُثقل شاشةً تُفتح على هاتف.
+     *
+     * ⚠️⚠️ و`mixed` ليست حالةً تُخمَّن بل تُعلَن: تصميمٌ وصل مرّةً من مورّدٍ ومرّةً من
+     *   شانتون لا يُعرف مالكُ قطعِه الباقية، فيُسمّى صريحًا. وتخمينُه يُخطئ في
+     *   الملكيّة — وهي أخطرُ من خطأٍ في العدد.
+     */
+    function abayaOwnerByProduct() {
+        const m = new Map();
+        abayaArrivalList().forEach(a => {
+            if (!a) return;
+            const pid = String(a.productId || '');
+            if (!pid) return;
+            const who = isShantonArrival(a.source) ? 'shanton' : 'own';
+            const cur = m.get(pid);
+            m.set(pid, !cur ? who : (cur === who ? who : 'mixed'));
+        });
+        return m;
+    }
+
+    /**
+     * كميّاتُ الكتالوج لمحلٍّ واحد — **مفصولةً بالمالك** وبالنوع.
+     * ⚠️ `unknown` = سطرٌ لا شحنةَ له (أُضيف بيدٍ أو قبل ميزة الشحنات). يُعَدُّ وحدَه
+     *   ولا يُنسب إلى أحدٍ بالظنّ.
+     */
+    function abayaCatalogueStock(shop, ownerMap) {
         const key = abayaShopKey(shop);
-        const byType = {};
-        let untyped = 0, total = 0;
+        const owner = ownerMap || abayaOwnerByProduct();
+        const res = {
+            own: { byType: {}, untyped: 0, total: 0 },
+            shanton: 0, mixed: 0, unknown: 0, total: 0
+        };
         abayaProductList().forEach(p => {
             if (!p || !p.qty) return;
             const n = Math.floor(Number(p.qty[key]) || 0);
             if (n <= 0) return;
-            total += n;
+            res.total += n;
+            const who = owner.get(String(p.id || '')) || 'unknown';
+            if (who === 'shanton') { res.shanton += n; return; }
+            if (who === 'mixed') { res.mixed += n; return; }
+            if (who === 'unknown') { res.unknown += n; return; }
+            res.own.total += n;
             const t = String(p.type || '');
             if (t && ABAYA_STOCK_ITEMS.some(it => it.key === t)) {
-                byType[t] = (byType[t] || 0) + n;
+                res.own.byType[t] = (res.own.byType[t] || 0) + n;
             } else {
-                untyped += n;
+                res.own.untyped += n;
             }
         });
-        return { byType, untyped, total };
+        return res;
     }
 
     /**
@@ -2394,9 +2435,9 @@
      *   إخفاءَ أحدهما — بل **مطابقةً لا يبقى معها فرقٌ مجهولُ السبب**. فكلُّ سببٍ
      *   محتملٍ يُحسب ويُسمّى، وما بقي بعدها يُعلَن «غيرُ مُفسَّر» صريحًا.
      */
-    function abayaStockReconcile(shop) {
+    function abayaStockReconcile(shop, ownerMap) {
         const st = abayaStockFor(shop);
-        const cat = abayaCatalogueStock(shop);
+        const cat = abayaCatalogueStock(shop, ownerMap);
         const ex = abayaShipmentExclusions(shop);
         // ⚠️⚠️⚠️ فرقٌ بين **تفسيرٍ محسوب** و**إشارةٍ تُذكر**، وخلطُهما أنتج رقمًا
         //   لا معنى له في أوّل نسخة:
@@ -2408,35 +2449,56 @@
         //   **مفروضٌ** أن يشملها. فإن شملها فلا فرق، وإن لم يشملها فالفرقُ هو نقصُ
         //   الجرد لا عددُ الشحنة. فطرحُ ستٍّ من فرقٍ قدرُه اثنتان أعطى «‎-4 غيرُ
         //   مُفسَّر» — وهو ما كشفه الفحص.
+        // ⚠️⚠️⚠️ مطابقتان **منفصلتان** بعد أن صار المِلكُ معروفًا: كلُّ طرفٍ يُقابل
+        //   نظيرَه. والمقارنةُ المدموجةُ كانت تُخفي أنّ أحدَ الطرفَين ناقصٌ والآخرَ
+        //   زائدٌ بنفس القدر — فيبدو الفرقُ صفرًا وكلاهما خطأ.
         const causes = [];
-        // ١) تصاميمُ في الكتالوج بلا نوعٍ معروف: لا سطرَ لها، فتُنفخ بها الكتالوجُ يقينًا.
-        if (cat.untyped) causes.push({ key: 'untyped', pieces: cat.untyped });
-        // ٢) شحناتٌ بنوعٍ لا يُطابق أيَّ صنف: الكتالوجُ عدَّها والجدولُ أسقطها.
+        // ١) تصاميمُنا بلا نوعٍ معروف: في الكتالوج ولا سطرَ لها في الجدول.
+        if (cat.own.untyped) causes.push({ key: 'untyped', pieces: cat.own.untyped });
+        // ٢) شحناتٌ بنوعٍ لا يُطابق أيَّ صنف.
+        // ⚠️ وشحنةٌ بنوعٍ غريبٍ تُذكر إشارةً لا سببًا محسوبًا: أثرُها على الفرق يتوقّف
+        //   على نوعِ **سطرِ الكتالوج** لا نوعِ الشحنة، وهما قد يختلفان. فما لا
+        //   يُحسب يقينًا لا يُطرح.
         const badType = ex.unknownType.reduce((a, x) => a + x.pieces, 0);
-        if (badType) causes.push({ key: 'unknownType', pieces: badType });
-
         const hints = [];
-        // ⚠️ بضاعةُ شانتون **ليست سببًا للفرق** هنا: المقارنةُ مع المجموعِ المدموج
-        //   فهي داخلةٌ في الطرفَين. تُذكر لأنّها أوّلُ ما يُظنُّ فرقًا.
-        if (st.shanton.now) hints.push({ key: 'shanton', pieces: st.shanton.now });
+        // ⚠️⚠️⚠️ «سطرٌ بلا شحنة» و«مِلكٌ مُلتبس» **ليسا سببَين للفرق**: قطعُهما
+        //   مُستثناةٌ من الطرفَين أصلًا (لا تدخل `catOur` ولا `catHer`)، فلا تُنتج
+        //   فرقًا في أيٍّ منهما. وطرحُها — كما فعلتُ أوّلًا — يُنقص من فرقٍ لم
+        //   تُسبّبه فيُنتج «‎-7 غيرُ مُفسَّر»، وهو رقمٌ لا معنى له.
+        //   فهما جوابُ سؤالٍ **آخر**: «لمن هذه القطع؟» لا «أين ذهبت؟». ويُعرضان
+        //   رقمًا مستقلًّا باسم `unattributed`، ولا يُجمعان مع الفرق.
+        if (cat.unknown) hints.push({ key: 'noShipment', pieces: cat.unknown });
+        if (cat.mixed) hints.push({ key: 'mixedOwner', pieces: cat.mixed });
         const beforeCount = ex.beforeCount.reduce((a, x) => a + x.pieces, 0);
+        if (badType) hints.push({ key: 'unknownType', pieces: badType });
         if (beforeCount) hints.push({ key: 'beforeCount', pieces: beforeCount });
 
+        const ourDiff = cat.own.total - st.sum.now;
+        const herDiff = cat.shanton - st.shanton.now;
         const explained = causes.reduce((a, c) => a + c.pieces, 0);
-        const diff = cat.total - (st.sum.now + st.shanton.now);
         return {
             catTotal: cat.total,
+            catOur: cat.own.total,
+            catHer: cat.shanton,
+            catMixed: cat.mixed,
+            catUnknown: cat.unknown,
+            // ⚠️ «لمن هذه القطع؟» — رقمٌ مستقلٌّ لا يُجمع مع الفرق.
+            unattributed: cat.mixed + cat.unknown,
             ourNow: st.sum.now,
             herNow: st.shanton.now,
             combined: st.sum.now + st.shanton.now,
-            diff,
-            // ⚠️ `unexplained` هو الرقمُ الوحيدُ الذي يُهمّ، ويجب أن يكون صفرًا. وما
-            //   لم يكن صفرًا فثمّة سببٌ لم نُحصِه — يُعلَن مجهولًا ولا يُلفَّق له تفسير.
-            unexplained: diff - explained,
+            // ⚠️ فرقُ كلِّ طرفٍ على حدة — وهذا ما طلبه المالك.
+            ourDiff,
+            herDiff,
+            diff: cat.total - (st.sum.now + st.shanton.now),
+            // ⚠️ `unexplained` هو الرقمُ الوحيدُ الذي يُهمّ، ويجب أن يكون صفرًا. ويُجمع
+            //   الفرقانِ **بقيمتهما المطلقة**: فرقٌ ‎+3 في طرفٍ و‎-3 في آخرَ ليس صفرًا،
+            //   إنّما خطأان يُلغي أحدُهما الآخرَ في الظاهر. وهذا ما يُخفيه الجمعُ الساذج.
+            unexplained: (Math.abs(ourDiff) + Math.abs(herDiff)) - explained,
             causes,
             hints,
-            catUntyped: cat.untyped,
-            byType: cat.byType
+            catUntyped: cat.own.untyped,
+            byType: cat.own.byType
         };
     }
 
