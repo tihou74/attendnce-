@@ -2128,7 +2128,10 @@
         { key: 'in_from_workshop',   en: 'Received from the workshop',          ar: 'وصلت من الورشة',             owner: 'own',                          sign: +1 },
         { key: 'in_from_supplier',   en: 'Received from a supplier',            ar: 'وصلت من مورّد',              owner: 'own',     needsSupplier: true, sign: +1 },
         // بضاعة شانتون — عبايات فقط
-        { key: 'in_from_designer',   en: 'SHANTON — received from her',         ar: 'شانتون — وصلت منها',         owner: 'shanton',                      sign: +1 },
+        // ⚠️⚠️ `fromShipment`: صارت تُقيَّد من **الشحنة** لا بيد البياعة (قرارُ المالك).
+        //   فتُخفى من قائمتها، و**تبقى هنا** لأنّ تقاريرَ الماضي تحمل مفتاحَها
+        //   وحسابُ المخزونِ يقرؤها به — وحذفُها يُسقط كلَّ استلامٍ قديم.
+        { key: 'in_from_designer',   en: 'SHANTON — received from her',         ar: 'شانتون — وصلت منها',         owner: 'shanton', fromShipment: true,  sign: +1 },
         { key: 'return_to_designer', en: 'SHANTON — returned to her',           ar: 'شانتون — أُرجعت لها',        owner: 'shanton',                      sign: -1 },
         { key: 'sh_out_to_shop',     en: 'SHANTON — sent to another shop',      ar: 'شانتون — خرجت إلى محل آخر',  owner: 'shanton', needsShop: true,     sign: -1 },
         { key: 'sh_in_from_shop',    en: 'SHANTON — received from another shop', ar: 'شانتون — وصلت من محل آخر',  owner: 'shanton', needsShop: true,     sign: +1 }
@@ -2460,7 +2463,13 @@
         el('mvKind').innerHTML =
             group('Our own stock', ABAYA_MOVE_KINDS.filter(k => k.owner === 'own'))
             + (isShantonShop(state.shop)
-                ? group('Shanton — her pieces', ABAYA_MOVE_KINDS.filter(k => k.owner === 'shanton'))
+                // ⚠️⚠️ `!k.fromShipment`: «وصلت من شانتون» لم تبقَ تُكتب هنا — تُقيَّد
+                //   من الشحنة التي تُرسلها السيدةُ فاطمة (قرارُ المالك: الخيار ٢).
+                //   وبقاؤها في القائمة كان سيَعُدُّ القطعةَ مرّتين: مرّةً من الشحنة
+                //   ومرّةً بيدِ البياعة. أمّا الإرجاعُ لها والنقلُ بين المحلات فيبقيان:
+                //   لا يعرفهما إلّا المحلّ.
+                ? group('Shanton — her pieces',
+                        ABAYA_MOVE_KINDS.filter(k => k.owner === 'shanton' && !k.fromShipment))
                 : '');
         if (!moveSelectsWired) {
             el('mvKind').addEventListener('change', syncMoveFields);

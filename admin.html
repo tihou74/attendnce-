@@ -2791,8 +2791,9 @@
             <h3><span data-icon="database"></span> Shanton's stock <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">مخزن شانتون</span></h3>
             <p class="card-sub">
                 Her abayas held in your shops. <b>Not your property</b> and never part of your stock value.
-                It grows when a shop records <b>SHANTON &mdash; received from her</b>, and shrinks when one of her abayas is
-                sold, is returned to her, or moves to another shop.
+                It grows when <b>Mrs Fatima sends a shipment marked SHANTON</b> to that shop, and shrinks when one of her
+                abayas is sold, is returned to her, or moves to another shop. Shops no longer type
+                &ldquo;received from her&rdquo; by hand &mdash; the shipment records it, so a piece cannot be counted twice.
             </p>
             <div class="table-container">
                 <table>
@@ -13800,7 +13801,10 @@
         { key: 'in_from_workshop',   en: 'Received from the workshop',          ar: 'وصلت من الورشة',             owner: 'own',                          sign: +1 },
         { key: 'in_from_supplier',   en: 'Received from a supplier',            ar: 'وصلت من مورّد',              owner: 'own',     needsSupplier: true, sign: +1 },
         // بضاعة شانتون — عبايات فقط
-        { key: 'in_from_designer',   en: 'SHANTON — received from her',         ar: 'شانتون — وصلت منها',         owner: 'shanton',                      sign: +1 },
+        // ⚠️⚠️ `fromShipment`: صارت تُقيَّد من **الشحنة** لا بيد البياعة (قرارُ المالك).
+        //   فتُخفى من قائمتها، و**تبقى هنا** لأنّ تقاريرَ الماضي تحمل مفتاحَها
+        //   وحسابُ المخزونِ يقرؤها به — وحذفُها يُسقط كلَّ استلامٍ قديم.
+        { key: 'in_from_designer',   en: 'SHANTON — received from her',         ar: 'شانتون — وصلت منها',         owner: 'shanton', fromShipment: true,  sign: +1 },
         { key: 'return_to_designer', en: 'SHANTON — returned to her',           ar: 'شانتون — أُرجعت لها',        owner: 'shanton',                      sign: -1 },
         { key: 'sh_out_to_shop',     en: 'SHANTON — sent to another shop',      ar: 'شانتون — خرجت إلى محل آخر',  owner: 'shanton', needsShop: true,     sign: -1 },
         { key: 'sh_in_from_shop',    en: 'SHANTON — received from another shop', ar: 'شانتون — وصلت من محل آخر',  owner: 'shanton', needsShop: true,     sign: +1 }
@@ -18907,6 +18911,25 @@
         return (kind && kind.owner === 'shanton') ? 'shanton' : 'own';
     }
 
+
+    /**
+     * نصيبُ محلٍّ من شحنةِ شانتون. ⚠️ `sentPlan` أوّلًا لأنّها التوزيعُ المُهيكَل،
+     *   و`sentShop` نصٌّ مقروءٌ قد يحمل أكثرَ من محلٍّ في جملةٍ واحدة — فمطابقتُه
+     *   باسمٍ واحدٍ تُخطئ. وشحنةٌ أُرسلت قبل وجودِ التوزيعِ المُهيكَل تُقرأ بالنصّ.
+     */
+    function shantonPiecesForShop(a, shop) {
+        if (a && a.sentPlan && typeof a.sentPlan === 'object') {
+            const n = Math.floor(Number(a.sentPlan[shop]) || 0);
+            return n > 0 ? n : 0;
+        }
+        if (!a || String(a.sentShop || '') !== String(shop)) return 0;
+        const n = Math.floor(Number(a.sentPieces) || 0);
+        return n > 0 ? n : 0;
+    }
+
+    /** ⚠️ المُحوِّلُ وحدَه يختلف بين الملفَّين (اسمُ المتغيّر)، وما بعده متطابق. */
+    function abayaArrivalList() { return Array.isArray(abayaArrivals) ? abayaArrivals : []; }
+
     function abayaStockFor(shop) {
         const since = abayaOpening.openingDate || '';
         const openMap = abayaOpening.opening[shop] || {};
@@ -18918,7 +18941,10 @@
         });
         // مخزن شانتون مستقل تمامًا: يزيد بما يصل منها أو من محل آخر، وينقص
         // ببيع عباياتها أو بإرجاعها لها أو بإرسالها لمحل آخر.
-        const sh = { opening: Number(openMap[ABAYA_SHANTON_STOCK_KEY]) || 0, received: 0, sold: 0, sentOut: 0 };
+        // `fromShipment` = ما وصلها عبر شحنةٍ أرسلتها السيدةُ فاطمة؛ و`received`
+        // يجمعه مع ما كُتب بيدِ البياعة في الماضي، فيُعرض الفرقُ ولا يُخفى.
+        const sh = { opening: Number(openMap[ABAYA_SHANTON_STOCK_KEY]) || 0,
+                     received: 0, fromShipment: 0, sold: 0, sentOut: 0 };
 
         allAbayaReports.forEach(r => {
             if (r.shop !== shop) return;
@@ -18976,6 +19002,29 @@
             sum.fromWorkshop += c.fromWorkshop;
             sum.sold += c.sold; sum.sentOut += c.sentOut; sum.now += c.now;
         });
+        // ⭐⭐⭐⭐ استلامُ بضاعةِ شانتون من **الشحنة** — قرارُ المالك (الخيار ٢).
+        //
+        // ⚠️⚠️⚠️ ولا عدٌّ مرّتين، وهذا مضمونٌ **بالبناء** لا بالثقة: مصدرُ الشحنة
+        //   «شانتون» لم يكن موجودًا قبل v228، فلا شحنةٌ قديمةٌ تحمله — و`arrivalSourceOf`
+        //   تُرجع «مورّد» لكلِّ قيمةٍ لا تطابقه حرفيًّا. فكلُّ شحنةٍ تُعَدُّ هنا
+        //   أُنشئت بعد أن اختفى السطرُ من شاشة البياعة. فالماضي من سطورها وحدَها،
+        //   والمستقبلُ من الشحنات وحدَها، ولا يومَ يُحسب بالاثنين.
+        //
+        // ⚠️ ويُحتسب من لحظةِ **إرسالِ** السيدةِ فاطمةَ الشحنةَ إلى المحلّ
+        //   (`status === ARRIVAL_SENT`)، لا من لحظةِ تسجيلِها في المستودع: ما لم
+        //   يُرسَل لم يصل محلًّا بعد، فعدُّه يُظهر في المحلِّ ما ليس فيه.
+        abayaArrivalList().forEach(a => {
+            if (!a || !isShantonArrival(a.source) || a.status !== ARRIVAL_SENT) return;
+            // ⚠️ وقطعُ الجردِ الافتتاحيِّ يُطبَّق هنا كما يُطبَّق على التقارير: ما
+            //   أُرسل قبل تاريخِ الجردِ داخلٌ في عدَدِه أصلًا. والتاريخُ يُقرأ من
+            //   `sentAt` وأوّلُ عشرةِ أحرفٍ منه هي اليوم؛ وغيابُه لا يُسقط الشحنةَ
+            //   (شحنةٌ بلا طابعٍ أُرسلت فعلًا) — يُقرأ أنّها بعد الجرد.
+            const sentDay = String(a.sentAt || '').slice(0, 10);
+            if (since && /^\d{4}-\d{2}-\d{2}$/.test(sentDay) && sentDay < since) return;
+            sh.fromShipment += shantonPiecesForShop(a, shop);
+        });
+        sh.received += sh.fromShipment;
+
         sh.now = sh.opening + sh.received - sh.sold - sh.sentOut;
         // المجموع المدموج للعلم فقط، ولا يُستخدم في أي حساب مالي: قيمة مخزوننا
         // هي sum وحدها.
@@ -22529,7 +22578,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v228';
+        const APP_BUILD = 'v229';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
