@@ -1874,9 +1874,30 @@
     //   الورشة على شحنةٍ لم تأتِ منها — أي رسالةٌ إلى الجهة الخطأ.
     const ARRIVAL_SOURCE_SUPPLIER = 'supplier';
     const ARRIVAL_SOURCE_WORKSHOP = 'workshop';
-    const arrivalSourceOf = (v) =>
-        String(v || '') === ARRIVAL_SOURCE_WORKSHOP ? ARRIVAL_SOURCE_WORKSHOP : ARRIVAL_SOURCE_SUPPLIER;
+    const ARRIVAL_SOURCE_SHANTON = 'shanton';
+    /**
+     * ⭐⭐⭐⭐ «المورّد شانتون» — بضاعةٌ ليست لنا، ولا كوستَ شراءٍ لها.
+     *
+     * ⚠️⚠️⚠️ قاعدةُ المال بقرار المالك (اختار «ب» بين احتمالين عُرضا عليه
+     *   بالأرقام): **نصيبُنا 200 ثابتةً للقطعة مهما كان سعرُ البيع**، والباقي لها.
+     *   فالكوستُ = سعرُ البيع − 200، و**لا يُكتب بيد**: يُحسب من السعرِ بالنسبة
+     *   السارية (`abayaRates.shantonPerPiece`). وكتابتُه بيدٍ كانت ستسمح برقمٍ
+     *   يخالف حسابَها — بطاقةٌ تقول ربحُنا 400 وحسابُها يقول 200.
+     *
+     * ⚠️ ونصيبُنا **مسقوفٌ بسعر البيع** كما هو مسقوفٌ بالمُحصَّل في العمولة: عباية
+     *   تُباع بـ150 لا تُعطينا 200 وتُحمّلها ‎-50. فنأخذ 150 ويكون كوستُها صفرًا.
+     *
+     * ⚠️ والافتراضُ الآمنُ محفوظٌ: قيمةٌ مجهولةٌ تُقرأ «مورّد» كما كانت. ومصدرٌ
+     *   ثالثٌ لا يُقرأ «مورّدًا» إلّا إن طابق اسمَه حرفيًّا — فشحنةٌ قديمةٌ بلا
+     *   حقلٍ لا تصير بضاعةَ شانتون بالخطأ.
+     */
+    const arrivalSourceOf = (v) => {
+        const s = String(v || '');
+        return (s === ARRIVAL_SOURCE_WORKSHOP || s === ARRIVAL_SOURCE_SHANTON)
+            ? s : ARRIVAL_SOURCE_SUPPLIER;
+    };
     const isWorkshopArrival = (v) => arrivalSourceOf(v) === ARRIVAL_SOURCE_WORKSHOP;
+    const isShantonArrival = (v) => arrivalSourceOf(v) === ARRIVAL_SOURCE_SHANTON;
     /** مستندُ رقم الورشة — يكتبه المالكُ، وتقرؤه هي بقاعدة `settings` القائمة. */
     const ABAYA_WORKSHOP_DOC = 'abaya_workshop';
 
@@ -4670,12 +4691,29 @@
         const shipping = Math.max(0, Number((o || {}).shipping) || 0);
         const labour = Math.max(0, Number((o || {}).labour) || 0);
         const sell = Math.max(0, Number((o || {}).sellingPrice) || 0);
+        // ⭐⭐ شحنةُ شانتون: لا كوستَ شراءٍ، فالكوستُ **نصيبُها** المُشتقُّ من السعر.
+        // ⚠️ ويُحسب قبل الحسابِ المعتادِ ويعود فورًا: المسارُ المعتادُ لم يُلمَس
+        //   بحرفٍ واحد، وفحصٌ يُثبت أنّ أرقامَ شحنةِ المورّدِ لم تتغيّر.
+        if (isShantonArrival((o || {}).source)) {
+            const per = Number(abayaRates.shantonPerPiece) || SHANTON_DEFAULT_PER_PIECE;
+            const ours = Math.min(per, sell);
+            const herPiece = arvRound2(Math.max(0, sell - ours));
+            return {
+                unitQar: 0, pieces, shipping: 0, labour: 0, goods: 0,
+                total: arvRound2(herPiece * pieces),
+                costPerPiece: herPiece,
+                sellingPrice: sell,
+                profit: arvRound2(ours),
+                marginPct: sell > 0 ? arvRound2((ours / sell) * 100) : 0,
+                shanton: true
+            };
+        }
         const goods = arvRound2(unitQar * pieces);
         const total = arvRound2(goods + shipping + labour);
         const costPerPiece = pieces > 0 ? arvRound2(total / pieces) : 0;
         const profit = sell > 0 ? arvRound2(sell - costPerPiece) : 0;
         const marginPct = (sell > 0) ? arvRound2((profit / sell) * 100) : 0;
-        return { unitQar, pieces, shipping, labour, goods, total, costPerPiece, sellingPrice: sell, profit, marginPct };
+        return { unitQar, pieces, shipping, labour, goods, total, costPerPiece, sellingPrice: sell, profit, marginPct, shanton: false };
     }
 
     function arvTypeLabel(key) {
@@ -4700,6 +4738,13 @@
      *   وحدَها لا تقول إن كانت ورشتَنا أم مورّدًا اسمُه كذلك.
      */
     function arvWhereFrom(a) {
+        // ⚠️⚠️ بضاعةُ شانتون تُقال صريحةً على البطاقة: السيدةُ فاطمةُ تُسعّرها،
+        //   وتسعيرُ بضاعةِ غيرِنا قرارٌ يختلف — نصيبُنا منها ثابتٌ للقطعة، فرفعُ
+        //   السعرِ يزيد **نصيبَها** لا نصيبَنا. ولو ظهرت «مورّد» لسُعّرت كبضاعتِنا.
+        if (isShantonArrival(a.source)) {
+            return `<b style="color: var(--color-primary);">SHANTON &mdash; her goods</b>`
+                + (a.supplier ? ` &middot; ${escapeHtml(a.supplier)}` : '');
+        }
         if (!isWorkshopArrival(a.source)) {
             return `<b>${escapeHtml(a.supplier) || 'A supplier'}</b>`;
         }

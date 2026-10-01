@@ -14198,18 +14198,39 @@
      */
     const ARRIVAL_SOURCE_SUPPLIER = 'supplier';
     const ARRIVAL_SOURCE_WORKSHOP = 'workshop';
+    const ARRIVAL_SOURCE_SHANTON = 'shanton';
+    /**
+     * ⭐⭐⭐⭐ «المورّد شانتون» — بضاعةٌ ليست لنا، ولا كوستَ شراءٍ لها.
+     *
+     * ⚠️⚠️⚠️ قاعدةُ المال بقرار المالك (اختار «ب» بين احتمالين عُرضا عليه
+     *   بالأرقام): **نصيبُنا 200 ثابتةً للقطعة مهما كان سعرُ البيع**، والباقي لها.
+     *   فالكوستُ = سعرُ البيع − 200، و**لا يُكتب بيد**: يُحسب من السعرِ بالنسبة
+     *   السارية (`abayaRates.shantonPerPiece`). وكتابتُه بيدٍ كانت ستسمح برقمٍ
+     *   يخالف حسابَها — بطاقةٌ تقول ربحُنا 400 وحسابُها يقول 200.
+     *
+     * ⚠️ ونصيبُنا **مسقوفٌ بسعر البيع** كما هو مسقوفٌ بالمُحصَّل في العمولة: عباية
+     *   تُباع بـ150 لا تُعطينا 200 وتُحمّلها ‎-50. فنأخذ 150 ويكون كوستُها صفرًا.
+     *
+     * ⚠️ والافتراضُ الآمنُ محفوظٌ: قيمةٌ مجهولةٌ تُقرأ «مورّد» كما كانت. ومصدرٌ
+     *   ثالثٌ لا يُقرأ «مورّدًا» إلّا إن طابق اسمَه حرفيًّا — فشحنةٌ قديمةٌ بلا
+     *   حقلٍ لا تصير بضاعةَ شانتون بالخطأ.
+     */
+    const arrivalSourceOf = (v) => {
+        const s = String(v || '');
+        return (s === ARRIVAL_SOURCE_WORKSHOP || s === ARRIVAL_SOURCE_SHANTON)
+            ? s : ARRIVAL_SOURCE_SUPPLIER;
+    };
+    const isWorkshopArrival = (v) => arrivalSourceOf(v) === ARRIVAL_SOURCE_WORKSHOP;
+    const isShantonArrival = (v) => arrivalSourceOf(v) === ARRIVAL_SOURCE_SHANTON;
     const ARRIVAL_SOURCES = [
         { key: ARRIVAL_SOURCE_SUPPLIER, en: 'A supplier',             ar: 'مورّد' },
-        { key: ARRIVAL_SOURCE_WORKSHOP, en: 'Our workshop (factory)', ar: 'ورشتُنا — الفاكتوري' }
+        { key: ARRIVAL_SOURCE_WORKSHOP, en: 'Our workshop (factory)', ar: 'ورشتُنا — الفاكتوري' },
+        { key: ARRIVAL_SOURCE_SHANTON,  en: "SHANTON — her goods",    ar: 'شانتون — بضاعتُها' }
     ];
     function arrivalSourceLabel(key) {
         const s = ARRIVAL_SOURCES.find(x => x.key === String(key || ''));
         return s ? `${s.en} · ${s.ar}` : '';
     }
-    /** ⚠️ أيُّ قيمةٍ غير 'workshop' تُقرأ «مورّد» — انظر سببَ الافتراض أعلاه. */
-    const arrivalSourceOf = (v) =>
-        String(v || '') === ARRIVAL_SOURCE_WORKSHOP ? ARRIVAL_SOURCE_WORKSHOP : ARRIVAL_SOURCE_SUPPLIER;
-    const isWorkshopArrival = (v) => arrivalSourceOf(v) === ARRIVAL_SOURCE_WORKSHOP;
 
     /**
      * ⭐⭐⭐⭐ رقمُ واتساب الورشة — مستندُ إعدادٍ واحدٌ في `settings`.
@@ -16442,6 +16463,23 @@
         const shipping = Math.max(0, Number((o || {}).shipping) || 0);
         const labour = Math.max(0, Number((o || {}).labour) || 0);
         const sell = Math.max(0, Number((o || {}).sellingPrice) || 0);
+        // ⭐⭐ شحنةُ شانتون: لا كوستَ شراءٍ، فالكوستُ **نصيبُها** المُشتقُّ من السعر.
+        // ⚠️ ويُحسب قبل الحسابِ المعتادِ ويعود فورًا: المسارُ المعتادُ لم يُلمَس
+        //   بحرفٍ واحد، وفحصٌ يُثبت أنّ أرقامَ شحنةِ المورّدِ لم تتغيّر.
+        if (isShantonArrival((o || {}).source)) {
+            const per = Number(abayaRates.shantonPerPiece) || SHANTON_DEFAULT_PER_PIECE;
+            const ours = Math.min(per, sell);
+            const herPiece = arvRound2(Math.max(0, sell - ours));
+            return {
+                unitQar: 0, pieces, shipping: 0, labour: 0, goods: 0,
+                total: arvRound2(herPiece * pieces),
+                costPerPiece: herPiece,
+                sellingPrice: sell,
+                profit: arvRound2(ours),
+                marginPct: sell > 0 ? arvRound2((ours / sell) * 100) : 0,
+                shanton: true
+            };
+        }
         const goods = arvRound2(unitQar * pieces);
         const total = arvRound2(goods + shipping + labour);
         const costPerPiece = pieces > 0 ? arvRound2(total / pieces) : 0;
@@ -16450,7 +16488,7 @@
         //   والنسبةُ من الكوست رقمٌ آخرُ تمامًا — وخلطُهما يُنتج قرارَ سعرٍ خاطئًا.
         const profit = sell > 0 ? arvRound2(sell - costPerPiece) : 0;
         const marginPct = (sell > 0) ? arvRound2((profit / sell) * 100) : 0;
-        return { unitQar, pieces, shipping, labour, goods, total, costPerPiece, sellingPrice: sell, profit, marginPct };
+        return { unitQar, pieces, shipping, labour, goods, total, costPerPiece, sellingPrice: sell, profit, marginPct, shanton: false };
     }
 
     /** نصُّ النوع للعرض: مفتاحٌ إنجليزيٌّ ← «Abaya · عباية». */
@@ -16592,6 +16630,21 @@
         const inp = document.getElementById('arvSupplier');
         const note = document.getElementById('arvSourceNote');
         const workshop = src === ARRIVAL_SOURCE_WORKSHOP;
+        // ⚠️ المعاينةُ تُعاد فورًا: الكوستُ يُحسب بمسارٍ آخر لبضاعة شانتون، فتبديلُ
+        //   المصدرِ يجب أن يُغيّر الأرقامَ المعروضةَ في اللحظة نفسِها.
+        if (typeof window.onArrivalInput === 'function') window.onArrivalInput();
+        if (isShantonArrival(src)) {
+            if (lab) lab.textContent = 'Name (optional)';
+            if (inp) inp.placeholder = 'Shanton';
+            if (!note) return;
+            const per = Number(abayaRates.shantonPerPiece) || SHANTON_DEFAULT_PER_PIECE;
+            note.innerHTML = `<b>Her goods, not ours.</b> There is no purchase price to type &mdash; we do not buy them, `
+                + `we pay her after they sell. Our share is <b>${per} QAR per piece</b>, so `
+                + `<b>what goes to her = the selling price &minus; ${per}</b>, worked out for you. `
+                + `Mrs Fatima sets the selling price when she sends it to a shop.`;
+            note.style.color = 'var(--accent)';
+            return;
+        }
         if (lab) lab.textContent = workshop ? 'Which workshop (optional)' : 'Supplier';
         if (inp) inp.placeholder = workshop ? 'Name of the workshop, if you want it recorded' : 'Who sent it';
         if (!note) return;
@@ -17049,7 +17102,11 @@
 
     window.onArrivalInput = function() {
         const g = (id) => (document.getElementById(id) || {}).value;
+        // ⚠️ `source` يُمرَّر هنا إلزامًا: بضاعةُ شانتون تُحسب بمسارٍ آخر، وبلا
+        //   هذا الحقلِ كانت المعاينةُ الحيّةُ تُظهر كوستَها بحسابِ المورّد — رقمٌ
+        //   يراه المالكُ وهو يكتب ويُخالف ما سيُحفَظ.
         const m = arrivalMath({
+            source: g('arvSource'),
             unitQar: g('arvQar'), pieces: g('arvPieces'),
             shipping: g('arvShipping'), labour: g('arvLabour'),
             sellingPrice: g('arvSuggested')
@@ -17263,11 +17320,16 @@
         if (!type) return fail('Choose what the piece is.');
         const pieces = Math.floor(Number(g('arvPieces')) || 0);
         if (pieces < 1) return fail('How many pieces arrived? At least one.');
+        // ⚠️⚠️ بضاعةُ شانتون بلا سعرِ شراء: لا نشتريها، بل ندفع لها بعد البيع.
+        //   فطلبُ سعرِ قطعةٍ منها كان سيُجبر المالكَ على اختلاق رقمٍ — ورقمٌ
+        //   مُختلَقٌ في خانةِ كوستٍ يصير كوستًا على بطاقة العباية.
+        const shantonGoods = isShantonArrival(g('arvSource'));
         const unitQar = Number(g('arvQar')) || 0;
-        if (unitQar <= 0) {
+        if (!shantonGoods && unitQar <= 0) {
             return fail('The price of one piece in riyals is required — the cost of a piece is worked out from it.');
         }
         const m = arrivalMath({
+            source: g('arvSource'),
             unitQar, pieces, shipping: g('arvShipping'), labour: g('arvLabour'),
             sellingPrice: g('arvSuggested')
         });
@@ -22467,7 +22529,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v227';
+        const APP_BUILD = 'v228';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
