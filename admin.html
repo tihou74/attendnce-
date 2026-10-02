@@ -2006,6 +2006,26 @@
 
     <!-- 3. سجلات الحضور -->
     <div id="tab-attendance" class="tab-content">
+
+        <!-- =====================================================================
+             ⚠️⚠️⚠️ الشرحُ يوضع حيث يُرى العطل، لا في تبويبٍ آخر.
+             قال المالكُ عن بطاقةِ الإصلاح: «**لم أجده**». والسببُ خطئي في الدلالة:
+             الجدولُ الذي يرى فيه «missing» و«2 shifts» في تبويبِ **Attendance
+             Logs**، والبطاقةُ التي تشرحه وتُصلحه وضعتُها في تبويبِ **Payroll**
+             (مع بقيّةِ بطاقاتِ المال). فدلَلتُه على مكانٍ لا ينظر فيه.
+             ⚠️ فصار التفسيرُ والزرُّ **فوق الجدولِ نفسِه**، والتفصيلُ يبقى في
+             Payroll لمن أراده. كاشفٌ واحدٌ يُغذّي الموضعَين
+             (`renderCancelContradictions`)، فلا يفترق ما يُقال هنا عمّا يُقال هناك.
+             ===================================================================== -->
+        <div class="card" id="attCancelFixBanner" style="display: none; border-left: 4px solid var(--warning);">
+            <h3><span data-icon="alertTriangle"></span> Why some rows say <span style="color: var(--warning);">missing</span> and <span style="color: var(--warning);">2 shifts</span> <span id="attCancelFixCount" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
+            <p class="card-sub">Those rows are not a mistake in the table &mdash; they are the trace of a cancelled day. A night shift starts in the afternoon and ends after midnight. When such a shift was cancelled for having no Check-Out, the cancellation took its <b>Check-In</b>; then the real Check-Out arrived and had nothing to pair with, so it shows as <b>missing</b> on the <b>next</b> day, next to that day's own shift &mdash; which is the <b>2 shifts</b> &mdash; and it carries its hours onto the wrong day. Restoring puts every night back on its own day, returns the hours, removes the absence, and these rows disappear.</p>
+            <p class="card-sub" id="attCancelFixNote" style="margin-top: -6px;"></p>
+            <div class="controls">
+                <button class="btn-success" id="attCancelFixBtn" onclick="restoreContradictedCancellations()"><span data-icon="refresh"></span> Restore these days</button>
+                <button class="btn-ghost" onclick="switchTab('tab-payroll')"><span data-icon="eye"></span> See the full list &amp; day-by-day undo (Payroll)</button>
+            </div>
+        </div>
         <!-- ⭐⭐⭐ تنبيهُ الغياب المتتالي — بطلب المالك: «أيّ موظف لم يسجّل دخول
              مرتين متتاليتين يجب أن يظهر تنبيه في الشاشة … يجب مراجعة أمره». -->
         <div class="card" id="missedCheckinCard" style="display: none; border-left: 4px solid var(--danger);">
@@ -12188,12 +12208,55 @@
     let attCancelLinks = new Map();   // معرّفُ الانصرافِ اليتيم ← معرّفُ مستندِ الإلغاء
 
     function renderCancelContradictions() {
+        // ⚠️⚠️ بطاقةُ تشخيصٍ لا يجوز أن تُسقط شاشةَ الحضور: هي تُنادى من داخل
+        //   `loadAttendanceLogs`، فخطأٌ فيها كان سيقطع ما بعدها من رسمٍ ويُظهر
+        //   «فشل تحميل السجلات» بدلًا من جدولٍ سليم. فتُحاط بحارس.
+        try { renderCancelContradictionsInner(); }
+        catch (e) { console.error('The cancellation diagnostic failed:', e); }
+    }
+
+    function renderCancelContradictionsInner() {
         const card = document.getElementById('cancelFixCard');
         const body = document.getElementById('cancelFixBody');
         if (!card || !body) return;
-        const pairs = pairedCancellations(buildSessions(bizLogs(allAttendance)));
+        const sessions = buildSessions(bizLogs(allAttendance));
+        const pairs = pairedCancellations(sessions);
+        // ⚠️⚠️⚠️ وهذا هو جوابُ «لم أجد البرتقاليّة»: الشريطُ كان يظهر **فقط** إذا
+        //   وُجد تناقضٌ يُسترجَع. فلو كان في الجدولِ صفوفُ «missing» بلا إلغاءٍ
+        //   يفسّرها (انصرافٌ سُجِّل مرّتَين، أو دخولٌ خارجَ نافذةِ العرض) لم يجد
+        //   المالكُ شيئًا يشرحها ولا شيئًا يضغطه — وسؤالُه «ما هذا؟» يبقى بلا جواب.
+        //   فصار الشريطُ يظهر كذلك **للشرحِ وحدَه** متى وُجد صفٌّ يتيمٌ في السجل.
+        const orphans = sessions.filter(s => s && !s.checkIn && s.checkOut
+            && s.checkOut.cancelledNoCheckout !== true).length;
         attCancelLinks = new Map(pairs.map(p => [p.orphanOutId, p.cancelId]));
+        // ⚠️ موضعان يُغذّيهما كاشفٌ واحد: الشرحُ فوق الجدول في Attendance Logs،
+        //   والتفصيلُ في Payroll. وتوحيدُ المصدرِ يمنع أن يقول أحدُهما غيرَ الآخر.
         const btn = document.getElementById('cancelFixBtn');
+        const banner = document.getElementById('attCancelFixBanner');
+        const bannerBtn = document.getElementById('attCancelFixBtn');
+        const bannerCount = document.getElementById('attCancelFixCount');
+        const note = document.getElementById('attCancelFixNote');
+        if (banner) banner.style.display = (pairs.length || orphans) ? 'block' : 'none';
+        if (bannerBtn) {
+            // لا يُعرض زرُّ استرجاعٍ لا شيءَ له ليسترجعه
+            bannerBtn.style.display = pairs.length ? '' : 'none';
+            if (pairs.length) bannerBtn.innerHTML = `${iconSvg('refresh')} Restore these ${pairs.length} day(s)`;
+        }
+        if (bannerCount) {
+            bannerCount.innerText = pairs.length || orphans;
+            bannerCount.style.display = (pairs.length || orphans) ? 'inline-block' : 'none';
+        }
+        if (note) {
+            note.innerHTML = pairs.length
+                ? `<b>${pairs.length} day(s) can be put right with one press.</b> `
+                  + `Each one was cancelled and then the employee's real Check-Out turned up.`
+                : `<b>There is nothing to restore right now.</b> `
+                  + `${orphans} row(s) show <b>missing</b> because their Check-In is not in the records `
+                  + `shown — most often the shift began before the window above (switch off `
+                  + `<b>Last 48 hours only</b> to see it), or the Check-Out was recorded twice. `
+                  + `No hours are lost by this: the time is on the row you can see.`;
+        }
+        if (banner) paintIcons(banner);
         if (!pairs.length) { card.style.display = 'none'; return; }
         card.style.display = 'block';
         const badge = document.getElementById('cancelFixCount');
@@ -23876,7 +23939,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v243';
+        const APP_BUILD = 'v245';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
