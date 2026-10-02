@@ -49,8 +49,9 @@
          وهذا بعينه شكلُ شكوى المالك «لا يمكن تحميلُ أيِّ بي دي إف».
      والآن: `ensurePdfLibs()` تطلبهما عند الحاجة من ثلاثةِ نطاقاتٍ بالترتيب،
      وتتحقّق من ظهورِهما فعلًا بعد كلِّ تحميل، وتقول السببَ إن فشل الثلاثة.
-     ⚠️ فلا يُنادى `html2canvas` ولا `window.jspdf` في هذا الملفِّ إلّا بعد
-       انتظارِ تلك الدالّة — وفحصٌ يحرس ذلك.
+     ⚠️ ولم تبقَ إلّا `jsPDF` وللتقريرِ الماليِّ الشهريِّ وحدَه: مكتبةُ تصويرِ
+       الشاشةِ زالت من المشروع كلِّه في v241، وكلُّ ورقةٍ تُكتب نصًّا بـ`pdfBytes`.
+       ولا يُنادى `window.jspdf` إلّا بعد انتظارِ تلك الدالّة — وفحصٌ يحرس ذلك.
      ===================================================================== -->
 <!-- Excel export -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -865,30 +866,10 @@
        ⚠️ و.no-print يُخفي كلَّ ما ليس مستندًا: الشريطَ الجانبيَّ والترويسةَ
        وبطاقةَ الاختيار والتذييل — فلا تُطبع لوحةُ تحكّمٍ على ورقٍ رسميّ.
        ===================================================================== */
-    /* =====================================================================
-       ⚠️⚠️⚠️ ألوانٌ صريحةٌ أثناءَ تصويرِ ورقةِ الراتبِ وحدَه — وهذا إصلاحُ سببٍ
-       مقيسٍ لا تحسينُ منظر: مكتبةُ التصوير (html2canvas 1.4.1) تُفكِّك اللونَ
-       المحسوبَ بنفسها، ومُفكِّكُها يعرف `#hex` و`rgb()` و`hsl()` ولا شيءَ غيرَها.
-       وهذا المشروعُ يستعمل `color-mix(in srgb, …)` في عشراتِ الموضع، والمتصفّحاتُ
-       الحديثةُ تُخرج قيمتَها المحسوبةَ على صورةِ `color(srgb … )` — فأوّلُ عنصرٍ
-       يحملها **يُبطل التصويرَ كلَّه** فلا تُصنع ورقةٌ إطلاقًا. وهذا بعينه سببُ
-       شكوى المالك على ورقةِ شانتون، وتلك صارت نصًّا مكتوبًا بأيدينا بلا مكتبة.
-       فتُفرض هنا ألوانُ ورقةٍ تُطبع أصلًا (أبيضُ وأسودُ ورماديّ) أثناء التصويرِ
-       وحدَه، ثمّ تُرفع في `finally`.
-       ===================================================================== */
-    #printableSalaryReport.pdf-plain,
-    #printableSalaryReport.pdf-plain * {
-        background-image: none !important;
-        background-color: #ffffff !important;
-        color: #111111 !important;
-        border-color: #999999 !important;
-        box-shadow: none !important;
-        text-shadow: none !important;
-        filter: none !important;
-        -webkit-backdrop-filter: none !important;
-        backdrop-filter: none !important;
-        outline-color: #999999 !important;
-    }
+    /* ⚠️ كان هنا `.pdf-plain` لتسطيحِ الألوانِ أثناء تصويرِ ورقةِ الراتب،
+       وقد زال التصويرُ كلُّه في v241 (الورقةُ نصٌّ يُقرأ من الـDOM) فزال معه.
+       والسببُ الذي وُضع من أجله — `color-mix` تُبطل مكتبةَ التصوير — مشروحٌ
+       في `tech.md`، وهو قائمٌ لأيِّ من يُفكّر في تصويرِ شاشةٍ مستقبلًا. */
 
     @media print {
         /* ⚠️⚠️⚠️⚠️ المستندُ يبقى في **التخطيط الطبيعيّ**، ويُخفى أشقّاؤه على كلِّ
@@ -2206,12 +2187,12 @@
            • jsPDF لا يكتب عربيةً في هذا المشروع — تُنادى pdf.text تسعَ مرّاتٍ
              ولا واحدةٌ فيها حرفٌ عربيّ، ولم يُضَف خطٌّ عربيٌّ إليها قطّ
              (addFont = صفر). فالعربيُّ يخرج مقطّعًا أو فراغًا.
-           • html2canvas يُنتج **صورةً** لا نصًّا: لا يُبحث فيها ولا يُنسخ منها
+           • تصويرُ الشاشة يُنتج **صورةً** لا نصًّا: لا يُبحث فيها ولا يُنسخ منها
              حرفٌ، ووزنُها أضعافُ وزنِ النصّ.
-             ⚠️ وكان هنا سببٌ ثانٍ: «يُقصّ — `Math.min(imgHeight, pageHeight-20)`
-               فما زاد عن صفحةٍ يُرمى». وهذا **أُصلح في v239**: صار التقطيعُ
-               مشتركًا (`pdfSlices`) ويفحصه فحصٌ أنّ مجموعَ القطعِ = ارتفاعُ
-               الصورةِ بالضبط. فالقرارُ باقٍ للسببِ الأوّلِ وحدَه لا لعطلٍ قائم.
+             ⚠️ وقد زال التصويرُ من المشروع كلِّه في v241: مُفكِّكُ الألوانِ في
+               مكتبتِه لا يعرف `color(srgb …)` الناتجةَ عن `color-mix()` في ورقةِ
+               هويّتِنا فيُبطل التصويرَ كلَّه. فصارت الأوراقُ تُكتب نصًّا
+               بـ`pdfBytes`، وهو الطريقُ الذي يُسلكه أيُّ مستندٍ جديد.
            • طباعةُ المتصفّح تستعمل محرّكَ الخطوط نفسَه الذي يعرض العربيَّ على
              الشاشة، فيخرج موصولًا صحيحًا، نصًّا حقيقيًّا، بصفحاتٍ تنقسم وحدَها،
              و@page تحجز فراغَ الترويسة بالمليمتر.
@@ -5528,7 +5509,11 @@
         <div style="display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-bottom: 28px; flex-wrap: wrap;">
             <span id="editProfileStatus" style="font-weight: 600; font-size: 13px;"></span>
             <button class="btn-success" onclick="saveProfileChanges()"><span data-icon="save"></span> Save Changes</button>
-            <button class="btn-danger-solid money-only" onclick="downloadPDFReport()"><span data-icon="download"></span> Download PDF Report</button>
+            <!-- ⚠️ كان هذا الزرُّ يُصدِّر PDF من ملفِّ الموظّف، والتقريرُ ليس هنا: نُقل إلى
+                 نافذته الخاصّة ولم يُنقل الزرّ، فكان يُصوِّر عنصرًا مخفيًّا ويُخفق
+                 دائمًا بـ«measured as empty». فصار يفتح النافذةَ التي فيها أرقامُه
+                 وفيها زرُّ التصدير. -->
+            <button class="btn-accent money-only" onclick="openSalaryReportFromProfile()"><span data-icon="fileText"></span> Monthly Salary Report</button>
         </div>
 
         <!-- ⚠️ التقرير المالي الشهري نُقل من هنا إلى نافذته الخاصة، تُفتح من
@@ -5786,7 +5771,7 @@
 
 <!-- Modal: التقرير المالي الشهري للموظف.
      تُفتح من جدول الرواتب فقط. النسخة المطبوعة تبقى على خلفية فاتحة عن قصد:
-     تُصوَّر إلى PDF عبر html2canvas/jsPDF فيجب أن تصحّ كمستند مستقل بلا علاقة
+     تُسلَّم كمستند مستقل (تُطبع بمحرّك المتصفّح) فيجب أن تصحّ بلا علاقة
      بسمة التطبيق. -->
 <div id="salaryReportModal" class="modal-overlay">
     <div class="modal-card">
@@ -5799,9 +5784,12 @@
             <span style="font-size: 12.5px; color: var(--text-dim);">The period is the one selected in the Payroll tab.</span>
         </div>
         <!-- Printable / exportable salary report (kept on a light background on
-             purpose — it is rendered to an image + PDF via html2canvas/jsPDF,
-             so it must look correct as a standalone document, independent of
-             the app's dark theme). -->
+             purpose — it is read line by line into a text PDF by
+             sheetRowsFromDom(), so it must read correctly as a standalone
+             document, independent of the app's dark theme.
+             ⚠️ وهي تُقرأ نصًّا لا تُصوَّر: فتعمل وإن كانت النافذةُ مخفيّة. وتصويرُها
+             كان يُخفق دائمًا بـ«measured as empty» حين يُضغط الزرُّ من ملفِّ
+             الموظّف، لأنّ هذه النافذةَ تكون حينها `display:none`. -->
         <div id="printableSalaryReport" class="money-only" style="background: #ffffff; padding: 34px; border-radius: 16px; border: 1px solid #e2e8f0; font-family: 'Plus Jakarta Sans', sans-serif; margin-bottom: 22px;">
             <div style="text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 18px; margin-bottom: 22px;">
                 <h1 style="margin: 0; color: #0f172a; font-size: 22px; font-weight: 800; letter-spacing: -0.3px;">AL SHEIKHA GROUP</h1>
@@ -23625,7 +23613,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v240';
+        const APP_BUILD = 'v241';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
@@ -25068,7 +25056,7 @@
     /**
      * تصدير PDF للتقرير الشهري.
      *
-     * مبني بنص jsPDF مباشرة لا بتصوير الشاشة عبر html2canvas مثل تقرير الرواتب:
+     * مبني بنص jsPDF مباشرة لا بتصوير الشاشة (والتصويرُ زال من المشروع في v241):
      * بطاقة التقرير المالي طويلة وبخلفية داكنة وفيها جداول متعددة، فتصويرها
      * يُنتج صفحة مقصوصة وغير مقروءة. النص يُنتج ملفًا نظيفًا بأي حجم.
      * كل الأرقام تأتي من financeSummary نفسها التي تُغذّي الشاشة، فلا يمكن أن
@@ -26233,31 +26221,210 @@
         return out;
     }
 
-    // ⚠️⚠️ مكتبتا الـPDF ومُحمِّلُهما (`ensurePdfLibs`) و`pdfFromCanvas` **ليست
-    //   هنا**، وهذا مقصود: لوحةُ السيدة فاطمة لا تحتاج مكتبةً إطلاقًا بعد v240 —
-    //   ورقةُ حسابِ شانتون تُكتب نصًّا بـ`pdfBytes` بلا نطاقٍ خارجيٍّ ولا انتظار.
-    //   فمن يحتاج تصويرَ شاشةٍ (تقريرُ الراتب في لوحة المالك) يحمل المُحمِّلَ
-    //   عنده وحدَه، ولا تُحمَّل هاتفَها 400KB لشيءٍ لا تستعمله.
-    // ⚠️ وفحصٌ يحرس أنّ لوحتَها لا تنادي مكتبةَ التصويرِ في **سطرٍ تنفيذيٍّ**
-    //   واحد. والحارسُ يُسقط التعليقاتَ قبل البحث عن قصد: شرحُ سببِ تركِ
-    //   المكتبةِ يجب أن يبقى مكتوبًا، وإلّا أعادها أوّلُ من يقرأ الكود.
+    // ⚠️⚠️ ولا مكتبةَ رسمٍ هنا ولا في أيِّ لوحة: كلُّ ورقةٍ في المشروع تُكتب
+    //   نصًّا بـ`pdfBytes` أدناه. وما بقي من اعتمادٍ خارجيٍّ هو `jsPDF`
+    //   للتقريرِ الماليِّ الشهريِّ وحدَه في لوحة المالك (يعمل، ومُسجَّلٌ في
+    //   `open-issues.md` أنّه آخرُ موضعٍ يحتاج نقلًا إلى الكاتبِ المحليّ).
+
+
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ كاتبُ PDF بلا أيِّ مكتبة — لحسابِ شانتون (v240)
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️⚠️ بشكوى المالك: «شانتون في بانل المدام لا يحمل البي دي إف، عدِّله».
+    //   وفي v239 صار التسليمُ مضمونًا (مشاركةٌ ← تنزيلٌ ← شريطٌ مرئيّ)، فبقي أنّ
+    //   **الورقةَ نفسَها لم تُصنع**. والسببُ قياسٌ لا تخمين:
+    //
+    //   `html2canvas 1.4.1` تقرأ اللونَ المحسوبَ لكلِّ عنصرٍ وتُفكِّكه بنفسها،
+    //   ومُفكِّكُها يعرف `#hex` و`rgb()` و`hsl()` والأسماءَ **ولا شيءَ غيرَها**.
+    //   وهذا المشروع يستعمل `color-mix(in srgb, …)` في ورقةِ الهوية وفي هذا
+    //   الملفّ (`--wine-tint-border` · `--wine-tint-bg` · `--scrim` · حلقةُ
+    //   التركيز)، والمتصفّحاتُ الحديثةُ تُخرج قيمتَها المحسوبةَ على صورةِ
+    //   `color(srgb … )`. فأوّلُ عنصرٍ يحمل مثلَ هذه القيمةِ **يرمي خطأً يُبطل
+    //   التصويرَ كلَّه** — أي لا ورقةَ أصلًا، ولا علاقةَ للتنزيل بالأمر.
+    //
+    // ⚠️⚠️ ولا يُعالَج هذا بترقيعِ الألوان: حسابٌ من أرقامٍ وجداولَ **لا يحتاج
+    //   صورةً** من أصله. فصارت الورقةُ **نصًّا حقيقيًّا** يُكتب بايتًا بايتًا هنا:
+    //
+    //     • بلا إنترنتَ وبلا نطاقٍ خارجيٍّ وبلا مكتبةٍ — فلا شيءَ يسقط.
+    //     • بلا CSS إطلاقًا — فلا لونَ يُفكَّك ولا حلقةَ تركيزٍ تُفسد الورقة.
+    //     • بضعةُ كيلوباياتٍ بدل ميغاباياتٍ من صورةِ PNG (بياناتُ هاتفِها).
+    //     • ونصٌّ يُبحث فيه ويُنسخ منه رقمٌ، لا لقطةُ شاشة.
+    //     • و«هلفيتيكا» من الخطوطِ الأربعةَ عشرَ المبنيّةِ في كلِّ قارئِ PDF،
+    //       فلا يُضمَّن خطٌّ ولا يزيد الحجم.
+    //
+    // ⚠️ وثمنُ هذا مذكورٌ ولا يُخفى: «هلفيتيكا» لا تحمل حرفًا عربيًّا. وكلُّ
+    //   مسمَّياتِ هذه الورقةِ إنجليزيّةٌ كما هي على الشاشة، والأرقامُ أرقام —
+    //   فلا يضيع شيءٌ من الحساب. والموضعُ الوحيدُ الذي قد يكتب فيه المالكُ
+    //   عربيًّا هو **خانةُ النوت** في الشهورِ المُقيَّدةِ بيده: فما لا يُكتب
+    //   يُعدُّ ويُقال في ذيلِ الورقةِ صريحًا («N note(s) …»)، ولا يُحذف بصمت.
+    // =====================================================================
+
+    // عروضُ محارفِ هلفيتيكا (لكلِّ 1000 وحدةٍ من حجمِ الخطّ) — من مقاييسِ أدوبي.
+    // ⚠️ تُحتاج لمحاذاةِ الأرقامِ إلى اليمين: بلا عرضٍ صحيحٍ تتراقص الأعمدة.
+    //   والأرقامُ العشرةُ عرضُها 556 في العاديِّ والعريضِ معًا، فأعمدةُ المالِ
+    //   تتحاذى تحاذيًا تامًّا بالضرورة لا بالتقريب.
+    const PDF_W_REG = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,
+        556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,
+        1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,
+        667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,
+        333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,
+        556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
+    const PDF_W_BOLD = [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,
+        556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,
+        975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,
+        667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,
+        333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,
+        611,611,389,556,333,611,556,778,556,556,500,389,280,389,584];
+
+    /** عرضُ نصٍّ بالنقاط. المحرفُ غيرُ المعروفِ يُقدَّر بعرضِ الحرفِ المتوسّط. */
+    function pdfTextWidth(text, size, bold) {
+        const w = bold ? PDF_W_BOLD : PDF_W_REG;
+        const s = String(text === undefined || text === null ? '' : text);
+        let total = 0;
+        for (let i = 0; i < s.length; i++) {
+            const c = s.charCodeAt(i);
+            total += (c >= 32 && c <= 126) ? w[c - 32] : 556;
+        }
+        return total * size / 1000;
+    }
+
+    // محارفُ ترقيمٍ شائعةٌ لها موضعٌ في WinAnsi — تُحوَّل ولا تُعدُّ ضائعة.
+    const PDF_WINANSI_MAP = {
+        0x2014: 0x97, 0x2013: 0x96, 0x2019: 0x92, 0x2018: 0x91,
+        0x201C: 0x93, 0x201D: 0x94, 0x2026: 0x85, 0x2022: 0x95,
+        0x00A0: 0x20, 0x200F: -1, 0x200E: -1, 0x061F: -1
+    };
 
     /**
-     * حدودُ تقطيعِ صورةٍ على صفحاتِ A4 — دالّةٌ **نقيّةٌ** بلا رسمٍ ولا DOM.
-     * ⚠️⚠️ الخاصّيّةُ المطلوبةُ واحدةٌ ويفحصها فحصٌ بأرقامٍ معروفة: **مجموعُ
-     *   ارتفاعاتِ القطعِ يساوي ارتفاعَ الصورةِ بالضبط** — أي لا بكسلَ يُفقد.
-     *   وهذا بعينه كان عطلَ تقريرِ الراتب: كان يكتفي بصفحةٍ ويقصّ الباقي.
+     * نصٌّ صالحٌ لسلسلةِ PDF بترميز WinAnsi.
+     * ⚠️⚠️ يُعيد `dropped`: عددَ المحارفِ التي لا يملك الخطُّ شكلًا لها (العربيّة
+     *   مثلًا). وهذا العددُ **يُقال على الورقة**، فلا تخرج ورقةٌ فيها فراغٌ
+     *   مكانَ ملاحظةٍ كتبها المالكُ بيده ويظنّها وصلت.
      */
-    function pdfSlices(canvasW, canvasH, availW, availH) {
-        const out = [];
-        if (!(canvasW > 0 && canvasH > 0 && availW > 0 && availH > 0)) return out;
-        const pxPerMm = canvasW / availW;
-        const sliceH = Math.max(1, Math.floor(availH * pxPerMm));
-        for (let y = 0; y < canvasH; y += sliceH) {
-            const h = Math.min(sliceH, canvasH - y);
-            out.push({ y, h, mmH: h / pxPerMm });
+    function pdfSafeText(text) {
+        const s = String(text === undefined || text === null ? '' : text);
+        let out = '';
+        let dropped = 0;
+        for (let i = 0; i < s.length; i++) {
+            const c = s.codePointAt(i);
+            if (c > 0xFFFF) i++;   // زوجٌ بديلٌ يُعدُّ محرفًا واحدًا
+            let b = -2;
+            if (c === 9) b = 0x20;
+            else if (c >= 32 && c <= 126) b = c;
+            else if (PDF_WINANSI_MAP[c] !== undefined) b = PDF_WINANSI_MAP[c];
+            else if (c >= 0xA1 && c <= 0xFF) b = c;
+            if (b === -1) continue;              // محرفُ اتّجاهٍ لا يُطبع ولا يُعدُّ نقصًا
+            if (b === -2) { dropped++; continue; }
+            const ch = String.fromCharCode(b);
+            // ⚠️ ثلاثةُ محارفَ تُهرَّب داخل سلسلةِ PDF، وبلا تهريبِها يفسد
+            //   الملفُّ كلُّه ولا يفتح: قوسٌ واحدٌ غيرُ متوازنٍ يُنهي السلسلةَ
+            //   في منتصفِ كلمة.
+            out += (ch === '(' || ch === ')' || ch === '\\') ? '\\' + ch : ch;
         }
-        return out;
+        return { text: out, dropped };
+    }
+
+    const PDF_PAGE_W = 595.28;   // A4 بالنقاط
+    const PDF_PAGE_H = 841.89;
+
+    /**
+     * يُجمِّع ملفَّ PDF من صفحاتٍ من «عمليّات» — دالّةٌ **نقيّةٌ** بلا DOM.
+     * `pages`: [[{t:'text',s,x,y,size,bold,grey} | {t:'line',x1,y1,x2,y2,w,grey}]]
+     *
+     * ⚠️⚠️⚠️ جدولُ `xref` يحمل **إزاحةَ كلِّ كائنٍ بالبايت من أوّل الملفّ**،
+     *   و`startxref` يحمل إزاحةَ الجدولِ نفسِه. وبايتٌ واحدٌ خطأٌ هنا = ملفٌّ
+     *   لا يفتح في أيِّ قارئ. فالإزاحاتُ تُحسب من الطولِ الفعليِّ للقطعِ
+     *   المكتوبةِ لا من تقدير، وفحصٌ يقرأ الملفَّ الناتجَ ويتأكّد أنّ كلَّ إزاحةٍ
+     *   تقع فعلًا على «N 0 obj».
+     * ⚠️ وكلُّ البايتاتِ ≤ 255 (WinAnsi + ASCII)، فالطولُ بالمحارفِ = الطولُ
+     *   بالبايتات، ولا يُحتاج ترميزُ UTF-8 ولا يُخطئ العدُّ.
+     */
+    function pdfBytes(pages, meta) {
+        meta = meta || {};
+        const num = (v) => {
+            const n = Math.round(Number(v) * 100) / 100;
+            return String(Object.is(n, -0) ? 0 : n);
+        };
+        const streams = (pages && pages.length ? pages : [[]]).map((ops) => {
+            const parts = [];
+            let grey = null, fontKey = null, fontSize = null;
+            (ops || []).forEach((op) => {
+                if (!op) return;
+                if (op.t === 'text') {
+                    const safe = pdfSafeText(op.s);
+                    if (!safe.text) return;
+                    const g = op.grey === undefined ? 0.1 : op.grey;
+                    if (g !== grey) { parts.push(`${num(g)} ${num(g)} ${num(g)} rg`); grey = g; }
+                    // ⚠️ كلُّ سطرٍ يُعلن خطَّه وحجمَه داخل `BT … ET` الخاصّةِ به،
+                    //   فلا يُحتاج إعلانٌ سابقٌ منفصل. وكان هنا إعلانٌ زائدٌ
+                    //   (`BT /F1 9 Tf ET` قبل كلِّ تغييرِ خطٍّ) يُضخّم الملفَّ بلا
+                    //   أثرٍ على ما يُرسم — فأُسقط.
+                    const key = op.bold ? '/F2' : '/F1';
+                    const size = op.size || 9;
+                    fontKey = key; fontSize = size;
+                    parts.push(`BT ${key} ${num(size)} Tf 1 0 0 1 ${num(op.x)} ${num(op.y)} Tm (${safe.text}) Tj ET`);
+                } else if (op.t === 'line') {
+                    const g = op.grey === undefined ? 0.75 : op.grey;
+                    parts.push(`${num(g)} ${num(g)} ${num(g)} RG ${num(op.w || 0.6)} w`);
+                    parts.push(`${num(op.x1)} ${num(op.y1)} m ${num(op.x2)} ${num(op.y2)} l S`);
+                    grey = null;   // لونُ الحدِّ ولونُ الحشوِ منفصلان، فيُعاد الحشو
+                }
+            });
+            return parts.join('\n') + '\n';
+        });
+
+        const objs = [];
+        const pageCount = streams.length;
+        // 1 الفهرس · 2 الصفحات · 3 و4 الخطّان · ثمّ لكلِّ صفحةٍ كائنان
+        const firstPage = 5;
+        const kids = [];
+        for (let i = 0; i < pageCount; i++) kids.push(`${firstPage + i * 2} 0 R`);
+
+        objs[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+        objs[2] = `<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${pageCount} >>`;
+        objs[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+        objs[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+        streams.forEach((body, i) => {
+            const pageObj = firstPage + i * 2;
+            objs[pageObj] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${num(PDF_PAGE_W)} ${num(PDF_PAGE_H)}] `
+                + `/Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${pageObj + 1} 0 R >>`;
+            objs[pageObj + 1] = `<< /Length ${body.length} >>\nstream\n${body}endstream`;
+        });
+
+        // ⚠️⚠️ `/Info` في المُقدِّمةِ يجب أن يكون **إشارةً غيرَ مباشرةٍ** إلى كائنٍ
+        //   لا قاموسًا مكتوبًا في محلِّه. وكان مكتوبًا في محلِّه، وأكثرُ القارئات
+        //   تتسامح — وبعضُها لا يتسامح، فيُرفض الملفُّ كلُّه لأجلِ عنوانٍ لا أثرَ
+        //   له على الحساب. فصار كائنًا مستقلًّا كما تقول المواصفة.
+        let infoNum = 0;
+        if (meta.title) {
+            infoNum = objs.length;
+            objs[infoNum] = `<< /Title (${pdfSafeText(meta.title).text}) `
+                + `/Producer (Al Sheikha Style) >>`;
+        }
+
+        const chunks = ['%PDF-1.4\n'];
+        let at = chunks[0].length;
+        const offsets = [];
+        for (let i = 1; i < objs.length; i++) {
+            offsets[i] = at;
+            const c = `${i} 0 obj\n${objs[i]}\nendobj\n`;
+            chunks.push(c);
+            at += c.length;
+        }
+        const xrefAt = at;
+        let xref = `xref\n0 ${objs.length}\n0000000000 65535 f \n`;
+        for (let i = 1; i < objs.length; i++) {
+            xref += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+        }
+        xref += `trailer\n<< /Size ${objs.length} /Root 1 0 R${infoNum ? ` /Info ${infoNum} 0 R` : ''} >>\n`
+            + `startxref\n${xrefAt}\n%%EOF\n`;
+        chunks.push(xref);
+
+        const text = chunks.join('');
+        const bytes = new Uint8Array(text.length);
+        for (let i = 0; i < text.length; i++) bytes[i] = text.charCodeAt(i) & 0xFF;
+        return bytes;
     }
 
     /**
@@ -26295,9 +26462,12 @@
     }
 
     // =====================================================================
-    // ⭐⭐⭐⭐ مكتبتا الـPDF — من أكثرَ من مصدرٍ، ومع التحقّقِ بعد التحميل
+    // ⭐⭐⭐⭐ مكتبةُ الـPDF — من أكثرَ من مصدرٍ، ومع التحقّقِ بعد التحميل
     // ---------------------------------------------------------------------
-    // ⚠️⚠️ كانتا تُطلبان من **نطاقٍ واحدٍ** (cdnjs). وإن تعذّر ذلك النطاقُ على
+    // ⚠️ وهي الآن **واحدة**: مكتبةُ تصويرِ الشاشةِ زالت من المشروع كلِّه في
+    //   v241، فكلُّ ورقةٍ تُكتب نصًّا بـ`pdfBytes`. وما بقي `jsPDF` للتقريرِ
+    //   الماليِّ الشهريِّ وحدَه.
+    // ⚠️⚠️ وكانت تُطلب من **نطاقٍ واحدٍ** (cdnjs). وإن تعذّر ذلك النطاقُ على
     //   شبكةٍ واحدةٍ سقطت كلُّ أزرارِ الـPDF في كلِّ اللوحات معًا — وهذا بعينه
     //   شكلُ شكوى المالك. فصار لكلِّ مكتبةٍ ثلاثةُ مصادر.
     //
@@ -26310,15 +26480,6 @@
     //   النسخةِ الواحدة. واستعلامٌ جديدٌ لا يُطابق المخزَّنَ فيُجلب من الشبكةِ حقًّا.
     // =====================================================================
     const PDF_LIB_SOURCES = {
-        html2canvas: {
-            label: 'the drawing library',
-            ready: () => typeof window.html2canvas === 'function',
-            urls: [
-                'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
-                'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
-                'https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js'
-            ]
-        },
         jspdf: {
             label: 'the PDF library',
             ready: () => !!(window.jspdf && typeof window.jspdf.jsPDF === 'function'),
@@ -26367,41 +26528,17 @@
     }
 
     async function ensurePdfLibs(which, load) {
-        const list = Array.isArray(which) && which.length ? which : ['html2canvas', 'jspdf'];
+        const list = Array.isArray(which) && which.length ? which : ['jspdf'];
         // ⚠️ بالترتيب لا بالتوازي: jspdf أصغرُ وقد يسبق، فنُعلن نجاحًا ونصفُ
         //   العُدّةِ غائبٌ ثم يسقط الرسمُ بخطأٍ لا يفهمه أحد.
         for (const n of list) await ensureLib(n, load);
         return true;
     }
 
-    /**
-     * يرسم صورةَ لقطةٍ على مستندِ PDF صفحةً بعد صفحةٍ ثم يُعيده ملفًّا.
-     * ⚠️ مشتركةٌ بين تقريرِ الراتب وحسابِ شانتون: كانت كلُّ واحدةٍ تكتب تقطيعَها
-     *   بيدها، فواحدةٌ تقصّ والأخرى لا تقصّ، والعطلُ موثَّقٌ ولم يُصلَح.
-     */
-    function pdfFromCanvas(canvas, opts) {
-        opts = opts || {};
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-        const MARGIN = opts.margin === undefined ? 10 : opts.margin;
-        const availW = pdf.internal.pageSize.getWidth() - MARGIN * 2;
-        const availH = pdf.internal.pageSize.getHeight() - MARGIN * 2;
-        const slices = pdfSlices(canvas.width, canvas.height, availW, availH);
-        if (!slices.length) throw new Error('the screen measured as empty');
-        slices.forEach((s, i) => {
-            const part = document.createElement('canvas');
-            part.width = canvas.width;
-            part.height = s.h;
-            const ctx = part.getContext('2d');
-            // ⚠️ خلفيّةٌ بيضاءُ تحت القطعة: قطعةٌ شفّافةٌ تُطبع سوداءَ على بعض القارئات.
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, part.width, part.height);
-            ctx.drawImage(canvas, 0, s.y, canvas.width, s.h, 0, 0, canvas.width, s.h);
-            if (i > 0) pdf.addPage();
-            pdf.addImage(part.toDataURL('image/png'), 'PNG', MARGIN, MARGIN, availW, s.mmH);
-        });
-        return { blob: pdf.output('blob'), pages: slices.length };
-    }
+    // ⚠️ كانت هنا `pdfFromCanvas` (صورةُ لقطةٍ ← صفحاتُ PDF) وزالت في v241
+    //   مع آخرِ ورقةٍ كانت تُصوَّر. وقد بقيت لحظةً بعد حذفِ `pdfSlices` التي
+    //   تناديها — أي دالّةٌ تنادي ما لا وجودَ له، وهو بعينه العطلُ الذي
+    //   شكا منه المالكُ في زرِّ التصدير. فأُسقطت، وفحصٌ يحرس أن لا تعود.
 
     /**
      * يكتب دفترَ Excel ملفًّا ثمّ يُسلّمه بالطبقةِ الواحدة.
@@ -27393,63 +27530,265 @@
         }
     };
 
-    // ---- PDF export (real image-based PDF via html2canvas + jsPDF) ---------
-    // Replaces the old window.print() + @media print approach, which produced
-    // a blank/white page on many browsers because print stylesheets don't
-    // reliably apply to elements inside a `display:none` overlay/modal. This
-    // renders the report DIV to a canvas first (forcing it visible & on a
-    // plain white background) and embeds that as a single-page A4 PDF.
+    // ======================================================================
+    // ⭐⭐⭐⭐⭐ ورقةُ الراتبِ — نصٌّ يُقرأ من الشاشةِ نفسِها (v241)
+    // ----------------------------------------------------------------------
+    // ⚠️⚠️⚠️ بصورتَين من المالك ورسالةٍ واحدة: «لا يحمل بي دي إف للحين».
+    //   وزرّا الـPDF للراتبِ كانا **ميتَين كلاهما** منذ أن نُقل التقريرُ إلى
+    //   نافذته الخاصّة — ولكلٍّ منهما عطلٌ مختلف:
     //
-    // ⚠️⚠️⚠️ وهذه الورقةُ تُصوَّر، فهي معرَّضةٌ لعطلِ ورقةِ شانتون نفسِه (v240):
-    //   مُفكِّكُ الألوانِ في مكتبةِ التصوير لا يعرف `color(srgb …)` — القيمةَ
-    //   المحسوبةَ لـ`color-mix()` التي تستعملها ورقةُ هويّتِنا في عشراتِ الموضع —
-    //   فأوّلُ عنصرٍ يحملها **يُبطل التصويرَ كلَّه**. ولأنّ تخطيطَ ورقةِ الراتب
-    //   أطولُ من أن يُعاد كتابتُه نصًّا في هذه الجلسة، يُقطع السببُ من جهةٍ أخرى:
-    //   `.pdf-plain` تفرض على الورقةِ وكلِّ ما فيها ألوانًا صريحةً (أبيضَ وأسودَ
-    //   ورماديًّا) أثناء التصويرِ وحدَه، فلا يبقى لونٌ محسوبٌ من `color-mix`.
-    //   وهي ألوانُ ورقةٍ تُطبع أصلًا، فلا يُفقد معنى.
-    // ⚠️ ولم أستطع تشغيلَ متصفّحٍ هنا لأرى الورقةَ تخرج، فهذا **علاجٌ للسببِ
-    //   المُقاس** لا مُشاهَدةُ نجاح — وقد قيل ذلك للمالك صريحًا.
-    window.downloadPDFReport = async function() {
-        if (!hasFinanceAccess()) { alert("Only Admins or Accountants can export the financial PDF report."); return; }
-        const reportEl = document.getElementById("printableSalaryReport");
-        const empName = document.getElementById("repEmpName").innerText || "Employee";
-        reportEl.classList.add('pdf-plain');
+    //   ١) `exportSalaryReportPDF()` — الزرُّ **داخل** النافذة، وهو الذي صوَّره
+    //      المالك — كان **اسمًا لدالّةٍ لا وجودَ لها في الملفّ**: مكتوبًا في
+    //      `onclick` ولا يُعرَّف في أيِّ موضع. فالضغطُ يرمي `ReferenceError` في
+    //      وحدة التحكّم و**لا يحدث شيءٌ مرئيٌّ إطلاقًا**. ولا فحصَ كان يُمسك هذا:
+    //      لم يكن في المشروع حارسٌ يسأل «هل كلُّ `onclick` له دالّةٌ معرَّفة؟».
+    //
+    //   ٢) `downloadPDFReport()` — الزرُّ في ملفِّ الموظّف — كان يُصوِّر
+    //      `#printableSalaryReport`، وهو **داخل نافذةٍ أخرى** (`#salaryReportModal`)
+    //      مخفيّةٍ بـ`display:none` وقتَ فتحِ الملفّ. وتصويرُ عنصرٍ مخفيٍّ يُعيد
+    //      لوحةً بأبعادٍ صفريّة، فيسقط عند التقطيع — وهذا بعينه نصُّ التنبيه
+    //      الذي صوَّره المالك: «the screen measured as empty». وأرقامُ التقريرِ
+    //      لا تُكتب إلّا في `openSalaryReportModal`، فحتّى لو صُوِّر لخرجت ورقةٌ
+    //      كلُّها شُرَط.
+    //
+    // ⚠️⚠️ ولا شيءَ من هذا هو ما أُصلح في v239 (التسليم) ولا v240 (الألوان):
+    //   إصلاحان صحيحان في موضعَين غيرِ الموضع. وقد قيل ذلك للمالك صريحًا.
+    //
+    // ⚠️ والعلاجُ يقطع العلّتَين معًا: **نصٌّ لا صورة**، يُقرأ من الـDOM.
+    //   و`textContent` لا يحتاج تخطيطًا ولا ظهورًا — فيعمل وإن كانت النافذةُ
+    //   مخفيّةً، أي أنّ العطلَ الثاني يصير غيرَ ذي معنى. وبلا مكتبةٍ ولا نطاقٍ
+    //   خارجيٍّ ولا لونٍ يُفكَّك، كورقةِ شانتون.
+    //
+    // ⚠️⚠️ ويُقرأ من **الشاشة** لا من `computePayroll` ثانيةً، وهذا قرارٌ ماليٌّ لا
+    //   تفضيلُ تنظيم: حسابُ راتبٍ مكتوبٌ مرّتَين يختلف مرّةً، والورقةُ مستندٌ
+    //   يُسلَّم للموظّف («This is an officially approved financial document»).
+    //   فما على الورقةِ هو ما رآه المالكُ على الشاشة حرفًا بحرف. وأيُّ سطرٍ
+    //   يُضاف إلى التقريرِ غدًا يظهر في الورقةِ وحدَه بلا تعديلِ كود.
+    // ======================================================================
+
+    /**
+     * يقرأ مستندًا من الـDOM فيُعيد سطورَه: عنوانٌ · عنوانُ قسمٍ · «اسمٌ = قيمة» · ملاحظة.
+     * ⚠️ عامٌّ عن قصد: لا يعرف شيئًا عن الرواتب، فيصلح لأيِّ ورقةٍ في اللوحة.
+     */
+    function sheetRowsFromDom(root) {
+        const rows = [];
+        const clean = (s) => String(s === undefined || s === null ? '' : s).replace(/\s+/g, ' ').trim();
+        const BLOCK = ['DIV', 'TABLE', 'TBODY', 'THEAD', 'TFOOT', 'TR', 'H1', 'H2', 'H3', 'P', 'UL', 'LI'];
+        const kids = (el) => Array.prototype.slice.call((el && el.children) || []);
+        const tagOf = (el) => String((el && el.tagName) || '').toUpperCase();
+        const walk = (node) => {
+            kids(node).forEach((el) => {
+                const tag = tagOf(el);
+                const text = clean(el.textContent);
+                if (tag === 'H1') { if (text) rows.push({ t: 'title', text }); return; }
+                if (tag === 'H2' || tag === 'H3') { if (text) rows.push({ t: 'section', text }); return; }
+                if (tag === 'TR') {
+                    const cells = kids(el).map((c) => clean(c.textContent));
+                    if (cells.length >= 2) {
+                        rows.push({ t: 'pair', label: cells[0],
+                                    value: cells.slice(1).filter(Boolean).join('   ') });
+                    } else if (cells.length === 1 && cells[0]) {
+                        rows.push({ t: 'note', text: cells[0] });
+                    }
+                    return;
+                }
+                if (tag === 'P') { if (text) rows.push({ t: 'note', text }); return; }
+                // «اسمٌ: قيمة» داخل عنصرٍ واحدٍ — صندوقُ بياناتِ الموظّف مبنيٌّ هكذا
+                const bold = kids(el).filter((c) => tagOf(c) === 'B' || tagOf(c) === 'STRONG')[0];
+                const nested = kids(el).some((c) => BLOCK.indexOf(tagOf(c)) >= 0);
+                if (bold && !nested && text) {
+                    const label = clean(bold.textContent);
+                    let value = text.indexOf(label) === 0 ? text.slice(label.length) : text;
+                    value = clean(value).replace(/^[:\u2013\u2014-]\s*/, '');
+                    rows.push({ t: 'pair', label, value });
+                    return;
+                }
+                if (!kids(el).length) { if (text) rows.push({ t: 'note', text }); return; }
+                walk(el);
+            });
+        };
+        walk(root);
+        return rows;
+    }
+
+    /**
+     * يقسم نصًّا على أسطرٍ لا يتجاوز أحدُها عرضًا معلومًا.
+     * ⚠️ والكلمةُ الأطولُ من السطرِ تُقطَع بالحروف: بلا ذلك تخرج خارجَ الورقة
+     *   فلا تُرى، وأسماءُ بعضِ بنودِ الراتبِ سطرٌ كامل.
+     */
+    function sheetWrap(text, size, bold, maxW) {
+        const fit = (w) => {
+            if (pdfTextWidth(w, size, bold) <= maxW) return [w];
+            const parts = [];
+            let cur = '';
+            for (let i = 0; i < w.length; i++) {
+                const ch = w.charAt(i);
+                if (cur && pdfTextWidth(cur + ch, size, bold) > maxW) { parts.push(cur); cur = ch; }
+                else cur += ch;
+            }
+            if (cur) parts.push(cur);
+            return parts;
+        };
+        const words = String(text === undefined || text === null ? '' : text).split(/\s+/).filter(Boolean);
+        const lines = [];
+        let line = '';
+        words.forEach((word) => {
+            fit(word).forEach((w) => {
+                const probe = line ? `${line} ${w}` : w;
+                if (!line || pdfTextWidth(probe, size, bold) <= maxW) line = probe;
+                else { lines.push(line); line = w; }
+            });
+        });
+        if (line) lines.push(line);
+        return lines.length ? lines : [''];
+    }
+
+    /** يُخرج سطورَ مستندٍ على صفحاتِ A4 — دالّةٌ **نقيّةٌ** تُفحَص بسطورٍ معلومة. */
+    function sheetPdfOps(rows, meta) {
+        meta = meta || {};
+        const M = 48;
+        const R = PDF_PAGE_W - M;
+        const TOP = PDF_PAGE_H - M;
+        const BOTTOM = 66;
+        const pages = [];
+        let ops = null;
+        let y = 0;
+        let dropped = 0;
+        const page = () => { ops = []; pages.push(ops); y = TOP; };
+        const put = (s, x, o) => {
+            o = o || {};
+            dropped += pdfSafeText(s).dropped;
+            ops.push({ t: 'text', s, x, y: o.y === undefined ? y : o.y,
+                       size: o.size || 9.5, bold: !!o.bold, grey: o.grey });
+        };
+        const putC = (s, o) => {
+            o = o || {};
+            put(s, (PDF_PAGE_W - pdfTextWidth(s, o.size || 9.5, !!o.bold)) / 2, o);
+        };
+        const putR = (s, xr, o) => {
+            o = o || {};
+            put(s, xr - pdfTextWidth(s, o.size || 9.5, !!o.bold), o);
+        };
+        const rule = (o) => {
+            o = o || {};
+            ops.push({ t: 'line', x1: o.x1 === undefined ? M : o.x1,
+                       y1: o.y === undefined ? y : o.y, x2: o.x2 === undefined ? R : o.x2,
+                       y2: o.y === undefined ? y : o.y, w: o.w, grey: o.grey });
+        };
+        // ⚠️ يُسأل قبل كلِّ سطر: سطرٌ يُكتب تحت حدِّ الورقةِ لا يظهر في القارئ،
+        //   وهو عطلٌ لا يُرى إلّا بفتحِ الملفّ — أي لا يُرى أبدًا.
+        const room = (need) => { if (y - need < BOTTOM) { page(); return true; } return false; };
+
+        page();
+        let afterTitle = false;
+        (rows || []).forEach((r) => {
+            if (!r) return;
+            if (r.t === 'title') {
+                room(46);
+                putC(r.text, { size: 16, bold: true });
+                y -= 18;
+                afterTitle = true;
+                return;
+            }
+            if (r.t === 'section') {
+                room(36);
+                y -= 10;
+                put(r.text, M, { size: 11, bold: true });
+                y -= 6;
+                rule({ w: 1, grey: 0.5 });
+                y -= 14;
+                afterTitle = false;
+                return;
+            }
+            if (r.t === 'pair') {
+                const vW = pdfTextWidth(r.value, 9.5, true);
+                const lines = sheetWrap(r.label, 9.5, false, Math.max(70, R - M - vW - 16));
+                room(13 * lines.length + 5);
+                const firstY = y;
+                lines.forEach((ln, idx) => {
+                    put(ln, M, { size: 9.5 });
+                    if (idx < lines.length - 1) y -= 12;
+                });
+                putR(r.value, R, { size: 9.5, bold: true, y: firstY });
+                y -= 13;
+                rule({ grey: 0.9, w: 0.4, y: y + 4 });
+                afterTitle = false;
+                return;
+            }
+            // ملاحظة — وأوّلُ ملاحظةٍ بعد العنوان هي عنوانٌ فرعيٌّ فتُوسَّط
+            const size = afterTitle ? 9.5 : 8.5;
+            const lines = sheetWrap(r.text, size, false, R - M);
+            room(12 * lines.length + 5);
+            lines.forEach((ln) => {
+                if (afterTitle) putC(ln, { size, grey: 0.4 });
+                else put(ln, M, { size, grey: 0.45 });
+                y -= size + 2.5;
+            });
+            if (afterTitle) { y -= 6; rule({ w: 1.2, grey: 0.55 }); y -= 16; afterTitle = false; }
+        });
+
+        // ⚠️ الذيلُ بعد اكتمالِ الصفحات: «صفحة ٢ من ٥» لا تُعرف قبل آخرِ سطر.
+        pages.forEach((p, idx) => {
+            p.push({ t: 'line', x1: M, y1: 50, x2: R, y2: 50, w: 0.6, grey: 0.8 });
+            if (meta.footer) p.push({ t: 'text', s: meta.footer, x: M, y: 38, size: 7.5, grey: 0.5 });
+            const pg = `Page ${idx + 1} of ${pages.length}`;
+            p.push({ t: 'text', s: pg, x: R - pdfTextWidth(pg, 7.5, false), y: 38, size: 7.5, grey: 0.5 });
+        });
+        return { pages, dropped };
+    }
+
+    /**
+     * ⭐ الزرُّ الذي صوَّره المالك. وكان **اسمًا بلا دالّة**.
+     */
+    window.exportSalaryReportPDF = async function() {
+        if (!hasFinanceAccess()) { alert('Only Admins or Accountants can export the salary report.'); return; }
+        const el = document.getElementById('printableSalaryReport');
+        const nameEl = document.getElementById('repEmpName');
+        const who = (nameEl && (nameEl.innerText || nameEl.textContent)) || 'Employee';
+        const rows = sheetRowsFromDom(el);
+        // ⚠️⚠️ حرسٌ قبل الكتابة: أرقامُ التقريرِ لا تُكتب إلّا في
+        //   `openSalaryReportModal`. فلو خرجت ورقةٌ قبل ذلك لخرجت **كلُّها شُرَط**
+        //   وبدت مستندًا رسميًّا فارغًا — وهذا أسوأُ من زرٍّ لا يعمل.
+        const filled = rows.filter((r) => r.t === 'pair' && r.value && r.value !== '-').length;
+        if (filled < 3) {
+            alert('There are no figures on this report yet.\n\n'
+                + 'Open it from the Payroll tab: press Report next to the employee, '
+                + 'then press Export PDF here.');
+            return;
+        }
         try {
-            // ⚠️⚠️ المكتبتان تُطلبان صراحةً: كان السطرُ ينادي `html2canvas` اسمًا
-            //   عالميًّا يأتي من وسمَي <script> في الترويسة. فإن تعذّر نطاقُهما
-            //   سقط الزرُّ برسالة «html2canvas is not defined» لا يفهمها أحد.
-            await ensurePdfLibs();
-            const canvas = await html2canvas(reportEl, { backgroundColor: "#ffffff", scale: 2, useCORS: true });
-            // ⚠️⚠️⚠️ وهنا كان العطلُ الموثَّقُ الذي لم يُصلَح: ارتفاعُ الصورةِ
-            //   كان يُقصّ بـ`Math.min(imgHeight, pageHeight - 20)` — أي أنّ كلَّ ما
-            //   زاد على صفحةِ A4 **يُحذف من الملفّ بلا تنبيه**، وتقريرُ راتبٍ
-            //   كاملٍ أطولُ من صفحةٍ دائمًا. فصار التقطيعُ مشتركًا مع حسابِ
-            //   شانتون، وفحصٌ يُثبت أنّ مجموعَ القطعِ = ارتفاعُ الصورةِ بالضبط.
-            const built = pdfFromCanvas(canvas, { margin: 10 });
-            const name = `${empName.replace(/[^A-Z0-9]+/gi, '_')}_Salary_Report.pdf`;
-            const r = await deliverFile(built.blob, name, { title: name });
-            if (r.via === 'share') logAudit('Salary PDF sent', `${empName}, ${built.pages} page(s)`);
-        } catch (error) {
-            // ⚠️⚠️ الرسالةُ تُترجم خطأَ المكتبةِ إلى كلامٍ يُفعَل به شيء: كان
-            //   المالكُ يرى «Attempting to parse an unsupported color function»
-            //   فلا يفهم ولا يُبلّغ، والزرُّ يبدو مكسورًا بلا سبب.
-            const raw = String((error && error.message) || 'unknown reason');
-            const colour = /color|unsupported/i.test(raw);
-            alert(colour
-                ? 'This sheet could not be turned into a picture: the drawing library cannot read '
-                  + 'one of the screen colours.\n\n'
-                  + 'Tell me this happened and I will rebuild this sheet as real text, '
-                  + 'the way Shanton\'s account sheet is now built - that needs no library at all.\n\n'
-                  + `(exact wording: ${raw})`
-                : 'Could not generate PDF: ' + raw);
-        } finally {
-            // ⚠️ تُرفع دائمًا: فشلُ التصويرِ لا يجوز أن يترك ورقةَ الراتبِ على
-            //   الشاشةِ بألوانٍ مسطَّحةٍ بيضاءَ فيظنّ المالكُ أنّ الشاشةَ تلفت.
-            reportEl.classList.remove('pdf-plain');
+            const stamp = todayISO();
+            const built = sheetPdfOps(rows, { footer: `${who}  ·  salary report  ·  printed ${stamp}` });
+            const bytes = pdfBytes(built.pages, { title: `${who} salary report ${stamp}` });
+            const file = `${String(who).replace(/[^A-Z0-9]+/gi, '_')}_Salary_Report_${stamp}.pdf`;
+            const r = await deliverFile(new Blob([bytes], { type: 'application/pdf' }), file, { title: file });
+            logAudit('Salary PDF exported',
+                `${who}, ${built.pages.length} page(s), ${rows.length} line(s), via ${r.via || 'link'}`);
+            if (built.dropped) {
+                alert(`The PDF is ready, but ${built.dropped} letter(s) could not be printed `
+                    + '(the standard PDF font carries no Arabic). Every figure is there.');
+            }
+        } catch (e) {
+            alert('The PDF was not made: ' + ((e && e.message) || 'unknown reason')
+                + '\n\nTell me this exact wording.');
         }
     };
 
+    // ⚠️ الاسمُ القديمُ يبقى عاملًا: زرُّ ملفِّ الموظّف كان يناديه، وأيُّ نداءٍ
+    //   قديمٍ غفلتُ عنه يجب أن يصل إلى الورقةِ الصحيحةِ لا إلى لا شيء.
+    window.downloadPDFReport = function() { return window.exportSalaryReportPDF(); };
+
+    /**
+     * زرُّ ملفِّ الموظّف: يفتح التقريرَ حيث تُكتب أرقامُه ثمّ يُصدَّر من هناك.
+     * ⚠️ كان يُصدِّر مباشرةً من ملفِّ الموظّف، والتقريرُ ليس هناك أصلًا — نُقل
+     *   إلى نافذته الخاصّة ولم يُنقل الزرّ. فصار يفتح النافذةَ الصحيحة.
+     */
+    window.openSalaryReportFromProfile = function() {
+        const idEl = document.getElementById('editEmpOriginalId');
+        const id = (idEl && idEl.value) || '';
+        if (!id) { alert('Open an employee first.'); return; }
+        window.openSalaryReportModal(id);
+    };
     window.loadLeaveRequests = async function() {
         try {
             const q = query(collection(db, "leave_requests"), orderBy("timestamp", "desc"));

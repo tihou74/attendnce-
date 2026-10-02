@@ -4239,66 +4239,12 @@
         return out;
     }
 
-    // ⚠️⚠️ مكتبتا الـPDF ومُحمِّلُهما (`ensurePdfLibs`) و`pdfFromCanvas` **ليست
-    //   هنا**، وهذا مقصود: لوحةُ السيدة فاطمة لا تحتاج مكتبةً إطلاقًا بعد v240 —
-    //   ورقةُ حسابِ شانتون تُكتب نصًّا بـ`pdfBytes` بلا نطاقٍ خارجيٍّ ولا انتظار.
-    //   فمن يحتاج تصويرَ شاشةٍ (تقريرُ الراتب في لوحة المالك) يحمل المُحمِّلَ
-    //   عنده وحدَه، ولا تُحمَّل هاتفَها 400KB لشيءٍ لا تستعمله.
-    // ⚠️ وفحصٌ يحرس أنّ لوحتَها لا تنادي مكتبةَ التصويرِ في **سطرٍ تنفيذيٍّ**
-    //   واحد. والحارسُ يُسقط التعليقاتَ قبل البحث عن قصد: شرحُ سببِ تركِ
-    //   المكتبةِ يجب أن يبقى مكتوبًا، وإلّا أعادها أوّلُ من يقرأ الكود.
+    // ⚠️⚠️ ولا مكتبةَ رسمٍ هنا ولا في أيِّ لوحة: كلُّ ورقةٍ في المشروع تُكتب
+    //   نصًّا بـ`pdfBytes` أدناه. وما بقي من اعتمادٍ خارجيٍّ هو `jsPDF`
+    //   للتقريرِ الماليِّ الشهريِّ وحدَه في لوحة المالك (يعمل، ومُسجَّلٌ في
+    //   `open-issues.md` أنّه آخرُ موضعٍ يحتاج نقلًا إلى الكاتبِ المحليّ).
 
-    /**
-     * حدودُ تقطيعِ صورةٍ على صفحاتِ A4 — دالّةٌ **نقيّةٌ** بلا رسمٍ ولا DOM.
-     * ⚠️⚠️ الخاصّيّةُ المطلوبةُ واحدةٌ ويفحصها فحصٌ بأرقامٍ معروفة: **مجموعُ
-     *   ارتفاعاتِ القطعِ يساوي ارتفاعَ الصورةِ بالضبط** — أي لا بكسلَ يُفقد.
-     *   وهذا بعينه كان عطلَ تقريرِ الراتب: كان يكتفي بصفحةٍ ويقصّ الباقي.
-     */
-    function pdfSlices(canvasW, canvasH, availW, availH) {
-        const out = [];
-        if (!(canvasW > 0 && canvasH > 0 && availW > 0 && availH > 0)) return out;
-        const pxPerMm = canvasW / availW;
-        const sliceH = Math.max(1, Math.floor(availH * pxPerMm));
-        for (let y = 0; y < canvasH; y += sliceH) {
-            const h = Math.min(sliceH, canvasH - y);
-            out.push({ y, h, mmH: h / pxPerMm });
-        }
-        return out;
-    }
 
-    /**
-     * يُحوِّل `data:…;base64,…` المحفوظَ في فايرستور إلى **ملفٍّ حقيقيّ**.
-     * يُعيد null إن كان النصُّ تالفًا.
-     *
-     * ⚠️⚠️ ولا تُفتح هذه العناوينُ بـ`window.open` أبدًا: كلُّ المتصفّحات الحديثة
-     *   تمنع الانتقالَ بصفحةٍ كاملةٍ إلى عنوانِ `data:` (مُنع لأنّ المخادعين
-     *   زيّفوا به صفحاتَ بنوك)، فيُفتح تبويبٌ فارغٌ ثم يُغلق بلا رسالةٍ ولا خطأ.
-     *   هذا كان عطلًا حقيقيًّا شكا منه المالكُ أوّلَ مرّة. و`blob:` من أصل الصفحة
-     *   فلا يُمنع.
-     */
-    function fileFromDataUrl(dataUrl) {
-        const s = String(dataUrl || '');
-        const comma = s.indexOf(',');
-        if (comma < 0) return null;
-        const head = s.slice(0, comma);
-        if (!/^data:/i.test(head)) return null;
-        const mimeMatch = /^data:([^;,]+)/.exec(s);
-        const mime = (mimeMatch ? mimeMatch[1] : '') || 'application/octet-stream';
-        // ⚠️ atob تُخفق على أيّ مسافةٍ أو سطرٍ جديدٍ داخل النصّ، وبعضُ الملفّات
-        //   القديمةِ حُفظت بسطورٍ مقطّعة. فتُنزع المسافاتُ أوّلًا.
-        const payload = s.slice(comma + 1).replace(/\s+/g, '');
-        let bytes;
-        if (/;base64/i.test(head)) {
-            let bin;
-            try { bin = atob(payload); } catch (e) { return null; }
-            bytes = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        } else {
-            try { bytes = new TextEncoder().encode(decodeURIComponent(payload)); }
-            catch (e) { return null; }
-        }
-        return new Blob([bytes], { type: mime });
-    }
 
     // =====================================================================
     // ⭐⭐⭐⭐⭐ كاتبُ PDF بلا أيِّ مكتبة — لحسابِ شانتون (v240)
@@ -4498,6 +4444,41 @@
         for (let i = 0; i < text.length; i++) bytes[i] = text.charCodeAt(i) & 0xFF;
         return bytes;
     }
+
+    /**
+     * يُحوِّل `data:…;base64,…` المحفوظَ في فايرستور إلى **ملفٍّ حقيقيّ**.
+     * يُعيد null إن كان النصُّ تالفًا.
+     *
+     * ⚠️⚠️ ولا تُفتح هذه العناوينُ بـ`window.open` أبدًا: كلُّ المتصفّحات الحديثة
+     *   تمنع الانتقالَ بصفحةٍ كاملةٍ إلى عنوانِ `data:` (مُنع لأنّ المخادعين
+     *   زيّفوا به صفحاتَ بنوك)، فيُفتح تبويبٌ فارغٌ ثم يُغلق بلا رسالةٍ ولا خطأ.
+     *   هذا كان عطلًا حقيقيًّا شكا منه المالكُ أوّلَ مرّة. و`blob:` من أصل الصفحة
+     *   فلا يُمنع.
+     */
+    function fileFromDataUrl(dataUrl) {
+        const s = String(dataUrl || '');
+        const comma = s.indexOf(',');
+        if (comma < 0) return null;
+        const head = s.slice(0, comma);
+        if (!/^data:/i.test(head)) return null;
+        const mimeMatch = /^data:([^;,]+)/.exec(s);
+        const mime = (mimeMatch ? mimeMatch[1] : '') || 'application/octet-stream';
+        // ⚠️ atob تُخفق على أيّ مسافةٍ أو سطرٍ جديدٍ داخل النصّ، وبعضُ الملفّات
+        //   القديمةِ حُفظت بسطورٍ مقطّعة. فتُنزع المسافاتُ أوّلًا.
+        const payload = s.slice(comma + 1).replace(/\s+/g, '');
+        let bytes;
+        if (/;base64/i.test(head)) {
+            let bin;
+            try { bin = atob(payload); } catch (e) { return null; }
+            bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        } else {
+            try { bytes = new TextEncoder().encode(decodeURIComponent(payload)); }
+            catch (e) { return null; }
+        }
+        return new Blob([bytes], { type: mime });
+    }
+
 
     /**
      * ⭐ تخطيطُ ورقةِ الحساب — دالّةٌ **نقيّةٌ**: تأخذ أرقامًا وتُعيد «عمليّاتِ
