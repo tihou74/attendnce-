@@ -12541,14 +12541,44 @@
             // getWorkedDateSet فيصير يوم راحة غير مستحق، ومحرّك الغياب يخصمه.
             // =============================================================
             const cancelledFlag = !!(co && (co.cancelledNoCheckout || co.autoCheckOut));
-            const tooLong = durationTrusted && workMinutes >= SHIFT_CANCEL_AFTER_HOURS * 60;
+            // =============================================================
+            // ⚠️⚠️⚠️ الحدُّ يُحاكم **الرقمَ الذي يُدفع**، لا الرقمَ الموثوقَ وحدَه
+            // -------------------------------------------------------------
+            //   كان الشرطُ: `durationTrusted && workMinutes >= الحدّ`. أي أنّ
+            //   مدّةً **لا نستطيع التحقّقَ منها** كانت تُعفى من الحدِّ وتُدفع كما
+            //   ادّعاها الجهاز. والحارسُ يفتح البابَ في الحالةِ التي وُضع لها.
+            //
+            //   وأرسل المالكُ صفًّا فيه **36h 13m في يومٍ واحد** وسأل: «لماذا 35
+            //   ساعة؟ جُف المشكلة وعدِّلها». وتفكيكُه:
+            //     · جزءٌ: انصرافٌ **بلا دخول** يدّعي 30h 23m (انصرافٌ نُسي يومًا
+            //       ثمّ أُغلق بضغطةِ «split» في اليوم التالي).
+            //     · وجزءٌ: ورديةُ اليوم الحقيقيّة 5h 50m.
+            //   فالمجموعُ 36h في يومٍ أربعٍ وعشرين ساعة.
+            //
+            // ⚠️⚠️ ولم يكن عَرَضًا في العرض: `computePayroll` تجمع دقائقَ الجلسات
+            //   نفسَها، فكانت الثلاثون ساعةً **تُدفع**، وبأجرِ أوفرتايم فوقها.
+            //   وهي بعينها الثغرةُ التي من أجلها وُضع حدُّ الخمسَ عشرةَ ساعة:
+            //   يُنسى الانصرافُ فيُسجَّل بعد يومٍ فتُحتسب ثلاثون ساعة.
+            //
+            // ⚠️ فلا قاعدةَ جديدةٌ هنا ولا حدٌّ تغيّر: القاعدةُ قاعدةُ المالكِ كما
+            //   هي (15 ساعة ⇒ صفرٌ وغياب)، والذي تغيّر أنّها صارت تُطبَّق على
+            //   الرقمِ الذي يُدفع فعلًا — محسوبًا كان أو مُدَّعًى. ومدّةٌ مُدَّعاةٌ
+            //   دون الحدِّ تبقى مدفوعةً كما كانت: ورديةٌ ليليّةٌ دخولُها خارجَ
+            //   نافذةِ العرض عملٌ حقيقيٌّ لا يُصادَر.
+            // =============================================================
+            const tooLong = workMinutes >= SHIFT_CANCEL_AFTER_HOURS * 60;
             const cancelled = cancelledFlag || tooLong;
             let cancelReason = '';
             if (cancelled) {
+                const hrs = Math.floor(workMinutes / 60);
+                const how = durationTrusted
+                    ? `on the server clock`
+                    : (ci ? `as claimed by the device (no server stamp to check it against)`
+                          : `as claimed by the device, and this Check-Out has no Check-In at all, so nothing can verify it`);
                 cancelReason = (co && co.cancelReason)
                     || (co && co.autoReason ? `${CANCEL_REASON_AR} — ${co.autoReason}` : '')
                     || `${CANCEL_REASON_AR} — ${CANCEL_REASON_EN}`
-                        + (tooLong ? ` (the shift ran ${Math.floor(workMinutes / 60)}h on the server clock, past the ${SHIFT_CANCEL_AFTER_HOURS}h limit)` : '');
+                        + (tooLong ? ` (the shift ran ${hrs}h ${how}, past the ${SHIFT_CANCEL_AFTER_HOURS}h limit)` : '');
                 workMinutes = 0;
                 durationLabel = 'CANCELLED';
             }
@@ -12872,11 +12902,22 @@
 
                 // كل شيء على سطر واحد: المدة ثم الوسم بجانبها لا تحته.
                 const label = `${Math.floor(dayTotalMins / 60)}h ${dayTotalMins % 60}m`;
+                // ⚠️⚠️ حرسُ بديهةٍ: اليومُ أربعٌ وعشرون ساعة. ومجموعٌ يتجاوزها
+                //   يعني أنّ جزءًا من يومٍ آخرَ نزل هنا (انصرافٌ بلا دخول يحمل
+                //   ساعاتِ ليلةٍ ماضية). وقد رأى المالكُ «36h 13m» وسأل عنه —
+                //   فلا يُعرض رقمٌ مستحيلٌ بلا أن يُقال إنّه مستحيل.
+                const impossibleDay = dayTotalMins > 24 * 60;
                 const tagText = anySplit
                     ? `SPLIT · ${g.parts.length} parts`
                     : `${g.parts.length} shifts`;
                 const durationHtml =
-                    `<span class="duration-pill"${anyOpen ? ' style="opacity:.85;"' : ''}>${escapeHtml(label)}</span>`
+                    `<span class="duration-pill"${impossibleDay
+                        ? ' style="background: rgba(220,38,38,0.15); color: var(--danger); font-weight: 900;"'
+                            + ' title="More than 24 hours on one day — impossible. One of the parts below has no Check-In,'
+                            + ' so its duration is only what a device claimed. Open the 48-hour switch above to find its'
+                            + ' Check-In, or correct that shift by hand."'
+                        : (anyOpen ? ' style="opacity:.85;"' : '')}>${escapeHtml(label)}`
+                    + `${impossibleDay ? ' &#9888;' : ''}</span>`
                     + ` <span title="${anySplit
                         ? 'Split shift — one working day made of ' + g.parts.length + ' parts. Overtime and absence are calculated on this combined total.'
                         : g.parts.length + ' separate shifts on the same day. Overtime and absence are calculated on this combined total.'}" style="color: #6366f1; font-size: 11px; font-weight: 800; white-space: nowrap;">${escapeHtml(tagText)}</span>`
@@ -23939,7 +23980,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v245';
+        const APP_BUILD = 'v246';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
