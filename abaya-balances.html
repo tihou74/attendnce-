@@ -3968,22 +3968,25 @@
     }
 
     // =====================================================================
-    // ⭐⭐⭐⭐ تحميلُ النافذة PDF
+    // ⭐⭐⭐⭐ ورقةُ حسابِ شانتون — تاريخُ قرارَين، لأنّ الثاني نقَض الأوّل
     // ---------------------------------------------------------------------
-    // ⚠️⚠️⚠️ **صورةٌ لا نصّ**، وهذا قرارٌ لا تفضيل: `jsPDF` في هذا المشروع لا
-    //   يكتب عربيةً (لا خطَّ عربيًّا مُضمَّنًا فيه)، والنصُّ العربيُّ يخرج مربّعاتٍ
-    //   أو معكوسًا. فتُصوَّر النافذةُ كما تُرى — فيخرج الـPDF مطابقًا للشاشة حرفًا
-    //   بحرف، عربيَّها وإنجليزيَّها وأرقامَها.
+    // ⚠️ كان هنا تعليقٌ يقول: «**صورةٌ لا نصّ**، وهذا قرارٌ لا تفضيل: مكتبةُ
+    //   الـPDF لا تكتب عربيّةً، فتُصوَّر النافذةُ كما تُرى فتخرج مطابقةً للشاشة
+    //   حرفًا بحرف». وكان صحيحًا في حينه. **ثمّ سقط بالتجربة** (v240): التصويرُ
+    //   نفسُه لا يعمل في هذا المشروع إطلاقًا، لأنّ مُفكِّكَ الألوانِ في مكتبةِ
+    //   التصوير لا يعرف `color(srgb …)` — وهي القيمةُ المحسوبةُ لـ`color-mix()`
+    //   التي تستعملها ورقةُ هويّتِنا. فأوّلُ عنصرٍ يحملها يُبطل التصويرَ كلَّه،
+    //   ولا تُصنع ورقةٌ من أصلها. والشرحُ الكاملُ عند `pdfBytes` أدناه.
     //
-    // ⚠️⚠️ والمكتبتان تُحمَّلان **عند أوّل ضغطة** لا مع الصفحة: هذه الصفحة تُفتح
-    //   على هاتف السيدة فاطمة كلَّ يوم، وتحميلُ مكتبتَي رسمٍ (نحو 400KB) في كلِّ
-    //   فتحةٍ من أجل زرٍّ يُضغط مرّةً في الشهر إهدارٌ لبياناتها. ونطاقُ cdnjs
-    //   مُدرَجٌ في `CACHEABLE_HOSTS` في `sw.js` فتُخزَّن بعد أوّل مرّة.
+    // ⚠️⚠️ فصارت الورقةُ **نصًّا حقيقيًّا** مكتوبًا هنا بايتًا بايتًا: بلا مكتبةٍ
+    //   ولا نطاقٍ خارجيٍّ ولا انتظارِ شبكةٍ ولا CSS. وثمنُ ذلك مُعلَنٌ على الورقةِ
+    //   نفسِها: خطُّ «هلفيتيكا» لا يحمل حرفًا عربيًّا، ومُسمَّياتُ هذه الورقةِ
+    //   كلُّها إنجليزيّةٌ كما على الشاشة والأرقامُ أرقام — والموضعُ الوحيدُ الذي
+    //   قد يحمل عربيّةً (خانةُ النوت) يُعدُّ ما سقط منه ويُكتب عددُه في الذيل.
     //
-    // ⚠️⚠️ والتقطيعُ على صفحاتٍ **مقصود**: في هذا المشروع دالّةُ PDF أخرى
-    //   (`downloadPDFReport` في لوحة المالك) تقصُّ كلَّ ما زاد على صفحةِ A4
-    //   واحدةٍ — عطلٌ موثَّقٌ في تعليقها. فلا يُنسخ هنا: الصورةُ تُقسَّم إلى صفحاتٍ
-    //   بعددِ ما تحتاج، وحسابُ حدِّ الصفحة من عرضِ الصورة نفسِها لا من رقمٍ ثابت.
+    // ⚠️ وما أُبقي من القرارِ الأوّل: **التقطيعُ على صفحاتٍ بعددِ ما تحتاج**،
+    //   وسؤالُ «هل بقي موضعٌ لهذا السطر؟» قبل كلِّ سطر. فعطلُ القصِّ إلى صفحةٍ
+    //   واحدةٍ كان عطلًا حقيقيًّا في هذا المشروع (تقريرُ الراتب) لا احتمالًا.
     // =====================================================================
     // =====================================================================
     // ⭐⭐⭐⭐⭐ تسليمُ الملفِّ إلى يدِ المالك — طبقةٌ واحدةٌ تخدم كلَّ اللوحات
@@ -4236,85 +4239,14 @@
         return out;
     }
 
-    // =====================================================================
-    // ⭐⭐⭐⭐ مكتبتا الـPDF — من أكثرَ من مصدرٍ، ومع التحقّقِ بعد التحميل
-    // ---------------------------------------------------------------------
-    // ⚠️⚠️ كانتا تُطلبان من **نطاقٍ واحدٍ** (cdnjs). وإن تعذّر ذلك النطاقُ على
-    //   شبكةٍ واحدةٍ سقطت كلُّ أزرارِ الـPDF في كلِّ اللوحات معًا — وهذا بعينه
-    //   شكلُ شكوى المالك. فصار لكلِّ مكتبةٍ ثلاثةُ مصادر.
-    //
-    // ⚠️⚠️ والتحقُّقُ **بعد** التحميل لا بنجاح الطلب: ردٌّ بحالة 200 قد يحمل
-    //   صفحةَ خطأٍ أو بايتاتٍ مقطوعة، فلا يُعلَن النجاحُ إلّا إذا ظهر الاسمُ
-    //   العالميُّ فعلًا (`window.jspdf.jsPDF`).
-    //
-    // ⚠️ ومرورٌ ثانٍ بـ`?retry=` إن فشل الأوّلُ كلُّه: العاملُ الخِدميُّ يُخزِّن
-    //   ردودَ هذه النطاقات، وردٌّ معتِمٌ (opaque) تالفٌ يُخزَّن ولا يُستبدل داخل
-    //   النسخةِ الواحدة. واستعلامٌ جديدٌ لا يُطابق المخزَّنَ فيُجلب من الشبكةِ حقًّا.
-    // =====================================================================
-    const PDF_LIB_SOURCES = {
-        html2canvas: {
-            label: 'the drawing library',
-            ready: () => typeof window.html2canvas === 'function',
-            urls: [
-                'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
-                'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
-                'https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js'
-            ]
-        },
-        jspdf: {
-            label: 'the PDF library',
-            ready: () => !!(window.jspdf && typeof window.jspdf.jsPDF === 'function'),
-            urls: [
-                'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-                'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
-                'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js'
-            ]
-        }
-    };
-
-    const pdfScriptLoads = new Map();
-    function loadScriptOnce(src) {
-        if (pdfScriptLoads.has(src)) return pdfScriptLoads.get(src);
-        const p = new Promise((resolve, reject) => {
-            const s = document.createElement('script');
-            s.src = src;
-            s.async = true;
-            s.onload = () => resolve(src);
-            s.onerror = () => reject(new Error(`could not download ${src}`));
-            document.head.appendChild(s);
-        }).catch((e) => {
-            // ⚠️ مصدرٌ فاشلٌ لا يُحفظ فاشلًا للأبد: قد يكون انقطاعًا لحظيًّا،
-            //   والضغطةُ التالية تستحقّ محاولةً جديدة.
-            pdfScriptLoads.delete(src);
-            throw e;
-        });
-        pdfScriptLoads.set(src, p);
-        return p;
-    }
-
-    async function ensureLib(name, load) {
-        const spec = PDF_LIB_SOURCES[name];
-        if (!spec) throw new Error(`unknown library: ${name}`);
-        if (spec.ready()) return true;
-        const get = load || loadScriptOnce;
-        for (let pass = 0; pass < 2; pass++) {
-            for (const base of spec.urls) {
-                const url = pass === 0 ? base : `${base}${base.indexOf('?') < 0 ? '?' : '&'}retry=${Date.now()}`;
-                try { await get(url); } catch (e) { continue; }
-                if (spec.ready()) return true;
-            }
-        }
-        throw new Error(`${spec.label} could not be loaded from any of its ${spec.urls.length} sources`
-            + ' — the first time needs internet');
-    }
-
-    async function ensurePdfLibs(which, load) {
-        const list = Array.isArray(which) && which.length ? which : ['html2canvas', 'jspdf'];
-        // ⚠️ بالترتيب لا بالتوازي: jspdf أصغرُ وقد يسبق، فنُعلن نجاحًا ونصفُ
-        //   العُدّةِ غائبٌ ثم يسقط الرسمُ بخطأٍ لا يفهمه أحد.
-        for (const n of list) await ensureLib(n, load);
-        return true;
-    }
+    // ⚠️⚠️ مكتبتا الـPDF ومُحمِّلُهما (`ensurePdfLibs`) و`pdfFromCanvas` **ليست
+    //   هنا**، وهذا مقصود: لوحةُ السيدة فاطمة لا تحتاج مكتبةً إطلاقًا بعد v240 —
+    //   ورقةُ حسابِ شانتون تُكتب نصًّا بـ`pdfBytes` بلا نطاقٍ خارجيٍّ ولا انتظار.
+    //   فمن يحتاج تصويرَ شاشةٍ (تقريرُ الراتب في لوحة المالك) يحمل المُحمِّلَ
+    //   عنده وحدَه، ولا تُحمَّل هاتفَها 400KB لشيءٍ لا تستعمله.
+    // ⚠️ وفحصٌ يحرس أنّ لوحتَها لا تنادي مكتبةَ التصويرِ في **سطرٍ تنفيذيٍّ**
+    //   واحد. والحارسُ يُسقط التعليقاتَ قبل البحث عن قصد: شرحُ سببِ تركِ
+    //   المكتبةِ يجب أن يبقى مكتوبًا، وإلّا أعادها أوّلُ من يقرأ الكود.
 
     /**
      * حدودُ تقطيعِ صورةٍ على صفحاتِ A4 — دالّةٌ **نقيّةٌ** بلا رسمٍ ولا DOM.
@@ -4333,36 +4265,6 @@
         }
         return out;
     }
-
-    /**
-     * يرسم صورةَ لقطةٍ على مستندِ PDF صفحةً بعد صفحةٍ ثم يُعيده ملفًّا.
-     * ⚠️ مشتركةٌ بين تقريرِ الراتب وحسابِ شانتون: كانت كلُّ واحدةٍ تكتب تقطيعَها
-     *   بيدها، فواحدةٌ تقصّ والأخرى لا تقصّ، والعطلُ موثَّقٌ ولم يُصلَح.
-     */
-    function pdfFromCanvas(canvas, opts) {
-        opts = opts || {};
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-        const MARGIN = opts.margin === undefined ? 10 : opts.margin;
-        const availW = pdf.internal.pageSize.getWidth() - MARGIN * 2;
-        const availH = pdf.internal.pageSize.getHeight() - MARGIN * 2;
-        const slices = pdfSlices(canvas.width, canvas.height, availW, availH);
-        if (!slices.length) throw new Error('the screen measured as empty');
-        slices.forEach((s, i) => {
-            const part = document.createElement('canvas');
-            part.width = canvas.width;
-            part.height = s.h;
-            const ctx = part.getContext('2d');
-            // ⚠️ خلفيّةٌ بيضاءُ تحت القطعة: قطعةٌ شفّافةٌ تُطبع سوداءَ على بعض القارئات.
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, part.width, part.height);
-            ctx.drawImage(canvas, 0, s.y, canvas.width, s.h, 0, 0, canvas.width, s.h);
-            if (i > 0) pdf.addPage();
-            pdf.addImage(part.toDataURL('image/png'), 'PNG', MARGIN, MARGIN, availW, s.mmH);
-        });
-        return { blob: pdf.output('blob'), pages: slices.length };
-    }
-
 
     /**
      * يُحوِّل `data:…;base64,…` المحفوظَ في فايرستور إلى **ملفٍّ حقيقيّ**.
@@ -4398,6 +4300,475 @@
         return new Blob([bytes], { type: mime });
     }
 
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ كاتبُ PDF بلا أيِّ مكتبة — لحسابِ شانتون (v240)
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️⚠️ بشكوى المالك: «شانتون في بانل المدام لا يحمل البي دي إف، عدِّله».
+    //   وفي v239 صار التسليمُ مضمونًا (مشاركةٌ ← تنزيلٌ ← شريطٌ مرئيّ)، فبقي أنّ
+    //   **الورقةَ نفسَها لم تُصنع**. والسببُ قياسٌ لا تخمين:
+    //
+    //   `html2canvas 1.4.1` تقرأ اللونَ المحسوبَ لكلِّ عنصرٍ وتُفكِّكه بنفسها،
+    //   ومُفكِّكُها يعرف `#hex` و`rgb()` و`hsl()` والأسماءَ **ولا شيءَ غيرَها**.
+    //   وهذا المشروع يستعمل `color-mix(in srgb, …)` في ورقةِ الهوية وفي هذا
+    //   الملفّ (`--wine-tint-border` · `--wine-tint-bg` · `--scrim` · حلقةُ
+    //   التركيز)، والمتصفّحاتُ الحديثةُ تُخرج قيمتَها المحسوبةَ على صورةِ
+    //   `color(srgb … )`. فأوّلُ عنصرٍ يحمل مثلَ هذه القيمةِ **يرمي خطأً يُبطل
+    //   التصويرَ كلَّه** — أي لا ورقةَ أصلًا، ولا علاقةَ للتنزيل بالأمر.
+    //
+    // ⚠️⚠️ ولا يُعالَج هذا بترقيعِ الألوان: حسابٌ من أرقامٍ وجداولَ **لا يحتاج
+    //   صورةً** من أصله. فصارت الورقةُ **نصًّا حقيقيًّا** يُكتب بايتًا بايتًا هنا:
+    //
+    //     • بلا إنترنتَ وبلا نطاقٍ خارجيٍّ وبلا مكتبةٍ — فلا شيءَ يسقط.
+    //     • بلا CSS إطلاقًا — فلا لونَ يُفكَّك ولا حلقةَ تركيزٍ تُفسد الورقة.
+    //     • بضعةُ كيلوباياتٍ بدل ميغاباياتٍ من صورةِ PNG (بياناتُ هاتفِها).
+    //     • ونصٌّ يُبحث فيه ويُنسخ منه رقمٌ، لا لقطةُ شاشة.
+    //     • و«هلفيتيكا» من الخطوطِ الأربعةَ عشرَ المبنيّةِ في كلِّ قارئِ PDF،
+    //       فلا يُضمَّن خطٌّ ولا يزيد الحجم.
+    //
+    // ⚠️ وثمنُ هذا مذكورٌ ولا يُخفى: «هلفيتيكا» لا تحمل حرفًا عربيًّا. وكلُّ
+    //   مسمَّياتِ هذه الورقةِ إنجليزيّةٌ كما هي على الشاشة، والأرقامُ أرقام —
+    //   فلا يضيع شيءٌ من الحساب. والموضعُ الوحيدُ الذي قد يكتب فيه المالكُ
+    //   عربيًّا هو **خانةُ النوت** في الشهورِ المُقيَّدةِ بيده: فما لا يُكتب
+    //   يُعدُّ ويُقال في ذيلِ الورقةِ صريحًا («N note(s) …»)، ولا يُحذف بصمت.
+    // =====================================================================
+
+    // عروضُ محارفِ هلفيتيكا (لكلِّ 1000 وحدةٍ من حجمِ الخطّ) — من مقاييسِ أدوبي.
+    // ⚠️ تُحتاج لمحاذاةِ الأرقامِ إلى اليمين: بلا عرضٍ صحيحٍ تتراقص الأعمدة.
+    //   والأرقامُ العشرةُ عرضُها 556 في العاديِّ والعريضِ معًا، فأعمدةُ المالِ
+    //   تتحاذى تحاذيًا تامًّا بالضرورة لا بالتقريب.
+    const PDF_W_REG = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,
+        556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,
+        1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,
+        667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,
+        333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,
+        556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
+    const PDF_W_BOLD = [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,
+        556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,
+        975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,
+        667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,
+        333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,
+        611,611,389,556,333,611,556,778,556,556,500,389,280,389,584];
+
+    /** عرضُ نصٍّ بالنقاط. المحرفُ غيرُ المعروفِ يُقدَّر بعرضِ الحرفِ المتوسّط. */
+    function pdfTextWidth(text, size, bold) {
+        const w = bold ? PDF_W_BOLD : PDF_W_REG;
+        const s = String(text === undefined || text === null ? '' : text);
+        let total = 0;
+        for (let i = 0; i < s.length; i++) {
+            const c = s.charCodeAt(i);
+            total += (c >= 32 && c <= 126) ? w[c - 32] : 556;
+        }
+        return total * size / 1000;
+    }
+
+    // محارفُ ترقيمٍ شائعةٌ لها موضعٌ في WinAnsi — تُحوَّل ولا تُعدُّ ضائعة.
+    const PDF_WINANSI_MAP = {
+        0x2014: 0x97, 0x2013: 0x96, 0x2019: 0x92, 0x2018: 0x91,
+        0x201C: 0x93, 0x201D: 0x94, 0x2026: 0x85, 0x2022: 0x95,
+        0x00A0: 0x20, 0x200F: -1, 0x200E: -1, 0x061F: -1
+    };
+
+    /**
+     * نصٌّ صالحٌ لسلسلةِ PDF بترميز WinAnsi.
+     * ⚠️⚠️ يُعيد `dropped`: عددَ المحارفِ التي لا يملك الخطُّ شكلًا لها (العربيّة
+     *   مثلًا). وهذا العددُ **يُقال على الورقة**، فلا تخرج ورقةٌ فيها فراغٌ
+     *   مكانَ ملاحظةٍ كتبها المالكُ بيده ويظنّها وصلت.
+     */
+    function pdfSafeText(text) {
+        const s = String(text === undefined || text === null ? '' : text);
+        let out = '';
+        let dropped = 0;
+        for (let i = 0; i < s.length; i++) {
+            const c = s.codePointAt(i);
+            if (c > 0xFFFF) i++;   // زوجٌ بديلٌ يُعدُّ محرفًا واحدًا
+            let b = -2;
+            if (c === 9) b = 0x20;
+            else if (c >= 32 && c <= 126) b = c;
+            else if (PDF_WINANSI_MAP[c] !== undefined) b = PDF_WINANSI_MAP[c];
+            else if (c >= 0xA1 && c <= 0xFF) b = c;
+            if (b === -1) continue;              // محرفُ اتّجاهٍ لا يُطبع ولا يُعدُّ نقصًا
+            if (b === -2) { dropped++; continue; }
+            const ch = String.fromCharCode(b);
+            // ⚠️ ثلاثةُ محارفَ تُهرَّب داخل سلسلةِ PDF، وبلا تهريبِها يفسد
+            //   الملفُّ كلُّه ولا يفتح: قوسٌ واحدٌ غيرُ متوازنٍ يُنهي السلسلةَ
+            //   في منتصفِ كلمة.
+            out += (ch === '(' || ch === ')' || ch === '\\') ? '\\' + ch : ch;
+        }
+        return { text: out, dropped };
+    }
+
+    const PDF_PAGE_W = 595.28;   // A4 بالنقاط
+    const PDF_PAGE_H = 841.89;
+
+    /**
+     * يُجمِّع ملفَّ PDF من صفحاتٍ من «عمليّات» — دالّةٌ **نقيّةٌ** بلا DOM.
+     * `pages`: [[{t:'text',s,x,y,size,bold,grey} | {t:'line',x1,y1,x2,y2,w,grey}]]
+     *
+     * ⚠️⚠️⚠️ جدولُ `xref` يحمل **إزاحةَ كلِّ كائنٍ بالبايت من أوّل الملفّ**،
+     *   و`startxref` يحمل إزاحةَ الجدولِ نفسِه. وبايتٌ واحدٌ خطأٌ هنا = ملفٌّ
+     *   لا يفتح في أيِّ قارئ. فالإزاحاتُ تُحسب من الطولِ الفعليِّ للقطعِ
+     *   المكتوبةِ لا من تقدير، وفحصٌ يقرأ الملفَّ الناتجَ ويتأكّد أنّ كلَّ إزاحةٍ
+     *   تقع فعلًا على «N 0 obj».
+     * ⚠️ وكلُّ البايتاتِ ≤ 255 (WinAnsi + ASCII)، فالطولُ بالمحارفِ = الطولُ
+     *   بالبايتات، ولا يُحتاج ترميزُ UTF-8 ولا يُخطئ العدُّ.
+     */
+    function pdfBytes(pages, meta) {
+        meta = meta || {};
+        const num = (v) => {
+            const n = Math.round(Number(v) * 100) / 100;
+            return String(Object.is(n, -0) ? 0 : n);
+        };
+        const streams = (pages && pages.length ? pages : [[]]).map((ops) => {
+            const parts = [];
+            let grey = null, fontKey = null, fontSize = null;
+            (ops || []).forEach((op) => {
+                if (!op) return;
+                if (op.t === 'text') {
+                    const safe = pdfSafeText(op.s);
+                    if (!safe.text) return;
+                    const g = op.grey === undefined ? 0.1 : op.grey;
+                    if (g !== grey) { parts.push(`${num(g)} ${num(g)} ${num(g)} rg`); grey = g; }
+                    // ⚠️ كلُّ سطرٍ يُعلن خطَّه وحجمَه داخل `BT … ET` الخاصّةِ به،
+                    //   فلا يُحتاج إعلانٌ سابقٌ منفصل. وكان هنا إعلانٌ زائدٌ
+                    //   (`BT /F1 9 Tf ET` قبل كلِّ تغييرِ خطٍّ) يُضخّم الملفَّ بلا
+                    //   أثرٍ على ما يُرسم — فأُسقط.
+                    const key = op.bold ? '/F2' : '/F1';
+                    const size = op.size || 9;
+                    fontKey = key; fontSize = size;
+                    parts.push(`BT ${key} ${num(size)} Tf 1 0 0 1 ${num(op.x)} ${num(op.y)} Tm (${safe.text}) Tj ET`);
+                } else if (op.t === 'line') {
+                    const g = op.grey === undefined ? 0.75 : op.grey;
+                    parts.push(`${num(g)} ${num(g)} ${num(g)} RG ${num(op.w || 0.6)} w`);
+                    parts.push(`${num(op.x1)} ${num(op.y1)} m ${num(op.x2)} ${num(op.y2)} l S`);
+                    grey = null;   // لونُ الحدِّ ولونُ الحشوِ منفصلان، فيُعاد الحشو
+                }
+            });
+            return parts.join('\n') + '\n';
+        });
+
+        const objs = [];
+        const pageCount = streams.length;
+        // 1 الفهرس · 2 الصفحات · 3 و4 الخطّان · ثمّ لكلِّ صفحةٍ كائنان
+        const firstPage = 5;
+        const kids = [];
+        for (let i = 0; i < pageCount; i++) kids.push(`${firstPage + i * 2} 0 R`);
+
+        objs[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+        objs[2] = `<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${pageCount} >>`;
+        objs[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+        objs[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+        streams.forEach((body, i) => {
+            const pageObj = firstPage + i * 2;
+            objs[pageObj] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${num(PDF_PAGE_W)} ${num(PDF_PAGE_H)}] `
+                + `/Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${pageObj + 1} 0 R >>`;
+            objs[pageObj + 1] = `<< /Length ${body.length} >>\nstream\n${body}endstream`;
+        });
+
+        // ⚠️⚠️ `/Info` في المُقدِّمةِ يجب أن يكون **إشارةً غيرَ مباشرةٍ** إلى كائنٍ
+        //   لا قاموسًا مكتوبًا في محلِّه. وكان مكتوبًا في محلِّه، وأكثرُ القارئات
+        //   تتسامح — وبعضُها لا يتسامح، فيُرفض الملفُّ كلُّه لأجلِ عنوانٍ لا أثرَ
+        //   له على الحساب. فصار كائنًا مستقلًّا كما تقول المواصفة.
+        let infoNum = 0;
+        if (meta.title) {
+            infoNum = objs.length;
+            objs[infoNum] = `<< /Title (${pdfSafeText(meta.title).text}) `
+                + `/Producer (Al Sheikha Style) >>`;
+        }
+
+        const chunks = ['%PDF-1.4\n'];
+        let at = chunks[0].length;
+        const offsets = [];
+        for (let i = 1; i < objs.length; i++) {
+            offsets[i] = at;
+            const c = `${i} 0 obj\n${objs[i]}\nendobj\n`;
+            chunks.push(c);
+            at += c.length;
+        }
+        const xrefAt = at;
+        let xref = `xref\n0 ${objs.length}\n0000000000 65535 f \n`;
+        for (let i = 1; i < objs.length; i++) {
+            xref += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+        }
+        xref += `trailer\n<< /Size ${objs.length} /Root 1 0 R${infoNum ? ` /Info ${infoNum} 0 R` : ''} >>\n`
+            + `startxref\n${xrefAt}\n%%EOF\n`;
+        chunks.push(xref);
+
+        const text = chunks.join('');
+        const bytes = new Uint8Array(text.length);
+        for (let i = 0; i < text.length; i++) bytes[i] = text.charCodeAt(i) & 0xFF;
+        return bytes;
+    }
+
+    /**
+     * ⭐ تخطيطُ ورقةِ الحساب — دالّةٌ **نقيّةٌ**: تأخذ أرقامًا وتُعيد «عمليّاتِ
+     *   رسمٍ» على صفحات. لا DOM ولا شبكةَ ولا وقتَ ولا عشوائيّة — فتُفحَص
+     *   بأرقامٍ معروفةٍ ويُقرأ ناتجُها حرفًا بحرف.
+     *
+     * ⚠️⚠️ والورقةُ تعرض **كلَّ الشهور** لا أحدثَ اثنَي عشرَ كما الشاشة: الشاشةُ
+     *   للنظرِ السريع، والورقةُ تُحفظ وتُرسل إلى شانتون — وكشفُ حسابٍ ناقصٌ
+     *   شهورًا بلا أن يُقال ذلك هو كشفٌ مُضلِّل. ويُكتب على الورقةِ أنّها كاملة.
+     */
+    function shStatementPdfOps(d, fmt) {
+        const M = 42;
+        const R = PDF_PAGE_W - M;
+        const TOP = PDF_PAGE_H - M;
+        const BOTTOM = 62;
+        const money = typeof fmt === 'function' ? fmt : (v) => String(Number(v) || 0);
+        const pages = [];
+        let ops = null;
+        let y = 0;
+        let dropped = 0;
+
+        const page = () => { ops = []; pages.push(ops); y = TOP; };
+        const put = (s, x, o) => {
+            o = o || {};
+            dropped += pdfSafeText(s).dropped;
+            ops.push({ t: 'text', s, x, y: o.y === undefined ? y : o.y,
+                       size: o.size || 9, bold: !!o.bold, grey: o.grey });
+        };
+        const putR = (s, xr, o) => {
+            o = o || {};
+            put(s, xr - pdfTextWidth(s, o.size || 9, !!o.bold), o);
+        };
+        const rule = (o) => {
+            o = o || {};
+            ops.push({ t: 'line', x1: o.x1 === undefined ? M : o.x1, y1: o.y === undefined ? y : o.y,
+                       x2: o.x2 === undefined ? R : o.x2, y2: o.y === undefined ? y : o.y,
+                       w: o.w, grey: o.grey });
+        };
+        // ⚠️ يُسأل **قبل** كلِّ سطرٍ: هل بقي له موضعٌ في هذه الصفحة؟ وبلا هذا
+        //   يُكتب السطرُ تحت حدِّ الورقةِ فلا يظهر في القارئ — وهو عطلٌ لا يُرى
+        //   إلّا بفتحِ الملفّ، أي لا يُرى أبدًا.
+        const room = (need) => { if (y - need < BOTTOM) { page(); return true; } return false; };
+
+        page();
+
+        // ---------------------------------------------------------- الترويسة
+        put('SHANTON - ACCOUNT STATEMENT', M, { size: 16, bold: true });
+        y -= 17;
+        put('Al Sheikha Style  ' + String.fromCharCode(0xB7) + '  abayas taken on consignment', M, { size: 9, grey: 0.45 });
+        y -= 12;
+        put(`Printed ${d.stampISO} at ${d.stampTime} Qatar time`, M, { size: 9, grey: 0.45 });
+        y -= 8;
+        rule({ w: 1.2, grey: 0.55 });
+        y -= 22;
+
+        // ------------------------------------------------------ الرصيدُ الحاكم
+        put(d.credit ? 'PAID TO HER IN ADVANCE' : 'REMAINING TO PAY HER', M, { size: 10, bold: true, grey: 0.35 });
+        putR(`${money(Math.abs(d.remaining))} QAR`, R, { size: 20, bold: true });
+        y -= 24;
+        rule({ grey: 0.82 });
+        y -= 18;
+
+        // ------------------------------------------------------------ الملخّص
+        const row = (k, v, o) => {
+            o = o || {};
+            room(16);
+            put(k, M, { size: 9.5, bold: !!o.bold, grey: o.grey });
+            putR(v, R, { size: 9.5, bold: o.bold === undefined ? true : o.bold, grey: o.grey });
+            y -= 15;
+        };
+        row('Became hers, all time', money(d.due));
+        row('Paid to her, all time', money(d.paid));
+        if (d.lastPaidOn) row('Last payment', d.lastPaidOn, { bold: false, grey: 0.4 });
+        row('Her pieces sold, all time', String(d.pieces));
+        row('Collected from her abayas', money(d.collected));
+        row(`Our commission (${money(d.perPiece)} per piece)`, money(d.commission));
+        if (d.adjustedHers) row('From months recorded by hand', money(d.adjustedHers));
+        if (d.openingDue) row(`Balance before ${d.openingDate}`, money(d.openingDue));
+
+        const warn = (s) => {
+            room(26);
+            y -= 4;
+            put(s, M, { size: 8.5, bold: true, grey: 0.15 });
+            y -= 14;
+        };
+        if (d.credit) {
+            warn(`She has been paid ${money(Math.abs(d.remaining))} QAR more than she is owed`
+                + ' - a payment in advance, or the same payment entered twice.');
+        }
+        if (d.badPayments) {
+            warn(`${d.badPayments} payment row(s) could not be read and are NOT counted as paid`
+                + ' - so the remaining above looks bigger than it is.');
+        }
+        if (d.badAdjustments) {
+            warn(`${d.badAdjustments} hand-recorded month(s) could not be read and are not counted.`);
+        }
+
+        // ------------------------------------------------------------ الجداول
+        const section = (title, sub) => {
+            room(sub ? 58 : 46);
+            y -= 10;
+            put(title, M, { size: 11, bold: true });
+            y -= 13;
+            if (sub) { put(sub, M, { size: 8, grey: 0.45 }); y -= 11; }
+        };
+        /**
+         * جدولٌ عامّ. `cols`: [{title, w, right, bold}] — والعرضُ بالنقاط.
+         * ⚠️ ترويسةُ الجدولِ تُعاد على كلِّ صفحةٍ جديدة: جدولٌ ينقسم على صفحتَين
+         *   وأعمدةُ الثانيةِ بلا أسماءٍ = أرقامٌ لا يُعرف أيُّ عمودٍ هي.
+         */
+        const table = (cols, rows) => {
+            const edges = [];
+            let x = M;
+            cols.forEach(c => { edges.push({ left: x, right: x + c.w }); x += c.w; });
+            const head = () => {
+                room(30);
+                cols.forEach((c, i) => {
+                    if (c.right) putR(c.title, edges[i].right, { size: 8, bold: true, grey: 0.4 });
+                    else put(c.title, edges[i].left, { size: 8, bold: true, grey: 0.4 });
+                });
+                y -= 5;
+                rule({ grey: 0.6 });
+                y -= 12;
+            };
+            head();
+            rows.forEach((r) => {
+                if (room(15)) head();
+                cols.forEach((c, i) => {
+                    const v = r[i] === undefined || r[i] === null ? '' : String(r[i]);
+                    const o = { size: 9, bold: !!c.bold, grey: c.grey };
+                    if (c.right) putR(v, edges[i].right, o); else put(v, edges[i].left, o);
+                });
+                y -= 13;
+                rule({ grey: 0.9, w: 0.4, y: y + 4 });
+            });
+        };
+
+        // ١) شهرًا بشهر
+        section('Her account - month by month (every month, nothing left out)',
+            'What is left at the end of a month is what the next month starts with.');
+        table([
+            { title: 'Month', w: 110, bold: true },
+            { title: 'Brought forward', w: 100, right: true, grey: 0.45 },
+            { title: 'Became hers', w: 100, right: true },
+            { title: 'Paid', w: 100, right: true },
+            { title: 'Left at month end', w: 101, right: true, bold: true }
+        ], (d.months || []).map(m => [m.month, money(m.opening),
+            m.accrued ? money(m.accrued) : '-', m.paid ? money(m.paid) : '-', money(m.closing)]));
+
+        if (!(d.months || []).length) {
+            room(16); put('Nothing has happened on her account yet.', M, { size: 9, grey: 0.45 }); y -= 14;
+        }
+
+        room(30);
+        y -= 4;
+        put('A payment shows in the month it was made, even if it settles an earlier month;'
+            + ' the running balance is right either way.', M, { size: 8, grey: 0.45 });
+        y -= 14;
+
+        // ٢) ما بِيع من بضاعتها
+        if ((d.sold || []).length) {
+            section('What was sold of hers - month by month');
+            table([
+                { title: 'Month', w: 110, bold: true },
+                { title: 'Pieces', w: 100, right: true },
+                { title: 'Collected', w: 100, right: true },
+                { title: 'Our commission', w: 100, right: true },
+                { title: 'Became hers', w: 101, right: true, bold: true }
+            ], d.sold.map(m => [m.month, String(m.pieces), money(m.collected),
+                money(m.commission), money(m.hers)]));
+        }
+
+        // ٣) شهورٌ قُيِّدت بيد المالك
+        if ((d.byHand || []).length) {
+            section('Months recorded by hand - before the program was keeping them');
+            table([
+                { title: 'Month', w: 80, bold: true },
+                { title: 'Became hers', w: 90, right: true, bold: true },
+                { title: 'Pieces', w: 55, right: true },
+                { title: 'Shop', w: 150 },
+                { title: 'Note', w: 136 }
+            ], d.byHand.map(a => [a.month, money(a.hers), a.pieces ? String(a.pieces) : '-',
+                a.shop || 'all shops', a.note || '-']));
+            room(16);
+            put('TOTAL RECORDED BY HAND', M, { size: 9, bold: true });
+            putR(money(d.adjustedHers), M + 170, { size: 9, bold: true });
+            y -= 14;
+        }
+
+        // ٤) المخزون
+        if ((d.stock || []).length) {
+            section('Her stock in your shops - the full movement');
+            table([
+                { title: 'Shop', w: 150, bold: true },
+                { title: 'Opening', w: 72, right: true },
+                { title: 'Received', w: 72, right: true },
+                { title: 'Sold', w: 72, right: true },
+                { title: 'Returned / sent', w: 72, right: true },
+                { title: 'Held now', w: 73, right: true, bold: true }
+            ], (d.stock || []).map(s => [s.shop, String(s.opening), String(s.received),
+                String(s.sold), String(s.sentOut), String(s.now)])
+                .concat([['TOTAL', String(d.stockTotal.opening), String(d.stockTotal.received),
+                    String(d.stockTotal.sold), String(d.stockTotal.sentOut), String(d.stockTotal.now)]]));
+            if (d.stockTotal.fromShipment) {
+                room(16);
+                put(`Received counts ${d.stockTotal.fromShipment} piece(s) from shipments you sent,`
+                    + ' and the rest from lines the saleswomen wrote by hand.', M, { size: 8, grey: 0.45 });
+                y -= 14;
+            }
+        }
+
+        // ------------------------------------------------- ما لم يستطع الخطُّ كتابتَه
+        // ⚠️⚠️ يُقال ولا يُسكت عنه: ملاحظةٌ عربيّةٌ كتبها المالكُ لا يحملها خطُّ
+        //   هلفيتيكا، فتخرج فراغًا. وفراغٌ بلا تفسيرٍ يُقرأ «لا ملاحظةَ هنا».
+        if (dropped > 0) {
+            room(30);
+            y -= 6;
+            put(`${dropped} letter(s) on this sheet could not be printed (Arabic text).`
+                + ' Those words are on the screen in the Shanton window - the figures above are complete.',
+                M, { size: 8, bold: true, grey: 0.2 });
+            y -= 14;
+        }
+
+        // ----------------------------------------------------------- الذيل
+        // ⚠️ يُكتب بعد اكتمالِ الصفحات: «صفحة ٢ من ٥» لا تُعرف قبل آخرِ سطر.
+        pages.forEach((p, i) => {
+            const label = `Shanton account  ${String.fromCharCode(0xB7)}  printed ${d.stampISO} ${d.stampTime}`;
+            p.push({ t: 'line', x1: M, y1: 48, x2: R, y2: 48, w: 0.6, grey: 0.8 });
+            p.push({ t: 'text', s: label, x: M, y: 36, size: 7.5, grey: 0.5 });
+            const pg = `Page ${i + 1} of ${pages.length}`;
+            p.push({ t: 'text', s: pg, x: R - pdfTextWidth(pg, 7.5, false), y: 36, size: 7.5, grey: 0.5 });
+        });
+
+        return { pages, dropped };
+    }
+
+    /** يجمع أرقامَ الورقةِ من **نفسِ** الدوالِّ التي تُغذّي الشاشة. */
+    function shStatementData() {
+        const acc = shantonAccount(allAbayaReports, shantonLedger);
+        const stmt = shantonMonthlyStatement(allAbayaReports, shantonLedger);
+        const p = qatarParts(new Date());
+        const stock = ABAYA_SHANTON_SHOPS.map(shop => {
+            const s = abayaStockFor(shop).shanton;
+            return { shop, opening: s.opening, received: s.received, sold: s.sold,
+                     sentOut: s.sentOut, now: s.now, fromShipment: s.fromShipment };
+        });
+        const stockTotal = stock.reduce((a, s) => ({
+            opening: a.opening + s.opening, received: a.received + s.received,
+            sold: a.sold + s.sold, sentOut: a.sentOut + s.sentOut, now: a.now + s.now,
+            fromShipment: a.fromShipment + s.fromShipment
+        }), { opening: 0, received: 0, sold: 0, sentOut: 0, now: 0, fromShipment: 0 });
+        return {
+            stampISO: `${p.year}-${p.month}-${p.day}`,
+            stampTime: `${p.hour}:${p.minute}`,
+            remaining: acc.remaining,
+            credit: acc.remaining < -0.005,
+            due: acc.due, paid: acc.paid,
+            lastPaidOn: acc.lastPaidOn ? dateLabel(acc.lastPaidOn) : '',
+            pieces: acc.pieces, collected: acc.collected, commission: acc.commission,
+            perPiece: abayaRates.shantonPerPiece,
+            adjustedHers: acc.adjustedHers, openingDue: acc.openingDue,
+            openingDate: acc.openingDate,
+            badPayments: acc.badPayments, badAdjustments: acc.badAdjustments,
+            // ⚠️ كلُّ الشهور: الشاشةُ تقطع عند اثنَي عشرَ والورقةُ لا تقطع.
+            months: stmt.rows,
+            sold: shantonByMonth(allAbayaReports, 0),
+            byHand: acc.adjustments,
+            stock, stockTotal
+        };
+    }
+
     let shPdfBusy = false;
 
     async function shDownloadPdf() {
@@ -4407,62 +4778,33 @@
         if (shPdfBusy) return;
         shPdfBusy = true;
         if (btn) btn.disabled = true;
-        say('Preparing the PDF&hellip;');
-
-        const box = el('shModalBox');
-        const p = qatarParts(new Date());
-        const stampISO = `${p.year}-${p.month}-${p.day}`;
-
-        // ⚠️⚠️ طابعُ اللحظة يُدسُّ في الصندوق **قبل التصوير**: ورقةٌ تُحفظ وتُرسل
-        //   وتُقرأ بعد أسبوع، ورقمُ رصيدٍ بلا تاريخه يُقرأ أنّه رصيدُ اللحظة.
-        //   ويُحسب وقتَ الضغط لا وقتَ فتح النافذة، فقد تبقى مفتوحةً ساعات.
-        const stamp = document.createElement('p');
-        stamp.className = 'sub';
-        stamp.style.cssText = 'margin-top: var(--space-4); font-weight: 700;';
-        stamp.textContent = `Shanton — account printed on ${stampISO} at ${p.hour}:${p.minute} Qatar time`;
-        el('shModalRows').appendChild(stamp);
-
-        // ⚠️ الصندوقُ مقصوصٌ بـ`max-height: 92vh` ويُمرَّر بالإصبع، والتصويرُ يأخذ
-        //   ما بداخل الحدِّ فقط — فيخرج الـPDF ناقصًا بلا أن ينبّه شيء. فتُرفع
-        //   القيودُ أثناء التصوير وتُعاد في `finally` حتى لو فشل.
-        const prev = { maxHeight: box.style.maxHeight, overflowY: box.style.overflowY };
-        box.style.maxHeight = 'none';
-        box.style.overflowY = 'visible';
-        // وزرُّ الإغلاق وزرُّ التحميل لا معنى لهما على ورقة.
-        box.classList.add('pdfing');
+        say('Making the PDF&hellip;');
 
         try {
-            await ensurePdfLibs();
-            const canvas = await window.html2canvas(box, {
-                backgroundColor: getComputedStyle(box).backgroundColor || '#ffffff',
-                scale: 2,
-                useCORS: true,
-                scrollX: 0,
-                scrollY: 0
-            });
-
-            const built = pdfFromCanvas(canvas, { margin: 10 });
-            const r = await deliverFile(built.blob, `Shanton-account-${stampISO}.pdf`,
-                { title: `Shanton account ${stampISO}` });
-            // ⚠️⚠️ ولا يُقال «Downloaded» بعد اليوم: كانت الرسالةُ تُعلن تنزيلًا
-            //   لا تملك دليلَه — `pdf.save()` لا تُخبر أحدًا بشيء — فيقرأ المالكُ
-            //   «تمّ» ولا ملفَّ في هاتفه. الآن يُقال ما جرى فعلًا: أُرسل، أو
-            //   جاهزٌ وأمامه زرٌّ يلمسه.
+            // ⚠️⚠️⚠️ لا `html2canvas` ولا `jsPDF` ولا نطاقٌ خارجيٌّ ولا انتظارُ
+            //   شبكةٍ: الورقةُ تُكتب هنا بايتًا بايتًا. وهذا بعينه سببُ وجودِ
+            //   هذا الكود — التصويرُ كان يرمي خطأً على أوّلِ لونٍ من نوعِ
+            //   `color(srgb …)` (ناتجِ `color-mix`) فلا تُصنع ورقةٌ إطلاقًا.
+            const d = shStatementData();
+            const built = shStatementPdfOps(d, money);
+            const bytes = pdfBytes(built.pages, { title: `Shanton account ${d.stampISO}` });
+            const blob = new Blob([bytes], { type: 'application/pdf' });
+            const name = `Shanton-account-${d.stampISO}.pdf`;
+            const r = await deliverFile(blob, name, { title: `Shanton account ${d.stampISO}` });
+            const size = `${Math.max(1, Math.round(bytes.length / 1024))}KB`;
+            const miss = built.dropped
+                ? ` ${built.dropped} Arabic letter(s) could not be printed &mdash; said on the sheet itself.`
+                : '';
             say(r.via === 'share'
-                ? `Sent &mdash; ${built.pages} page(s), as at ${stampISO} ${p.hour}:${p.minute}.`
-                : `Ready &mdash; ${built.pages} page(s), as at ${stampISO} ${p.hour}:${p.minute}. `
-                  + `If it did not download by itself, press <b>Save / Open</b> on the bar at the bottom.`);
+                ? `Sent &mdash; ${built.pages.length} page(s), ${size}, as at ${d.stampISO} ${d.stampTime}.${miss}`
+                : `Ready &mdash; ${built.pages.length} page(s), ${size}, as at ${d.stampISO} ${d.stampTime}. `
+                  + `If it did not download by itself, press <b>Save / Open</b> on the bar at the bottom.${miss}`);
         } catch (e) {
-            // ⚠️ السببُ يُقال، ولا يُقال «حدث خطأ»: أغلبُ الفشل هنا انقطاعُ شبكةٍ
-            //   عند تحميل المكتبة، وهو شيءٌ تفهمه وتُعيد المحاولةَ بعده.
+            // ⚠️ ولم يبقَ لهذا الطريقِ سببُ فشلٍ من شبكةٍ أو مكتبة، فإن سقط فهو
+            //   خطأٌ في الأرقامِ أو في الكتابة — ويُقال نصُّه كما هو لا «حدث خطأ».
             say(`<b>The PDF was not made</b> &mdash; ${escapeHtml(e.message || 'unknown reason')}. `
-                + `It needs the internet the first time. Everything on the screen is still correct; `
-                + `you can take a screenshot meanwhile.`);
+                + `Everything on the screen is still correct; tell the owner this exact wording.`);
         } finally {
-            box.classList.remove('pdfing');
-            box.style.maxHeight = prev.maxHeight;
-            box.style.overflowY = prev.overflowY;
-            if (stamp.parentNode) stamp.parentNode.removeChild(stamp);
             shPdfBusy = false;
             if (btn) btn.disabled = false;
         }

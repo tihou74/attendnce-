@@ -865,6 +865,31 @@
        ⚠️ و.no-print يُخفي كلَّ ما ليس مستندًا: الشريطَ الجانبيَّ والترويسةَ
        وبطاقةَ الاختيار والتذييل — فلا تُطبع لوحةُ تحكّمٍ على ورقٍ رسميّ.
        ===================================================================== */
+    /* =====================================================================
+       ⚠️⚠️⚠️ ألوانٌ صريحةٌ أثناءَ تصويرِ ورقةِ الراتبِ وحدَه — وهذا إصلاحُ سببٍ
+       مقيسٍ لا تحسينُ منظر: مكتبةُ التصوير (html2canvas 1.4.1) تُفكِّك اللونَ
+       المحسوبَ بنفسها، ومُفكِّكُها يعرف `#hex` و`rgb()` و`hsl()` ولا شيءَ غيرَها.
+       وهذا المشروعُ يستعمل `color-mix(in srgb, …)` في عشراتِ الموضع، والمتصفّحاتُ
+       الحديثةُ تُخرج قيمتَها المحسوبةَ على صورةِ `color(srgb … )` — فأوّلُ عنصرٍ
+       يحملها **يُبطل التصويرَ كلَّه** فلا تُصنع ورقةٌ إطلاقًا. وهذا بعينه سببُ
+       شكوى المالك على ورقةِ شانتون، وتلك صارت نصًّا مكتوبًا بأيدينا بلا مكتبة.
+       فتُفرض هنا ألوانُ ورقةٍ تُطبع أصلًا (أبيضُ وأسودُ ورماديّ) أثناء التصويرِ
+       وحدَه، ثمّ تُرفع في `finally`.
+       ===================================================================== */
+    #printableSalaryReport.pdf-plain,
+    #printableSalaryReport.pdf-plain * {
+        background-image: none !important;
+        background-color: #ffffff !important;
+        color: #111111 !important;
+        border-color: #999999 !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+        filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        outline-color: #999999 !important;
+    }
+
     @media print {
         /* ⚠️⚠️⚠️⚠️ المستندُ يبقى في **التخطيط الطبيعيّ**، ويُخفى أشقّاؤه على كلِّ
            مستوًى من مستويات التعشيش الثلاثة (body > #dashboard > #tab-docs >
@@ -23600,7 +23625,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v239';
+        const APP_BUILD = 'v240';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
@@ -26208,6 +26233,67 @@
         return out;
     }
 
+    // ⚠️⚠️ مكتبتا الـPDF ومُحمِّلُهما (`ensurePdfLibs`) و`pdfFromCanvas` **ليست
+    //   هنا**، وهذا مقصود: لوحةُ السيدة فاطمة لا تحتاج مكتبةً إطلاقًا بعد v240 —
+    //   ورقةُ حسابِ شانتون تُكتب نصًّا بـ`pdfBytes` بلا نطاقٍ خارجيٍّ ولا انتظار.
+    //   فمن يحتاج تصويرَ شاشةٍ (تقريرُ الراتب في لوحة المالك) يحمل المُحمِّلَ
+    //   عنده وحدَه، ولا تُحمَّل هاتفَها 400KB لشيءٍ لا تستعمله.
+    // ⚠️ وفحصٌ يحرس أنّ لوحتَها لا تنادي مكتبةَ التصويرِ في **سطرٍ تنفيذيٍّ**
+    //   واحد. والحارسُ يُسقط التعليقاتَ قبل البحث عن قصد: شرحُ سببِ تركِ
+    //   المكتبةِ يجب أن يبقى مكتوبًا، وإلّا أعادها أوّلُ من يقرأ الكود.
+
+    /**
+     * حدودُ تقطيعِ صورةٍ على صفحاتِ A4 — دالّةٌ **نقيّةٌ** بلا رسمٍ ولا DOM.
+     * ⚠️⚠️ الخاصّيّةُ المطلوبةُ واحدةٌ ويفحصها فحصٌ بأرقامٍ معروفة: **مجموعُ
+     *   ارتفاعاتِ القطعِ يساوي ارتفاعَ الصورةِ بالضبط** — أي لا بكسلَ يُفقد.
+     *   وهذا بعينه كان عطلَ تقريرِ الراتب: كان يكتفي بصفحةٍ ويقصّ الباقي.
+     */
+    function pdfSlices(canvasW, canvasH, availW, availH) {
+        const out = [];
+        if (!(canvasW > 0 && canvasH > 0 && availW > 0 && availH > 0)) return out;
+        const pxPerMm = canvasW / availW;
+        const sliceH = Math.max(1, Math.floor(availH * pxPerMm));
+        for (let y = 0; y < canvasH; y += sliceH) {
+            const h = Math.min(sliceH, canvasH - y);
+            out.push({ y, h, mmH: h / pxPerMm });
+        }
+        return out;
+    }
+
+    /**
+     * يُحوِّل `data:…;base64,…` المحفوظَ في فايرستور إلى **ملفٍّ حقيقيّ**.
+     * يُعيد null إن كان النصُّ تالفًا.
+     *
+     * ⚠️⚠️ ولا تُفتح هذه العناوينُ بـ`window.open` أبدًا: كلُّ المتصفّحات الحديثة
+     *   تمنع الانتقالَ بصفحةٍ كاملةٍ إلى عنوانِ `data:` (مُنع لأنّ المخادعين
+     *   زيّفوا به صفحاتَ بنوك)، فيُفتح تبويبٌ فارغٌ ثم يُغلق بلا رسالةٍ ولا خطأ.
+     *   هذا كان عطلًا حقيقيًّا شكا منه المالكُ أوّلَ مرّة. و`blob:` من أصل الصفحة
+     *   فلا يُمنع.
+     */
+    function fileFromDataUrl(dataUrl) {
+        const s = String(dataUrl || '');
+        const comma = s.indexOf(',');
+        if (comma < 0) return null;
+        const head = s.slice(0, comma);
+        if (!/^data:/i.test(head)) return null;
+        const mimeMatch = /^data:([^;,]+)/.exec(s);
+        const mime = (mimeMatch ? mimeMatch[1] : '') || 'application/octet-stream';
+        // ⚠️ atob تُخفق على أيّ مسافةٍ أو سطرٍ جديدٍ داخل النصّ، وبعضُ الملفّات
+        //   القديمةِ حُفظت بسطورٍ مقطّعة. فتُنزع المسافاتُ أوّلًا.
+        const payload = s.slice(comma + 1).replace(/\s+/g, '');
+        let bytes;
+        if (/;base64/i.test(head)) {
+            let bin;
+            try { bin = atob(payload); } catch (e) { return null; }
+            bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        } else {
+            try { bytes = new TextEncoder().encode(decodeURIComponent(payload)); }
+            catch (e) { return null; }
+        }
+        return new Blob([bytes], { type: mime });
+    }
+
     // =====================================================================
     // ⭐⭐⭐⭐ مكتبتا الـPDF — من أكثرَ من مصدرٍ، ومع التحقّقِ بعد التحميل
     // ---------------------------------------------------------------------
@@ -26289,24 +26375,6 @@
     }
 
     /**
-     * حدودُ تقطيعِ صورةٍ على صفحاتِ A4 — دالّةٌ **نقيّةٌ** بلا رسمٍ ولا DOM.
-     * ⚠️⚠️ الخاصّيّةُ المطلوبةُ واحدةٌ ويفحصها فحصٌ بأرقامٍ معروفة: **مجموعُ
-     *   ارتفاعاتِ القطعِ يساوي ارتفاعَ الصورةِ بالضبط** — أي لا بكسلَ يُفقد.
-     *   وهذا بعينه كان عطلَ تقريرِ الراتب: كان يكتفي بصفحةٍ ويقصّ الباقي.
-     */
-    function pdfSlices(canvasW, canvasH, availW, availH) {
-        const out = [];
-        if (!(canvasW > 0 && canvasH > 0 && availW > 0 && availH > 0)) return out;
-        const pxPerMm = canvasW / availW;
-        const sliceH = Math.max(1, Math.floor(availH * pxPerMm));
-        for (let y = 0; y < canvasH; y += sliceH) {
-            const h = Math.min(sliceH, canvasH - y);
-            out.push({ y, h, mmH: h / pxPerMm });
-        }
-        return out;
-    }
-
-    /**
      * يرسم صورةَ لقطةٍ على مستندِ PDF صفحةً بعد صفحةٍ ثم يُعيده ملفًّا.
      * ⚠️ مشتركةٌ بين تقريرِ الراتب وحسابِ شانتون: كانت كلُّ واحدةٍ تكتب تقطيعَها
      *   بيدها، فواحدةٌ تقصّ والأخرى لا تقصّ، والعطلُ موثَّقٌ ولم يُصلَح.
@@ -26333,41 +26401,6 @@
             pdf.addImage(part.toDataURL('image/png'), 'PNG', MARGIN, MARGIN, availW, s.mmH);
         });
         return { blob: pdf.output('blob'), pages: slices.length };
-    }
-
-
-    /**
-     * يُحوِّل `data:…;base64,…` المحفوظَ في فايرستور إلى **ملفٍّ حقيقيّ**.
-     * يُعيد null إن كان النصُّ تالفًا.
-     *
-     * ⚠️⚠️ ولا تُفتح هذه العناوينُ بـ`window.open` أبدًا: كلُّ المتصفّحات الحديثة
-     *   تمنع الانتقالَ بصفحةٍ كاملةٍ إلى عنوانِ `data:` (مُنع لأنّ المخادعين
-     *   زيّفوا به صفحاتَ بنوك)، فيُفتح تبويبٌ فارغٌ ثم يُغلق بلا رسالةٍ ولا خطأ.
-     *   هذا كان عطلًا حقيقيًّا شكا منه المالكُ أوّلَ مرّة. و`blob:` من أصل الصفحة
-     *   فلا يُمنع.
-     */
-    function fileFromDataUrl(dataUrl) {
-        const s = String(dataUrl || '');
-        const comma = s.indexOf(',');
-        if (comma < 0) return null;
-        const head = s.slice(0, comma);
-        if (!/^data:/i.test(head)) return null;
-        const mimeMatch = /^data:([^;,]+)/.exec(s);
-        const mime = (mimeMatch ? mimeMatch[1] : '') || 'application/octet-stream';
-        // ⚠️ atob تُخفق على أيّ مسافةٍ أو سطرٍ جديدٍ داخل النصّ، وبعضُ الملفّات
-        //   القديمةِ حُفظت بسطورٍ مقطّعة. فتُنزع المسافاتُ أوّلًا.
-        const payload = s.slice(comma + 1).replace(/\s+/g, '');
-        let bytes;
-        if (/;base64/i.test(head)) {
-            let bin;
-            try { bin = atob(payload); } catch (e) { return null; }
-            bytes = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        } else {
-            try { bytes = new TextEncoder().encode(decodeURIComponent(payload)); }
-            catch (e) { return null; }
-        }
-        return new Blob([bytes], { type: mime });
     }
 
     /**
@@ -27366,10 +27399,22 @@
     // reliably apply to elements inside a `display:none` overlay/modal. This
     // renders the report DIV to a canvas first (forcing it visible & on a
     // plain white background) and embeds that as a single-page A4 PDF.
+    //
+    // ⚠️⚠️⚠️ وهذه الورقةُ تُصوَّر، فهي معرَّضةٌ لعطلِ ورقةِ شانتون نفسِه (v240):
+    //   مُفكِّكُ الألوانِ في مكتبةِ التصوير لا يعرف `color(srgb …)` — القيمةَ
+    //   المحسوبةَ لـ`color-mix()` التي تستعملها ورقةُ هويّتِنا في عشراتِ الموضع —
+    //   فأوّلُ عنصرٍ يحملها **يُبطل التصويرَ كلَّه**. ولأنّ تخطيطَ ورقةِ الراتب
+    //   أطولُ من أن يُعاد كتابتُه نصًّا في هذه الجلسة، يُقطع السببُ من جهةٍ أخرى:
+    //   `.pdf-plain` تفرض على الورقةِ وكلِّ ما فيها ألوانًا صريحةً (أبيضَ وأسودَ
+    //   ورماديًّا) أثناء التصويرِ وحدَه، فلا يبقى لونٌ محسوبٌ من `color-mix`.
+    //   وهي ألوانُ ورقةٍ تُطبع أصلًا، فلا يُفقد معنى.
+    // ⚠️ ولم أستطع تشغيلَ متصفّحٍ هنا لأرى الورقةَ تخرج، فهذا **علاجٌ للسببِ
+    //   المُقاس** لا مُشاهَدةُ نجاح — وقد قيل ذلك للمالك صريحًا.
     window.downloadPDFReport = async function() {
         if (!hasFinanceAccess()) { alert("Only Admins or Accountants can export the financial PDF report."); return; }
         const reportEl = document.getElementById("printableSalaryReport");
         const empName = document.getElementById("repEmpName").innerText || "Employee";
+        reportEl.classList.add('pdf-plain');
         try {
             // ⚠️⚠️ المكتبتان تُطلبان صراحةً: كان السطرُ ينادي `html2canvas` اسمًا
             //   عالميًّا يأتي من وسمَي <script> في الترويسة. فإن تعذّر نطاقُهما
@@ -27386,7 +27431,22 @@
             const r = await deliverFile(built.blob, name, { title: name });
             if (r.via === 'share') logAudit('Salary PDF sent', `${empName}, ${built.pages} page(s)`);
         } catch (error) {
-            alert("Could not generate PDF: " + error.message);
+            // ⚠️⚠️ الرسالةُ تُترجم خطأَ المكتبةِ إلى كلامٍ يُفعَل به شيء: كان
+            //   المالكُ يرى «Attempting to parse an unsupported color function»
+            //   فلا يفهم ولا يُبلّغ، والزرُّ يبدو مكسورًا بلا سبب.
+            const raw = String((error && error.message) || 'unknown reason');
+            const colour = /color|unsupported/i.test(raw);
+            alert(colour
+                ? 'This sheet could not be turned into a picture: the drawing library cannot read '
+                  + 'one of the screen colours.\n\n'
+                  + 'Tell me this happened and I will rebuild this sheet as real text, '
+                  + 'the way Shanton\'s account sheet is now built - that needs no library at all.\n\n'
+                  + `(exact wording: ${raw})`
+                : 'Could not generate PDF: ' + raw);
+        } finally {
+            // ⚠️ تُرفع دائمًا: فشلُ التصويرِ لا يجوز أن يترك ورقةَ الراتبِ على
+            //   الشاشةِ بألوانٍ مسطَّحةٍ بيضاءَ فيظنّ المالكُ أنّ الشاشةَ تلفت.
+            reportEl.classList.remove('pdf-plain');
         }
     };
 
