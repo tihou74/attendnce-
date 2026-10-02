@@ -1896,9 +1896,16 @@
         <div class="card" id="cancelledDaysCard" style="display: none; border-left: 4px solid var(--danger);">
             <h3><span data-icon="alertTriangle"></span> Days cancelled — no Check-Out <span id="cancelledDaysCount" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
             <p class="card-sub">A shift with no Check-Out for more than <b>15 hours</b> is <b>cancelled</b>: it pays <b>zero hours</b> and counts as <b>one day of absence</b> in the payroll below. <b dir="rtl">ملغي أوتوماتيكيًا لعدم تسجيل خروج</b>. The old automatic check-out that credited a 10-hour day is gone — it could be triggered by changing a phone's clock, so any old record it created is shown here as cancelled too and no longer pays anything.</p>
+            <!-- ⚠️⚠️ زرُّ الاسترجاع: كان الإلغاءُ بلا رجعةٍ من الشاشة، فصار يومٌ
+                 أُلغي بالخطأ خسارةً نهائيّةً لصاحبه. والإلغاءُ يُضيف مستندًا ولا
+                 يهدم شيئًا، فحذفُه يُعيد الوردية كما كانت تمامًا. -->
+            <p class="card-sub" style="margin-top: -6px;"><b>Cancelled by mistake?</b> Nothing was destroyed: the cancellation is a separate record added on top, and removing it puts the shift back exactly as it was.</p>
+            <div class="controls" style="margin-bottom: 14px;">
+                <button class="btn-success" onclick="restoreCancelledDays()"><span data-icon="refresh"></span> Restore the cancelled days</button>
+            </div>
             <div class="table-container">
                 <table>
-                    <thead><tr><th>Employee</th><th>Branch</th><th>Day</th><th>Checked in</th><th>Reason</th></tr></thead>
+                    <thead><tr><th>Employee</th><th>Branch</th><th>Day</th><th>Checked in</th><th>Reason</th><th>Undo</th></tr></thead>
                     <tbody id="cancelledDaysBody"></tbody>
                 </table>
             </div>
@@ -10973,6 +10980,9 @@
                 <td><b>${escapeHtml(s.date || '—')}</b></td>
                 <td>${s.checkIn ? escapeHtml(logQatarTime(s.checkIn)) : '—'}</td>
                 <td style="font-size: 12.5px; color: var(--text-dim);" dir="auto">${escapeHtml(s.cancelReason || CANCEL_REASON_AR)}</td>
+                <td>${s.checkOut && s.checkOut.cancelledNoCheckout && s.checkOut.id
+                    ? `<button class="btn-success btn-sm" onclick="restoreCancelledDays('${escapeHtml(s.checkOut.id)}')">${iconSvg('refresh', 'ic-sm')} Restore</button>`
+                    : `<span style="color: var(--text-dim); font-size: 11.5px;" title="This day was not cancelled by the panel: the employee closed the shift themselves and it ran past the ${SHIFT_CANCEL_AFTER_HOURS}-hour limit. There is no record to remove — changing it means changing the limit.">rule, not a record</span>`}</td>
             </tr>`).join('');
         paintIcons(card);
     }
@@ -11885,15 +11895,30 @@
         return d ? d.getTime() : null;
     }
 
-    // مرة واحدة لكل فتح للصفحة: الإلغاء يُعيد تحميل السجلات، وهو يُنادى من
-    // داخل تحميلها — فبلا هذا الحارس لَدارت الحلقة بلا نهاية.
-    let autoCloseRan = false;
-    function maybeAutoCloseOnce() {
-        if (autoCloseRan) return;
-        autoCloseRan = true;
-        if (currentRole !== ROLE_ADMIN) return;
-        window.cancelStaleShifts(true).catch(e => console.error(e));
-    }
+    // =====================================================================
+    // ⛔⛔⛔ لا إلغاءَ بلا قرارٍ من المالك — وهذا إصلاحُ عطلٍ وقع فعلًا
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️⚠️ كانت هنا `maybeAutoCloseOnce()` تُنادى من آخرِ `loadAttendanceLogs`:
+    //   أي أنّ **مجرّدَ فتحِ شاشةِ الحضور** كان يُشغّل `cancelStaleShifts(true)`
+    //   صامتةً، فتكتب مستندَ إلغاءٍ لكلِّ وردية مضى عليها 15 ساعةً بلا انصراف.
+    //
+    //   وبرسالةِ المالك وصورتَيه: «يا إلهي ماذا حدث، لقد خرّبت عملي، كلُّ
+    //   التسجيل اليومي ملغي أوتوماتيكيًا، لماذا؟ هذا مستحيل». وفي صورتِه صفوفٌ
+    //   متتاليةٌ أُلغيت في ثوانٍ (3:35:00 · 3:35:29 · 3:35:34 · 3:35:56 · 3:36:11
+    //   · 3:36:12) — وهذه ليست «حالاتٍ متفرّقة» بل **حلقةُ كتابةٍ واحدة** جرت
+    //   لحظةَ فتحِه الشاشة.
+    //
+    // ⚠️⚠️ والخللُ ليس في القاعدة: المالكُ هو من قرّر أنّ من ينسى الانصراف لا
+    //   يُمنح ساعاتٍ (وذلك سدَّ ثغرةَ تقديمِ ساعةِ الهاتف). الخللُ في **مَن
+    //   يُنفّذها ومتى**: قرارٌ يُسقط يومَ عملٍ ويُسجّل غيابًا على موظّفٍ لا يُتَّخذ
+    //   في الخلفيّةِ بلا سؤالٍ ولا عرضٍ ولا تأكيد. فصار:
+    //     • لا تُنفَّذ إلّا بزرٍّ يضغطه المالكُ بنفسه.
+    //     • ويُعرض عليه **مَن** ستُلغى ورديّاتُهم وبأيِّ تاريخٍ **قبل** الكتابة.
+    //     • وكلُّ إلغاءٍ **قابلٌ للاسترجاع** (`restoreCancelledDays`).
+    //
+    // ⚠️ والزرُّ اليدويُّ كان موجودًا أصلًا في بطاقةِ «الورديات المفتوحة»، فلم
+    //   تُفقد القدرةُ — زال التنفيذُ التلقائيُّ وحدَه.
+    // =====================================================================
 
     window.cancelStaleShifts = async function(silent) {
         if (currentRole !== ROLE_ADMIN) return 0;
@@ -11921,6 +11946,23 @@
                     ? `Nothing passed ${SHIFT_CANCEL_AFTER_HOURS} hours on the server clock.\n\nNote: ${unjudgeable.length} open shift(s) carry no server time, so they cannot be judged and were left untouched. Those came from a device running an old cached copy of the app — have that branch close the attendance app and open it again.`
                     : `No open shift has passed ${SHIFT_CANCEL_AFTER_HOURS} hours on the server clock. Nothing to cancel.`);
             }
+            return 0;
+        }
+
+        // ⚠️⚠️⚠️ تأكيدٌ يُسمّي أصحابَ الورديّات **قبل** أيِّ كتابة. وكان الإلغاءُ
+        //   يجري بلا هذا السؤالِ إطلاقًا حين يُنادى تلقائيًّا، فرأى المالكُ يومَ
+        //   عملٍ كاملًا ملغًى على فريقٍ كامل بلا أن يطلب شيئًا. وقرارٌ يُسقط
+        //   أجرَ يومٍ ويُسجّل غيابًا يجب أن يُقرأ باسمِ صاحبِه قبل تنفيذه.
+        const who = stale.map(s => `• ${s.employeeName || s.employeeId}`
+            + ` — ${logQatarDate(s.checkIn) || '-'} ${logQatarTime(s.checkIn) || ''}`
+            + `${s.branch ? ` (${s.branch})` : ''}`);
+        const preview = who.slice(0, 25).join('\n')
+            + (who.length > 25 ? `\n… and ${who.length - 25} more` : '');
+        if (!confirm(`${stale.length} shift(s) have had no Check-Out for more than `
+            + `${SHIFT_CANCEL_AFTER_HOURS} hours on the server clock:\n\n${preview}\n\n`
+            + `Cancelling pays ZERO hours for that day and counts it as ONE DAY OF ABSENCE `
+            + `for each person listed.\n\nCancel them now?\n\n`
+            + `(You can undo this: press "Restore the cancelled days" on the red card.)`)) {
             return 0;
         }
 
@@ -11967,6 +12009,75 @@
         }
         return cancelled;
     };
+    /**
+     * ⭐⭐⭐⭐⭐ استرجاعُ يومٍ أُلغي — وغيابُ هذا هو ما جعل العطلَ كارثةً.
+     *
+     * ⚠️⚠️⚠️ والخبرُ الجيّدُ أنّ شيئًا لم يُهدَم: الإلغاءُ **لا يُعدّل مستندَ
+     *   الدخولِ ولا يحذفه**، بل يُضيف مستندًا جديدًا في `attendance` بمعرّفٍ
+     *   مشتقٍّ ثابت: `cancel_<معرّفُ الدخول>`، يحمل `cancelledNoCheckout: true`.
+     *   فالطبقةُ تُقشَر: يُحذف ذلك المستندُ فتعود الوردية **مفتوحةً كما كانت**،
+     *   وتعود ساعاتُها وتُزال علامةُ الغياب. ولهذا كان المعرّفُ مشتقًّا لا
+     *   عشوائيًّا من أوّلِ يومٍ — والفضلُ في ذلك لمن كتب تلك السطر، لا لي.
+     *
+     * ⚠️⚠️ ولا تحتاج نشرَ قواعد: `attendance` تسمح بالحذف للمالكِ والمحاسبِ منذ
+     *   القواعدِ المنشورةِ أصلًا (`allow update, delete: if isAdmin() || isAccountant()`).
+     *   فالزرُّ يعمل الآن لا بعد نشرٍ مُعلَّق.
+     *
+     * ⚠️ وما **لا** يُسترجَع بهذا: وردياتٌ أغلقها صاحبُها بنفسه ومدّتُها الحقيقيّة
+     *   15 ساعةً أو أكثر (الحالةُ الثالثةُ عند `cancelledFlag`). تلك محسوبةٌ لا
+     *   مكتوبةٌ، فلا مستندَ يُحذف — وتغييرُها يعني تغييرَ الحدِّ نفسِه، وهو قرارُ
+     *   المالك. ويُقال له ذلك صريحًا في الرسالة.
+     */
+    window.restoreCancelledDays = async function(oneId) {
+        if (currentRole !== ROLE_ADMIN) {
+            alert('Only the owner can restore a cancelled day.');
+            return 0;
+        }
+        const marks = (allAttendance || []).filter(l =>
+            l && l.id && l.cancelledNoCheckout === true && (!oneId || l.id === oneId));
+        if (!marks.length) {
+            alert(oneId
+                ? 'That cancellation is no longer there — the day is already restored.'
+                : 'There is no automatic cancellation to restore.\n\n'
+                  + 'Any day still showing as CANCELLED was closed by the employee with a '
+                  + 'shift longer than ' + SHIFT_CANCEL_AFTER_HOURS + ' hours, which is a '
+                  + 'calculated rule and not a record that can be removed. Tell me if that '
+                  + 'limit should change.');
+            return 0;
+        }
+        const who = marks.map(m => `• ${m.employeeName || m.employeeId} — ${m.date || '-'}`);
+        const preview = who.slice(0, 25).join('\n')
+            + (who.length > 25 ? `\n… and ${who.length - 25} more` : '');
+        if (!confirm(`Restore ${marks.length} cancelled day(s)?\n\n${preview}\n\n`
+            + `Each shift goes back to being OPEN, exactly as it was before it was `
+            + `cancelled: the hours come back and the day stops counting as absence. `
+            + `Nothing else about the record changes.\n\n`
+            + `⚠️ A shift that is open and has no Check-Out still pays nothing until a `
+            + `Check-Out is recorded for it — restoring gives you back the chance to `
+            + `correct it by hand.`)) {
+            return 0;
+        }
+        let done = 0, failed = 0;
+        for (const m of marks) {
+            try {
+                await deleteDoc(doc(db, 'attendance', m.id));
+                done++;
+                logAudit('Cancelled day restored',
+                    `${m.employeeName || m.employeeId} — ${m.date || '-'}: the automatic `
+                    + `cancellation (${m.id}) was removed, the shift is open again.`);
+            } catch (e) {
+                failed++;
+                console.error('Restoring the cancelled day failed for', m.id, e);
+            }
+        }
+        await loadAttendanceLogs();
+        alert(`${done} day(s) restored.`
+            + (failed ? `\n\n${failed} could not be restored — tell me and I will look.` : '')
+            + `\n\nEach one is an OPEN shift again. Record the real Check-Out for it, or `
+            + `leave it and decide later.`);
+        return done;
+    };
+
     function renderOpenShifts() {
         const card = document.getElementById('openShiftsCard');
         const body = document.getElementById('openShiftsBody');
@@ -12391,7 +12502,9 @@
             renderServerTimeDiagnostic();
             renderCancelledDays();
             renderMissedCheckins();
-            maybeAutoCloseOnce();
+            // ⚠️⚠️⚠️ كان هنا `maybeAutoCloseOnce()` — وهو سببُ ما وقع.
+            //   انظر الشرحَ الكاملَ عند `cancelStaleShifts`: فتحُ الشاشةِ كان
+            //   **يُلغي** ورديّاتٍ ويكتب في قاعدةِ البيانات بلا أن يسأل أحدًا.
         } catch (err) {
             reportLoadFailure('Attendance logs', err);
         }
@@ -23613,7 +23726,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v241';
+        const APP_BUILD = 'v242';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
