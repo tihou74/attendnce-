@@ -71,7 +71,7 @@
 // الكاش القديم حتى لا يبقى من ثبّت التطبيق سابقًا على النسخة القديمة.
 // ⚠️⚠️ ويجب أن يساوي `APP_BUILD` في admin.html: الصفحةُ تُقارن الرقمَين وتُعلن
 //   الاختلافَ في ذيلها. فمن غيّر هذا ونسي ذاك يُظهر تحذيرًا كاذبًا لكلِّ من يفتح.
-const CACHE_VERSION = 'v238';
+const CACHE_VERSION = 'v239';
 const SHELL_CACHE = `alsheikha-shell-${CACHE_VERSION}`;
 const ASSET_CACHE = `alsheikha-assets-${CACHE_VERSION}`;
 
@@ -159,7 +159,10 @@ const BYPASS_HOSTS = [
 const CACHEABLE_HOSTS = [
     'www.gstatic.com',          // Firebase SDK v10.8.0
     'cdnjs.cloudflare.com',     // html2canvas, jspdf
-    'cdn.jsdelivr.net',         // xlsx
+    'cdn.jsdelivr.net',         // xlsx, ونسخةٌ ثانيةٌ من مكتبتَي الـPDF
+    // ⚠️ مصدرٌ ثالثٌ للمكتبتَين: نطاقٌ واحدٌ محجوبٌ كان يُسقط كلَّ أزرارِ
+    //   الـPDF في كلِّ اللوحاتِ معًا، وهذا بعينه شكلُ شكوى المالك.
+    'unpkg.com',
     // خط الهوية (IBM Plex Sans Arabic + Mono). بلا تخزينه تفتح الصفحة بلا شبكة
     // بخط النظام، فتختلف أطوال الأسطر والعربية تحديدًا تبدو غريبة. الملفات
     // ثابتة الإصدار فلا خطر من تخزينها طويلًا.
@@ -238,8 +241,15 @@ async function cacheFirst(request) {
     const cache = await caches.open(ASSET_CACHE);
     const cached = await cache.match(request);
     if (cached) {
+        // ⚠️⚠️⚠️ `|| res.type === 'opaque'` ليست تزيّدًا: الطلبُ إلى نطاقٍ آخر
+        //   (مكتبتا الـPDF وxlsx والخطوط) يرجع **معتِمًا**: حالتُه 0 و`ok` فيه
+        //   false دائمًا — حتى حين يكون الردُّ سليمًا تمامًا. والشرطُ القديم
+        //   `res.ok` وحدَه كان يعني أنّ أيَّ ردٍّ معتِمٍ **لا يُستبدل أبدًا** داخل
+        //   النسخةِ الواحدة. وبما أنّ الدالّةَ أدناه تُخزِّن المعتِمَ كما هو، فإنّ
+        //   ردًّا معتِمًا تالفًا (انقطاعٌ أو صفحةُ خطأٍ من الشبكة) يبقى مخزَّنًا
+        //   ويُسلَّم في كلِّ مرّةٍ — فتصمت المكتبةُ ولا تظهر، ويسقط الزرُّ بلا سبب.
         fetch(request)
-            .then(res => { if (res && res.ok) cache.put(request, res.clone()); })
+            .then(res => { if (res && (res.ok || res.type === 'opaque')) cache.put(request, res.clone()); })
             .catch(() => {});
         return cached;
     }

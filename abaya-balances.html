@@ -3985,43 +3985,344 @@
     //   واحدةٍ — عطلٌ موثَّقٌ في تعليقها. فلا يُنسخ هنا: الصورةُ تُقسَّم إلى صفحاتٍ
     //   بعددِ ما تحتاج، وحسابُ حدِّ الصفحة من عرضِ الصورة نفسِها لا من رقمٍ ثابت.
     // =====================================================================
-    const SH_PDF_LIBS = [
-        'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
-        'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
-    ];
-    let shPdfLibsReady = false;
-    let shPdfBusy = false;
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ تسليمُ الملفِّ إلى يدِ المالك — طبقةٌ واحدةٌ تخدم كلَّ اللوحات
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️⚠️ هذه **ثانيَ** شكوى من المالك بالحرف نفسِه: «لا يمكن تحميلُ أيِّ
+    //   بي دي إف، يجب أن تحلَّ هذه المشكلةَ في كلِّ البنيلات». والشكوى الأولى
+    //   أُصلحت فعلًا (عنوانُ data: المحظورُ صار blob:) — فما بقي عطلًا ليس
+    //   الملفَّ ولا القواعدَ ولا فايربيس، بل **التسليم** نفسُه:
+    //
+    //   كلُّ تنزيلٍ في هذا المشروع — `pdf.save()` و`XLSX.writeFile()` وكلُّ
+    //   `<a download>` ونقرةٍ برمجية — **لا يفعل شيئًا على الإطلاق** داخل
+    //   تطبيقٍ مُثبَّتٍ على الشاشة الرئيسية على iOS: لا ملفَّ ولا رسالةَ خطأٍ
+    //   ولا سطرًا في وحدة التحكّم. وبياناتُنا الستّةُ كلُّها
+    //   `"display": "standalone"`، والمالكُ يفتح اللوحةَ من أيقونةٍ مُثبَّتة.
+    //   فكلُّ زرِّ تنزيلٍ في كلِّ لوحةٍ كان يكذب عليه.
+    //
+    // ⚠️⚠️ ولا يستطيع برنامجٌ أن يسأل المتصفِّحَ «هل وصل الملفُّ؟»: لنقرةٍ على
+    //   `<a download>` لا حدثُ نجاحٍ ولا حدثُ فشل. فهذا التصميمُ **لا يعتمد على
+    //   الكشف** إطلاقًا: يُجرَّب طريقان، و**الطريقُ الثالثُ مرئيٌّ دائمًا** —
+    //   شريطٌ فيه رابطٌ يلمسه بإصبعه. فإن صمَت الطريقان بقي له هدفٌ يضغطه، لا
+    //   شاشةٌ لا تردّ.
+    //
+    //   ١) ورقةُ المشاركة (`navigator.share` بملفّ): الطريقُ الوحيدُ العاملُ في
+    //      تطبيقٍ مُثبَّتٍ على iOS، وهو كذلك ما يفعله المالكُ فعلًا بالملفّ:
+    //      يُرسله بالواتساب. فتُقدَّم حيث يُعرف أنّ التنزيلَ يصمت.
+    //   ٢) `<a download>`: الطريقُ الطبيعيُّ على الحاسوب وأندرويد.
+    //   ٣) الشريطُ المرئيُّ — وهو الضمانة، ولا يُحذف ولا يُشترط بشيء.
+    //
+    // ⚠️ وزرُّ «Send» في الشريط يُنادي المشاركةَ من **نقرةٍ جديدة**، وهذا مقصود:
+    //   iOS يرفض `navigator.share` إن لم تكن النقرةُ طازجة، ورسمُ الـPDF يستغرق
+    //   ثانيةً أو أكثر فتذهب طزاجةُ النقرةِ الأولى. فالنقرةُ الثانيةُ تنجح حيث
+    //   تفشل الأولى بـ`NotAllowedError`.
+    // =====================================================================
 
-    function shLoadScript(src) {
-        return new Promise((resolve, reject) => {
-            const s = document.createElement('script');
-            s.src = src;
-            s.async = true;
-            s.onload = () => resolve();
-            s.onerror = () => reject(new Error('the drawing library could not be downloaded'));
-            document.head.appendChild(s);
-        });
-    }
-
-    async function shEnsurePdfLibs() {
-        if (shPdfLibsReady) return;
-        // ⚠️ بالترتيب لا بالتوازي: jsPDF أصغر وقد يسبق، ثم نجد html2canvas غائبةً
-        //   فنعلن فشلًا وقد نجح نصفُ التحميل.
-        for (const src of SH_PDF_LIBS) await shLoadScript(src);
-        if (typeof window.html2canvas !== 'function') throw new Error('the drawing library did not start');
-        if (!(window.jspdf && typeof window.jspdf.jsPDF === 'function')) throw new Error('the PDF library did not start');
-        shPdfLibsReady = true;
+    /** اسمُ ملفٍّ لا يحمل محرفًا يرفضه نظامُ ملفّات. */
+    function fileSafeName(name) {
+        const clean = String(name || 'file').replace(/[\\/:*?"<>|\u0000-\u001F]+/g, '_').trim();
+        return clean || 'file';
     }
 
     /**
-     * حدودُ تقطيعِ الصورة على صفحاتِ A4 — دالّةٌ **نقيّةٌ** بلا رسمٍ ولا DOM.
-     *
-     * ⚠️⚠️ أُخرجت من حلقةِ الرسم عن قصد: التقطيعُ هو بعينه موضعُ العطل في دالّةِ
-     *   PDF الأخرى في هذا المشروع (تقصُّ ما زاد على صفحة). فتُفحَص وحدَها
-     *   بأرقامٍ معروفة، والخاصّيّةُ المطلوبةُ واحدة: **مجموعُ ارتفاعاتِ القطع
-     *   يساوي ارتفاعَ الصورة بالضبط** — أي لا بكسلَ واحدٌ يُفقد.
+     * بيئةُ التسليم. مُعزولةٌ عن كلِّ شيءٍ لتُفحَص بأجهزةٍ مُتخيَّلة: تأخذ
+     * `navigator` و`window` حُجّتَين ولا تقرأ العالمَ من حولها.
      */
-    function shPdfSlices(canvasW, canvasH, availW, availH) {
+    function fileDeliveryEnv(nav, win, sampleFile) {
+        const ua = String((nav && nav.userAgent) || '');
+        // ⚠️ أجهزةُ iPad الحديثةُ تُعرِّف نفسَها «Macintosh»، فلا يكفي اسمُ الجهاز:
+        //   نقاطُ اللمسِ هي ما يفرِّق لوحًا من حاسوبٍ مكتبيّ.
+        const iosLike = /iPad|iPhone|iPod/.test(ua)
+            || (/Macintosh/.test(ua) && Number((nav && nav.maxTouchPoints) || 0) > 1);
+        let standalone = false;
+        try {
+            standalone = (nav && nav.standalone === true)
+                || !!(win && typeof win.matchMedia === 'function'
+                      && win.matchMedia('(display-mode: standalone)').matches);
+        } catch (e) { standalone = false; }
+        let canShareFiles = false;
+        try {
+            canShareFiles = !!sampleFile
+                && typeof (nav && nav.share) === 'function'
+                && typeof (nav && nav.canShare) === 'function'
+                && nav.canShare({ files: [sampleFile] }) === true;
+        } catch (e) { canShareFiles = false; }
+        const canDownloadAttr = !!(win && win.HTMLAnchorElement && win.HTMLAnchorElement.prototype
+            && 'download' in win.HTMLAnchorElement.prototype);
+        return { iosLike, standalone, canShareFiles, canDownloadAttr };
+    }
+
+    /**
+     * ترتيبُ المحاولات — دالّةٌ **نقيّةٌ** لا تلمس DOM ولا شبكةً، فتُفحَص بجدول.
+     * ⚠️ و`'link'` آخرُ العناصر **دائمًا وبلا شرط**: هو الضمانةُ التي من أجلها
+     *   كُتبت هذه الطبقةُ كلُّها، فشرطٌ عليه يُعيد العطلَ الأصليَّ كما كان.
+     */
+    function fileDeliveryPlan(env) {
+        const e = env || {};
+        const plan = [];
+        if (e.canShareFiles && (e.iosLike || e.standalone)) plan.push('share');
+        if (e.canDownloadAttr) plan.push('anchor');
+        if (e.canShareFiles && plan.indexOf('share') < 0) plan.push('share');
+        plan.push('link');
+        return plan;
+    }
+
+    // ---- الشريطُ المرئيّ ------------------------------------------------
+    // ⚠️ يُبنى بالـJS لا بالـHTML: نصُّ هذه الطبقةِ **واحدٌ حرفًا بحرفٍ** في
+    //   لوحتَين، وفحصٌ يُثبت تطابقَهما. ولو احتاج وسمًا في الصفحة لصار نصفُه
+    //   هنا ونصفُه هناك فينحرف أحدُهما بلا أن ينبّه شيء.
+    // ⚠️ وألوانُه صريحةٌ لا توكِنات: اللوحتان بخلفيّتَين مختلفتَين، وشريطُ
+    //   إنقاذٍ لا يُقرأ لا يُنقذ.
+    // ⚠️ العناصرُ تُحفظ مراجعَ لا تُبحث بـ`getElementById`: لا وسمَ لها في
+    //   الصفحة، فبحثٌ باسمٍ نصيٍّ يُخفق صامتًا لو أخطأتُ حرفًا، والفحصُ البنيويُّ
+    //   للمشروع يُبلّغ عن «مرجعٍ بلا id» فيُغرَق تحذيرُه الحقيقيُّ بضجيجٍ منّي.
+    let fileReadyUrl = '';
+    let fileReadyRevokeTimer = 0;
+    let fileReadyFile = null;
+    let fileReadyRefs = null;
+
+    function fileReadyClose() {
+        if (fileReadyRefs) fileReadyRefs.bar.style.display = 'none';
+        if (fileReadyRevokeTimer) { clearTimeout(fileReadyRevokeTimer); fileReadyRevokeTimer = 0; }
+        if (fileReadyUrl) { try { URL.revokeObjectURL(fileReadyUrl); } catch (e) { /* مُحرَّرٌ سابقًا */ } }
+        fileReadyUrl = '';
+        fileReadyFile = null;
+    }
+
+    function fileReadyBuild() {
+        if (fileReadyRefs) return fileReadyRefs;
+        const bar = document.createElement('div');
+        bar.id = 'fileReadyBar';
+        bar.setAttribute('role', 'status');
+        // ⚠️ `display:none` مرّةً واحدةً فقط: إعلانان لنفس الخاصّيّة يجعلان
+        //   القراءةَ تخمينًا. والعرضُ يُفتح بـ`flex` عند الإظهار.
+        bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;'
+            + 'display:none;align-items:center;gap:12px;flex-wrap:wrap;'
+            + 'background:#111722;color:#F3F5F8;border-top:2px solid #A89060;'
+            + 'box-shadow:0 -6px 24px rgba(0,0,0,.45);'
+            + 'font-family:inherit;font-size:14px;line-height:1.5;'
+            + 'padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px)) 16px;';
+        const txt = document.createElement('div');
+        txt.style.cssText = 'flex:1 1 220px;min-width:200px;';
+        const t1 = document.createElement('div');
+        t1.style.cssText = 'font-weight:800;word-break:break-all;';
+        const t2 = document.createElement('div');
+        t2.style.cssText = 'opacity:.85;font-size:12.5px;margin-top:2px;';
+        txt.appendChild(t1); txt.appendChild(t2);
+
+        const open = document.createElement('a');
+        open.target = '_blank';
+        open.rel = 'noopener';
+        open.textContent = 'Save / Open';
+        open.style.cssText = 'background:#1F7A4D;color:#fff;text-decoration:none;font-weight:800;'
+            + 'padding:11px 18px;border-radius:8px;white-space:nowrap;';
+
+        const send = document.createElement('button');
+        send.type = 'button';
+        send.textContent = 'Send';
+        send.style.cssText = 'background:#A89060;color:#14181F;border:0;font-weight:800;'
+            + 'padding:11px 18px;border-radius:8px;cursor:pointer;display:none;white-space:nowrap;';
+
+        const x = document.createElement('button');
+        x.type = 'button';
+        x.setAttribute('aria-label', 'Close');
+        x.textContent = '\u00D7';
+        x.style.cssText = 'background:transparent;color:#F3F5F8;border:1px solid #39424F;'
+            + 'font-size:18px;line-height:1;padding:8px 12px;border-radius:8px;cursor:pointer;';
+
+        bar.appendChild(txt); bar.appendChild(open); bar.appendChild(send); bar.appendChild(x);
+        document.body.appendChild(bar);
+
+        x.addEventListener('click', fileReadyClose);
+        // ⚠️⚠️ النقرةُ الطازجةُ هي كلُّ الفكرة: المشاركةُ من هنا تنجح وإن رفضها
+        //   المتصفّحُ قبل قليلٍ لأنّ الرسمَ استهلك طزاجةَ النقرةِ الأولى.
+        send.addEventListener('click', async () => {
+            if (!fileReadyFile) return;
+            try {
+                await navigator.share({ files: [fileReadyFile], title: fileReadyFile.name });
+            } catch (e) {
+                const nm = (e && e.name) || '';
+                if (nm !== 'AbortError') {
+                    t2.textContent = 'Sending was refused by the phone — press Save / Open instead.';
+                }
+            }
+        });
+        fileReadyRefs = { bar, name: t1, what: t2, open, send };
+        return fileReadyRefs;
+    }
+
+    /** يُظهر الشريطَ ويُبقي عنوانَ الملفِّ حيًّا عشرَ دقائق. */
+    function fileReadyShow(url, name, file, what) {
+        const r = fileReadyBuild();
+        if (fileReadyUrl && fileReadyUrl !== url) {
+            try { URL.revokeObjectURL(fileReadyUrl); } catch (e) { /* مُحرَّرٌ سابقًا */ }
+        }
+        if (fileReadyRevokeTimer) { clearTimeout(fileReadyRevokeTimer); fileReadyRevokeTimer = 0; }
+        fileReadyUrl = url;
+        fileReadyFile = file || null;
+
+        r.name.textContent = `Your file is ready — ${name}`;
+        r.what.textContent = what || 'If it did not download by itself, press Save / Open.';
+        r.open.href = url;
+        r.open.setAttribute('download', name);
+        r.send.style.display = fileReadyFile && typeof navigator.share === 'function' ? '' : 'none';
+        r.bar.style.display = 'flex';
+        // ⚠️ عمرٌ سخيّ: عنوانُ blob يُحجز ذاكرةً، لكنّ تحريرَه قبل أن يضغط
+        //   الرابطَ يقتل الملفَّ في يده. عشرُ دقائقَ أو حتى يُغلق الشريطَ.
+        fileReadyRevokeTimer = setTimeout(fileReadyClose, 10 * 60 * 1000);
+    }
+
+    /**
+     * ⭐ المَعبرُ الوحيدُ لكلِّ ملفٍّ يخرج من هذه اللوحة.
+     * يُعيد وصفًا لما حدث فعلًا — ولا يدّعي نجاحًا لا يملك دليلَه.
+     */
+    async function deliverFile(blob, filename, opts) {
+        opts = opts || {};
+        const name = fileSafeName(filename);
+        const out = { name, via: '', tried: [], cancelled: false, errors: [], shown: false };
+        if (!blob) { out.errors.push('there is no file to deliver'); return out; }
+
+        let file = null;
+        try { file = new File([blob], name, { type: blob.type || 'application/octet-stream' }); }
+        catch (e) { file = null; }   // متصفّحٌ بلا File: المشاركةُ تسقط وحدَها والنقرةُ تكفي
+
+        const env = fileDeliveryEnv(navigator, window, file);
+        const plan = fileDeliveryPlan(env);
+        let url = '';
+        try { url = URL.createObjectURL(blob); }
+        catch (e) { out.errors.push('the browser refused to hold the file'); return out; }
+
+        for (const step of plan) {
+            out.tried.push(step);
+            if (step === 'share') {
+                try {
+                    await navigator.share({ files: [file], title: opts.title || name });
+                    out.via = 'share';
+                    break;
+                } catch (e) {
+                    const nm = (e && e.name) || '';
+                    if (nm === 'AbortError') { out.cancelled = true; out.via = 'share-cancelled'; break; }
+                    out.errors.push(`share: ${nm || (e && e.message) || 'refused'}`);
+                }
+            } else if (step === 'anchor') {
+                try {
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = name;
+                    a.rel = 'noopener';
+                    a.style.display = 'none';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    out.via = 'anchor';
+                    break;
+                } catch (e) {
+                    out.errors.push(`download: ${(e && e.message) || 'refused'}`);
+                }
+            } else {
+                out.via = out.via || 'link';
+            }
+        }
+
+        // ⚠️⚠️ المشاركةُ وحدَها تُعطي دليلَ وصولٍ (وعدُها لا يُنجَز إلّا بعد أن
+        //   تُتمَّ ورقةُ النظام). وكلُّ ما عداها مجهولُ النتيجة — فيبقى الشريطُ.
+        if (out.via === 'share') {
+            try { URL.revokeObjectURL(url); } catch (e) { /* مُحرَّرٌ سابقًا */ }
+        } else {
+            fileReadyShow(url, name, file,
+                out.cancelled ? 'Sending was cancelled — the file is still here.' : (opts.note || ''));
+            out.shown = true;
+        }
+        return out;
+    }
+
+    // =====================================================================
+    // ⭐⭐⭐⭐ مكتبتا الـPDF — من أكثرَ من مصدرٍ، ومع التحقّقِ بعد التحميل
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ كانتا تُطلبان من **نطاقٍ واحدٍ** (cdnjs). وإن تعذّر ذلك النطاقُ على
+    //   شبكةٍ واحدةٍ سقطت كلُّ أزرارِ الـPDF في كلِّ اللوحات معًا — وهذا بعينه
+    //   شكلُ شكوى المالك. فصار لكلِّ مكتبةٍ ثلاثةُ مصادر.
+    //
+    // ⚠️⚠️ والتحقُّقُ **بعد** التحميل لا بنجاح الطلب: ردٌّ بحالة 200 قد يحمل
+    //   صفحةَ خطأٍ أو بايتاتٍ مقطوعة، فلا يُعلَن النجاحُ إلّا إذا ظهر الاسمُ
+    //   العالميُّ فعلًا (`window.jspdf.jsPDF`).
+    //
+    // ⚠️ ومرورٌ ثانٍ بـ`?retry=` إن فشل الأوّلُ كلُّه: العاملُ الخِدميُّ يُخزِّن
+    //   ردودَ هذه النطاقات، وردٌّ معتِمٌ (opaque) تالفٌ يُخزَّن ولا يُستبدل داخل
+    //   النسخةِ الواحدة. واستعلامٌ جديدٌ لا يُطابق المخزَّنَ فيُجلب من الشبكةِ حقًّا.
+    // =====================================================================
+    const PDF_LIB_SOURCES = {
+        html2canvas: {
+            label: 'the drawing library',
+            ready: () => typeof window.html2canvas === 'function',
+            urls: [
+                'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+                'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
+                'https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js'
+            ]
+        },
+        jspdf: {
+            label: 'the PDF library',
+            ready: () => !!(window.jspdf && typeof window.jspdf.jsPDF === 'function'),
+            urls: [
+                'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+                'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
+                'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js'
+            ]
+        }
+    };
+
+    const pdfScriptLoads = new Map();
+    function loadScriptOnce(src) {
+        if (pdfScriptLoads.has(src)) return pdfScriptLoads.get(src);
+        const p = new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = src;
+            s.async = true;
+            s.onload = () => resolve(src);
+            s.onerror = () => reject(new Error(`could not download ${src}`));
+            document.head.appendChild(s);
+        }).catch((e) => {
+            // ⚠️ مصدرٌ فاشلٌ لا يُحفظ فاشلًا للأبد: قد يكون انقطاعًا لحظيًّا،
+            //   والضغطةُ التالية تستحقّ محاولةً جديدة.
+            pdfScriptLoads.delete(src);
+            throw e;
+        });
+        pdfScriptLoads.set(src, p);
+        return p;
+    }
+
+    async function ensureLib(name, load) {
+        const spec = PDF_LIB_SOURCES[name];
+        if (!spec) throw new Error(`unknown library: ${name}`);
+        if (spec.ready()) return true;
+        const get = load || loadScriptOnce;
+        for (let pass = 0; pass < 2; pass++) {
+            for (const base of spec.urls) {
+                const url = pass === 0 ? base : `${base}${base.indexOf('?') < 0 ? '?' : '&'}retry=${Date.now()}`;
+                try { await get(url); } catch (e) { continue; }
+                if (spec.ready()) return true;
+            }
+        }
+        throw new Error(`${spec.label} could not be loaded from any of its ${spec.urls.length} sources`
+            + ' — the first time needs internet');
+    }
+
+    async function ensurePdfLibs(which, load) {
+        const list = Array.isArray(which) && which.length ? which : ['html2canvas', 'jspdf'];
+        // ⚠️ بالترتيب لا بالتوازي: jspdf أصغرُ وقد يسبق، فنُعلن نجاحًا ونصفُ
+        //   العُدّةِ غائبٌ ثم يسقط الرسمُ بخطأٍ لا يفهمه أحد.
+        for (const n of list) await ensureLib(n, load);
+        return true;
+    }
+
+    /**
+     * حدودُ تقطيعِ صورةٍ على صفحاتِ A4 — دالّةٌ **نقيّةٌ** بلا رسمٍ ولا DOM.
+     * ⚠️⚠️ الخاصّيّةُ المطلوبةُ واحدةٌ ويفحصها فحصٌ بأرقامٍ معروفة: **مجموعُ
+     *   ارتفاعاتِ القطعِ يساوي ارتفاعَ الصورةِ بالضبط** — أي لا بكسلَ يُفقد.
+     *   وهذا بعينه كان عطلَ تقريرِ الراتب: كان يكتفي بصفحةٍ ويقصّ الباقي.
+     */
+    function pdfSlices(canvasW, canvasH, availW, availH) {
         const out = [];
         if (!(canvasW > 0 && canvasH > 0 && availW > 0 && availH > 0)) return out;
         const pxPerMm = canvasW / availW;
@@ -4032,6 +4333,72 @@
         }
         return out;
     }
+
+    /**
+     * يرسم صورةَ لقطةٍ على مستندِ PDF صفحةً بعد صفحةٍ ثم يُعيده ملفًّا.
+     * ⚠️ مشتركةٌ بين تقريرِ الراتب وحسابِ شانتون: كانت كلُّ واحدةٍ تكتب تقطيعَها
+     *   بيدها، فواحدةٌ تقصّ والأخرى لا تقصّ، والعطلُ موثَّقٌ ولم يُصلَح.
+     */
+    function pdfFromCanvas(canvas, opts) {
+        opts = opts || {};
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+        const MARGIN = opts.margin === undefined ? 10 : opts.margin;
+        const availW = pdf.internal.pageSize.getWidth() - MARGIN * 2;
+        const availH = pdf.internal.pageSize.getHeight() - MARGIN * 2;
+        const slices = pdfSlices(canvas.width, canvas.height, availW, availH);
+        if (!slices.length) throw new Error('the screen measured as empty');
+        slices.forEach((s, i) => {
+            const part = document.createElement('canvas');
+            part.width = canvas.width;
+            part.height = s.h;
+            const ctx = part.getContext('2d');
+            // ⚠️ خلفيّةٌ بيضاءُ تحت القطعة: قطعةٌ شفّافةٌ تُطبع سوداءَ على بعض القارئات.
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, part.width, part.height);
+            ctx.drawImage(canvas, 0, s.y, canvas.width, s.h, 0, 0, canvas.width, s.h);
+            if (i > 0) pdf.addPage();
+            pdf.addImage(part.toDataURL('image/png'), 'PNG', MARGIN, MARGIN, availW, s.mmH);
+        });
+        return { blob: pdf.output('blob'), pages: slices.length };
+    }
+
+
+    /**
+     * يُحوِّل `data:…;base64,…` المحفوظَ في فايرستور إلى **ملفٍّ حقيقيّ**.
+     * يُعيد null إن كان النصُّ تالفًا.
+     *
+     * ⚠️⚠️ ولا تُفتح هذه العناوينُ بـ`window.open` أبدًا: كلُّ المتصفّحات الحديثة
+     *   تمنع الانتقالَ بصفحةٍ كاملةٍ إلى عنوانِ `data:` (مُنع لأنّ المخادعين
+     *   زيّفوا به صفحاتَ بنوك)، فيُفتح تبويبٌ فارغٌ ثم يُغلق بلا رسالةٍ ولا خطأ.
+     *   هذا كان عطلًا حقيقيًّا شكا منه المالكُ أوّلَ مرّة. و`blob:` من أصل الصفحة
+     *   فلا يُمنع.
+     */
+    function fileFromDataUrl(dataUrl) {
+        const s = String(dataUrl || '');
+        const comma = s.indexOf(',');
+        if (comma < 0) return null;
+        const head = s.slice(0, comma);
+        if (!/^data:/i.test(head)) return null;
+        const mimeMatch = /^data:([^;,]+)/.exec(s);
+        const mime = (mimeMatch ? mimeMatch[1] : '') || 'application/octet-stream';
+        // ⚠️ atob تُخفق على أيّ مسافةٍ أو سطرٍ جديدٍ داخل النصّ، وبعضُ الملفّات
+        //   القديمةِ حُفظت بسطورٍ مقطّعة. فتُنزع المسافاتُ أوّلًا.
+        const payload = s.slice(comma + 1).replace(/\s+/g, '');
+        let bytes;
+        if (/;base64/i.test(head)) {
+            let bin;
+            try { bin = atob(payload); } catch (e) { return null; }
+            bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        } else {
+            try { bytes = new TextEncoder().encode(decodeURIComponent(payload)); }
+            catch (e) { return null; }
+        }
+        return new Blob([bytes], { type: mime });
+    }
+
+    let shPdfBusy = false;
 
     async function shDownloadPdf() {
         const btn = el('shPdfBtn');
@@ -4065,7 +4432,7 @@
         box.classList.add('pdfing');
 
         try {
-            await shEnsurePdfLibs();
+            await ensurePdfLibs();
             const canvas = await window.html2canvas(box, {
                 backgroundColor: getComputedStyle(box).backgroundColor || '#ffffff',
                 scale: 2,
@@ -4074,30 +4441,17 @@
                 scrollY: 0
             });
 
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-            const MARGIN = 10;
-            const availW = pdf.internal.pageSize.getWidth() - MARGIN * 2;
-            const availH = pdf.internal.pageSize.getHeight() - MARGIN * 2;
-            const slices = shPdfSlices(canvas.width, canvas.height, availW, availH);
-            if (!slices.length) throw new Error('the window measured as empty');
-
-            slices.forEach((s, i) => {
-                const part = document.createElement('canvas');
-                part.width = canvas.width;
-                part.height = s.h;
-                const ctx = part.getContext('2d');
-                // ⚠️ خلفيةٌ بيضاءُ تحت القطعة: قطعةٌ شفّافةٌ تُطبع سوداءَ على بعض
-                //   القارئات.
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, part.width, part.height);
-                ctx.drawImage(canvas, 0, s.y, canvas.width, s.h, 0, 0, canvas.width, s.h);
-                if (i > 0) pdf.addPage();
-                pdf.addImage(part.toDataURL('image/png'), 'PNG', MARGIN, MARGIN, availW, s.mmH);
-            });
-
-            pdf.save(`Shanton-account-${stampISO}.pdf`);
-            say(`Downloaded &mdash; ${slices.length} page(s), as at ${stampISO} ${p.hour}:${p.minute}.`);
+            const built = pdfFromCanvas(canvas, { margin: 10 });
+            const r = await deliverFile(built.blob, `Shanton-account-${stampISO}.pdf`,
+                { title: `Shanton account ${stampISO}` });
+            // ⚠️⚠️ ولا يُقال «Downloaded» بعد اليوم: كانت الرسالةُ تُعلن تنزيلًا
+            //   لا تملك دليلَه — `pdf.save()` لا تُخبر أحدًا بشيء — فيقرأ المالكُ
+            //   «تمّ» ولا ملفَّ في هاتفه. الآن يُقال ما جرى فعلًا: أُرسل، أو
+            //   جاهزٌ وأمامه زرٌّ يلمسه.
+            say(r.via === 'share'
+                ? `Sent &mdash; ${built.pages} page(s), as at ${stampISO} ${p.hour}:${p.minute}.`
+                : `Ready &mdash; ${built.pages} page(s), as at ${stampISO} ${p.hour}:${p.minute}. `
+                  + `If it did not download by itself, press <b>Save / Open</b> on the bar at the bottom.`);
         } catch (e) {
             // ⚠️ السببُ يُقال، ولا يُقال «حدث خطأ»: أغلبُ الفشل هنا انقطاعُ شبكةٍ
             //   عند تحميل المكتبة، وهو شيءٌ تفهمه وتُعيد المحاولةَ بعده.
@@ -4396,12 +4750,9 @@
             }
             const url = catImages.get(p.id);
             if (!url) { el('catWaErr').textContent = 'The picture could not be read.'; return; }
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${p.code}.jpg`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
+            const blob = fileFromDataUrl(url);
+            if (!blob) { el('catWaErr').textContent = 'The picture could not be read.'; return; }
+            await deliverFile(blob, `${p.code}.jpg`, { title: `${p.code}` });
         } catch (e) {
             el('catWaErr').textContent = 'The picture could not be downloaded.';
         }
@@ -6533,12 +6884,11 @@
             await arvEnsureImage(a);
             const url = arvImages.get(a.id);
             if (!url) { el('arvWaErr').textContent = 'The picture could not be read.'; return; }
-            const dl = document.createElement('a');
-            dl.href = url;
-            dl.download = `${a.code}.jpg`;
-            document.body.appendChild(dl);
-            dl.click();
-            dl.remove();
+            // ⚠️ على البابِ الواحد: صورةُ الشحنةِ تُحمَّل لتُلصق في الواتساب،
+            //   وكانت نقرةً برمجيّةً صامتةً على هاتفٍ مُثبَّتٍ عليه التطبيق.
+            const blob = fileFromDataUrl(url);
+            if (!blob) { el('arvWaErr').textContent = 'The picture could not be read.'; return; }
+            await deliverFile(blob, `${a.code}.jpg`, { title: `${a.code}` });
         } catch (e) {
             el('arvWaErr').textContent = 'The picture could not be downloaded.';
         }
