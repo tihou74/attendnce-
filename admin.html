@@ -1892,6 +1892,22 @@
             </div>
         </div>
 
+        <!-- ⚠️⚠️⚠️ يومٌ أُلغي والموظّفُ قد سجّل انصرافَه فعلًا — تناقضٌ يُكشف لا يُترك.
+             هذه البطاقةُ هي جوابُ سؤالِ المالك: «ما هذا missing و 2 shifts؟» -->
+        <div class="card" id="cancelFixCard" style="display: none; border-left: 4px solid var(--warning);">
+            <h3><span data-icon="alertTriangle"></span> Cancelled &mdash; but they did check out <span id="cancelFixCount" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
+            <p class="card-sub">These days were cancelled for having no Check-Out, <b>and then the real Check-Out turned up</b>. That is what produces the <b>missing</b> and <b>2 shifts</b> rows in the table below: the cancellation took the Check-In, so the employee's real Check-Out had nothing to pair with and landed on the <b>next day</b> &mdash; carrying its hours with it. Restoring puts each night back on its own day, removes the absence, and the <b>missing</b> rows disappear with it.</p>
+            <div class="controls" style="margin-bottom: 14px;">
+                <button class="btn-success" id="cancelFixBtn" onclick="restoreContradictedCancellations()"><span data-icon="refresh"></span> Restore these days</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Employee</th><th>Day cancelled</th><th>Checked in</th><th>Real Check-Out</th><th class="money-col">Hours on the wrong day</th><th>Undo</th></tr></thead>
+                    <tbody id="cancelFixBody"></tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- ⛔ أيام أُلغيت لعدم تسجيل خروج: صفر ساعة + يوم غياب -->
         <div class="card" id="cancelledDaysCard" style="display: none; border-left: 4px solid var(--danger);">
             <h3><span data-icon="alertTriangle"></span> Days cancelled — no Check-Out <span id="cancelledDaysCount" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
@@ -12033,10 +12049,15 @@
             alert('Only the owner can restore a cancelled day.');
             return 0;
         }
+        // ⚠️ يقبل معرّفًا واحدًا أو قائمةً أو لا شيءَ (= الكلّ): بطاقةُ التناقضِ
+        //   تطلب استرجاعَ مجموعةٍ بعينها لا الكلَّ ولا واحدًا.
+        const wanted = oneId === undefined || oneId === null || oneId === ''
+            ? null
+            : new Set(Array.isArray(oneId) ? oneId : [oneId]);
         const marks = (allAttendance || []).filter(l =>
-            l && l.id && l.cancelledNoCheckout === true && (!oneId || l.id === oneId));
+            l && l.id && l.cancelledNoCheckout === true && (!wanted || wanted.has(l.id)));
         if (!marks.length) {
-            alert(oneId
+            alert(wanted
                 ? 'That cancellation is no longer there — the day is already restored.'
                 : 'There is no automatic cancellation to restore.\n\n'
                   + 'Any day still showing as CANCELLED was closed by the employee with a '
@@ -12076,6 +12097,127 @@
             + `\n\nEach one is an OPEN shift again. Record the real Check-Out for it, or `
             + `leave it and decide later.`);
         return done;
+    };
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ «missing» و«2 shifts» — عَرَضان لجرحٍ واحد (v243)
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️⚠️ أرسل المالكُ صورتَين وقال: «هناك خرابيط، انظر missing و 2 shifts،
+    //   ما هذا؟ والأيام الملغاة من الموظفين». وصفُّه:
+    //
+    //     2026-10-02 | missing · 3:44:21 PM | 1:36:20 AM · 1:16:51 AM +1d
+    //                | 9h 51m | 2 shifts
+    //
+    //   والسببُ **واحدٌ** لا ثلاثة، وقد أُعيد بناؤه بالتشغيل قبل كتابةِ حرف:
+    //
+    //     ١) الموظّفُ دخل 1 أكتوبر 3:44 م (ورديةٌ ليليّةٌ تعبر منتصفَ الليل).
+    //     ٢) الإلغاءُ التلقائيُّ — الذي أوقفناه في v242 — كتب لتلك الوردية
+    //        مستندَ إلغاءٍ، فصار **دخولُها مُستهلَكًا**.
+    //     ٣) ثمّ ظهر انصرافُه الحقيقيُّ 2 أكتوبر 1:36 ص، فلم يجد دخولًا مفتوحًا
+    //        يتزاوج معه ⇒ **جلسةٌ يتيمةٌ** تُطبَع «missing»، وتاريخُها يومُ
+    //        الانصرافِ لا يومُ الدخول.
+    //     ٤) فصارت يتيمتُه تنزل على صفِّ 2 أكتوبر مع ورديةِ ذلك اليومِ نفسِه
+    //        ⇒ «2 shifts»، و**ساعاتُ ليلةٍ كاملةٍ (9h51m) تُحتسب على اليومِ
+    //        الخطأ**، و1 أكتوبر يظهر «ملغًى: صفرُ ساعةٍ ويومُ غياب».
+    //
+    // ⚠️⚠️ والدليلُ أنّ الاسترجاعَ يشفي الثلاثةَ معًا، مقيسًا على محرّكِ الجلسات:
+    //     مع مستندِ الإلغاء:  [02: in=الثاني out=الثاني] [02: in=MISSING out=الأوّل]
+    //                        [01: ملغاة · صفرُ دقيقة]
+    //     وبعد حذفِه:        [02: in=الثاني out=الثاني] [01: in=الأوّل out=الأوّل · 586د]
+    //   لا «missing»، ولا «2 shifts»، ولا يومَ ملغًى، والساعاتُ عادت إلى يومها.
+    //
+    // ⚠️ فلا يُبتكر علاجٌ ثانٍ لعَرَضٍ: يُكشف التناقضُ ويُدَلُّ على الزرِّ الذي
+    //   يشفيه. وهذا كشفٌ **بلا كتابةٍ إطلاقًا** — قراءةٌ وعرضٌ فقط.
+    // =====================================================================
+
+    /** ⚠️ مهلةُ البحثِ عن انصرافِ وردية أُلغيت: وردياتُنا لا تمتدّ يومًا كاملًا. */
+    const CANCEL_REOPEN_WINDOW_HOURS = 24;
+
+    /**
+     * يقرن كلَّ **يومٍ أُلغي** بانصرافِه الحقيقيِّ اليتيمِ إن وُجد — دالّةٌ **نقيّةٌ**
+     * تأخذ الجلساتَ وتُعيد قائمةً، بلا DOM ولا كتابة.
+     *
+     * القاعدة: جلسةٌ يتيمةٌ (بلا دخول، وانصرافُها ليس إلغاءً) انصرافُها بعد
+     * دخولِ وردية ملغاةٍ لنفسِ الموظّف وفي حدودِ المهلة ⇒ هي انصرافُ تلك
+     * الوردية بعينها. ⚠️ وكلُّ طرفٍ يُقرن **مرّةً واحدة**: لو قُرنت يتيمةٌ
+     * بملغاتَين لظهر اليومُ مرّتَين في بطاقةٍ تطلب الاسترجاع.
+     */
+    function pairedCancellations(sessions) {
+        const list = Array.isArray(sessions) ? sessions : [];
+        const cancels = list.filter(s => s && s.checkIn && s.checkOut
+            && s.checkOut.cancelledNoCheckout === true && s.checkOut.id);
+        const orphans = list.filter(s => s && !s.checkIn && s.checkOut
+            && s.checkOut.cancelledNoCheckout !== true);
+        const usedCancel = new Set();
+        const out = [];
+        // الأقدمُ أوّلًا: أوّلُ يتيمةٍ بعد الإلغاءِ هي انصرافُه، لا أبعدُها.
+        orphans.slice()
+            .sort((x, y) => tsToMillis(x.checkOut) - tsToMillis(y.checkOut))
+            .forEach(orphan => {
+                const outMs = tsToMillis(orphan.checkOut);
+                if (!outMs) return;
+                let best = null, bestMs = -1;
+                cancels.forEach(c => {
+                    if (usedCancel.has(c.checkOut.id)) return;
+                    if ((c.employeeId || '') !== (orphan.employeeId || '')) return;
+                    const inMs = tsToMillis(c.checkIn);
+                    if (!inMs || inMs >= outMs) return;
+                    if ((outMs - inMs) / 3600000 > CANCEL_REOPEN_WINDOW_HOURS) return;
+                    if (inMs > bestMs) { best = c; bestMs = inMs; }
+                });
+                if (!best) return;
+                usedCancel.add(best.checkOut.id);
+                out.push({
+                    cancelId: best.checkOut.id,
+                    employeeId: best.employeeId,
+                    employeeName: best.employeeName || best.employeeId,
+                    branch: best.branch || '',
+                    cancelledDate: best.date || '',
+                    checkInLabel: logQatarTime(best.checkIn),
+                    realOutDate: orphan.date || '',
+                    realOutLabel: logQatarTime(orphan.checkOut),
+                    minutes: Number(orphan.workMinutes) || 0,
+                    orphanOutId: orphan.checkOut.id || ''
+                });
+            });
+        return out;
+    }
+
+    // ⚠️ تُحسب على **كلِّ** السجلات لا على المُرشَّحة: شريكُ اليتيمةِ قد يكون في
+    //   يومٍ خارجَ نافذةِ العرض، فيضيع التفسيرُ في الوقتِ الذي يُسأل فيه عنه.
+    let attCancelLinks = new Map();   // معرّفُ الانصرافِ اليتيم ← معرّفُ مستندِ الإلغاء
+
+    function renderCancelContradictions() {
+        const card = document.getElementById('cancelFixCard');
+        const body = document.getElementById('cancelFixBody');
+        if (!card || !body) return;
+        const pairs = pairedCancellations(buildSessions(bizLogs(allAttendance)));
+        attCancelLinks = new Map(pairs.map(p => [p.orphanOutId, p.cancelId]));
+        const btn = document.getElementById('cancelFixBtn');
+        if (!pairs.length) { card.style.display = 'none'; return; }
+        card.style.display = 'block';
+        const badge = document.getElementById('cancelFixCount');
+        if (badge) { badge.innerText = pairs.length; badge.style.display = 'inline-block'; }
+        if (btn) btn.innerHTML = `${iconSvg('refresh')} Restore these ${pairs.length} day(s)`;
+        body.innerHTML = pairs.map(p => `
+            <tr style="background: rgba(180,83,9,0.08);">
+                <td><b>${escapeHtml(p.employeeName || '—')}</b></td>
+                <td><b>${escapeHtml(p.cancelledDate || '—')}</b></td>
+                <td>${escapeHtml(p.checkInLabel || '—')}</td>
+                <td><b style="color: var(--success);">${escapeHtml(p.realOutLabel || '—')}</b>
+                    ${p.realOutDate && p.realOutDate !== p.cancelledDate
+                        ? `<span style="color: var(--accent); font-size: 11px; font-weight: 700;" title="after midnight, so it is sitting on ${escapeHtml(p.realOutDate)}">+1d</span>` : ''}</td>
+                <td class="money-col"><b>${Math.floor(p.minutes / 60)}h ${p.minutes % 60}m</b></td>
+                <td><button class="btn-success btn-sm" onclick="restoreCancelledDays('${escapeHtml(p.cancelId)}')">${iconSvg('refresh', 'ic-sm')} Restore</button></td>
+            </tr>`).join('');
+        paintIcons(card);
+    }
+
+    /** يسترجع كلَّ يومٍ أُلغي ثبت أنّ صاحبَه سجّل انصرافَه. */
+    window.restoreContradictedCancellations = async function() {
+        const pairs = pairedCancellations(buildSessions(bizLogs(allAttendance)));
+        if (!pairs.length) { alert('There is nothing of this kind left to restore.'); return 0; }
+        return window.restoreCancelledDays(pairs.map(p => p.cancelId));
     };
 
     function renderOpenShifts() {
@@ -12501,6 +12643,9 @@
             renderTamperAlert();
             renderServerTimeDiagnostic();
             renderCancelledDays();
+            // ⚠️ بعد `renderCancelledDays`: هذه تشرح سببَ ما في تلك، وقراءةٌ
+            //   محضةٌ بلا أيِّ كتابة.
+            renderCancelContradictions();
             renderMissedCheckins();
             // ⚠️⚠️⚠️ كان هنا `maybeAutoCloseOnce()` — وهو سببُ ما وقع.
             //   انظر الشرحَ الكاملَ عند `cancelStaleShifts`: فتحُ الشاشةِ كان
@@ -12646,7 +12791,12 @@
                 const sep = ' <span style="color: var(--text-faint);">·</span> ';
                 const insHtml = g.parts.map(p => p.checkIn
                     ? escapeHtml(logQatarTime(p.checkIn)) + deviceTimeMark(p.inTimeIsServer)
-                    : '<span style="color:var(--text-faint);" title="لا يوجد تسجيل دخول مقابل / no matching check-in">missing</span>'
+                    : (attCancelLinks.has(p.checkOut && p.checkOut.id)
+                        // ⚠️⚠️ «missing» وحدَها لا تُفهم، وقد سأل المالكُ عنها مرّتَين.
+                        //   فحين يُعرف السببُ يُقال في موضعِه: دخولُ هذه الوردية
+                        //   استهلكه مستندُ إلغاء، وزرُّ الاسترجاع في البطاقةِ أعلاه.
+                        ? `<span style="color: var(--warning); font-weight: 800;" title="This shift started the day before. Its Check-In was taken by an automatic cancellation, so this Check-Out has nothing to pair with. Press Restore on the orange card above and this row goes back to its own day.">missing &mdash; cancelled day</span>`
+                        : '<span style="color:var(--text-faint);" title="No matching Check-In. This is the end of a shift that started earlier — the Check-In is outside the shown window, or it was removed.">missing</span>')
                 ).join(sep);
                 const outsHtml = g.parts.map(p => {
                     if (!p.checkOut) return '<span style="color:var(--warning); font-weight:800;">Open</span>';
@@ -23726,7 +23876,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v242';
+        const APP_BUILD = 'v243';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
