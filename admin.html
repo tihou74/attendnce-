@@ -1911,7 +1911,7 @@
         <!-- ⛔ أيام أُلغيت لعدم تسجيل خروج: صفر ساعة + يوم غياب -->
         <div class="card" id="cancelledDaysCard" style="display: none; border-left: 4px solid var(--danger);">
             <h3><span data-icon="alertTriangle"></span> Days cancelled — no Check-Out <span id="cancelledDaysCount" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
-            <p class="card-sub">A shift with no Check-Out for more than <b>15 hours</b> is <b>cancelled</b>: it pays <b>zero hours</b> and counts as <b>one day of absence</b> in the payroll below. <b dir="rtl">ملغي أوتوماتيكيًا لعدم تسجيل خروج</b>. The old automatic check-out that credited a 10-hour day is gone — it could be triggered by changing a phone's clock, so any old record it created is shown here as cancelled too and no longer pays anything.</p>
+            <p class="card-sub">A shift at or past <b>15 hours</b> &mdash; or one cancelled by you for having no Check-Out &mdash; pays <b>zero hours</b> and counts as <b>one day of absence</b> in the payroll below. <b dir="rtl">ملغي أوتوماتيكيًا لعدم تسجيل خروج</b>. The old automatic check-out that credited a 10-hour day is gone — it could be triggered by changing a phone's clock, so any old record it created is shown here as cancelled too and no longer pays anything.</p>
             <!-- ⚠️⚠️ زرُّ الاسترجاع: كان الإلغاءُ بلا رجعةٍ من الشاشة، فصار يومٌ
                  أُلغي بالخطأ خسارةً نهائيّةً لصاحبه. والإلغاءُ يُضيف مستندًا ولا
                  يهدم شيئًا، فحذفُه يُعيد الوردية كما كانت تمامًا. -->
@@ -1954,8 +1954,20 @@
         <!-- ورديات لم تُغلق: تسجيل دخول بلا خروج. تُعرض لأن وردية مفتوحة من
              شهر سابق تُفسد حساب الشهرين معًا وتمنع الموظف من تسجيل دخول جديد. -->
         <div class="card" id="openShiftsCard" style="display: none; border-left: 4px solid var(--warning);">
-            <h3><span data-icon="alertTriangle"></span> Shifts still open (a Check-In with no Check-Out) <span id="openShiftsCount" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
-            <p class="card-sub">A Check-In with no Check-Out for more than <b>15 hours</b> is <b>cancelled</b> — it pays <b>zero hours</b> and counts as <b>one day of absence</b>. It is marked <b>CANCELLED — no Check-Out</b> in the attendance logs. Automatic check-out that credited a 10-hour day has been <b>removed completely</b>: it could be triggered by changing a phone's clock. The 15 hours are measured on the <b>Firebase server clock</b>, never on a phone. This list shows anything still open, which is usually a shift in progress right now.</p>
+            <!-- ⚠️⚠️ أضفتُ هنا شارةً ثانيةً تعدُّ «ما تجاوز الحدّ»، ثمّ حذفتُها:
+                 `renderOpenShifts` تُرشِّح أصلًا على `>= OPEN_SHIFT_ALERT_HOURS`،
+                 فكلُّ ما في هذا الجدولِ قد تجاوز الحدَّ والشارةُ القائمةُ تعدُّه.
+                 فكانت ستبقى فارغةً أبدًا — عنصرٌ ميتٌ من النوعِ الذي كلّفنا دورةً
+                 كاملةً (زرُّ PDF بلا دالّة). والعنوانُ يُصحَّح بدلًا منها. -->
+            <h3><span data-icon="alertTriangle"></span> Shifts past 15 hours with no Check-Out &mdash; waiting for your decision <span id="openShiftsCount" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
+            <!-- ⚠️⚠️⚠️ سأل المالك: «قلتُ إنّ من ينسى الانصراف يُلغى يومُه بعد 15
+                 ساعةً **أوتوماتيكيًّا** — فلماذا لم يُلغَ يومُ هذا الموظّف؟».
+                 وكان هذا النصُّ يقول «**is cancelled**» كأنّه يحدث وحدَه. وهو لا
+                 يحدث وحدَه ولم يحدث قطّ: المشروعُ بلا خادمٍ خلفيٍّ وبلا Cloud
+                 Functions، فلا مُهِمَّةَ مجدولةً تعمل والشاشةُ مغلقة. فالنصُّ
+                 يُصحَّح ليقول ما يجري فعلًا — ووعدٌ في شرحٍ لا يُنفِّذه الكودُ أسوأُ
+                 من غياب الشرح. -->
+            <p class="card-sub">A Check-In with no Check-Out pays <b>zero hours</b> on its own &mdash; there are no hours to pay without a Check-Out. What the <b>15-hour</b> rule adds is marking that day as <b>one day of absence</b>, and <b>that still needs your press</b> on the button below: this program has no background server, so nothing can act while every screen is closed. <b>What does happen by itself</b> is the limit on the figure that gets paid: any shift that ends up at 15 hours or more is cancelled the moment the hours are calculated, whether a device claimed the duration or the server measured it &mdash; so a forgotten Check-Out can never be paid, even if nobody presses anything. The 15 hours are measured on the <b>Firebase server clock</b>, never on a phone. The old automatic check-out that credited a 10-hour day is <b>gone completely</b>: a changed phone clock could trigger it.</p>
             <div class="controls" style="margin-bottom: 12px;">
                 <button class="btn-warning btn-sm" onclick="cancelStaleShifts(false)"><span data-icon="clock"></span> Cancel everything past 15 hours now (zero hours + absence)</button>
             </div>
@@ -23980,7 +23992,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v246';
+        const APP_BUILD = 'v247';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
