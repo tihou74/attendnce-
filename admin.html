@@ -6360,14 +6360,39 @@
     const NIGHT_END_HOUR = 6;    // 6am
 
     // ---- Daily working-hours / overtime-trigger policy -----------------------
-    // Standard workday = 10 hours. Overtime is triggered on a PER-DAY basis
-    // ONLY when that day's excess over the 10-hour standard is MORE than
+    // ⚠️⚠️⚠️ **تسعُ ساعاتٍ** بأمرِ المالكِ الصريح (2026-10-04): «أريد تعديلَ شيءٍ
+    //   فقط، هو ساعاتُ العمل، تقليصُها من 10 إلى 9، مع الحفاظِ على كلِّ التفاصيلِ
+    //   الأخرى». وكان الدوامُ القياسيُّ عشرَ ساعاتٍ منذ أوّلِ المشروع.
+    //
+    // ⚠️⚠️ ورقمٌ واحدٌ تغيّر، وكلُّ ما يتبعه مشتقٌّ منه لا مكتوبٌ بيدٍ — وهذا هو
+    //   سببُ أنّ التعديلَ سطرٌ واحد. والذي يتحرّك معه، مقيسًا بالتشغيل:
+    //     · بوّابةُ الأوفرتايم: كانت 12 ساعةً (10+2) وصارت **11** (9+2).
+    //     · ومقدارُه: كلُّ ما زاد على **9** بدل ما زاد على 10 — فيومُ 13 ساعةً
+    //       كان 3 ساعاتٍ وصار 4.
+    //     · وقيمةُ ساعةِ الأوفرتايم: `STANDARD_MONTHLY_HOURS` مشتقّةٌ من هذا
+    //       الرقم (30 × 6/7 × 9 = 231.43 بدل 257.14)، فالساعةُ ترتفع من 3.89
+    //       إلى 4.32 ريالًا للأساسيّ، ومع مضاعفِ النهار 1.25 من 4.86 إلى 5.40.
+    //       وهذا **تابعٌ للقانون لا خيار**: الساعةُ = الأساسيُّ ÷ ساعاتِ الشهرِ
+    //       القياسيّة، فإن قلّت ساعاتُ الشهرِ ارتفعت قيمةُ الساعة.
+    //
+    // ⚠️ وما **لم** يتغيّر (وقد قِيس كلُّه قبل التعديلِ وبعده):
+    //     · معدّلُ اليوم للغياب = إجمالي الراتب ÷ 30 — لا علاقةَ له بالساعات.
+    //     · قاعدةُ يومِ الراحة: واحدٌ لكلِّ ستّةِ أيّامِ عمل.
+    //     · مكافأةُ اليومِ الزائد: 243.06 لخمسةِ أيّامٍ كما هي **بالضبط** —
+    //       لأنّها `ساعات × (أساسيّ ÷ (30 × 6/7 × ساعات)) × 1.25` فتختصر الساعاتُ
+    //       من البسطِ والمقام. (صدفةٌ رياضيّةٌ سعيدةٌ تُذكر لئلّا يُظنَّ أنّها خطأ.)
+    //     · خصمُ السكن 50 · حدُّ الخمسَ عشرةَ ساعة · مضاعفا 1.25 و1.5.
+    //     · والشيخة ستايل (العبايات) بثوابتِها الخاصّةِ أدناه: 9+1 كما كانت،
+    //       لم تُمسّ بحرف — فحصٌ يقيس خمسَ حالاتٍ لها قبل وبعد.
+    //
+    // Standard workday = 9 hours. Overtime is triggered on a PER-DAY basis
+    // ONLY when that day's excess over the 9-hour standard is MORE than
     // DAILY_OT_GRACE_HOURS (2 hours) — i.e. only once total worked hours that
-    // day exceed 12. A daily overrun of 2 hours or less is absorbed as normal
+    // day exceed 11. A daily overrun of 2 hours or less is absorbed as normal
     // work with no extra pay. Once the 2-hour grace is exceeded, the ENTIRE
-    // daily excess over 10 hours counts as overtime for that day (not just
+    // daily excess over 9 hours counts as overtime for that day (not just
     // the portion past the 2-hour grace).
-    const STANDARD_DAILY_HOURS = 10;
+    const STANDARD_DAILY_HOURS = 9;
     const DAILY_OT_GRACE_HOURS = 2;
     // ---- الشيخة ستايل: دوامٌ آخرُ تمامًا -----------------------------------
     // ⚠️⚠️⚠️ بنصّ المالك: «ساعات عمل البياعات هي **9 ساعات**، والأوفرتايم يُحسب
@@ -10540,9 +10565,9 @@
     // overtime hours, +50% for hours worked at night (9pm–6am).
     //
     // Overtime trigger is PER-DAY, not a monthly total: the standard workday
-    // is 10 hours (STANDARD_DAILY_HOURS), and a day only generates overtime
+    // is 9 hours (STANDARD_DAILY_HOURS), and a day only generates overtime
     // once that day's excess over 10 hours is MORE than the 2-hour grace
-    // (DAILY_OT_GRACE_HOURS) — i.e. only once the day's total exceeds 12
+    // (DAILY_OT_GRACE_HOURS) — i.e. only once the day's total exceeds 11
     // hours. Once that threshold is crossed, the ENTIRE excess over 10 hours
     // for that day counts as overtime (not just the part past the grace).
     // A day with e.g. 11.5 worked hours (1.5h over standard, within the
@@ -10590,7 +10615,7 @@
         let otDayMins = 0, otNightMins = 0;
         /**
          * ⚠️⚠️⚠️ الدوامُ القياسيُّ والسماحُ **يتبعان نشاطَ الموظفة**، ولا يجوز أن
-         *   يكونا رقمًا واحدًا: المطاعم 10+2 (فلا أوفرتايم حتى 12)، والشيخة ستايل
+         *   يكونا رقمًا واحدًا: المطاعم 9+2 (فلا أوفرتايم حتى 11)، والشيخة ستايل
          *   9+1 (فلا أوفرتايم حتى 10). وكان الرقمُ واحدًا فكانت البياعةُ التي
          *   تعمل 11 ساعةً تأخذ صفرَ أوفرتايم.
          * ⚠️ ويُحسب `isAbayaPay` **هنا** لا بعد الحلقة: كان يُعرَّف أسفلَها فقط،
@@ -10603,7 +10628,7 @@
             const dayWorkedMins = bucket.workMins;
             const dayExcessMins = dayWorkedMins - standardMins;
             // No overtime at all unless the day's excess is STRICTLY more than the
-            // grace: restaurants must pass 12h (10+2), abaya must pass 10h (9+1).
+            // grace: restaurants must pass 11h (9+2), abaya must pass 10h (9+1).
             if (dayExcessMins <= graceMins) return;
             // ⚠️ وكلُّ الزائدِ على القياسيّ يُحسب لا ما بعد السماحِ فقط: 11 ساعةً
             //   لبياعةٍ = 2 ساعتان (11 − 9)، وهو مثالُ المالك بنصّه.
@@ -23992,7 +24017,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v247';
+        const APP_BUILD = 'v248';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
