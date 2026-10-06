@@ -1892,6 +1892,22 @@
             </div>
         </div>
 
+        <!-- ⚠️⚠️ ما أُلغي تلقائيًّا في هذه الفتحةِ بعينها: الشرطُ الثاني من شروطِ
+             التلقائيّةِ الثلاثة — لا كتابةَ صامتة. -->
+        <div class="card" id="autoCancelReportCard" style="display: none; border-left: 4px solid var(--danger);">
+            <h3><span data-icon="alertTriangle"></span> Just cancelled automatically <span id="autoCancelReportCount" class="notification-badge" style="display:none; position: static; margin-left: 6px;">0</span></h3>
+            <p class="card-sub">You switched automatic cancelling on, so opening this screen just cancelled the days below: each pays <b>zero hours</b> and counts as <b>one day of absence</b>. Nothing was destroyed &mdash; press Restore on any line, or restore them all, and it goes back exactly as it was.</p>
+            <div class="controls" style="margin-bottom: 14px;">
+                <button class="btn-success" onclick="restoreAutoCancelledNow()"><span data-icon="refresh"></span> Restore all of these</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Employee</th><th>Day</th><th>Checked in</th><th>Was open for</th><th>Undo</th></tr></thead>
+                    <tbody id="autoCancelReportBody"></tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- ⚠️⚠️⚠️ يومٌ أُلغي والموظّفُ قد سجّل انصرافَه فعلًا — تناقضٌ يُكشف لا يُترك.
              هذه البطاقةُ هي جوابُ سؤالِ المالك: «ما هذا missing و 2 shifts؟» -->
         <div class="card" id="cancelFixCard" style="display: none; border-left: 4px solid var(--warning);">
@@ -1970,6 +1986,16 @@
             <p class="card-sub">A Check-In with no Check-Out pays <b>zero hours</b> on its own &mdash; there are no hours to pay without a Check-Out. What the <b>15-hour</b> rule adds is marking that day as <b>one day of absence</b>, and <b>that still needs your press</b> on the button below: this program has no background server, so nothing can act while every screen is closed. <b>What does happen by itself</b> is the limit on the figure that gets paid: any shift that ends up at 15 hours or more is cancelled the moment the hours are calculated, whether a device claimed the duration or the server measured it &mdash; so a forgotten Check-Out can never be paid, even if nobody presses anything. The 15 hours are measured on the <b>Firebase server clock</b>, never on a phone. The old automatic check-out that credited a 10-hour day is <b>gone completely</b>: a changed phone clock could trigger it.</p>
             <div class="controls" style="margin-bottom: 12px;">
                 <button class="btn-warning btn-sm" onclick="cancelStaleShifts(false)"><span data-icon="clock"></span> Cancel everything past 15 hours now (zero hours + absence)</button>
+            </div>
+            <!-- ⚠️⚠️ المفتاحُ الذي سأل عنه المالكُ ثلاثَ مرّات. افتراضُه **مُطفأ**،
+                 ولا يُفتح إلّا بيده بعد تأكيدٍ يقول ثمنَه. -->
+            <div style="margin-bottom: 14px; padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);">
+                <label style="display:flex; align-items:center; gap:10px; font-size:13px; font-weight:700; text-transform:none; letter-spacing:0; margin:0; cursor:pointer; color: var(--text);">
+                    <input type="checkbox" id="autoCancelStale" onchange="setAutoCancelStale(this.checked)"
+                        style="width:18px; height:18px; flex-shrink:0; cursor:pointer;">
+                    Cancel them automatically &mdash; without asking me every time
+                </label>
+                <p class="card-sub" id="autoCancelNote" style="margin: 8px 0 0;"></p>
             </div>
             <div class="table-container">
                 <table>
@@ -7500,6 +7526,7 @@
         if (tabId === 'tab-admin-status') {
             renderAdminStatus();          // المحفوظ أولًا فلا تبقى الشاشة فارغة
             loadOutsourceContact();
+            loadAttendancePolicy();
             refreshAdminStatusData();
         }
         // ⭐⭐⭐ مستنداتُ الموظفين.
@@ -11993,8 +12020,145 @@
     //   تُفقد القدرةُ — زال التنفيذُ التلقائيُّ وحدَه.
     // =====================================================================
 
-    window.cancelStaleShifts = async function(silent) {
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ التلقائيّةُ بإذنٍ مسبقٍ — جوابُ سؤالٍ سأله المالكُ ثلاثَ مرّات
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️⚠️ سأل: «لماذا لم يُلغَ أوتوماتيكيًّا بما أنّهم نسوا تسجيلَ الخروج؟»
+    //   وكان الجوابُ في كلِّ مرّةٍ أنّ المشروعَ بلا خادمٍ خلفيّ، فالتلقائيّةُ تعني
+    //   «عند فتحِ شاشة». وقد أُوقفت في v242 لأنّها كانت تكتب **بلا إذنٍ ولا
+    //   إبلاغٍ ولا رجعة** — فألغت ورديّاتِ فريقٍ كاملٍ بفتحةِ صفحةٍ واحدة.
+    //
+    // ⚠️⚠️ والخللُ لم يكن في التلقائيّةِ نفسِها بل في الشروطِ الثلاثة. فعادت
+    //   وهي مستوفيةٌ لها:
+    //     ١) **إذنٌ مسبق**: مفتاحٌ يفتحه المالكُ بنفسِه، وافتراضُه **مُطفأ**.
+    //        فمن لم يطلبها لا تُنفَّذ عليه أبدًا.
+    //     ٢) **إبلاغٌ بعدها**: بطاقةٌ تُسمّي كلَّ مَن أُلغي يومُه في هذه الفتحة —
+    //        لا كتابةَ صامتةً بعد اليوم.
+    //     ٣) **رجعة**: الاسترجاعُ في نفس البطاقة، لأنّ الإلغاءَ يُضيف مستندًا
+    //        ولا يهدم شيئًا (انظر `restoreCancelledDays`).
+    //
+    // ⚠️ ويبقى حدُّ الأمان: لا يُلغى إلّا ما تجاوز الحدَّ **بساعةِ الخادم**، ومن
+    //   لا طابعَ خادمٍ على دخوله لا يُحكَم عليه إطلاقًا.
+    // ⚠️⚠️ وثمنُ تشغيلِها يُقال للمالكِ قبل أن يوافق: ورديةٌ تُلغى ثمّ يصل انصرافُها
+    //   الحقيقيُّ متأخّرًا تُنتج صفَّ «missing · 2 shifts» — وهو ما أتعبه دورتَين.
+    //   وبطاقةُ التناقضِ (v243) تكشفه وتُصلحه بضغطة، لكنّه يبقى ثمنًا يُعلَن.
+    // =====================================================================
+    const ATT_POLICY_DOC = 'attendance_policy';
+    let attendancePolicy = { autoCancelStale: false };
+    // ⚠️ حرسُ المرّةِ الواحدةِ لكلِّ فتحةِ صفحة: الإلغاءُ يُعيد تحميلَ السجلات،
+    //   وهو يُنادى من داخلِ تحميلِها — فبلا هذا لدارت الحلقةُ بلا نهاية. (كان
+    //   هذا الحرسُ موجودًا قبل v242 ويُعاد معها.)
+    let autoCancelRan = false;
+    // ما أُلغي في هذه الفتحةِ بعينها — ليُقال ويُسترجَع
+    let autoCancelledNow = [];
+
+    window.loadAttendancePolicy = async function() {
+        try {
+            const snap = await getDoc(doc(db, "settings", ATT_POLICY_DOC));
+            if (snap.exists()) attendancePolicy.autoCancelStale = snap.data().autoCancelStale === true;
+        } catch (e) {
+            // ⚠️ تعذّرُ القراءةِ يُترك على **المُطفأ**: الافتراضُ الآمنُ هو ألّا
+            //   يُكتب شيءٌ، لا أن يُكتب لأنّنا لم نعرف.
+            console.error('Could not read the attendance policy:', e);
+        }
+        const box = document.getElementById('autoCancelStale');
+        if (box) box.checked = attendancePolicy.autoCancelStale;
+        renderAutoCancelNote();
+        return attendancePolicy.autoCancelStale;
+    };
+
+    function renderAutoCancelNote(msg, colour) {
+        const el = document.getElementById('autoCancelNote');
+        if (!el) return;
+        if (msg) { el.textContent = msg; el.style.color = colour || ''; return; }
+        el.style.color = '';
+        el.innerHTML = attendancePolicy.autoCancelStale
+            ? `<b>On.</b> Each time you open this screen, any shift past ${SHIFT_CANCEL_AFTER_HOURS} hours `
+              + `on the server clock is cancelled without asking you, and you are told here exactly whose `
+              + `day was cancelled &mdash; with a button to undo it.`
+            : `<b>Off.</b> Nothing is cancelled unless you press the button above. A shift with no Check-Out `
+              + `already pays zero hours on its own; what the press adds is marking the day as absence.`;
+    }
+
+    window.setAutoCancelStale = async function(on) {
+        const box = document.getElementById('autoCancelStale');
+        if (currentRole !== ROLE_ADMIN) {
+            if (box) box.checked = attendancePolicy.autoCancelStale;
+            alert('Only the owner can change this.');
+            return;
+        }
+        const want = !!on;
+        // ⚠️⚠️ تأكيدٌ عند **الفتح** وحدَه: الإطفاءُ لا يُؤذي أحدًا، والفتحُ يسمح
+        //   بكتابةٍ تمسّ أجورًا بلا سؤالٍ لاحق — فيُقال ثمنُها مرّةً واحدةً هنا.
+        if (want && !confirm(
+            `Turn ON automatic cancelling?\n\n`
+            + `From now on, every time you open this screen, any shift with no Check-Out `
+            + `past ${SHIFT_CANCEL_AFTER_HOURS} hours on the server clock will be cancelled `
+            + `WITHOUT asking you first. Each one pays zero hours and counts as one day of absence.\n\n`
+            + `You will be told here whose days were cancelled, and you can undo them.\n\n`
+            + `One thing to expect: if a shift is cancelled and the employee's real Check-Out `
+            + `arrives afterwards, the table will show a "missing · 2 shifts" row for it. The `
+            + `orange card fixes that in one press.`)) {
+            if (box) box.checked = attendancePolicy.autoCancelStale;
+            return;
+        }
+        try {
+            await setDoc(doc(db, "settings", ATT_POLICY_DOC),
+                { autoCancelStale: want, updatedAt: serverTimestamp() }, { merge: true });
+            attendancePolicy.autoCancelStale = want;
+            logAudit('Automatic shift cancelling ' + (want ? 'turned ON' : 'turned OFF'),
+                `Shifts past ${SHIFT_CANCEL_AFTER_HOURS}h with no Check-Out are `
+                + (want ? 'now cancelled on every screen open, without asking.'
+                        : 'no longer cancelled unless the owner presses the button.'));
+            renderAutoCancelNote(want ? 'Saved — it is on now.' : 'Saved — it is off now.', 'var(--success)');
+        } catch (e) {
+            if (box) box.checked = attendancePolicy.autoCancelStale;
+            renderAutoCancelNote('Could not save it: ' + e.message, 'var(--danger)');
+        }
+    };
+
+    /** يُشغّل الإلغاءَ تلقائيًّا **إن** أذن المالكُ بذلك — مرّةً لكلِّ فتحةِ صفحة. */
+    async function maybeAutoCancelOnce() {
+        if (autoCancelRan) return;
+        if (currentRole !== ROLE_ADMIN) return;
+        if (!attendancePolicy.autoCancelStale) return;
+        autoCancelRan = true;
+        try { await window.cancelStaleShifts(true, { auto: true }); }
+        catch (e) { console.error('The automatic cancelling failed:', e); }
+    }
+
+    /** يُسمّي ما أُلغي في هذه الفتحةِ ويعرض زرَّ الرجوع. */
+    function renderAutoCancelReport() {
+        const card = document.getElementById('autoCancelReportCard');
+        const body = document.getElementById('autoCancelReportBody');
+        if (!card || !body) return;
+        if (!autoCancelledNow.length) { card.style.display = 'none'; return; }
+        card.style.display = 'block';
+        const n = document.getElementById('autoCancelReportCount');
+        if (n) { n.innerText = autoCancelledNow.length; n.style.display = 'inline-block'; }
+        body.innerHTML = autoCancelledNow.map(x => `
+            <tr style="background: rgba(220,38,38,0.07);">
+                <td><b>${escapeHtml(x.name || '—')}</b></td>
+                <td><b>${escapeHtml(x.date || '—')}</b></td>
+                <td>${escapeHtml(x.inLabel || '—')}</td>
+                <td>${escapeHtml(x.openFor || '—')}</td>
+                <td><button class="btn-success btn-sm" onclick="restoreCancelledDays('${escapeHtml(x.id)}')">${iconSvg('refresh', 'ic-sm')} Restore</button></td>
+            </tr>`).join('');
+        paintIcons(card);
+    }
+
+    window.restoreAutoCancelledNow = async function() {
+        if (!autoCancelledNow.length) { alert('There is nothing from this screen-open to restore.'); return 0; }
+        return window.restoreCancelledDays(autoCancelledNow.map(x => x.id));
+    };
+
+    window.cancelStaleShifts = async function(silent, opts) {
+        opts = opts || {};
         if (currentRole !== ROLE_ADMIN) return 0;
+        // ⚠️⚠️ تخطّي السؤالِ مشروطٌ بأمرَين معًا: أن يكون النداءُ تلقائيًّا **وأن
+        //   يكون المفتاحُ مفتوحًا فعلًا**. فنداءٌ شاردٌ بـ`auto` لا يكفي لتجاوزِ
+        //   التأكيد — والتحقّقُ من الإذنِ يقع هنا لا عند المُنادي وحدَه.
+        const noAsk = opts.auto === true && attendancePolicy.autoCancelStale === true;
         const nowMs = await serverNowMs();
         if (nowMs === null) {
             if (!silent) alert("Could not read the server clock, so nothing was cancelled.\n\nThis is deliberate: cancelling a day costs an employee a full day's pay, and that decision is never made on a device clock. Check the internet connection and try again.");
@@ -12031,7 +12195,7 @@
             + `${s.branch ? ` (${s.branch})` : ''}`);
         const preview = who.slice(0, 25).join('\n')
             + (who.length > 25 ? `\n… and ${who.length - 25} more` : '');
-        if (!confirm(`${stale.length} shift(s) have had no Check-Out for more than `
+        if (!noAsk && !confirm(`${stale.length} shift(s) have had no Check-Out for more than `
             + `${SHIFT_CANCEL_AFTER_HOURS} hours on the server clock:\n\n${preview}\n\n`
             + `Cancelling pays ZERO hours for that day and counts it as ONE DAY OF ABSENCE `
             + `for each person listed.\n\nCancel them now?\n\n`
@@ -12040,6 +12204,7 @@
         }
 
         let cancelled = 0;
+        if (noAsk) autoCancelledNow = [];
         for (const s of stale) {
             // المعرّف مشتق من مستند الدخول لا عشوائي: لو نُفِّذ مرتين كُتب نفس
             // المستند ولم يُسجَّل انصرافان.
@@ -12068,6 +12233,14 @@
                     location: null
                 });
                 cancelled++;
+                if (noAsk) {
+                    const openH = (nowMs - serverStartMs(s.checkIn)) / 3600000;
+                    autoCancelledNow.push({
+                        id: cancelId, name: s.employeeName || s.employeeId,
+                        date: logQatarDate(s.checkIn) || '', inLabel: logQatarTime(s.checkIn) || '',
+                        openFor: `${Math.floor(openH)}h`
+                    });
+                }
                 logAudit("Shift cancelled — no Check-Out",
                     `${s.employeeName || s.employeeId} — Check-In ${logQatarDate(s.checkIn) || '-'} ${logQatarTime(s.checkIn)} had no Check-Out after ${SHIFT_CANCEL_AFTER_HOURS}h on the server clock. ${CANCEL_REASON_AR}. Zero hours, counted as one day of absence.`);
             } catch (e) {
@@ -12076,6 +12249,9 @@
         }
         if (cancelled) {
             await loadAttendanceLogs();
+            // ⚠️ لا `alert` على فتحِ الصفحة: نافذةٌ تقطع الطريقَ قبل أن يرى شيئًا
+            //   تُغلق بلا قراءة. فالإبلاغُ بطاقةٌ تبقى على الشاشة.
+            if (noAsk) renderAutoCancelReport();
             if (!silent) {
                 alert(`${cancelled} shift(s) had no Check-Out after ${SHIFT_CANCEL_AFTER_HOURS} hours on the server clock and were CANCELLED.\n\n${CANCEL_REASON_AR}\n\nEach one pays zero hours and counts as one day of absence. No hours are ever credited for a forgotten Check-Out — that is what made changing a phone's clock profitable, and it is gone.`);
             }
@@ -12776,7 +12952,11 @@
             // ⚠️ بعد `renderCancelledDays`: هذه تشرح سببَ ما في تلك، وقراءةٌ
             //   محضةٌ بلا أيِّ كتابة.
             renderCancelContradictions();
+            renderAutoCancelReport();
             renderMissedCheckins();
+            // ⚠️ آخرَ شيءٍ وبعد الرسمِ كلِّه: إن أذن المالكُ، يُلغى ما تجاوز الحدَّ
+            //   ثمّ يُعاد التحميلُ مرّةً واحدةً (يحرسه `autoCancelRan`).
+            maybeAutoCancelOnce();
             // ⚠️⚠️⚠️ كان هنا `maybeAutoCloseOnce()` — وهو سببُ ما وقع.
             //   انظر الشرحَ الكاملَ عند `cancelStaleShifts`: فتحُ الشاشةِ كان
             //   **يُلغي** ورديّاتٍ ويكتب في قاعدةِ البيانات بلا أن يسأل أحدًا.
@@ -24017,7 +24197,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v248';
+        const APP_BUILD = 'v249';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
