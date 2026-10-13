@@ -2491,8 +2491,16 @@
                     <tbody id="hygTableBody">
                         <tr><td colspan="10" style="text-align: center;">Loading inspections...</td></tr>
                     </tbody>
+                    <!-- ⚠️⚠️ سطرُ حالةِ الـPDF **هنا** لا داخلَ بطاقةِ التقريرِ المفتوح:
+                         كان هناك، وبطاقةُ التقريرِ مُخفاةٌ (`display:none`) حتى يُفتح
+                         تقرير — فمن ضغط زرَّ الـPDF من **سطرِ الجدول** كان كلُّ ما
+                         تقوله الدالّةُ (التقدّمُ **ورسالةُ الخطأ**) يُكتب في عنصرٍ لا
+                         يُرى. أي أنّ الزرَّ قد يكون عاملًا أو فاشلًا والنتيجةُ على
+                         الشاشةِ واحدةٌ: **لا شيء**. وهذا بعينُه الدرسُ المُثبَّت من
+                         قبل: الرسالةُ تُوضع في الشاشةِ التي يُضغط فيها الزرّ. -->
                 </table>
             </div>
+            <p id="hygPdfStatus" style="margin: 12px 0 0; font-size: 13px; font-weight: 700; color: var(--text-dim); min-height: 18px;"></p>
         </div>
 
         <!-- التقريرُ المفتوح بكامله — يُبنى من المستند نفسه لا من قائمةٍ محليّة. -->
@@ -2507,9 +2515,8 @@
                     <button class="btn-ghost" onclick="closeHygieneReport()"><span data-icon="x"></span> Close</button>
                 </div>
             </div>
-            <!-- تقدّمُ بناءِ الورقة: قراءةُ عشرِ صورٍ ورسمُ سبعِ صفحاتٍ يأخذ ثوانيَ،
-                 وزرٌّ لا يقول شيئًا في تلك الثواني يُضغط مرّةً ثانيةً. -->
-            <p id="hygPdfStatus" style="margin: 0 0 12px; font-size: 12.5px; font-weight: 700; color: var(--text-dim); min-height: 18px;"></p>
+            <!-- (سطرُ حالةِ الـPDF ليس هنا عن قصد — هو أعلى، في بطاقةِ الجدول،
+                 لأنّ هذه البطاقةَ مُخفاةٌ حتى يُفتح تقرير. انظر التعليقَ هناك.) -->
             <div id="hygDetailBody"></div>
         </div>
 
@@ -24306,7 +24313,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v251';
+        const APP_BUILD = 'v252';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
@@ -25390,6 +25397,13 @@
     }
 
     let hygPdfBusy = false;
+    /**
+     * الخطوةُ الجاريةُ — تُذكر في رسالةِ الفشل.
+     * ⚠️ «لم يشتغل» لا يُشخَّص. أمّا «سقط عند قراءة الصور» فيُميّز رفضَ قاعدةٍ
+     *   غيرِ منشورةٍ من عطلٍ في الرسمِ من عطلٍ في كتابةِ الملفِّ من عطلٍ في
+     *   التسليم — أربعةُ أسبابٍ مختلفةٍ تمامًا كان جوابُها على الشاشةِ واحدًا.
+     */
+    let hygPdfStep = '';
 
     /**
      * ⭐ «أحفظ التقرير بي دي إف بصوره وأرسله متى شئت» — بنصِّ المالك.
@@ -25399,36 +25413,61 @@
      *   لا تفعل شيئًا في تطبيقٍ مثبَّتٍ على iOS، بصمت.
      */
     window.savePdfHygieneReport = async function(reportId) {
-        if (hygPdfBusy) return;
+        /**
+         * ⚠️⚠️ الخروجُ الصامتُ مُنع في كلِّ فروعِ هذه الدالّة. والسببُ شكوى المالك
+         *   «البي دي إف لم يشتغل، لماذا؟» — ولم يكن معها رسالةٌ واحدةٌ تُقرأ،
+         *   لأنّ سطرَ الحالةِ كان داخلَ بطاقةٍ مخفاة. وزرٌّ لا يقول شيئًا لا
+         *   يُفرَّق فيه بين «نجح ولم أرَ» و«فشل ولم يُخبرني» — وكلاهما عندي
+         *   سواءٌ في التشخيص، أي لا تشخيصَ إطلاقًا.
+         */
+        if (hygPdfBusy) {
+            hygPdfStatus('Still working on the previous one — give it a moment.', 'var(--warning)');
+            return;
+        }
         const id = String(reportId || hygOpenId || '');
         const r = allHygieneReports.find(x => x.id === id);
-        if (!r) { alert('Open an inspection first.'); return; }
+        if (!r) {
+            hygPdfStatus('Could not find that inspection in this page. Press Refresh and try again.', 'var(--danger)');
+            alert('Could not find that inspection in this page.\nPress Refresh above and try again.');
+            return;
+        }
         if (!Array.isArray(r.items) || !r.items.length) {
+            hygPdfStatus('This report carries no items, so there is nothing to put on the page.', 'var(--danger)');
             alert('This report carries no items, so there is nothing to put on the page.');
             return;
         }
+        // ⚠️ سطرُ الحالةِ يُجَرُّ إلى الرؤية: من ضغط زرًّا في أسفلِ جدولٍ طويلٍ لا
+        //   يرى سطرًا تحت رأسِ الجدول، فيبقى ينتظر بلا علمٍ بأنّ العملَ جارٍ.
+        try {
+            const st = document.getElementById('hygPdfStatus');
+            if (st && st.scrollIntoView) st.scrollIntoView({ block: 'center' });
+        } catch (e) { /* متصفّحٌ قديم — لا أثر */ }
 
         hygPdfBusy = true;
         const btns = Array.from(document.querySelectorAll('[data-hygpdf]'));
         btns.forEach(b => { b.disabled = true; });
         try {
             const total = hygAllPhotoIds(r).length;
+            hygPdfStep = 'while reading the photos';
             hygPdfStatus(total ? `Reading ${total} photo(s)…` : 'Building the page…');
             const { imgs, missing } = await hygPdfLoadPhotos(r, (i, n) => {
                 hygPdfStatus(`Reading photo ${i} of ${n}…`);
             });
 
+            hygPdfStep = 'while drawing the pages';
             hygPdfStatus('Drawing the report…');
             const pages = hygPdfPages(r, imgs, missing, (i, n) => {
                 hygPdfStatus(`Drawing page ${i} of ${n}…`);
             });
 
+            hygPdfStep = 'while writing the PDF file';
             const bytes = pdfFromJpegPages(pages, {
                 title: `Hygiene Inspection — ${r.branch || ''} — ${hygDateLabel(r.date)}`
             });
             const blob = new Blob([bytes], { type: 'application/pdf' });
             const name = `Hygiene-${hygBranchSlugAdmin(r.branch)}-${r.date || 'report'}.pdf`;
 
+            hygPdfStep = 'while handing the file over';
             const res = await deliverFile(blob, name, {
                 title: `Hygiene Inspection — ${r.branch || ''}`,
                 note: 'Press Save to keep the PDF, or Send to share it on WhatsApp.'
@@ -25445,9 +25484,20 @@
             hygPdfStatus(msg, missing.length ? 'var(--warning)' : 'var(--success)');
         } catch (e) {
             console.error('Hygiene PDF failed:', e);
-            hygPdfStatus(`Could not build the PDF: ${e.message}`, 'var(--danger)');
+            /**
+             * ⚠️⚠️ الرسالةُ تُقال في مكانَين: سطرِ الحالةِ **و**نافذةِ تنبيهٍ.
+             *   سطرٌ وحدَه يُفوَّت (قد يكون خارجَ الشاشة، وقد يُغلق التبويبُ قبل
+             *   أن يُقرأ)، والتنبيهُ لا يُفوَّت. والرسالةُ تحمل **الخطوةَ** التي
+             *   سقطت واسمَ الخطأ، فيصير تقريرُ المالكِ التالي دقيقًا بدل
+             *   «لم يشتغل» — وهو ما لا يُشخَّص.
+             */
+            const where = hygPdfStep || 'while building the file';
+            const msg = `Could not build the PDF — it failed ${where}: ${e.message}`;
+            hygPdfStatus(msg, 'var(--danger)');
+            alert(msg + '\n\nلم يُبنَ الملفّ. أرسل لي هذه الرسالة كما هي.');
         } finally {
             hygPdfBusy = false;
+            hygPdfStep = '';
             btns.forEach(b => { b.disabled = false; });
         }
     };
