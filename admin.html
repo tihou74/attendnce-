@@ -1464,6 +1464,10 @@
                 <span id="applicationsNavBadge" class="notification-badge">0</span>
             </button>
             <button class="nav-tab-btn" data-tab="tab-warnings" data-biz="rest" data-group="requests"><span class="ic-slot" data-icon="alertTriangle"></span><span class="tab-label">Warnings</span></button>
+            <!-- ⭐⭐⭐ تقاريرُ التفتيش الصحّي — يُرسلها مديرُ الفرع من شاشة المدراء.
+                 ⚠️ مكانُها في «الطلبات» لا في «المطاعم»: هي بريدٌ يصل من الفروع
+                 ويُقرأ، مثلُ طلبِ الإنذارِ وطلبِ البيتي كاش. -->
+            <button class="nav-tab-btn" data-tab="tab-hygiene" data-biz="rest" data-group="requests"><span class="ic-slot" data-icon="listChecks"></span><span class="tab-label">Hygiene Inspections</span></button>
 
             <!-- العبايات: عملٌ منفصل تمامًا عن المطاعم. التبويبان للمالك والمحاسب فقط.
                  ⚠️ المجموعةُ كلُّها data-biz="abaya"، فتُخفى في وضع المطاعم — ومعها
@@ -2419,6 +2423,88 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+
+    <!-- ==================================================================
+         تقاريرُ التفتيش الصحّي للمطاعم
+         ------------------------------------------------------------------
+         ⚠️⚠️ هذه النافذةُ **لا تملك نسخةً من البنود**، ولا يجوز أن تملكها:
+           نصُّ كلِّ بندٍ محفوظٌ داخل التقرير المُرسَل نفسه بلغتَيه. وقائمةٌ
+           ثانيةٌ هنا كانت ستتباعد عن الأولى، فتُعرض يومًا إجاباتُ مفتّشٍ أمام
+           نصٍّ لم يقرأه. والمخالفةُ دليلٌ، وإعادةُ تسميتِه لاحقًا تُفسده.
+         ⚠️ والصورُ في مجموعةٍ شقيقةٍ (hygiene_inspection_images)، تُقرأ صورةُ
+           البندِ حين تصل الشاشة — لا كلُّها مع الجدول.
+         ================================================================== -->
+    <div id="tab-hygiene" class="tab-content">
+        <div class="filter-section">
+            <h3><span data-icon="listChecks"></span> Hygiene Inspection Reports</h3>
+            <div class="date-group">
+                <div><label for="hygStartDate">From</label><input type="date" id="hygStartDate" onchange="renderHygieneInspections()"></div>
+                <div><label for="hygEndDate">To</label><input type="date" id="hygEndDate" onchange="renderHygieneInspections()"></div>
+                <div style="flex: 1; min-width: 200px;"><label for="hygFilterBranch">Branch</label>
+                    <select id="hygFilterBranch" onchange="renderHygieneInspections()">
+                        <option value="">All Branches</option>
+                        <option value="GAIMER W KAHI WEST WALK">GAIMER W KAHI - WEST WALK</option>
+                        <option value="GAIMER W KAHI OLD MINA PORT">GAIMER W KAHI - OLD MINA PORT</option>
+                        <option value="SHAI BU HAMAD WEST WALK">SHAI BU HAMAD - WEST WALK</option>
+                        <option value="SHAI BU HAMAD GULF MALL">SHAI BU HAMAD - GULF MALL</option>
+                    </select>
+                </div>
+                <div style="min-width: 190px;"><label for="hygFilterSeverity">Show</label>
+                    <select id="hygFilterSeverity" onchange="renderHygieneInspections()">
+                        <option value="">All reports</option>
+                        <option value="high">Only with HIGH severity findings</option>
+                        <option value="any">Only with findings</option>
+                        <option value="clean">Only fully compliant</option>
+                    </select>
+                </div>
+                <button class="btn-ghost" onclick="loadHygieneInspections()"><span data-icon="refresh"></span> Refresh</button>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box"><div class="stat-icon" data-icon="fileText"></div><div><h3>Inspections</h3><p id="hygStatCount">0</p></div></div>
+            <div class="stat-box"><div class="stat-icon" data-icon="check"></div><div><h3>Average Compliance</h3><p id="hygStatAvg">&mdash;</p></div></div>
+            <div class="stat-box"><div class="stat-icon" data-icon="alertTriangle"></div><div><h3>High-severity Findings</h3><p id="hygStatHigh">0</p></div></div>
+        </div>
+
+        <div class="card">
+            <h3><span data-icon="fileText"></span> Inspections received</h3>
+            <p class="card-sub">Filled in by the branch manager on the managers-only screen and sent straight here. Newest first. Press <b>Open</b> to read the whole report with the photos, the findings and the corrective-action plan. A manager cannot read or change a report once it is sent &mdash; a correction is a new inspection.</p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Branch</th>
+                            <th>Inspector</th>
+                            <th>Time</th>
+                            <th>OK</th>
+                            <th>Not&nbsp;OK</th>
+                            <th>N/A</th>
+                            <th>H&nbsp;&middot;&nbsp;M&nbsp;&middot;&nbsp;L</th>
+                            <th>Compliance</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="hygTableBody">
+                        <tr><td colspan="10" style="text-align: center;">Loading inspections...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- التقريرُ المفتوح بكامله — يُبنى من المستند نفسه لا من قائمةٍ محليّة. -->
+        <div class="card" id="hygDetailCard" style="display: none;">
+            <div class="controls" style="justify-content: space-between; margin-bottom: 14px;">
+                <h3 style="margin: 0;"><span data-icon="listChecks"></span> <span id="hygDetailTitle">Inspection</span></h3>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="btn-success" id="hygDetailWa" onclick="sendHygieneWhatsApp()"><span data-icon="plane"></span> Send on WhatsApp</button>
+                    <button class="btn-ghost" onclick="closeHygieneReport()"><span data-icon="x"></span> Close</button>
+                </div>
+            </div>
+            <div id="hygDetailBody"></div>
         </div>
     </div>
 
@@ -6627,14 +6713,20 @@
         // يُستثنى سطرُ الراتب. وهذا سؤالٌ مطروحٌ على المالك ولم أُخمّن جوابَه.
         // ⚠️ وحفظُ فراغ الورق الرسميّ يشترط hasFinanceAccess() (settings write)،
         // فالحقلانِ عندها للقراءة والضبطُ يُعمل مرّةً واحدةً من حساب المالك.
+        // ⭐⭐⭐ و«تقاريرُ التفتيش الصحّي» أُضيفت لها بنصِّ المالك: «يكون مفتوحًا
+        // للأدمين والسكرتيرة رؤيةً والمدراء». ورؤيةٌ فقط فعلًا — لا زرَّ حذفٍ
+        // ولا تعديلٍ في النافذة، والقاعدةُ تمنع الاثنين عنها على الخادم أيضًا.
         [ROLE_SECRETARY]: ['tab-home', 'tab-employees', 'tab-admin-status', 'tab-docs', 'tab-requests',
-                           'tab-applications', 'tab-warnings', 'tab-former'],
+                           'tab-applications', 'tab-warnings', 'tab-hygiene', 'tab-former'],
         // البروفايل + الحضور + الطلبات + طلبات التسجيل الجديدة.
         // tab-sales أُضيف بقرار الإدارة: المديرون الثلاثة هم من يُرسل التقرير
         // اليومي، فهم أول من يلاحظ رقمًا خاطئًا. يرون ويصحّحون ويُعيدون الإرسال،
         // ولا يحذفون — القاعدة في firestore.rules تمنع الحذف عنهم أيضًا.
+        // ⭐⭐⭐ و«تقاريرُ التفتيش» لهم أيضًا — وهم «المدراء» الذين سمّاهم المالك.
+        // ⚠️ وهم أنفسُهم من يُرسلها من شاشة المدراء، لكنّ تلك الشاشةَ لا تقرأ
+        //   شيئًا بعد الإرسال (القاعدةُ تمنعها عن قصد)، فهنا يرون ما أرسلوه.
         [ROLE_SUPERVISOR]: ['tab-home', 'tab-employees', 'tab-payroll', 'tab-attendance', 'tab-shifts',
-                            'tab-requests', 'tab-applications', 'tab-sales', 'tab-former'],
+                            'tab-requests', 'tab-applications', 'tab-sales', 'tab-hygiene', 'tab-former'],
         /**
          * ⭐⭐⭐⭐⭐ بياعةُ البضاعة: ثلاثُ نوافذَ فقط.
          *
@@ -7554,6 +7646,10 @@
         if (tabId === 'tab-payroll') { renderPayrollMonthLabel(); filterEmployeesList(); }
         if (tabId === 'tab-shifts') renderShiftsTable();
         if (tabId === 'tab-warnings') { renderWarningsTable(); loadManagerRequests(); }
+        // ⚠️ تُعاد القراءةُ في كل فتحة لا مرّةً واحدة: المديرُ قد أرسل تفتيشًا
+        //   قبل دقيقة، وشاشةٌ تعرض قائمةً قديمةً وتُسمّيها الحاليةَ تكذب —
+        //   وهو العطلُ الذي أبلغ عنه المالكُ في تقارير العبايات بالحرف.
+        if (tabId === 'tab-hygiene') loadHygieneInspections();
         if (tabId === 'tab-former') renderFormerEmployees();
         if (tabId === 'tab-leaves') renderLeavesTable();
         if (tabId === 'tab-training') { loadTrainingContentForAdmin(); loadTrainingRecords(); }
@@ -24197,7 +24293,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v249';
+        const APP_BUILD = 'v250';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
@@ -24237,6 +24333,480 @@
             try { switchTab(h); } catch (e) {}
         }
     }
+
+    // =====================================================================
+    // تقاريرُ التفتيش الصحّي للمطاعم
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ لا قائمةَ بنودٍ في هذا الملفّ بحال. نصُّ كلِّ بندٍ (إنجليزيٌّ وعربيٌّ)
+    //   محفوظٌ **داخل** التقرير المُرسَل، فالعرضُ هنا يقرأ المستندَ ولا يُفسّره.
+    //   والسببُ في firestore.rules عند hygiene_inspections بالتفصيل.
+    // ⚠️ ونافذةُ قراءةٍ فقط: لا تصحيحَ ولا موافقةَ. المخالفةُ تُصحَّح في الفرع،
+    //   والتفتيشُ التالي هو ما يُثبت أنها صُحِّحت — لا زرٌّ في اللوحة.
+    // =====================================================================
+    const HYG_COLL = 'hygiene_inspections';
+    const HYG_IMAGES_COLL = 'hygiene_inspection_images';
+    let allHygieneReports = [];
+    let hygieneLoadError = '';
+    let hygOpenId = '';
+    const hygImageCache = new Map();
+
+    const HYG_SEV_EN = { low: 'Low', medium: 'Medium', high: 'High' };
+    const HYG_SEV_AR = { low: 'منخفضة الخطورة', medium: 'متوسطة الخطورة', high: 'عالية الخطورة' };
+    const HYG_SEV_COLOUR = { low: 'var(--text-dim)', medium: 'var(--warning)', high: 'var(--danger)' };
+    const HYG_RATING_EN = { ok: 'Compliant', nc: 'Not compliant', na: 'N/A' };
+    const HYG_RATING_AR = { ok: 'مطابق', nc: 'غير مطابق', na: 'لا ينطبق' };
+
+    /** مَن يقرأ التفتيش — مطابقٌ لـ firestore.rules: isAdmin() || isProfileEditor(). */
+    function hygMayRead() {
+        return currentRole === ROLE_ADMIN || currentRole === ROLE_SECRETARY
+            || currentRole === ROLE_SUPERVISOR;
+    }
+    /** الحذفُ للمالك وحدَه — وكذلك القاعدة. */
+    function hygMayDelete() { return currentRole === ROLE_ADMIN; }
+
+    function hygDateLabel(iso) {
+        return iso ? `${String(iso).slice(8, 10)}-${String(iso).slice(5, 7)}-${String(iso).slice(0, 4)}` : '—';
+    }
+
+    /**
+     * الإحصاءُ المعروض.
+     * ⚠️⚠️ يُحسب من **البنود المحفوظة** ويُقارَن بالإحصاء الذي أرسله الهاتف،
+     *   فإن اختلفا قيل ذلك صريحًا ولم يُخفَ أحدُهما: الاختلافُ يعني مستندًا
+     *   مكتوبًا بنسخةٍ أخرى من الشاشة، وهو ما يجب أن يُرى لا أن يُطمَس.
+     * ⚠️ و«لا ينطبق» خارجَ نسبة المطابقة: بندٌ لا يخصّ الفرعَ ليس نجاحًا، وإدخالُه
+     *   يرفع النسبةَ بلا عمل. (نفسُ القاعدة في شاشة المدراء.)
+     */
+    function hygTally(r) {
+        const items = Array.isArray(r.items) ? r.items : [];
+        let ok = 0, nc = 0, na = 0, blank = 0, high = 0, medium = 0, low = 0;
+        items.forEach(i => {
+            if (i.rating === 'ok') ok++;
+            else if (i.rating === 'na') na++;
+            else if (i.rating === 'nc') {
+                nc++;
+                if (i.severity === 'high') high++;
+                else if (i.severity === 'medium') medium++;
+                else low++;
+            } else blank++;
+        });
+        const judged = ok + nc;
+        const pct = judged ? Math.round(ok * 1000 / judged) / 10 : null;
+        const sent = r.tally || {};
+        const disagrees = (sent.compliant != null && sent.compliant !== ok)
+            || (sent.notCompliant != null && sent.notCompliant !== nc)
+            || (sent.notApplicable != null && sent.notApplicable !== na);
+        return { ok, nc, na, blank, high, medium, low, judged, pct, count: items.length, disagrees };
+    }
+
+    window.loadHygieneInspections = async function() {
+        const body = document.getElementById('hygTableBody');
+        if (!body) return;
+        if (!hygMayRead()) {
+            // دورٌ لا يقرأ أصلًا ليس عطلًا — فلا رسالةَ خطأٍ له.
+            body.innerHTML = `<tr><td colspan="10" style="text-align:center; color: var(--text-faint);">Not available for this account.</td></tr>`;
+            return;
+        }
+        body.innerHTML = `<tr><td colspan="10" style="text-align: center;">Loading inspections...</td></tr>`;
+        hygieneLoadError = '';
+        try {
+            const q = query(collection(db, HYG_COLL), orderBy('serverTime', 'desc'), limit(500));
+            const snap = await getDocs(q);
+            allHygieneReports = [];
+            snap.forEach(d => allHygieneReports.push({ id: d.id, ...d.data() }));
+        } catch (error) {
+            /**
+             * ⚠️⚠️ البديلُ ليس ترفًا: فايرستور **يُسقط بصمتٍ** كلَّ مستندٍ لا يحمل
+             *   الحقلَ المرتَّبَ به. فتقريرٌ كُتب بنسخةٍ لا تكتب serverTime يختفي
+             *   من الشاشة بلا رسالةِ خطأٍ واحدة — وهو العطلُ الذي أخفى تقاريرَ
+             *   البياعات. فالمسحُ بلا ترتيبٍ ثم الترتيبُ محليًّا.
+             */
+            console.error('Ordered hygiene query failed, falling back:', error);
+            try {
+                const snap = await getDocs(collection(db, HYG_COLL));
+                allHygieneReports = [];
+                snap.forEach(d => allHygieneReports.push({ id: d.id, ...d.data() }));
+            } catch (err) {
+                console.error('Error loading hygiene inspections:', err);
+                if (typeof reportLoadFailure === 'function') reportLoadFailure('Hygiene inspections', err);
+                hygieneLoadError = err.message;
+                allHygieneReports = [];
+            }
+        }
+        // ⚠️ الترتيبُ محليٌّ دائمًا، حتى بعد الاستعلام المرتَّب: مستندٌ بلا
+        //   serverTime لن يكون في مكانه الصحيح وإن وصل في البديل.
+        allHygieneReports.sort((a, b) => {
+            const ms = (r) => {
+                const d = tsFieldToDate(r.serverTime);
+                if (d) return d.getTime();
+                const g = new Date(`${r.date || ''}T${r.startTime || '00:00'}:00`);
+                return isNaN(g.getTime()) ? 0 : g.getTime();
+            };
+            return ms(b) - ms(a);
+        });
+        renderHygieneInspections();
+    };
+
+    function filteredHygieneReports() {
+        const start = document.getElementById('hygStartDate')?.value;
+        const end = document.getElementById('hygEndDate')?.value;
+        const branch = document.getElementById('hygFilterBranch')?.value;
+        const sev = document.getElementById('hygFilterSeverity')?.value;
+        return allHygieneReports.filter(r => {
+            if (start && (r.date || '') < start) return false;
+            if (end && (r.date || '') > end) return false;
+            if (branch && r.branch !== branch) return false;
+            if (!sev) return true;
+            const t = hygTally(r);
+            if (sev === 'high') return t.high > 0;
+            if (sev === 'any') return t.nc > 0;
+            if (sev === 'clean') return t.nc === 0;
+            return true;
+        });
+    }
+
+    window.renderHygieneInspections = function() {
+        const body = document.getElementById('hygTableBody');
+        if (!body) return;
+
+        if (hygieneLoadError) {
+            body.innerHTML = `<tr><td colspan="10" style="color: var(--danger); font-weight: 700; font-size: 12.5px; padding: 14px;">
+                Could not read the inspections: ${escapeHtml(hygieneLoadError)}<br>
+                <span style="font-weight: 400;">If this says missing or insufficient permissions, the newest security rules (v32) have not been published yet &mdash; nothing the managers send can be read until they are.</span>
+            </td></tr>`;
+            return;
+        }
+
+        const rows = filteredHygieneReports();
+        const tallies = rows.map(hygTally);
+        const withJudged = tallies.filter(t => t.pct !== null);
+        const avg = withJudged.length
+            ? withJudged.reduce((a, t) => a + t.pct, 0) / withJudged.length : null;
+        const highTotal = tallies.reduce((a, t) => a + t.high, 0);
+
+        const set = (id, text) => { const el = document.getElementById(id); if (el) el.innerText = text; };
+        set('hygStatCount', String(rows.length));
+        set('hygStatAvg', avg === null ? '—' : `${avg.toFixed(1)}%`);
+        set('hygStatHigh', String(highTotal));
+
+        if (!rows.length) {
+            body.innerHTML = `<tr><td colspan="10" style="text-align: center;">No inspections for this period/branch.</td></tr>`;
+            return;
+        }
+
+        body.innerHTML = rows.map((r, idx) => {
+            const t = tallies[idx];
+            const rid = escapeJsAttr(r.id);
+            const pct = t.pct === null ? '—' : `${t.pct.toFixed(1)}%`;
+            // ⚠️ اللونُ على النسبة علامةٌ لا حكم: الحدّان ٩٠ و٧٥ اختياري، فلا
+            //   يُبنى عليهما قرارٌ — الأرقامُ بجانبهما هي الحكم.
+            const pctColour = t.pct === null ? 'var(--text-dim)'
+                : (t.pct >= 90 ? 'var(--success)' : (t.pct >= 75 ? 'var(--warning)' : 'var(--danger)'));
+            const warn = t.blank > 0
+                ? `<br><small style="color: var(--warning); font-weight: 800;">&#9888; ${t.blank} item(s) unanswered</small>` : '';
+            const mismatch = t.disagrees
+                ? `<br><small style="color: var(--warning); font-weight: 800;" title="The counts stored by the phone do not match the answers in this report. The answers are what is shown.">&#9888; counts disagree</small>` : '';
+            let actions = `<button class="btn-ghost btn-sm" title="Open the whole report" onclick="openHygieneReport('${rid}')">${iconSvg('fileText','ic-sm')}</button>`
+                + ` <button class="btn-success btn-sm" title="Send the summary on WhatsApp" onclick="sendHygieneWhatsApp('${rid}')">${iconSvg('plane','ic-sm')}</button>`;
+            if (hygMayDelete()) {
+                actions += ` <button class="btn-danger btn-sm" title="Delete this inspection" onclick="deleteHygieneReport('${rid}')">${iconSvg('trash','ic-sm')}</button>`;
+            }
+            return `<tr>
+                <td><b>${escapeHtml(hygDateLabel(r.date))}</b>${warn}${mismatch}</td>
+                <td>${escapeHtml(r.branch || '—')}</td>
+                <td>${escapeHtml(r.inspectorName || r.inspectorId || '—')}</td>
+                <td style="white-space: nowrap; font-size: 12px; color: var(--text-dim);">${escapeHtml(String(r.startTime || '—'))} &rarr; ${escapeHtml(String(r.endTime || '—'))}</td>
+                <td><b style="color: var(--success);">${t.ok}</b></td>
+                <td><b style="color: ${t.nc ? 'var(--danger)' : 'var(--text-dim)'};">${t.nc}</b></td>
+                <td style="color: var(--text-dim);">${t.na}</td>
+                <td style="white-space: nowrap;"><b style="color: var(--danger);">${t.high}</b> &middot; <b style="color: var(--warning);">${t.medium}</b> &middot; <span style="color: var(--text-dim);">${t.low}</span></td>
+                <td><b style="color: ${pctColour}; font-size: 14.5px;">${pct}</b></td>
+                <td style="white-space: nowrap;">${actions}</td>
+            </tr>`;
+        }).join('');
+
+        // التقريرُ المفتوح يُعاد رسمُه: قد يكون خرج من المصفاة أو حُذف.
+        renderHygieneDetail();
+    };
+
+    window.openHygieneReport = function(id) {
+        hygOpenId = String(id || '');
+        renderHygieneDetail();
+        const card = document.getElementById('hygDetailCard');
+        if (card && card.scrollIntoView) {
+            try { card.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { card.scrollIntoView(); }
+        }
+    };
+    window.closeHygieneReport = function() {
+        hygOpenId = '';
+        renderHygieneDetail();
+    };
+
+    function hygHeadRow(label, value) {
+        return `<div style="display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px dashed var(--border); font-size:12.5px;">`
+            + `<span style="color: var(--text-dim); font-weight:700;">${label}</span>`
+            + `<span style="font-weight:700; text-align:right;">${escapeHtml(String(value == null || value === '' ? '—' : value))}</span></div>`;
+    }
+
+    function renderHygieneDetail() {
+        const card = document.getElementById('hygDetailCard');
+        const box = document.getElementById('hygDetailBody');
+        if (!card || !box) return;
+        const r = allHygieneReports.find(x => x.id === hygOpenId);
+        if (!r) { card.style.display = 'none'; box.innerHTML = ''; return; }
+        card.style.display = '';
+
+        const t = hygTally(r);
+        const title = document.getElementById('hygDetailTitle');
+        if (title) title.innerText = `${r.branch || '—'} · ${hygDateLabel(r.date)}`;
+
+        const submitted = tsFieldToDate(r.serverTime)
+            ? tsFieldToDate(r.serverTime).toLocaleString()
+            : (r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '—');
+
+        const head = `<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap:0 22px; margin-bottom:16px;">`
+            + hygHeadRow('Report No. / رقم التقرير', r.reportNo)
+            + hygHeadRow('Branch / الفرع', r.branch)
+            + hygHeadRow('Activity / النشاط', r.activity)
+            + hygHeadRow('Date / التاريخ', hygDateLabel(r.date))
+            + hygHeadRow('Start &rarr; End / من &rarr; إلى', `${r.startTime || '—'} → ${r.endTime || '—'} (Qatar)`)
+            + hygHeadRow('Inspector / المفتّش', `${r.inspectorName || '—'}${r.inspectorTitle ? ' — ' + r.inspectorTitle : ''}`)
+            + hygHeadRow('Person in charge / المسؤول المتواجد', r.personInCharge)
+            + hygHeadRow('Received by / مستلم التقرير', r.receiverName)
+            + hygHeadRow('Items / عدد البنود', `${t.count}`)
+            + hygHeadRow('Compliant &middot; Not &middot; N/A', `${t.ok} · ${t.nc} · ${t.na}`)
+            + hygHeadRow('High &middot; Medium &middot; Low', `${t.high} · ${t.medium} · ${t.low}`)
+            + hygHeadRow('Compliance / نسبة المطابقة', t.pct === null ? '—' : `${t.pct.toFixed(1)}%`)
+            + hygHeadRow('Received in the office / وصل اللوحة', submitted)
+            + `</div>`;
+
+        const notes = [];
+        if (t.blank > 0) {
+            notes.push(`<div style="background:#fffbeb; border:1px solid var(--warning); border-radius:8px; padding:10px 12px; font-size:12.5px; font-weight:700; color:#78350f; margin-bottom:12px;">
+                &#9888; ${t.blank} item(s) were sent without an answer. They are shown below as "no answer" &mdash; they are not counted as compliant.</div>`);
+        }
+        if (t.disagrees) {
+            notes.push(`<div style="background:#fffbeb; border:1px solid var(--warning); border-radius:8px; padding:10px 12px; font-size:12.5px; font-weight:700; color:#78350f; margin-bottom:12px;">
+                &#9888; The totals stored with this report do not match its own answers. What is shown above and below is counted from the answers themselves, which are the record.</div>`);
+        }
+
+        // ---- البنود، بأقسامها كما أُرسلت -----------------------------------
+        const items = (Array.isArray(r.items) ? r.items : []).slice()
+            .sort((a, b) => (Number(a.n) || 0) - (Number(b.n) || 0));
+        const sections = [];
+        items.forEach(i => {
+            const key = String(i.section == null ? '?' : i.section);
+            let s = sections.find(x => x.key === key);
+            if (!s) {
+                s = { key, en: i.sectionEn || '', ar: i.sectionAr || '', rows: [] };
+                sections.push(s);
+            }
+            s.rows.push(i);
+        });
+
+        const itemsHtml = sections.map(s =>
+            `<div style="margin-top:16px;">`
+            + `<div style="background: var(--ink-900, #1a252f); color:#fff; border-radius:8px; padding:8px 11px;">`
+            +   `<div style="font-size:12.5px; font-weight:800; direction:ltr;">${escapeHtml(s.key)}. ${escapeHtml(s.en)}</div>`
+            +   `<div style="font-size:12px; font-weight:700; direction:rtl; text-align:right; opacity:.92;">${escapeHtml(s.ar)}</div>`
+            + `</div>`
+            + s.rows.map(i => {
+                const rating = String(i.rating || '');
+                const isNc = rating === 'nc';
+                const border = isNc ? 'var(--danger)' : (rating === 'ok' ? 'var(--success)' : 'var(--border)');
+                const bg = isNc ? '#fff7f7' : 'transparent';
+                const label = rating
+                    ? `${HYG_RATING_EN[rating] || rating} / ${HYG_RATING_AR[rating] || ''}`
+                    : 'no answer / بلا تقييم';
+                const labelColour = isNc ? 'var(--danger)'
+                    : (rating === 'ok' ? 'var(--success)' : (rating === 'na' ? 'var(--text-dim)' : 'var(--warning)'));
+                const sev = isNc
+                    ? `<div style="font-size:12px; font-weight:800; color:${HYG_SEV_COLOUR[i.severity] || 'var(--text-dim)'};">`
+                      + `${escapeHtml(HYG_SEV_EN[i.severity] || String(i.severity || ''))} / ${escapeHtml(HYG_SEV_AR[i.severity] || '')}`
+                      // ⚠️ يُقال إنّ المفتّشَ غيّر الدرجةَ المقترحة: قرارُه هو الحكم،
+                      //   لكن معرفةَ أنه خالف المقترحَ معلومةٌ للمالك لا تُحجب.
+                      + (i.severityChanged ? ` <span style="color: var(--text-dim); font-weight:700;">(changed from ${escapeHtml(HYG_SEV_EN[i.suggestedSeverity] || '')})</span>` : '')
+                      + `</div>` : '';
+                const note = (isNc && i.note)
+                    ? `<div style="margin-top:6px; font-size:12.5px; white-space:pre-wrap; background: var(--surface-2); border-radius:6px; padding:8px 10px;" dir="auto">${escapeHtml(i.note)}</div>` : '';
+                // ⚠️ الصورةُ تُقرأ حين تصل الشاشة: ٣٤ بندًا × ١٨٠KB في كل فتحةٍ
+                //   على بيانات هاتفٍ لا يُقبل. انظر observeHygieneThumbs.
+                const photo = (isNc && i.hasPhoto)
+                    ? `<img data-hygimg="${escapeHtml(r.id + '_' + i.n)}" alt="" loading="lazy"
+                         style="margin-top:8px; max-width:220px; max-height:170px; object-fit:cover; border-radius:8px; border:1px solid var(--border); background: var(--bg-soft); display:block;">`
+                    : (isNc ? `<div style="margin-top:6px; font-size:11.5px; color: var(--text-faint); font-weight:700;">no photo was attached</div>` : '');
+                return `<div style="border:1px solid ${border}; border-left:4px solid ${border}; background:${bg}; border-radius:8px; padding:10px 12px; margin-top:8px;">`
+                    + `<div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">`
+                    +   `<div style="flex:1; min-width:240px;">`
+                    +     `<b style="font-size:11.5px; background: var(--ink-900, #1a252f); color:#fff; border-radius:5px; padding:1px 7px;">${escapeHtml(String(i.n))}</b>`
+                    +     `<div style="direction:ltr; text-align:left; font-size:12.5px; font-weight:700; white-space:pre-line; margin-top:5px;">${escapeHtml(i.en || '')}</div>`
+                    +     `<div style="direction:rtl; text-align:right; font-size:12.5px; white-space:pre-line; margin-top:4px; color: var(--text-dim);">${escapeHtml(i.ar || '')}</div>`
+                    +   `</div>`
+                    +   `<div style="min-width:170px; text-align:right;">`
+                    +     `<div style="font-size:12px; font-weight:800; color:${labelColour};">${label}</div>`
+                    +     sev
+                    +   `</div>`
+                    + `</div>`
+                    + note + photo
+                    + `</div>`;
+            }).join('')
+            + `</div>`
+        ).join('') || `<p style="color: var(--text-faint); font-weight:700;">This report carries no items. Nothing can be shown.</p>`;
+
+        // ---- خطّةُ الإجراءات التصحيحية (القسم ٨) ---------------------------
+        const actions = Array.isArray(r.actions) ? r.actions : [];
+        const actionsHtml = actions.length
+            ? `<div style="margin-top:22px;">`
+              + `<div style="background: var(--ink-900, #1a252f); color:#fff; border-radius:8px; padding:8px 11px;">`
+              +   `<div style="font-size:12.5px; font-weight:800; direction:ltr;">8. Corrective Action Plan</div>`
+              +   `<div style="font-size:12px; font-weight:700; direction:rtl; text-align:right; opacity:.92;">خطة الإجراءات التصحيحية</div>`
+              + `</div>`
+              + `<div class="table-container" style="margin-top:8px;"><table><thead><tr>`
+              + `<th>#</th><th>Severity</th><th>Corrective action</th><th>Responsible</th><th>Deadline</th>`
+              + `</tr></thead><tbody>`
+              + actions.map(a => `<tr>`
+                  + `<td><b>${escapeHtml(String(a.n))}</b></td>`
+                  + `<td style="color:${HYG_SEV_COLOUR[a.severity] || 'var(--text-dim)'}; font-weight:800;">${escapeHtml(HYG_SEV_EN[a.severity] || String(a.severity || '—'))}</td>`
+                  + `<td style="white-space:pre-wrap;" dir="auto">${escapeHtml(a.action || '—')}</td>`
+                  + `<td dir="auto">${escapeHtml(a.responsible || '—')}</td>`
+                  + `<td style="white-space:nowrap;">${escapeHtml(a.dueEn || a.due || '—')}${a.dueAr ? ` / ${escapeHtml(a.dueAr)}` : ''}</td>`
+                  + `</tr>`).join('')
+              + `</tbody></table></div></div>`
+            : (t.nc > 0
+                ? `<p style="margin-top:18px; color: var(--warning); font-weight:700; font-size:12.5px;">&#9888; This report has findings but carries no corrective-action plan.</p>`
+                : '');
+
+        box.innerHTML = notes.join('') + head + itemsHtml + actionsHtml;
+        observeHygieneThumbs();
+    }
+
+    /**
+     * ⭐ صورُ التفتيش تُقرأ **عند وصول البند إلى الشاشة** لا مع التقرير.
+     * ⚠️ السببُ رقمٌ لا رأي: تقريرٌ فيه عشرُ مخالفاتٍ مصوَّرةٍ ≈ ١٨٠KB × ١٠ في كلِّ
+     *   فتحة. ونسخةُ الجلسةِ تمنع قراءةَ الصورةِ مرّتَين.
+     * ⚠️⚠️ ولا يُسند إلى src إلّا نصٌّ يبدأ بـdata:image — نصٌّ آخر قد يكون رابطًا
+     *   خارجيًّا يُسرّب فتحةَ الصفحة.
+     */
+    function observeHygieneThumbs() {
+        const imgs = Array.from(document.querySelectorAll('img[data-hygimg]'));
+        if (!imgs.length) return;
+        const fill = async (img) => {
+            const id = img.getAttribute('data-hygimg');
+            if (!id || img.dataset.hygDone === '1') return;
+            img.dataset.hygDone = '1';
+            if (hygImageCache.has(id)) { img.src = hygImageCache.get(id); return; }
+            try {
+                const snap = await getDoc(doc(db, HYG_IMAGES_COLL, id));
+                const url = snap.exists() ? String(snap.data().photo || '') : '';
+                if (/^data:image\/(png|jpe?g|webp|gif);base64,/.test(url)) {
+                    hygImageCache.set(id, url);
+                    img.src = url;
+                } else {
+                    // ⚠️ صورةٌ وُعد بها ولم تُوجد تُقال، لا تُترك مربّعًا فارغًا:
+                    //   «فشل رفعُ الصورة» معلومةٌ مختلفةٌ تمامًا عن «لا صورة».
+                    img.replaceWith(Object.assign(document.createElement('div'), {
+                        textContent: 'the photo of this item did not upload',
+                        style: 'margin-top:6px; font-size:11.5px; color: var(--danger); font-weight:700;'
+                    }));
+                }
+            } catch (e) { /* صورةٌ لا تُقرأ لا تُعطّل التقرير */ }
+        };
+        if (typeof IntersectionObserver !== 'function') { imgs.forEach(fill); return; }
+        const obs = new IntersectionObserver((entries) => {
+            entries.forEach(en => {
+                if (en.isIntersecting) { fill(en.target); obs.unobserve(en.target); }
+            });
+        }, { rootMargin: '200px' });
+        imgs.forEach(i => { if (i.dataset.hygDone !== '1') obs.observe(i); });
+    }
+
+    /**
+     * نصُّ الواتساب — مطابقٌ لِما تبنيه شاشة المدراء
+     * (buildHygieneWhatsAppText في index.html). التطابقُ مقصود: من استلم
+     * الرسالةَ من المدير أوّلًا يجب أن يرى نفسَ الشكلِ عند إعادة الإرسال من
+     * اللوحة، وإلّا ظنّها تقريرًا آخر.
+     */
+    function hygieneWhatsAppText(r) {
+        const t = hygTally(r);
+        const pct = t.pct === null ? '—' : `${t.pct.toFixed(1)}%`;
+        const lines = [
+            `*Hygiene Inspection — ${hygDateLabel(r.date)}*`,
+            `*Branch:* ${r.branch || '—'}`,
+            `Report No: ${r.reportNo || '—'}`,
+            `Inspector: ${r.inspectorName || '—'}`,
+            `Time: ${r.startTime || '—'} → ${r.endTime || '—'} (Qatar)`,
+            '',
+            `Compliant: ${t.ok} · Not compliant: ${t.nc} · N/A: ${t.na}`,
+            `High: ${t.high} · Medium: ${t.medium} · Low: ${t.low}`,
+            `*Compliance: ${pct}*`
+        ];
+        const bad = (Array.isArray(r.items) ? r.items : []).filter(i => i.rating === 'nc');
+        if (bad.length) {
+            lines.push('', '*Findings:*');
+            bad.forEach(i => {
+                const head = String(i.en || '').split('\n')[0];
+                lines.push(`${i.n}. (${HYG_SEV_EN[i.severity] || i.severity || '—'}) ${head.length > 90 ? head.slice(0, 90) + '…' : head}`);
+                if (i.note) lines.push(`   — ${i.note.length > 140 ? i.note.slice(0, 140) + '…' : i.note}`);
+            });
+        } else {
+            lines.push('', 'No findings. All judged items are compliant.');
+        }
+        lines.push('', `Submitted by: ${r.inspectorName || '—'}`);
+        let text = lines.join('\n');
+        // ⚠️ نصٌّ أطولُ من حدِّ المخطَّط لا يُعطي خطأً — **لا يحدث شيءٌ عند الضغط**.
+        // ⚠️ ١٧٠٠ لا ١٧٥٠: الذيلُ واحدٌ وخمسون حرفًا، فالقصُّ عند ١٧٥٠ يُخرج ١٨٠١.
+        if (text.length > 1800) text = text.slice(0, 1700) + '\n…\n(full report with photos is in the office panel)';
+        return text;
+    }
+
+    /** بلا وسيط = التقريرُ المفتوح الآن (زرُّ البطاقة). */
+    window.sendHygieneWhatsApp = function(reportId) {
+        const id = String(reportId || hygOpenId || '');
+        const r = allHygieneReports.find(x => x.id === id);
+        if (!r) { alert('Open an inspection first.'); return; }
+        const encoded = encodeURIComponent(hygieneWhatsAppText(r));
+        const isPhone = /android|iphone|ipad|ipod|iemobile|blackberry|opera mini|webos/i.test(navigator.userAgent || '');
+        // وسم <a> لا window.open: متصفّحاتُ الهاتف تحجب النوافذَ المنبثقة.
+        const a = document.createElement('a');
+        a.href = isPhone ? `whatsapp://send?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+        if (!isPhone) { a.target = '_blank'; a.rel = 'noopener'; }
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => a.remove(), 0);
+    };
+
+    window.deleteHygieneReport = async function(reportId) {
+        if (!hygMayDelete()) { alert('Only the owner can delete an inspection.'); return; }
+        const r = allHygieneReports.find(x => x.id === reportId);
+        if (!r) return;
+        const t = hygTally(r);
+        /**
+         * ⚠️⚠️ التأكيدُ يُسمّي ما يُفقَد لا يسأل «هل أنت متأكّد»: التقريرُ إثباتٌ،
+         *   وصورُه هي الدليلُ الوحيدُ على مخالفةٍ قد تكون صُحِّحت بعدها — فلا
+         *   تُصوَّر مرّةً ثانية. والصورُ تبقى في مجموعتها (القاعدةُ تسمح بحذفها
+         *   للمالك وحدَه)، فتُحذف معه هنا صريحًا كي لا تبقى أيتامًا.
+         */
+        const ok = confirm(`Delete this inspection for good?\n\n`
+            + `${r.branch || '—'} · ${hygDateLabel(r.date)} · ${r.inspectorName || '—'}\n`
+            + `${t.nc} finding(s), ${t.high} of them high severity.\n\n`
+            + `Its photos are the only copy that exists and will be deleted with it.`);
+        if (!ok) return;
+        try {
+            // الصورُ أوّلًا: لو فشل حذفُ التقريرِ بعدها بقي التقريرُ ظاهرًا وصورُه
+            // ناقصة — وهو مرئيٌّ ويُعاد. أمّا العكسُ فيترك صورًا لا تُرى أبدًا.
+            const photos = (Array.isArray(r.items) ? r.items : []).filter(i => i.hasPhoto);
+            for (const i of photos) {
+                try { await deleteDoc(doc(db, HYG_IMAGES_COLL, `${r.id}_${i.n}`)); } catch (e) { /* صورةٌ غائبةٌ أصلًا */ }
+            }
+            await deleteDoc(doc(db, HYG_COLL, r.id));
+            logAudit('Hygiene Inspection Deleted',
+                `${r.branch || ''} ${r.date || ''} — ${t.nc} finding(s), ${photos.length} photo(s)`);
+            if (hygOpenId === r.id) hygOpenId = '';
+            await loadHygieneInspections();
+        } catch (error) {
+            alert('Error deleting the inspection: ' + error.message);
+        }
+    };
 
     window.loadManagerRequests = async function() {
         // كل قائمة في try خاصّ: المحاسب لا يقرأ طلبات الإنذار والسكرتيرة لا تقرأ
@@ -31285,6 +31855,15 @@
         "financial_payments", "financial_months",
         // وطلبات المديرين: سجل من طلب ومن وافق ومتى — إثبات لا يُعاد بناؤه.
         "petty_cash_requests", "warning_requests",
+        // ⭐⭐ وتقاريرُ التفتيش الصحّي ومعها صورُها. ⚠️⚠️
+        // `hygiene_inspection_images` تحمل **الصورةَ نفسَها** ولا نسخةَ أخرى
+        // منها في أيِّ مكان — فبلا هذا السطر تُفقد أدلّةُ المخالفات نهائيًّا
+        // ولا تُصوَّر مرّةً ثانية: المصرفُ نُظِّف والملصقُ استُبدل. ونسيانُ سطرٍ
+        // كهذا وقع فعلًا ثلاثَ مرّات (أدلّةُ التدريب، بطاقاتُ البياعات،
+        // صورُ الكتالوج).
+        // ⚠️ والتقريرُ نفسُه غيرُ قابلٍ للتعديل بقواعده (allow update: if false)،
+        //   أي أنّه إثباتٌ لا يُعاد بناؤه من شيءٍ آخر.
+        "hygiene_inspections", "hygiene_inspection_images",
         // العبايات: نشاط كامل مستقل — تقاريره وبياعاته وأرقامهن السرية.
         "abaya_sales_reports", "abaya_sellers", "abaya_seller_pins",
         // وبطاقات المدراء والسوبرفايزر وسجل حالة دوامهم. البطاقة تحمل الصورة

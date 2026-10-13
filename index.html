@@ -365,6 +365,79 @@
         }
         .btn-whatsapp { background-color: #25D366; }
         .btn-whatsapp:hover { background-color: #1da851; }
+
+        /* =================================================================
+           تقرير التفتيش الصحّي — شاشة المدراء
+           -----------------------------------------------------------------
+           بطلب المالك: «كل بند تحته يكون انجليزي تحته عربي، جنبه التقييم
+           والملاحظة والصورة». فالنصّان فوق بعضهما، والتقييم بجانبهما على
+           الشاشة العريضة وتحتهما على الهاتف.
+           ⚠️ الألوان قيمًا صريحةً لا color-mix(): هذه الشاشة قد تُرسم يومًا
+             في صورة أو PDF، وcolor-mix() هو ما كان يُسقط ذلك التحويل.
+           ================================================================= */
+        .hyg-wrap { text-align: left; }
+        .hyg-head { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 10px; padding: 12px; margin-bottom: 14px; }
+        .hyg-head .form-group { margin-bottom: 10px; }
+        .hyg-fixed { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; padding: 5px 0; border-bottom: 1px dashed #dee2e6; }
+        .hyg-fixed:last-child { border-bottom: none; }
+        .hyg-fixed span:first-child { color: #6c757d; font-weight: 700; }
+        .hyg-fixed span:last-child { color: #1a252f; font-weight: 700; text-align: right; }
+
+        .hyg-sec { margin: 16px 0 0; }
+        .hyg-sec-h { background: #1a252f; color: #fff; border-radius: 8px; padding: 9px 11px; }
+        .hyg-sec-h .hyg-sec-en { font-size: 13px; font-weight: 700; direction: ltr; }
+        .hyg-sec-h .hyg-sec-ar { font-size: 12.5px; font-weight: 700; direction: rtl; text-align: right; opacity: 0.92; margin-top: 2px; }
+
+        .hyg-item { border: 1px solid #e9ecef; border-radius: 10px; padding: 11px; margin-top: 9px; background: #fff; }
+        .hyg-item.hyg-is-nc { border-color: #f08c8c; background: #fff7f7; }
+        .hyg-item.hyg-is-ok { border-color: #a8d5b5; }
+        .hyg-item.hyg-is-na { border-color: #dee2e6; background: #fafafa; }
+        .hyg-no { display: inline-block; min-width: 24px; height: 24px; line-height: 24px; text-align: center; border-radius: 6px; background: #1a252f; color: #fff; font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+        /* pre-line: نصوص البنود فيها أسطر ونقاط فرعية من ملفّ الوورد. */
+        .hyg-en { direction: ltr; text-align: left; font-size: 13px; font-weight: 700; color: #1a252f; line-height: 1.55; white-space: pre-line; }
+        .hyg-ar { direction: rtl; text-align: right; font-size: 13px; font-weight: 700; color: #495057; line-height: 1.7; white-space: pre-line; margin-top: 5px; padding-top: 5px; border-top: 1px dotted #e9ecef; }
+
+        .hyg-rate { display: flex; gap: 6px; margin-top: 9px; }
+        .hyg-r { flex: 1; min-height: 46px; padding: 6px 4px; border: 1.5px solid #ced4da; border-radius: 8px; background: #fff; color: #6c757d; font-family: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer; line-height: 1.3; }
+        .hyg-r small { display: block; font-size: 10.5px; font-weight: 700; direction: rtl; opacity: 0.85; }
+        .hyg-r:active { transform: scale(0.97); }
+        .hyg-r-ok.hyg-on { background: #1e7e34; border-color: #1e7e34; color: #fff; }
+        .hyg-r-nc.hyg-on { background: #c62828; border-color: #c62828; color: #fff; }
+        .hyg-r-na.hyg-on { background: #6c757d; border-color: #6c757d; color: #fff; }
+
+        .hyg-nc { margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0d0d0; }
+        .hyg-nc label { font-size: 12px; margin-bottom: 5px; }
+        .hyg-sev { display: flex; gap: 6px; margin-bottom: 10px; }
+        .hyg-s { flex: 1; min-height: 42px; padding: 5px 3px; border: 1.5px solid #ced4da; border-radius: 8px; background: #fff; color: #6c757d; font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer; line-height: 1.3; }
+        .hyg-s small { display: block; font-size: 10px; direction: rtl; opacity: 0.85; }
+        .hyg-s-low.hyg-on { background: #0b7285; border-color: #0b7285; color: #fff; }
+        .hyg-s-medium.hyg-on { background: #e8590c; border-color: #e8590c; color: #fff; }
+        .hyg-s-high.hyg-on { background: #a61e1e; border-color: #a61e1e; color: #fff; }
+        .hyg-nc textarea { min-height: 70px; font-size: 15px; }
+        .hyg-thumb { margin-top: 8px; display: none; }
+        .hyg-thumb img { max-width: 100%; max-height: 180px; border-radius: 8px; border: 1px solid #dee2e6; display: block; }
+        .hyg-thumb button { margin-top: 6px; min-height: 38px; padding: 8px 12px; border: none; border-radius: 8px; background: #6c757d; color: #fff; font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; width: auto; }
+
+        .hyg-tally { position: sticky; bottom: 0; z-index: 3; background: #1a252f; color: #fff; border-radius: 10px; padding: 10px 12px; margin-top: 16px; font-size: 12.5px; font-weight: 700; line-height: 1.7; }
+        .hyg-tally .hyg-t-row { display: flex; justify-content: space-between; gap: 8px; }
+        .hyg-tally .hyg-t-warn { color: #ffd166; margin-top: 4px; }
+
+        .hyg-actions { margin-top: 16px; }
+        .hyg-act { border: 1px solid #f0d0d0; background: #fff7f7; border-radius: 10px; padding: 10px; margin-top: 8px; }
+        .hyg-act .hyg-act-h { font-size: 12.5px; font-weight: 700; color: #a61e1e; margin-bottom: 7px; white-space: pre-line; }
+        .hyg-act input, .hyg-act select { font-size: 15px; min-height: 44px; }
+        .hyg-act .form-group { margin-bottom: 8px; }
+
+        .hyg-sum { text-align: left; }
+        .hyg-sum-bad { background: #fff7f7; border: 1px solid #f0d0d0; border-radius: 8px; padding: 8px 10px; margin-top: 7px; font-size: 12.5px; font-weight: 700; line-height: 1.6; white-space: pre-line; }
+
+        @media (min-width: 560px) {
+            .hyg-item { display: grid; grid-template-columns: 1fr 230px; gap: 14px; align-items: start; }
+            .hyg-item .hyg-item-ctl { grid-column: 2; }
+            .hyg-item .hyg-item-txt { grid-column: 1; }
+            .hyg-rate { margin-top: 0; flex-direction: column; }
+            .hyg-r { min-height: 40px; }
+        }
     </style>
 </head>
 <body>
@@ -828,6 +901,7 @@
                 <button class="action-btn btn-submit" onclick="chooseReportTask('petty')">Petty Cash Request</button>
                 <button class="action-btn btn-submit" onclick="chooseReportTask('warn')">Warning Letter Request</button>
                 <button class="action-btn btn-submit" onclick="chooseReportTask('present')">My Duty Status</button>
+                <button class="action-btn btn-submit" onclick="chooseReportTask('hygiene')">Hygiene Inspection &mdash; &#1578;&#1602;&#1585;&#1610;&#1585; &#1575;&#1604;&#1578;&#1601;&#1578;&#1610;&#1588;</button>
             </div>
             <button class="action-btn" style="background-color: #6c757d; margin-top: 14px;" onclick="reportBackToLogin()">&#11013; Sign out</button>
         </div>
@@ -922,6 +996,77 @@
                 Pressed the wrong one? Just press the right one &mdash; the newest entry is the one shown.
             </p>
             <button class="action-btn" style="background-color: #6c757d; margin-top: 10px;" onclick="showReportStep('reportMenuStep')">&#11013; Back</button>
+        </div>
+
+        <!-- ========================= تقرير التفتيش الصحّي =========================
+             نموذج المالك نفسه (نسختاه العربية والإنجليزية في inspection/)،
+             ٣٤ بندًا في ٧ أقسام. البنود تُرسم بـ JavaScript من HYGIENE_SECTIONS
+             ولا تُكتب في HTML: مئةُ نصٍّ مكتوبةٌ بيدٍ تُخطئ، ونصُّ البند هو ما
+             يحكم عليه المفتّش.
+             ⚠️ الرأس يحمل «كل التفاصيل» بطلبه: رقم التقرير، الفرع، النشاط،
+               التاريخ، ساعة البداية والنهاية، المفتّش، المسؤول المتواجد،
+               والمستلم — والزمن من ساعة قطر لا من إعداد الهاتف.
+        ====================================================================== -->
+        <div id="reportHygieneStep" style="display: none;" class="hyg-wrap">
+            <h2 style="font-size: 17px; margin-bottom: 2px;">Hygiene Inspection Report</h2>
+            <p style="direction: rtl; text-align: right; font-size: 14px; font-weight: 700; color: #495057; margin: 0 0 4px;">تقرير التفتيش الصحّي للمطاعم</p>
+            <p style="text-align: left; color: #6c757d; font-size: 12.5px; margin: 0 0 14px; font-weight: 700;" id="hygieneBranchLabel"></p>
+
+            <div class="hyg-head">
+                <div class="hyg-fixed"><span>Report No. / رقم التقرير</span><span id="hygReportNo">&mdash;</span></div>
+                <div class="hyg-fixed"><span>Branch / الفرع</span><span id="hygHeadBranch">&mdash;</span></div>
+                <div class="hyg-fixed"><span>Date / التاريخ</span><span id="hygHeadDate">&mdash;</span></div>
+                <div class="hyg-fixed"><span>Start time / ساعة البداية</span><span id="hygHeadStart">&mdash;</span></div>
+                <div class="hyg-fixed"><span>Inspector / المفتّش</span><span id="hygHeadInspector">&mdash;</span></div>
+                <div class="hyg-fixed" style="margin-bottom: 10px;"><span>End time / ساعة النهاية</span><span id="hygHeadEnd">on sending / عند الإرسال</span></div>
+
+                <div class="form-group">
+                    <label for="hygActivity">Activity / نوع النشاط</label>
+                    <input type="text" id="hygActivity" placeholder="Restaurant &amp; Caf&eacute; / مطعم ومقهى">
+                </div>
+                <div class="form-group">
+                    <label for="hygInCharge">Person in charge present / المسؤول المتواجد</label>
+                    <input type="text" id="hygInCharge" placeholder="Name / الاسم">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="hygReceiver">Report received by / اسم مستلم التقرير</label>
+                    <input type="text" id="hygReceiver" placeholder="Name / الاسم">
+                </div>
+            </div>
+
+            <div id="hygItemsBox"></div>
+
+            <!-- جدول الإجراءات التصحيحية (القسم ٨ في نموذجه) — يُبنى تلقائيًا من
+                 البنود غير المطابقة، فلا يُعاد كتابةُ المخالفة مرّةً ثانية. -->
+            <div class="hyg-actions" id="hygActionsBox"></div>
+
+            <div class="hyg-tally" id="hygTallyBox"></div>
+
+            <button class="action-btn btn-in" id="btnSubmitHygiene" style="margin-top: 16px;" onclick="submitHygieneReport()">Send Inspection &#128228;</button>
+            <button class="action-btn" style="background-color: #6c757d; margin-top: 10px;" onclick="showReportStep('reportMenuStep')">&#11013; Back</button>
+        </div>
+
+        <!-- تأكيد الإرسال. وهذه الصفحة لا تستطيع قراءة التقارير بعد إرسالها
+             (القواعد تمنعها عن قصد)، فالملخّص يُبنى من الكائن المحفوظ نفسه. -->
+        <div id="reportHygieneDoneStep" style="display: none;" class="hyg-sum">
+            <div class="report-summary-card">
+                <div class="report-summary-title">
+                    <span id="hygDoneTitle">Hygiene Inspection</span>
+                </div>
+                <div class="report-summary-branch" id="hygDoneBranch"></div>
+                <div id="hygDoneRows"></div>
+                <div class="report-summary-by" id="hygDoneBy"></div>
+            </div>
+            <div id="hygDoneFindings"></div>
+            <p id="hygDonePhotoNote" style="display: none; text-align: left; font-size: 12.5px; font-weight: 700; color: #a15c00; background: #fff3cd; border: 1px solid #ffe08a; border-radius: 8px; padding: 9px 11px; line-height: 1.6;"></p>
+            <a class="action-btn btn-in" id="btnWhatsAppHygiene" href="#" style="margin-top: 14px; display: block; text-decoration: none; text-align: center; line-height: 22px;">Send summary on WhatsApp &#128241;</a>
+            <p class="report-currency-note" id="hygWhatsAppFallbackWrap" style="display: none;">
+                Nothing happened? <a id="linkHygWhatsAppFallback" href="#" target="_blank" rel="noopener">open WhatsApp Web</a>
+            </p>
+            <p style="text-align: left; font-size: 12px; color: #6c757d; font-weight: 700; line-height: 1.6; margin-top: 12px;">
+                The full report with the photos is in the office panel. The PDF is sent from there.
+            </p>
+            <button class="action-btn btn-submit" style="margin-top: 10px;" onclick="showReportStep('reportMenuStep')">Done &#10004;</button>
         </div>
 
         <div id="reportFormStep" style="display: none;">
@@ -2877,7 +3022,8 @@
     // لمّا صارت الخطوات سبعًا، صار التبديل اليدوي لكل زوج مصدرًا للأخطاء.
     // ⚠️ خطوة غير مذكورة هنا لا تُخفى أبدًا بعد ظهورها، فتتراكم على غيرها.
     const REPORT_STEPS = ['reportLoginStep', 'reportBranchStep', 'reportMenuStep',
-        'reportPettyStep', 'reportWarnStep', 'reportPresentStep', 'reportFormStep', 'reportSummaryStep'];
+        'reportPettyStep', 'reportWarnStep', 'reportPresentStep', 'reportFormStep', 'reportSummaryStep',
+        'reportHygieneStep', 'reportHygieneDoneStep'];
     window.showReportStep = function(stepId) {
         REPORT_STEPS.forEach(id => {
             const el = document.getElementById(id);
@@ -2898,14 +3044,17 @@
         sales: 'Daily Sales Report',
         petty: 'Petty Cash Request',
         warn: 'Warning Letter Request',
-        present: 'My Duty Status'
+        present: 'My Duty Status',
+        hygiene: 'Hygiene Inspection Report'
     };
     window.chooseReportTask = function(task) {
         reportState.task = REPORT_TASK_LABEL[task] ? task : 'sales';
 
         // بطلب الإدارة: اختيار الفرع للتقرير اليومي وحده. طلب البيتي كاش وطلب
         // الإنذار يخصّان فرع المدير نفسه، فيُؤخذ من ملفه بلا سؤال.
-        if (reportState.task !== 'sales') {
+        // ⚠️ التفتيشُ يختار الفرعَ مثل تقرير المبيعات، بنصِّ المالك («يختار
+        //   الفرع يفتح التقرير»): المدير قد يفتّش فرعًا ليس فرعَه.
+        if (reportState.task !== 'sales' && reportState.task !== 'hygiene') {
             if (reportState.managerBranch) {
                 reportState.branch = reportState.managerBranch;
                 ['pettyBranchLabel', 'warnBranchLabel', 'presentBranchLabel'].forEach(id => {
@@ -2928,13 +3077,15 @@
 
     window.selectReportBranch = function(branch) {
         reportState.branch = branch;
-        ['reportBranchLabel', 'pettyBranchLabel', 'warnBranchLabel', 'presentBranchLabel'].forEach(id => {
+        ['reportBranchLabel', 'pettyBranchLabel', 'warnBranchLabel', 'presentBranchLabel',
+         'hygieneBranchLabel'].forEach(id => {
             const el = document.getElementById(id); if (el) el.innerText = branch;
         });
         // ينتقل إلى نموذج المهمة التي اختارها قبل الفرع.
         if (reportState.task === 'petty') openPettyForm();
         else if (reportState.task === 'warn') openWarnForm();
         else if (reportState.task === 'present') openPresenceForm();
+        else if (reportState.task === 'hygiene') openHygieneForm();
         else openSalesForm();
     };
 
@@ -3188,6 +3339,807 @@
             btn.disabled = false;
         }
     };
+
+    // =====================================================================
+    // بنود تقرير التفتيش الصحّي — 34 بندًا في 7 أقسام
+    // ---------------------------------------------------------------------
+    // المصدر: ملفّا الوورد الذين رفعهما المالك (عربي + إنجليزي)، وهما في
+    // inspection/ داخل المستودع. والجدول المقروء للمراجعة في
+    // inspection/items-review.md.
+    //
+    // ⚠️⚠️ `sev` هي الخطورة **المقترحة** فقط: تظهر مختارةً سلفًا عند اختيار
+    //   «غير مطابق»، وللمفتّش أن يُغيّرها. ليست في نموذج المالك الأصلي —
+    //   أُضيفت بطلبه (الخيار «ج»). وتصنيفُ مستنده يسبق تصنيفي حيث اختلفا.
+    //   التوزيع: عالية 14 · متوسطة 14 · منخفضة 6.
+    //
+    // ⚠️ البنود مكتوبةٌ هنا مرّةً واحدةً، ونصُّ كلِّ بندٍ يُنسَخ **داخل التقرير
+    //   المُرسَل**. فلوحةُ الإدارة لا تحتاج نسخةً ثانيةً من القائمة (نسختان
+    //   تتباعدان، فتظهر إجاباتٌ قديمةٌ أمام نصٍّ جديد)، والتقاريرُ القديمة
+    //   تحفظ الصياغةَ التي قرأها المفتّش وحكم عليها. المخالفةُ دليل.
+    // =====================================================================
+    const HYGIENE_SECTIONS = [
+        {
+            n: 1,
+            titleEn: "Licenses, Official Transactions & Personal Hygiene",
+            titleAr: "الرخص والمعاملات الرسمية والنظافة الشخصية",
+            items: [
+                { n: 1, sev: "high",
+                  en: "Health Certificates: Availability of valid health certificates for all employees, issued by the Ministry of Health.",
+                  ar: "الشهادات الصحية: وجود شهادات صحية سارية المفعول لجميع العاملين صادرة من وزارة الصحة." },
+                { n: 2, sev: "medium",
+                  en: "Uniform: All workers adhere to a clean uniform, full hair coverage, and wearing masks/beard covers when handling exposed food.",
+                  ar: "الزي الرسمي: التزام جميع العمال بالزي الموحد، النظيف، مع تغطية الشعر بالكامل ارتداء الكمامات/مغطي اللحية عند التعامل مع الطعام المفتوح." },
+                { n: 3, sev: "medium",
+                  en: "Personal Hygiene: Trimmed nails, no watches or accessories worn during food preparation, and workers free from disease symptoms or open wounds.",
+                  ar: "النظافة الشخصية: تقليم الأظافر، عدم ارتداء الساعات والأكسسوارات أثناء تحضير الطعام، وخلو العاملين من أي أعراض مرضية أو جروح مفتوحة." },
+                { n: 4, sev: "high",
+                  en: "Handwashing Stations: Availability of liquid soap, single-use paper towels, and warm water at all handwashing sinks.\n• Demonstration of the correct handwashing procedure.\n• Availability of a first aid kit.\n• Absence of personal belongings in food preparation areas.",
+                  ar: "محطات غسيل الأيدي: توفر الصابون السائل، المناديل الورقية ذات الاستخدام الواحد، والماء الدافئ عند جميع المغاسل الخاصة بالأيدي.\nشرح الطريقة الصحيحة لغسل يدين\nتواجد صندوق الاسعافات الاولية\nعدم تواجد الاغراض الشخصية في مكان تحضير الطعام" },
+            ]
+        },
+        {
+            n: 2,
+            titleEn: "Receiving, Transporting & Storing Food Items",
+            titleAr: "استلام ونقل وتخزين المواد الغذائية",
+            items: [
+                { n: 5, sev: "low",
+                  en: "Updated food receiving log.",
+                  ar: "سجل استلام المواد الغذائية محدث" },
+                { n: 6, sev: "low",
+                  en: "All received food items are documented in the log.",
+                  ar: "جميع المواد الغذائية التي تم استلامها موثقة بالسجل" },
+                { n: 7, sev: "high",
+                  en: "Refrigerators: Maintained between (1°C to 4°C) and in good structural condition.",
+                  ar: "• الثلاجات: بين (1°C إلى 4°C). و تكون في حالة هيكلية جيدة" },
+                { n: 8, sev: "high",
+                  en: "Freezers: Maintained at (-18°C or below).",
+                  ar: "• الفريزرات: (-18°C أو أقل)." },
+                { n: 9, sev: "medium",
+                  en: "Presence of accurate working thermometers inside refrigerators.",
+                  ar: "• وجود موازين حرارة (Thermometers) داخل الثلاجات تعمل بدقة." },
+                { n: 10, sev: "high",
+                  en: "Storage Method (Segregation & Covering):\n• All food items are covered and labeled with product details and dates.\n• Raw food (meat/poultry/fish) is separated from cooked/ready-to-eat food inside refrigerators (raw below, cooked above).",
+                  ar: "طريقة التخزين (الفصل والتغطية):\n• جميع المواد الغذائية مغطاة و تحتوي على ملصق المنتج و التاريخ.\n• فصل الأغذية النيئة (لحوم/دواجن/أسماك) عن الأغذية المطهية/الجاهزة للأكل داخل الثلاجات (الخام أسفل والطهي أعلى)." },
+                { n: 11, sev: "medium",
+                  en: "Labeling & Date Marking: Presence of labels indicating preparation and expiration dates on all prepared or opened items (applying the FEFO system — First Expired, First Out).",
+                  ar: "التاريخ وبطاقة البيان : وجود ملصق يوضح تاريخ التحضير وتاريخ الصلاحية على جميع المواد المحضرة أو المفتوحة\n(تطبيق نظام FEFO – الذي تنتهي صلاحيته أولاً يخرج أولاً)." },
+            ]
+        },
+        {
+            n: 3,
+            titleEn: "Food Preparation, Cooking & Holding",
+            titleAr: "تحضير وطهي وحفظ الأغذية",
+            items: [
+                { n: 12, sev: "high",
+                  en: "Cross-Contamination Prevention:\n• Use of color-coded cutting boards and knives dedicated to each food type (Red for Meat, Yellow for Poultry, Blue for Fish, Green for Vegetables, White for Cheese and Bread).",
+                  ar: "الحد من التلوث الخلطي (Cross-Contamination):\n• استخدام ألواح وسكاكين تقطيع ملونة ومخصصة لكل نوع (أحمر للحوم، أصفر للدواجن، أزرق للأسماك، أخضر للخضار، أبيض للأجبان والخبز)." },
+                { n: 13, sev: "high",
+                  en: "Thawing: Meat and fish are thawed in advance inside refrigerators; thawing at room temperature is strictly prohibited.\n• Thawing log is updated and matches date labels.\n• Use of strainers/colanders during the thawing process.",
+                  ar: "إذابة التجميد (Thawing): يتم تذويب اللحوم والأسماك داخل الثلاجات مسبقاً ، ويمنع إذابتها في درجة حرارة الغرفة.\nسجل ازالة التجميد محدث و متطابق مع ملصقات التاريخ\nاستعمال المصفاة في عملية التذويب" },
+                { n: 14, sev: "high",
+                  en: "Cooking Temperatures: Cooking meat and poultry to reach a safe internal temperature (minimum 75°C).\n• Cooking log is updated and matches date labels.",
+                  ar: "درجات حرارة الطهي:  طهي اللحوم والدواجن للوصول إلى درجة الحرارة الداخلية الآمنة (75°C كحد أدنى).\nسجل الطهي محدث و متطابق مع ملصقات التاريخ" },
+                { n: 15, sev: "high",
+                  en: "• Hot Holding: Display or hot holding is maintained at a minimum temperature of 65°C, with updated thawing logs matching date labels.\n• Availability of an updated cooling log matching date labels.\n• Cooling cooked items using an ice bath.\n• Reheating log is updated and matches date labels.\n• In-house/self-freezing of food items is strictly prohibited unless specifically licensed for this purpose.",
+                  ar: "حفظ الأغذية الساخنة (Hot Holding): العرض أو الحفظ الساخن يتم عند درجة حرارة لا تقل عن(65°C). مع سجل ازالة التجميد محدث و متطابق مع ملصقات التاريخ\nتواجد سجل التبريد محدث و متطابق مع ملصق التاريخ\nتبريد المواد المطبوخة يتم عن طريق حمام الثلج\nسجل اعادة التسخين محدث و متطابق مع ملصق التاريخ.\nيمنع منع باتا التجميد االذاتي للمواد الغذائية في حالة لا يوجد ترخيص في الغرض." },
+            ]
+        },
+        {
+            n: 4,
+            titleEn: "Equipment, Premise Sanitation & Disinfection",
+            titleAr: "نظافة المعدات والمكان والتعقيم",
+            items: [
+                { n: 16, sev: "medium",
+                  en: "Kitchen & Floor Cleanliness: Cleanliness of floors, walls, ceilings, and drains, keeping them free from grease and residue buildup.",
+                  ar: "نظافة المطبخ والأرضيات: نظافة الأرضيات، الجدران، الأسقف، والمصارف، وخلوها من التراكمات والشحوم." },
+                { n: 17, sev: "medium",
+                  en: "Equipment Cleanliness: Cleanliness of slicers, blenders, fryers, and stainless steel preparation surfaces.\n• Updated equipment and surface cleaning log.",
+                  ar: "نظافة المعدات: نظافة أجهزة التقطيع، الخلاطات، القلايات، وأسطح التحضير من الفولاذ (Stainless Steel).\nسجل تنظيف المعدات و الاسطح محددث" },
+                { n: 18, sev: "medium",
+                  en: "Chemical Storage & Handling: Storing cleaning and sanitizing chemicals in a designated area away from food preparation and storage zones, kept off the floor.\n• Following correct procedures for cleaning and surface/equipment disinfection, using cleaning agents properly.",
+                  ar: "المواد الكيميائية: حفظ مواد التنظيف والتعقيم في مكان مخصص بعيداً تماماً عن مناطق إعداد وتخزين الطعام و لا تكون على الارض مباشرة\nاتباع الطريقة الصحيحة للتنظيف و تطهير الاسطح و المعدات و استعمال مواد التنظيف بطريقة صحيحة" },
+                { n: 19, sev: "high",
+                  en: "Pest Control Management: Absence of any signs of insects or rodents; active pest control contract with an approved company; proper operation of electronic pest traps, doors, and exposed openings.",
+                  ar: "إدارة المكافحة والآفات: عدم وجود أي آثار للحشرات أو القوارض، وسريان عقد مكافحة الحشرات مع شركة معتمدة، مع عمل المصائد الكهربائية بكفاءة الابواب و الفتحات المكشوفة." },
+                { n: 20, sev: "medium",
+                  en: "Waste Management: Availability of foot-operated trash bins that are tightly closed and lined with bags; regular and timely emptying.",
+                  ar: "إدارة النفايات: وجود حاويات قمامة تفتح بالقدم، محكمة الإغلاق ومزودة بأكياس، وتفريغها بشكل منتظم في وقتها المحدد" },
+            ]
+        },
+        {
+            n: 5,
+            titleEn: "Engineering & Technical Facility Requirements",
+            titleAr: "الاشتراطات الهندسية والفنية للمكان :",
+            items: [
+                { n: 21, sev: "medium",
+                  en: "Lighting Protective Covers: Presence of explosion-proof glass protective covers on all lighting fixtures above food preparation and storage areas.",
+                  ar: "أغطية الحماية للإضاءة: وجود أغطية حماية زجاجية مقاومة للانفجار (Explosion-proof) على جميع وحدات الإضاءة فوق مناطق إعداد وتخزين الطعام." },
+                { n: 22, sev: "medium",
+                  en: "Ventilation & Exhaust Efficiency: Efficiency of exhaust hoods and cleanliness of filters from grease buildup to reduce fire risks and air contamination.",
+                  ar: "كفاءة التهوية والشفاطات: كفاءة شفاطات الهود (Exhaust Hoods) ونظافة الفلاتر من التراكمات الدهنية والشحوم للحد من أخطار الحريق وتلوث الهواء." },
+                { n: 23, sev: "medium",
+                  en: "Air Curtains & Doors: Proper operation of air curtains or automatic door closers at kitchen and storage entrances to prevent insect entry.",
+                  ar: "الستائر الهوائية والأبواب: عمل الستائر الهوائية (Air Curtains) أو أجهزة غلق الأبواب التلقائية عند مداخل المطبخ والمستودعات لمنع دخول الحشرات." },
+                { n: 24, sev: "medium",
+                  en: "Fly Screens: Presence of intact, fine insect screens and protection on all windows and ventilation openings opening to the outside.",
+                  ar: "شبك الحشرات (Fly-screen): وجود شبك ناعم وحمايات سليمة على كافة النوافذ وفتحات التهوية التي تفتح للخارج." },
+                { n: 25, sev: "medium",
+                  en: "Grease Trap: Presence of a clean, efficiently working grease trap with a maintenance and periodic pumping log to prevent odors and drain blockages.",
+                  ar: "مصيدة الشحوم (Grease Trap): وجود مصيدة شحوم نظيفة وتعمل بكفاءة، مع وجود سجل صيانة ونزح دوري لمنع الروائح انسداد الصرف." },
+                { n: 26, sev: "medium",
+                  en: "Water Filtration & Ice System: Presence of an approved, valid water filtration system for cooking, drinking, and ice makers, backed by a valid service contract.",
+                  ar: "نظام الفلترة والثلج: وجود نظام فلترة مياه معتمد وصالح للمياه المستخدمة في الطهي والشرب وصانعات الثلج مع عقد الشركةساري المفعول." },
+            ]
+        },
+        {
+            n: 6,
+            titleEn: "Approved Documentation & Daily Logs",
+            titleAr: "التوثيق و السجلات اليومية المعتمدة",
+            items: [
+                { n: 27, sev: "low",
+                  en: "Temperature Logs: Regular recording of refrigerator and freezer temperatures (every 2 hours) and fresh delivery temperatures.",
+                  ar: "سجل الحرارة اليومي (Temperature Logs): التدوين المنتظم لدرجات حرارة الثلاجات والفريزرات (كل ساعتين) وحرارة استلام المواد الطازجة." },
+                { n: 28, sev: "low",
+                  en: "Approved Pest Control File: Active contract, monthly visit reports, and a map of distributed traps within the branch.",
+                  ar: "ملف الشركة المعتمدة لمكافحة الآفات: وجود عقد ساري، وتقارير الزيارات الشهرية، وخريطة المصائد الموزعة بالفرع." },
+                { n: 29, sev: "low",
+                  en: "Comprehensive Cleaning & Disinfection Schedule: Posted schedule showing cleaning tasks (daily/weekly/monthly) signed by the supervisor and inspector.",
+                  ar: "جدول النظافة والتعقيم الشامل: وجود جدول معلق يوضح مهام النظافة (يومي/أسبوعي/شهري) مع توقيع المسؤول والمفتش." },
+                { n: 30, sev: "low",
+                  en: "Calibration Log: Proof of periodic thermometer calibration to ensure reading accuracy.",
+                  ar: "سجل معايرة الأجهزة (Calibration Log): وجود إثبات لمعايرة موازين الحرارة (Thermometers) بشكل دوري لضمان دقة القراءة." },
+            ]
+        },
+        {
+            n: 7,
+            titleEn: "High-Risk Practices & Critical Violations",
+            titleAr: "الممارسات عالية الخطورة والمخالفات الحرجة",
+            items: [
+                { n: 31, sev: "high",
+                  en: "Preparation Utensils & Tools: Complete elimination of non-food-grade utensils or containers; total absence of wooden cutting boards in the kitchen (wood is strictly prohibited).",
+                  ar: "أواني وأدوات التحضير: التخلي التام عن استخدام الأواني أو العلب غير المخصصة للغذاء، وخلو المطبخ تماماً من خشب التقطيع (يُمنع الخشب نهائياً)." },
+                { n: 32, sev: "high",
+                  en: "Segregation of Cleaning Tools: Assigning color-coded, separate cloths and mops for food preparation areas vs. floors and sinks.",
+                  ar: "الفصل في أدوات النظافة: تخصيص خرق وممسحات مستقلة لمناطق تحضير الطعام وأخرى للأرضيات والمغاسل مع ترميزها بالألوان." },
+                { n: 33, sev: "high",
+                  en: "Reheating Controls: Reheating cooked food no more than once, reaching a minimum internal temperature of 75°C.",
+                  ar: "ضوابط إعادة التسخين: عدم إعادة تسخين الأغذية المطهية أكثر من مرة واحدة فقط للوصول إلى75 درجة كحد أدنى." },
+                { n: 34, sev: "high",
+                  en: "Display Protection (Sneeze Guard): Presence of protective glass barriers covering exposed food in display and direct service areas.",
+                  ar: "حماية العرض والتقديم (Sneeze Guard): وجود حواجز زجاجية واقية تغطي المأكولات المكشوفة في صالات العرض والخدمة المباشرة." },
+            ]
+        },
+    ];
+
+    /** كل البنود في مصفوفةٍ واحدةٍ مرتَّبةٍ برقمها — للعدّ والتحقّق. */
+    const HYGIENE_ITEMS = HYGIENE_SECTIONS.reduce((all, s) => all.concat(
+        s.items.map(it => ({ ...it, section: s.n, sectionEn: s.titleEn, sectionAr: s.titleAr }))
+    ), []);
+    const HYGIENE_ITEM_COUNT = 34;   // حارسٌ: أيُّ اختلافٍ يعني بندًا ضاع.
+
+    const HYG_SEV_LABEL = {
+        low:    { en: 'Low severity',    ar: 'منخفضة الخطورة' },
+        medium: { en: 'Medium severity', ar: 'متوسطة الخطورة' },
+        high:   { en: 'High severity',   ar: 'عالية الخطورة' }
+    };
+    const HYG_SEV_ORDER = ['low', 'medium', 'high'];
+    /**
+     * ⚠️⚠️ الصيغةُ القصيرةُ لرسالةِ الواتساب وحدها، وهي **ليست** تكرارًا بلا داعٍ:
+     *   لوحةُ الإدارة تُعيد إرسالَ نفسِ التقرير بنفسِ النصّ (hygieneWhatsAppText
+     *   في admin.html)، ولو كتبت هذه الشاشةُ «High severity» وكتبت تلك «High»
+     *   لَظنّ المستلمُ أنهما تقريران مختلفان. فالكلمةُ على الزرِّ تُطيل للتوضيح،
+     *   والكلمةُ في الرسالة تُقصر — وتتطابق مع اللوحة حرفًا بحرف. ويفحص
+     *   _test_hygiene.js التطابقَ.
+     */
+    const HYG_SEV_SHORT = { low: 'Low', medium: 'Medium', high: 'High' };
+    const HYG_RATING_LABEL = {
+        ok: { en: 'Compliant',     ar: 'مطابق' },
+        nc: { en: 'Not compliant', ar: 'غير مطابق' },
+        na: { en: 'N/A',           ar: 'لا ينطبق' }
+    };
+    // مُدد التصحيح في جدول القسم ٨.
+    const HYG_DUE = [
+        { v: 'immediate', en: 'Immediate',        ar: 'فوري' },
+        { v: '24h',       en: 'Within 24 hours',  ar: 'خلال ٢٤ ساعة' },
+        { v: '3d',        en: 'Within 3 days',    ar: 'خلال ٣ أيام' },
+        { v: '7d',        en: 'Within a week',    ar: 'خلال أسبوع' }
+    ];
+
+    /**
+     * ⚠️ أكبر من مقاس صور العبايات (٦٤٠) عن قصد: صورةُ العبايةِ تُعرَض لعميلةٍ،
+     *   وصورةُ التفتيشِ **دليلٌ** على مصرفٍ متسخٍ أو ملصقِ تاريخٍ غير مقروء —
+     *   و٦٤٠ بكسل تُفقد الملصق. و١٨٠ كيلوبايت تُبقي مستندَ الصورةِ الواحدةِ
+     *   (نحو ٢٤٠ كيلوبايت بعد base64) بعيدًا جدًّا عن سقف المليون.
+     */
+    const HYG_PHOTO_PX = 900;
+    const HYG_PHOTO_MAX_BYTES = 180 * 1024;
+
+    let hygState = null;
+    let isSubmittingHygiene = false;
+    let lastHygieneReport = null;
+
+    /** الفرع في صيغةٍ تصلح داخل معرّف: GAIMER W KAHI WEST WALK ← GAIMER-W-KAHI-WEST-WALK */
+    function hygBranchSlug(branch) {
+        return String(branch || '').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    }
+
+    function hygResetState() {
+        hygState = {
+            answers: {}, actions: {},
+            dateISO: '', startTime: '', reportNo: '', ncSignature: '__none__'
+        };
+        HYGIENE_ITEMS.forEach(it => {
+            // الخطورة المقترحة تُنسخ هنا لا تُقرأ من القائمة عند الإرسال: ما
+            // يُرسَل هو ما رآه المفتّش على الشاشة، بعد أي تغييرٍ أجراه.
+            hygState.answers[it.n] = { rating: '', sev: it.sev, sevTouched: false, note: '', photo: '' };
+        });
+    }
+
+    /** إحصاء مباشر. ⚠️ «لا ينطبق» **خارج** نسبة المطابقة: بندٌ لا يخصّ الفرع
+     *  ليس نجاحًا ولا فشلًا، وإدخاله يرفع النسبة بلا عمل. */
+    function hygComputeTally() {
+        let ok = 0, nc = 0, na = 0, blank = 0, high = 0, medium = 0, low = 0;
+        HYGIENE_ITEMS.forEach(it => {
+            const a = hygState.answers[it.n];
+            if (a.rating === 'ok') ok++;
+            else if (a.rating === 'na') na++;
+            else if (a.rating === 'nc') {
+                nc++;
+                if (a.sev === 'high') high++; else if (a.sev === 'medium') medium++; else low++;
+            } else blank++;
+        });
+        const judged = ok + nc;
+        return {
+            compliant: ok, notCompliant: nc, notApplicable: na, unanswered: blank,
+            high, medium, low, judged,
+            compliancePct: judged ? Math.round(ok * 1000 / judged) / 10 : null
+        };
+    }
+
+    function hygRenderTally() {
+        const t = hygComputeTally();
+        const box = document.getElementById('hygTallyBox');
+        if (!box) return;
+        const pct = (t.compliancePct === null) ? '&mdash;' : `${t.compliancePct.toFixed(1)}%`;
+        let html = ''
+            + `<div class="hyg-t-row"><span>Compliant &middot; مطابق</span><span>${t.compliant}</span></div>`
+            + `<div class="hyg-t-row"><span>Not compliant &middot; غير مطابق</span><span>${t.notCompliant}</span></div>`
+            + `<div class="hyg-t-row"><span>N/A &middot; لا ينطبق</span><span>${t.notApplicable}</span></div>`
+            + `<div class="hyg-t-row"><span>High &middot; Med &middot; Low</span><span>${t.high} &middot; ${t.medium} &middot; ${t.low}</span></div>`
+            + `<div class="hyg-t-row"><span>Compliance &middot; نسبة المطابقة</span><span>${pct}</span></div>`;
+        if (t.unanswered > 0) {
+            html += `<div class="hyg-t-warn">${t.unanswered} item(s) still unanswered &mdash; بقي ${t.unanswered} بندًا بلا تقييم</div>`;
+        }
+        box.innerHTML = html;
+    }
+
+    function hygItemHtml(it) {
+        const rate = ['ok', 'nc', 'na'].map(r => {
+            const mark = r === 'ok' ? '&#10004;' : (r === 'nc' ? '&#10008;' : '&mdash;');
+            return `<button type="button" class="hyg-r hyg-r-${r}" id="hygR-${it.n}-${r}" onclick="hygSetRating(${it.n},'${r}')">`
+                 + `${mark} ${HYG_RATING_LABEL[r].en}<small>${HYG_RATING_LABEL[r].ar}</small></button>`;
+        }).join('');
+
+        const sev = HYG_SEV_ORDER.map(s =>
+            `<button type="button" class="hyg-s hyg-s-${s}" id="hygS-${it.n}-${s}" onclick="hygSetSev(${it.n},'${s}')">`
+            + `${HYG_SEV_LABEL[s].en}<small>${HYG_SEV_LABEL[s].ar}</small></button>`
+        ).join('');
+
+        return `<div class="hyg-item" id="hygItem-${it.n}">`
+            + `<div class="hyg-item-txt">`
+            +   `<div class="hyg-no">${it.n}</div>`
+            +   `<div class="hyg-en" dir="ltr">${escapeHtml(it.en)}</div>`
+            +   `<div class="hyg-ar" dir="rtl">${escapeHtml(it.ar)}</div>`
+            + `</div>`
+            + `<div class="hyg-item-ctl">`
+            +   `<div class="hyg-rate">${rate}</div>`
+            +   `<div class="hyg-nc" id="hygNc-${it.n}" style="display: none;">`
+            +     `<label>Severity / درجة الخطورة</label>`
+            +     `<div class="hyg-sev">${sev}</div>`
+            +     `<label for="hygNote-${it.n}">Note / الملاحظة</label>`
+            +     `<textarea id="hygNote-${it.n}" placeholder="What exactly was found? / ما الذي وُجد بالضبط؟" oninput="hygSetNote(${it.n}, this.value)"></textarea>`
+            +     `<label for="hygFile-${it.n}">Photo / الصورة</label>`
+            +     `<input type="file" accept="image/*" capture="environment" id="hygFile-${it.n}" onchange="hygPickPhoto(${it.n}, this)">`
+            +     `<div class="hyg-thumb" id="hygThumb-${it.n}"></div>`
+            +   `</div>`
+            + `</div>`
+            + `</div>`;
+    }
+
+    function hygRenderItems() {
+        const box = document.getElementById('hygItemsBox');
+        if (!box) return;
+        box.innerHTML = HYGIENE_SECTIONS.map(s =>
+            `<div class="hyg-sec">`
+            + `<div class="hyg-sec-h">`
+            +   `<div class="hyg-sec-en" dir="ltr">${s.n}. ${escapeHtml(s.titleEn)}</div>`
+            +   `<div class="hyg-sec-ar" dir="rtl">${escapeHtml(s.titleAr)}</div>`
+            + `</div>`
+            + s.items.map(hygItemHtml).join('')
+            + `</div>`
+        ).join('');
+        // الخطورة المقترحة تظهر مختارةً سلفًا حتى قبل فتح الكتلة، فلا يجد
+        // المفتّش ثلاثة أزرارٍ باهتةٍ ولا يدري أنّ عليه اختيار واحد.
+        HYGIENE_ITEMS.forEach(it => hygPaintSev(it.n));
+    }
+
+    function hygPaintSev(n) {
+        const a = hygState.answers[n];
+        HYG_SEV_ORDER.forEach(s => {
+            const b = document.getElementById(`hygS-${n}-${s}`);
+            if (b) b.classList.toggle('hyg-on', a.sev === s);
+        });
+    }
+
+    function hygPaintRating(n) {
+        const a = hygState.answers[n];
+        ['ok', 'nc', 'na'].forEach(r => {
+            const b = document.getElementById(`hygR-${n}-${r}`);
+            if (b) b.classList.toggle('hyg-on', a.rating === r);
+        });
+        const row = document.getElementById(`hygItem-${n}`);
+        if (row) {
+            row.classList.remove('hyg-is-ok', 'hyg-is-nc', 'hyg-is-na');
+            if (a.rating) row.classList.add(`hyg-is-${a.rating}`);
+        }
+        const ncBox = document.getElementById(`hygNc-${n}`);
+        if (ncBox) ncBox.style.display = (a.rating === 'nc') ? 'block' : 'none';
+    }
+
+    window.hygSetRating = function(n, rating) {
+        if (!hygState || !hygState.answers[n]) return;
+        if (!HYG_RATING_LABEL[rating]) return;
+        const a = hygState.answers[n];
+        // الضغطُ على الاختيار نفسه يُلغيه — خطأُ لمسةٍ يُصحَّح بلمسةٍ لا بإعادة النموذج.
+        a.rating = (a.rating === rating) ? '' : rating;
+        if (a.rating !== 'nc') {
+            // ⚠️ الملاحظةُ والصورةُ تبقيان محفوظتَين في الحالة ولا تُمحيان:
+            //   مَن غيّر رأيَه ثم عاد لا يكتب ملاحظتَه مرّتَين. لكنّهما **لا
+            //   تُرسَلان** إلا مع بندٍ غير مطابق — انظر hygCollectItems.
+            if (!a.sevTouched) a.sev = (HYGIENE_ITEMS.find(x => x.n === n) || {}).sev || 'medium';
+        }
+        hygPaintRating(n);
+        hygPaintSev(n);
+        hygRenderTally();
+        hygRenderActions();
+    };
+
+    window.hygSetSev = function(n, sev) {
+        if (!hygState || !hygState.answers[n]) return;
+        if (!HYG_SEV_LABEL[sev]) return;
+        hygState.answers[n].sev = sev;
+        hygState.answers[n].sevTouched = true;
+        hygPaintSev(n);
+        hygRenderTally();
+        hygRenderActions();
+    };
+
+    window.hygSetNote = function(n, value) {
+        if (!hygState || !hygState.answers[n]) return;
+        hygState.answers[n].note = String(value || '');
+    };
+
+    /** يُصغّر الصورة ويحفظها في الحالة. مستقلّة عن shrinkAbayaPhoto: تلك في
+     *  لوحة الإدارة بحدٍّ ٦٤٠، وهذه الصفحة لا تملك شيئًا من ذلك الملف. */
+    function hygShrinkPhoto(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onerror = () => reject(new Error('Could not read that picture file.'));
+            reader.onload = () => {
+                const img = new Image();
+                img.onerror = () => reject(new Error('That file is not a picture the browser can open.'));
+                img.onload = () => {
+                    try {
+                        const w = img.width, h = img.height;
+                        if (!w || !h) throw new Error('That picture has no size the browser can read.');
+                        const scale = Math.min(1, HYG_PHOTO_PX / Math.max(w, h));
+                        const ow = Math.max(1, Math.round(w * scale));
+                        const oh = Math.max(1, Math.round(h * scale));
+                        const canvas = document.createElement('canvas');
+                        canvas.width = ow; canvas.height = oh;
+                        const ctx = canvas.getContext('2d');
+                        // خلفيةٌ بيضاء: PNG شفّافة تُصبح سوداء في JPEG.
+                        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, ow, oh);
+                        ctx.drawImage(img, 0, 0, w, h, 0, 0, ow, oh);
+                        let quality = 0.82, url = canvas.toDataURL('image/jpeg', quality);
+                        while (url.length * 0.75 > HYG_PHOTO_MAX_BYTES && quality > 0.3) {
+                            quality -= 0.08;
+                            url = canvas.toDataURL('image/jpeg', quality);
+                        }
+                        if (url.length * 0.75 > HYG_PHOTO_MAX_BYTES) {
+                            throw new Error('That picture is still too heavy after compressing. Please take it again.');
+                        }
+                        resolve(url);
+                    } catch (e) { reject(e); }
+                };
+                img.src = reader.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function hygPaintThumb(n) {
+        const box = document.getElementById(`hygThumb-${n}`);
+        if (!box) return;
+        const url = hygState.answers[n].photo;
+        if (!url) { box.style.display = 'none'; box.innerHTML = ''; return; }
+        box.style.display = 'block';
+        box.innerHTML = `<img src="${url}" alt="photo of item ${n}">`
+            + `<button type="button" onclick="hygRemovePhoto(${n})">Remove photo / حذف الصورة</button>`;
+    }
+
+    window.hygPickPhoto = async function(n, input) {
+        if (!hygState || !hygState.answers[n]) return;
+        const file = input && input.files && input.files[0];
+        if (!file) return;
+        showStatus('Preparing the picture...', 'loading');
+        try {
+            hygState.answers[n].photo = await hygShrinkPhoto(file);
+            hygPaintThumb(n);
+            const s = document.getElementById('statusMsg');
+            if (s) s.style.display = 'none';
+        } catch (e) {
+            hygState.answers[n].photo = '';
+            hygPaintThumb(n);
+            showStatus(`Item ${n}: ${e.message}`, 'error');
+        } finally {
+            // تفريغُ الخانة حتى يُقبل اختيارُ **نفسِ** الملف مرّةً أخرى بعد خطأ.
+            if (input) input.value = '';
+        }
+    };
+
+    window.hygRemovePhoto = function(n) {
+        if (!hygState || !hygState.answers[n]) return;
+        hygState.answers[n].photo = '';
+        hygPaintThumb(n);
+    };
+
+    /**
+     * جدول الإجراءات التصحيحية (القسم ٨ في نموذج المالك) — يُبنى من البنود غير
+     * المطابقة وحدها.
+     * ⚠️ لا يُعاد بناؤه إلا إذا تغيّرت **مجموعة** البنود غير المطابقة: إعادةُ
+     *   البناءِ عند كل لمسةٍ تسحب المؤشّرَ من خانةٍ يكتب فيها المدير وتُفقده
+     *   سطرَه. والقيمُ المكتوبةُ تُحفظ في hygState.actions فتعود كما هي.
+     */
+    function hygRenderActions() {
+        const box = document.getElementById('hygActionsBox');
+        if (!box) return;
+        const ncItems = HYGIENE_ITEMS.filter(it => hygState.answers[it.n].rating === 'nc');
+        const signature = ncItems.map(it => `${it.n}:${hygState.answers[it.n].sev}`).join(',') || '__none__';
+        if (signature === hygState.ncSignature) return;
+        hygState.ncSignature = signature;
+
+        if (!ncItems.length) { box.innerHTML = ''; return; }
+
+        box.innerHTML = `<div class="hyg-sec-h"><div class="hyg-sec-en" dir="ltr">8. Corrective Action Plan</div>`
+            + `<div class="hyg-sec-ar" dir="rtl">خطة الإجراءات التصحيحية</div></div>`
+            + ncItems.map(it => {
+                const a = hygState.actions[it.n] || { action: '', who: '', due: 'immediate' };
+                hygState.actions[it.n] = a;
+                const dueOpts = HYG_DUE.map(d =>
+                    `<option value="${d.v}"${a.due === d.v ? ' selected' : ''}>${d.en} / ${d.ar}</option>`
+                ).join('');
+                return `<div class="hyg-act">`
+                    + `<div class="hyg-act-h">${it.n}. ${escapeHtml(String(it.en).split('\n')[0])}`
+                    + ` &mdash; ${HYG_SEV_LABEL[hygState.answers[it.n].sev].en} / ${HYG_SEV_LABEL[hygState.answers[it.n].sev].ar}</div>`
+                    + `<div class="form-group"><label for="hygAct-${it.n}">Corrective action / الإجراء التصحيحي</label>`
+                    + `<input type="text" id="hygAct-${it.n}" value="${escapeHtml(a.action)}" oninput="hygSetAction(${it.n},'action',this.value)"></div>`
+                    + `<div class="form-group"><label for="hygWho-${it.n}">Responsible / المسؤول عن التنفيذ</label>`
+                    + `<input type="text" id="hygWho-${it.n}" value="${escapeHtml(a.who)}" oninput="hygSetAction(${it.n},'who',this.value)"></div>`
+                    + `<div class="form-group" style="margin-bottom: 0;"><label for="hygDue-${it.n}">Deadline / مدة التصحيح</label>`
+                    + `<select id="hygDue-${it.n}" onchange="hygSetAction(${it.n},'due',this.value)">${dueOpts}</select></div>`
+                    + `</div>`;
+            }).join('');
+    }
+
+    window.hygSetAction = function(n, field, value) {
+        if (!hygState) return;
+        if (!hygState.actions[n]) hygState.actions[n] = { action: '', who: '', due: 'immediate' };
+        if (field !== 'action' && field !== 'who' && field !== 'due') return;
+        hygState.actions[n][field] = String(value || '');
+    };
+
+    window.openHygieneForm = function() {
+        // حارسٌ: لو ضاع بندٌ في تعديلٍ لاحقٍ لا يُفتح النموذج ناقصًا بصمت.
+        if (HYGIENE_ITEMS.length !== HYGIENE_ITEM_COUNT) {
+            showStatus(`The checklist is damaged: ${HYGIENE_ITEMS.length} items instead of ${HYGIENE_ITEM_COUNT}. Please tell the office.`, 'error');
+            return;
+        }
+        hygResetState();
+        const now = new Date();
+        hygState.dateISO = formatDateEnglish(now);
+        hygState.startTime = qatarHM(now);
+        const slug = hygBranchSlug(reportState.branch);
+        hygState.reportNo = `HYG-${slug}-${hygState.dateISO.replace(/-/g, '')}-${hygState.startTime.replace(':', '')}`;
+
+        const set = (id, text) => { const el = document.getElementById(id); if (el) el.innerText = text; };
+        set('hygReportNo', hygState.reportNo);
+        set('hygHeadBranch', reportState.branch || '');
+        set('hygHeadDate', `${hygState.dateISO.slice(8, 10)}-${hygState.dateISO.slice(5, 7)}-${hygState.dateISO.slice(0, 4)}`);
+        set('hygHeadStart', `${hygState.startTime} (Qatar)`);
+        set('hygHeadInspector', reportState.managerName || '');
+        set('hygHeadEnd', 'on sending / عند الإرسال');
+        ['hygActivity', 'hygInCharge', 'hygReceiver'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.value = '';
+        });
+
+        hygRenderItems();
+        hygState.ncSignature = '__force__';
+        hygRenderActions();
+        hygRenderTally();
+        showReportStep('reportHygieneStep');
+    };
+
+    /** ما يُرسَل فعلًا: نصُّ البند كاملًا بلغتَيه + الحكم. */
+    function hygCollectItems() {
+        return HYGIENE_ITEMS.map(it => {
+            const a = hygState.answers[it.n];
+            const isNc = a.rating === 'nc';
+            return {
+                n: it.n,
+                section: it.section,
+                sectionEn: it.sectionEn,
+                sectionAr: it.sectionAr,
+                en: it.en,
+                ar: it.ar,
+                rating: a.rating,
+                // الخطورة والملاحظة والصورة للبند غير المطابق وحده: بندٌ مطابقٌ
+                // بخطورةٍ «عالية» في المستند يُقرأ خطأً كأنّه مخالفة.
+                severity: isNc ? a.sev : '',
+                note: isNc ? String(a.note || '').trim() : '',
+                hasPhoto: isNc ? !!a.photo : false,
+                suggestedSeverity: it.sev,
+                severityChanged: isNc && a.sev !== it.sev
+            };
+        });
+    }
+
+    function hygCollectActions(items) {
+        return items.filter(i => i.rating === 'nc').map(i => {
+            const a = hygState.actions[i.n] || {};
+            const due = HYG_DUE.find(d => d.v === a.due) || HYG_DUE[0];
+            return {
+                n: i.n,
+                severity: i.severity,
+                action: String(a.action || '').trim(),
+                responsible: String(a.who || '').trim(),
+                due: due.v,
+                dueEn: due.en,
+                dueAr: due.ar
+            };
+        });
+    }
+
+    window.submitHygieneReport = async function() {
+        if (isSubmittingHygiene) return;
+        if (!hygState) { showStatus('Please open the inspection again.', 'error'); return; }
+        if (!reportState.managerId || !reportState.branch) {
+            showStatus('Session expired. Please log in again.', 'error');
+            resetReportFlow();
+            return;
+        }
+
+        const items = hygCollectItems();
+
+        // ⚠️ المنعُ على شيئَين فقط، لا على كل خانة: نموذجٌ يرفض الإرسالَ لأسبابٍ
+        //   كثيرةٍ يُهجَر على الهاتف. فالبندُ بلا تقييمٍ يمنع (تقريرٌ ناقصٌ ليس
+        //   تقريرًا)، والمخالفةُ بلا ملاحظةٍ تمنع (مخالفةٌ بلا وصفٍ لا تُصحَّح).
+        //   وما عداهما **تحذيرٌ يُؤكَّد**، لا منع.
+        const unanswered = items.filter(i => !i.rating).map(i => i.n);
+        if (unanswered.length) {
+            showStatus(`${unanswered.length} item(s) have no answer yet: ${unanswered.join(', ')}. `
+                + `بقي ${unanswered.length} بندًا بلا تقييم.`, 'error');
+            const first = document.getElementById(`hygItem-${unanswered[0]}`);
+            if (first && first.scrollIntoView) first.scrollIntoView({ block: 'center' });
+            return;
+        }
+        const noteless = items.filter(i => i.rating === 'nc' && !i.note).map(i => i.n);
+        if (noteless.length) {
+            showStatus(`Item(s) ${noteless.join(', ')} are marked not compliant with no note. `
+                + `اكتب الملاحظة لكل بند غير مطابق.`, 'error');
+            const first = document.getElementById(`hygItem-${noteless[0]}`);
+            if (first && first.scrollIntoView) first.scrollIntoView({ block: 'center' });
+            return;
+        }
+
+        const activity = String((document.getElementById('hygActivity') || {}).value || '').trim();
+        const inCharge = String((document.getElementById('hygInCharge') || {}).value || '').trim();
+        const receiver = String((document.getElementById('hygReceiver') || {}).value || '').trim();
+
+        const warn = [];
+        const photoless = items.filter(i => i.rating === 'nc' && !i.hasPhoto).map(i => i.n);
+        if (photoless.length) warn.push(`No photo on item(s): ${photoless.join(', ')}`);
+        if (!inCharge) warn.push('The person in charge present is not named.');
+        if (!receiver) warn.push('The report receiver is not named.');
+        if (!activity) warn.push('The activity is not written.');
+        if (warn.length) {
+            const go = confirm('Send anyway?\n\n' + warn.join('\n')
+                + '\n\nهل تُرسله هكذا؟ (اضغط إلغاء للرجوع وإكماله)');
+            if (!go) return;
+        }
+
+        const actions = hygCollectActions(items);
+        const tally = hygComputeTally();
+        const now = new Date();
+        const endTime = qatarHM(now);
+
+        const btn = document.getElementById('btnSubmitHygiene');
+        isSubmittingHygiene = true;
+        if (btn) btn.disabled = true;
+        showStatus('Sending the inspection...', 'loading');
+
+        let report = null;
+        try {
+            await authReady;
+            report = {
+                reportNo: hygState.reportNo,
+                branch: reportState.branch,
+                activity,
+                date: hygState.dateISO,
+                startTime: hygState.startTime,
+                endTime,
+                inspectorId: reportState.managerId,
+                inspectorName: reportState.managerName || '',
+                inspectorTitle: reportState.managerRole || '',
+                personInCharge: inCharge,
+                receiverName: receiver,
+                items,
+                actions,
+                tally,
+                itemCount: items.length,
+                // ⭐ ساعة الخادم هي المرجع؛ وقتُ الجهاز للتشخيص وحده — ساعةُ
+                // الهاتف تُغيَّر، وقد حدث ذلك في هذا المشروع فعلًا.
+                submittedAt: now.toISOString(),
+                deviceTz: deviceTimeZoneName(),
+                deviceTzOffsetMin: now.getTimezoneOffset()
+            };
+
+            /**
+             * ⚠️⚠️ التقريرُ أوّلًا والصورُ بعده، بلا استثناء. ٣٤ بندًا مكتوبةً على
+             *   الهاتف لا تُخاطر بصورةٍ: لو كُتبت الصورُ في نفس المستند لَكان
+             *   تجاوزُ سقفِ المليون يُسقط **كلّ الإجابات**. وهكذا تهبط الإجاباتُ
+             *   دائمًا، والصورةُ التي تفشل تفشل وحدها ويُسمّى بندُها.
+             */
+            const ref = await addDoc(collection(db, 'hygiene_inspections'),
+                { ...report, serverTime: serverTimestamp() });
+
+            const failedPhotos = [];
+            for (const it of HYGIENE_ITEMS) {
+                const a = hygState.answers[it.n];
+                if (hygState.answers[it.n].rating !== 'nc' || !a.photo) continue;
+                try {
+                    // معرّفٌ ثابت: ضغطةٌ مزدوجةٌ لا تُخزّن الصورةَ نفسها مرّتَين.
+                    await setDoc(doc(db, 'hygiene_inspection_images', `${ref.id}_${it.n}`), {
+                        inspectionId: ref.id,
+                        reportNo: report.reportNo,
+                        itemNo: it.n,
+                        branch: report.branch,
+                        date: report.date,
+                        photo: a.photo,
+                        createdAt: serverTimestamp()
+                    });
+                } catch (e) {
+                    failedPhotos.push(it.n);
+                }
+            }
+
+            report.id = ref.id;
+            report.failedPhotos = failedPhotos;
+            lastHygieneReport = report;
+            showHygieneSummary(report);
+            const s = document.getElementById('statusMsg');
+            if (s) s.style.display = 'none';
+        } catch (e) {
+            showStatus('Could not send the inspection: ' + e.message, 'error');
+        } finally {
+            isSubmittingHygiene = false;
+            if (btn) btn.disabled = false;
+        }
+    };
+
+    /** نصُّ الواتساب: ملخّصٌ ثم كلُّ مخالفةٍ بدرجتها. */
+    function buildHygieneWhatsAppText(r) {
+        const pct = (r.tally.compliancePct === null) ? '—' : `${r.tally.compliancePct.toFixed(1)}%`;
+        const lines = [
+            `*Hygiene Inspection — ${r.date.slice(8, 10)}-${r.date.slice(5, 7)}-${r.date.slice(0, 4)}*`,
+            `*Branch:* ${r.branch}`,
+            `Report No: ${r.reportNo}`,
+            `Inspector: ${r.inspectorName}`,
+            `Time: ${r.startTime} → ${r.endTime} (Qatar)`,
+            '',
+            `Compliant: ${r.tally.compliant} · Not compliant: ${r.tally.notCompliant} · N/A: ${r.tally.notApplicable}`,
+            `High: ${r.tally.high} · Medium: ${r.tally.medium} · Low: ${r.tally.low}`,
+            `*Compliance: ${pct}*`
+        ];
+        const bad = r.items.filter(i => i.rating === 'nc');
+        if (bad.length) {
+            lines.push('', '*Findings:*');
+            bad.forEach(i => {
+                const head = String(i.en).split('\n')[0];
+                const sev = HYG_SEV_SHORT[i.severity] || i.severity;
+                lines.push(`${i.n}. (${sev}) ${head.length > 90 ? head.slice(0, 90) + '…' : head}`);
+                if (i.note) lines.push(`   — ${i.note.length > 140 ? i.note.slice(0, 140) + '…' : i.note}`);
+            });
+        } else {
+            lines.push('', 'No findings. All judged items are compliant.');
+        }
+        lines.push('', `Submitted by: ${r.inspectorName}`);
+
+        let text = lines.join('\n');
+        /**
+         * ⚠️ حدٌّ أعلى للنصّ: مخطّطُ whatsapp:// يُمرَّر عبر نظام التشغيل، والنصُّ
+         *   الطويلُ جدًّا لا يُعطي خطأً — **لا يحدث شيءٌ عند الضغط**، وهو أسوأُ
+         *   أنواعِ الفشل. فيُقصُّ النصُّ ويُقال إنه قُصّ، والتقريرُ الكاملُ في
+         *   اللوحة على أي حال.
+         */
+        if (text.length > 1800) {
+            // ⚠️ القصُّ عند ١٧٠٠ لا ١٧٥٠: الذيلُ المُضاف نفسُه واحدٌ وخمسون حرفًا،
+            //   فـ١٧٥٠ كانت تُخرج ١٨٠١ — أي أنّ الحارسَ نفسَه يتجاوز حدَّه. وجدها
+            //   الفحصُ لا القراءة.
+            text = text.slice(0, 1700) + '\n…\n(full report with photos is in the office panel)';
+        }
+        return text;
+    }
+
+    function showHygieneSummary(r) {
+        const pct = (r.tally.compliancePct === null) ? '—' : `${r.tally.compliancePct.toFixed(1)}%`;
+        const set = (id, text) => { const el = document.getElementById(id); if (el) el.innerText = text; };
+        set('hygDoneTitle', `Hygiene Inspection — ${r.date.slice(8, 10)}-${r.date.slice(5, 7)}-${r.date.slice(0, 4)}`);
+        set('hygDoneBranch', r.branch);
+        set('hygDoneBy', `Inspector: ${r.inspectorName} · ${r.startTime} → ${r.endTime}`);
+
+        const rows = [
+            ['Compliant / مطابق', r.tally.compliant],
+            ['Not compliant / غير مطابق', r.tally.notCompliant],
+            ['N/A / لا ينطبق', r.tally.notApplicable],
+            ['High / عالية', r.tally.high],
+            ['Medium / متوسطة', r.tally.medium],
+            ['Low / منخفضة', r.tally.low],
+            ['Compliance / نسبة المطابقة', pct]
+        ];
+        const rowsBox = document.getElementById('hygDoneRows');
+        // أرقامٌ وتسمياتٌ ثابتةٌ فقط — لا نصَّ من المستخدم هنا.
+        if (rowsBox) rowsBox.innerHTML = rows.map(([k, v]) =>
+            `<div class="report-summary-row"><span>${k}</span><span>${v}</span></div>`).join('');
+
+        const bad = r.items.filter(i => i.rating === 'nc');
+        const findings = document.getElementById('hygDoneFindings');
+        if (findings) {
+            findings.innerHTML = bad.length
+                ? bad.map(i => `<div class="hyg-sum-bad">${i.n}. [${escapeHtml((HYG_SEV_LABEL[i.severity] || {}).ar || '')}] `
+                    + `${escapeHtml(String(i.en).split('\n')[0])}\n${escapeHtml(i.note)}</div>`).join('')
+                : '';
+        }
+
+        const photoNote = document.getElementById('hygDonePhotoNote');
+        if (photoNote) {
+            if (r.failedPhotos && r.failedPhotos.length) {
+                photoNote.style.display = 'block';
+                photoNote.innerText = `The report was saved, but the photo of item(s) ${r.failedPhotos.join(', ')} did not upload. `
+                    + `التقرير وصل، لكن صورة البند ${r.failedPhotos.join('، ')} لم تُحمَّل. أعد التفتيش لذلك البند أو أرسل الصورة في الواتساب.`;
+            } else {
+                photoNote.style.display = 'none';
+            }
+        }
+
+        const urls = buildWhatsAppUrls(buildHygieneWhatsAppText(r));
+        const btn = document.getElementById('btnWhatsAppHygiene');
+        const fbWrap = document.getElementById('hygWhatsAppFallbackWrap');
+        const fbLink = document.getElementById('linkHygWhatsAppFallback');
+        if (btn) {
+            if (isMobileDevice()) {
+                btn.href = urls.app;
+                btn.removeAttribute('target');
+                if (fbWrap) fbWrap.style.display = 'block';
+                if (fbLink) fbLink.href = urls.web;
+            } else {
+                btn.href = urls.web;
+                btn.setAttribute('target', '_blank');
+                if (fbWrap) fbWrap.style.display = 'none';
+            }
+        }
+        showReportStep('reportHygieneDoneStep');
+    }
 
     // القيم السالبة أو غير الرقمية تُعامل كصفر حتى لا يُرسل إجمالي مشوّه.
     function reportFieldValue(key) {
