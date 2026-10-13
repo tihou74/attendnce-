@@ -24313,7 +24313,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v252';
+        const APP_BUILD = 'v253';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
@@ -24873,8 +24873,43 @@
     //   لقراءةِ النصِّ وللطباعةِ المكتبيّة، وتُخرج صفحةً نحو ٢٠٠ كيلوبايت.
     // =====================================================================
     const HYG_PDF_DPI = 150;
-    const HYG_PDF_W = Math.round(PDF_PAGE_W * HYG_PDF_DPI / 72);    // 1240
-    const HYG_PDF_H = Math.round(PDF_PAGE_H * HYG_PDF_DPI / 72);    // 1754
+    /**
+     * 🔴🔴🔴 مقاسُ A4 بالنقاطِ **مكتوبٌ هنا**، ولا يُقرأ من `PDF_PAGE_W` — وهذا
+     *   ليس تكرارًا بلا سبب، بل إصلاحُ عطلٍ شلَّ نصفَ اللوحة:
+     *
+     *   كان هذا السطرُ `Math.round(PDF_PAGE_W * HYG_PDF_DPI / 72)`، و`PDF_PAGE_W`
+     *   مُعرَّفةٌ بـ`const` بعده **بثلاثةِ آلافٍ وثلاثمئةِ سطر**. وتصريحُ `const`
+     *   يبقى في «المنطقةِ الميتة» حتى يُنفَّذ سطرُه، فقراءتُه قبلها ترمي
+     *   `ReferenceError: Cannot access 'PDF_PAGE_W' before initialization`
+     *   **عند تقييمِ الوحدةِ نفسِها** — لا عند الضغط على زرّ.
+     *
+     *   والنتيجةُ أنّ الوحدةَ تتوقّف عند هذا السطر، فـ**١٠٧ دالّةً بعده لا تُسنَد
+     *   إلى `window` إطلاقًا**: الـPDF، وحذفُ التفتيش، وطلباتُ البيتي كاش
+     *   والموافقةُ عليها، وطلباتُ الإنذار، وإغلاقُ الشهرِ الماليِّ وفتحُه،
+     *   والمدفوعاتُ… كلُّها أزرارٌ تُضغط فلا يحدث شيءٌ ولا رسالةُ خطأٍ واحدة.
+     *   وهو بعينُه ما أبلغ عنه المالك: «الزرّ موجود، لمّا أضغط عليه لا يعطيني شيء».
+     *
+     * ⚠️⚠️ وهذا العطلُ **له أثرٌ سابقٌ في هذا الملفّ**: نفسُ السببِ بالحرف أصاب
+     *   `APP_BUILD` من قبل (انظر `paintBuildStamp`)، وحُلَّ هناك بنقلِ الثابتِ
+     *   داخلَ الدالّة. فالدرسُ كان مكتوبًا وسقطتُ فيه مرّةً ثانية.
+     *
+     * ⚠️ ولا تُترك النسختان تتباعدان: `hygPdfAssertPageSize()` تُقارنهما **وقتَ
+     *   التشغيل** (حين تكون `PDF_PAGE_W` قد عُرِّفت يقينًا) وترمي رسالةً مفهومةً
+     *   لو اختلفا. فالرقمُ مكتوبٌ مرّتَين، والتطابقُ **مفروضٌ** لا مأمول.
+     */
+    const HYG_PDF_PT_W = 595.28;                                    // A4 بالنقاط
+    const HYG_PDF_PT_H = 841.89;
+    const HYG_PDF_W = Math.round(HYG_PDF_PT_W * HYG_PDF_DPI / 72);  // 1240
+    const HYG_PDF_H = Math.round(HYG_PDF_PT_H * HYG_PDF_DPI / 72);  // 1754
+
+    /** يُفرض تطابقُ مقاسِ الورقةِ مع كاتبِ الـPDF — وقتَ التشغيل لا وقتَ التقييم. */
+    function hygPdfAssertPageSize() {
+        if (HYG_PDF_PT_W !== PDF_PAGE_W || HYG_PDF_PT_H !== PDF_PAGE_H) {
+            throw new Error(`The page size drifted: the drawing uses ${HYG_PDF_PT_W}x${HYG_PDF_PT_H} pt `
+                + `while the PDF writer uses ${PDF_PAGE_W}x${PDF_PAGE_H} pt. `
+                + `Make HYG_PDF_PT_W/H equal PDF_PAGE_W/H again.`);
+        }
+    }
     const HYG_PDF_MARGIN = 58;
     const HYG_PDF_BOTTOM = HYG_PDF_H - 72;                          // مكانُ الذيل
     const HYG_PDF_CONTENT_W = HYG_PDF_W - HYG_PDF_MARGIN * 2;       // 1124
@@ -25342,6 +25377,7 @@
 
     /** يرسم الورقةَ ويُعيد صفحاتِ JPEG. */
     function hygPdfPages(report, imgs, missing, onProgress) {
+        hygPdfAssertPageSize();
         const canvas = document.createElement('canvas');
         canvas.width = HYG_PDF_W;
         canvas.height = HYG_PDF_H;
