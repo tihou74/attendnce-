@@ -2471,7 +2471,7 @@
 
         <div class="card">
             <h3><span data-icon="fileText"></span> Inspections received</h3>
-            <p class="card-sub">Filled in by the branch manager on the managers-only screen and sent straight here. Newest first. Press <b>Open</b> to read the whole report with the photos, the findings and the corrective-action plan. A manager cannot read or change a report once it is sent &mdash; a correction is a new inspection.</p>
+            <p class="card-sub">Filled in by the branch manager on the managers-only screen and sent straight here. Newest first. Press <b>Open</b> to read the whole report with the photos, the findings and the corrective-action plan, or <b>Save as PDF</b> to keep the whole report &mdash; photos included &mdash; as one file you can send on WhatsApp whenever you want. A manager cannot read or change a report once it is sent &mdash; a correction is a new inspection.</p>
             <div class="table-container">
                 <table>
                     <thead>
@@ -2499,12 +2499,25 @@
         <div class="card" id="hygDetailCard" style="display: none;">
             <div class="controls" style="justify-content: space-between; margin-bottom: 14px;">
                 <h3 style="margin: 0;"><span data-icon="listChecks"></span> <span id="hygDetailTitle">Inspection</span></h3>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button class="btn-success" id="hygDetailWa" onclick="sendHygieneWhatsApp()"><span data-icon="plane"></span> Send on WhatsApp</button>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                    <!-- ⭐ «أحفظ التقرير بي دي إف بصوره وأرسله متى شئت» — بنصّ المالك.
+                         والزرُّ متاحٌ لكلِّ من يرى التقرير: المالك والسكرتيرة والمدراء. -->
+                    <button class="btn-accent" data-hygpdf="1" onclick="savePdfHygieneReport()"><span data-icon="download"></span> Save as PDF (with photos)</button>
+                    <button class="btn-success" id="hygDetailWa" onclick="sendHygieneWhatsApp()"><span data-icon="plane"></span> Send summary on WhatsApp</button>
                     <button class="btn-ghost" onclick="closeHygieneReport()"><span data-icon="x"></span> Close</button>
                 </div>
             </div>
+            <!-- تقدّمُ بناءِ الورقة: قراءةُ عشرِ صورٍ ورسمُ سبعِ صفحاتٍ يأخذ ثوانيَ،
+                 وزرٌّ لا يقول شيئًا في تلك الثواني يُضغط مرّةً ثانيةً. -->
+            <p id="hygPdfStatus" style="margin: 0 0 12px; font-size: 12.5px; font-weight: 700; color: var(--text-dim); min-height: 18px;"></p>
             <div id="hygDetailBody"></div>
+        </div>
+
+        <!-- تكبيرُ صورةِ المخالفة. مكتوبٌ هنا لا يُصنع بالجافاسكربت: عنصرٌ
+             مُنشأٌ وقتَ التشغيل يظهر في فحصِ البنية مرجعًا بلا id مطابق. -->
+        <div id="hygZoomBox" onclick="hygCloseZoom()"
+             style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.88); align-items: center; justify-content: center; padding: 18px; cursor: zoom-out;">
+            <img id="hygZoomImg" alt="" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px;">
         </div>
     </div>
 
@@ -24293,7 +24306,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v250';
+        const APP_BUILD = 'v251';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
@@ -24363,6 +24376,54 @@
     }
     /** الحذفُ للمالك وحدَه — وكذلك القاعدة. */
     function hygMayDelete() { return currentRole === ROLE_ADMIN; }
+
+    /**
+     * معرّفاتُ صورِ بندٍ واحد، مشتقّةٌ بالحساب.
+     * ⚠️ الشكلُ الجديد: `<التقرير>_<البند>_<1..n>` حيث n = `photoCount`.
+     * ⚠️ والشكلُ القديم (صورةٌ واحدةٌ بلا ترتيب) يبقى مقروءًا: تقريرٌ أُرسل قبل
+     *   هذه الميزةِ يجب أن تبقى صورتُه ظاهرةً — وإلّا اختفى دليلٌ بلا أن يعرف أحد.
+     */
+    function hygPhotoIds(report, item) {
+        if (!report || !item) return [];
+        const n = Number(item.photoCount);
+        if (Number.isInteger(n) && n > 0) {
+            const out = [];
+            for (let k = 1; k <= Math.min(n, 12); k++) out.push(`${report.id}_${item.n}_${k}`);
+            return out;
+        }
+        return item.hasPhoto ? [`${report.id}_${item.n}`] : [];
+    }
+
+    /** كلُّ صورِ التقرير، بترتيبِ بنودِها — للـPDF وللعدّ. */
+    function hygAllPhotoIds(report) {
+        const items = (Array.isArray(report && report.items) ? report.items : [])
+            .slice().sort((a, b) => (Number(a.n) || 0) - (Number(b.n) || 0));
+        const out = [];
+        items.forEach(i => { if (i.rating === 'nc') hygPhotoIds(report, i).forEach(id => out.push({ id, itemNo: i.n })); });
+        return out;
+    }
+
+    /** تكبيرُ صورةٍ بضغطةٍ — الدليلُ يُقرأ لا يُلمح في مربّعٍ صغير. */
+    window.hygZoomPhoto = function(photoId) {
+        const url = hygImageCache.get(String(photoId || ''));
+        if (!url) { alert('That photo has not loaded yet. Give it a moment and press it again.'); return; }
+        // ⚠️ الصندوقُ مكتوبٌ في الترميزِ لا يُصنع هنا: عنصرٌ يُنشأ بالجافاسكربت
+        //   يظهر في فحصِ البنية مرجعًا بلا `id` مطابق، فيُخلط بعطلٍ حقيقيّ.
+        const box = document.getElementById('hygZoomBox');
+        const img = document.getElementById('hygZoomImg');
+        if (!box || !img) return;
+        img.src = url;
+        box.style.display = 'flex';
+    };
+
+    window.hygCloseZoom = function() {
+        const box = document.getElementById('hygZoomBox');
+        const img = document.getElementById('hygZoomImg');
+        // ⚠️ تُفرَّغ `src` عند الإغلاق: صورةُ ٩٠٠ بكسل تبقى محجوزةً في الذاكرة
+        //   وإن كان الصندوقُ مخفيًّا، وفتحُ عشرِ صورٍ يتركها كلَّها.
+        if (img) img.removeAttribute('src');
+        if (box) box.style.display = 'none';
+    };
 
     function hygDateLabel(iso) {
         return iso ? `${String(iso).slice(8, 10)}-${String(iso).slice(5, 7)}-${String(iso).slice(0, 4)}` : '—';
@@ -24505,7 +24566,11 @@
                 ? `<br><small style="color: var(--warning); font-weight: 800;">&#9888; ${t.blank} item(s) unanswered</small>` : '';
             const mismatch = t.disagrees
                 ? `<br><small style="color: var(--warning); font-weight: 800;" title="The counts stored by the phone do not match the answers in this report. The answers are what is shown.">&#9888; counts disagree</small>` : '';
+            const shots = hygAllPhotoIds(r).length;
+            const shotTag = shots
+                ? `<br><small style="color: var(--text-dim); font-weight:700;">${shots} photo(s)</small>` : '';
             let actions = `<button class="btn-ghost btn-sm" title="Open the whole report" onclick="openHygieneReport('${rid}')">${iconSvg('fileText','ic-sm')}</button>`
+                + ` <button class="btn-accent btn-sm" data-hygpdf="1" title="Save this report as a PDF with its photos" onclick="savePdfHygieneReport('${rid}')">${iconSvg('download','ic-sm')}</button>`
                 + ` <button class="btn-success btn-sm" title="Send the summary on WhatsApp" onclick="sendHygieneWhatsApp('${rid}')">${iconSvg('plane','ic-sm')}</button>`;
             if (hygMayDelete()) {
                 actions += ` <button class="btn-danger btn-sm" title="Delete this inspection" onclick="deleteHygieneReport('${rid}')">${iconSvg('trash','ic-sm')}</button>`;
@@ -24513,7 +24578,7 @@
             return `<tr>
                 <td><b>${escapeHtml(hygDateLabel(r.date))}</b>${warn}${mismatch}</td>
                 <td>${escapeHtml(r.branch || '—')}</td>
-                <td>${escapeHtml(r.inspectorName || r.inspectorId || '—')}</td>
+                <td>${escapeHtml(r.inspectorName || r.inspectorId || '—')}${shotTag}</td>
                 <td style="white-space: nowrap; font-size: 12px; color: var(--text-dim);">${escapeHtml(String(r.startTime || '—'))} &rarr; ${escapeHtml(String(r.endTime || '—'))}</td>
                 <td><b style="color: var(--success);">${t.ok}</b></td>
                 <td><b style="color: ${t.nc ? 'var(--danger)' : 'var(--text-dim)'};">${t.nc}</b></td>
@@ -24576,6 +24641,7 @@
             + hygHeadRow('Compliant &middot; Not &middot; N/A', `${t.ok} · ${t.nc} · ${t.na}`)
             + hygHeadRow('High &middot; Medium &middot; Low', `${t.high} · ${t.medium} · ${t.low}`)
             + hygHeadRow('Compliance / نسبة المطابقة', t.pct === null ? '—' : `${t.pct.toFixed(1)}%`)
+            + hygHeadRow('Photos attached / الصور المرفقة', String(hygAllPhotoIds(r).length))
             + hygHeadRow('Received in the office / وصل اللوحة', submitted)
             + `</div>`;
 
@@ -24630,9 +24696,25 @@
                     ? `<div style="margin-top:6px; font-size:12.5px; white-space:pre-wrap; background: var(--surface-2); border-radius:6px; padding:8px 10px;" dir="auto">${escapeHtml(i.note)}</div>` : '';
                 // ⚠️ الصورةُ تُقرأ حين تصل الشاشة: ٣٤ بندًا × ١٨٠KB في كل فتحةٍ
                 //   على بيانات هاتفٍ لا يُقبل. انظر observeHygieneThumbs.
-                const photo = (isNc && i.hasPhoto)
-                    ? `<img data-hygimg="${escapeHtml(r.id + '_' + i.n)}" alt="" loading="lazy"
-                         style="margin-top:8px; max-width:220px; max-height:170px; object-fit:cover; border-radius:8px; border:1px solid var(--border); background: var(--bg-soft); display:block;">`
+                /**
+                 * ⚠️ `hygPhotoIds` تُشتقّ المعرّفاتَ بالحساب لا باستعلام: معرّفُ كلِّ
+                 *   صورةٍ `<التقرير>_<البند>_<الترتيب>`، فمعرفةُ العددِ تكفي.
+                 * ⚠️⚠️ وتقبل الشكلَ القديمَ (`<التقرير>_<البند>` بلا ترتيب) لتقريرٍ
+                 *   أُرسل قبل ميزةِ الصورِ المتعدّدة. ولا يُفترض أنّ ذلك مستحيلٌ
+                 *   لأنّ القواعدَ لم تُنشر بعد: افتراضُ «لا بياناتَ قديمة» هو بعينُه
+                 *   ما يُنتج شاشةً فارغةً بلا سببٍ ظاهر.
+                 */
+                const ids = hygPhotoIds(r, i);
+                const photo = (isNc && ids.length)
+                    ? `<div style="margin-top:8px; display:grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap:8px;">`
+                      + ids.map((pid, k) =>
+                          `<figure style="margin:0;">`
+                          + `<img data-hygimg="${escapeHtml(pid)}" alt="" loading="lazy"
+                               style="width:100%; max-height:190px; object-fit:cover; border-radius:8px; border:1px solid var(--border); background: var(--bg-soft); display:block; cursor:zoom-in;"
+                               onclick="hygZoomPhoto('${escapeJsAttr(pid)}')">`
+                          + `<figcaption style="font-size:10.5px; color: var(--text-dim); font-weight:700; margin-top:3px;">photo ${k + 1} of ${ids.length}</figcaption>`
+                          + `</figure>`).join('')
+                      + `</div>`
                     : (isNc ? `<div style="margin-top:6px; font-size:11.5px; color: var(--text-faint); font-weight:700;">no photo was attached</div>` : '');
                 return `<div style="border:1px solid ${border}; border-left:4px solid ${border}; background:${bg}; border-radius:8px; padding:10px 12px; margin-top:8px;">`
                     + `<div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">`
@@ -24774,6 +24856,606 @@
         a.click();
         setTimeout(() => a.remove(), 0);
     };
+
+    // =====================================================================
+    // ورقةُ تقريرِ التفتيش — مرسومةٌ صفحةً صفحةً، بصورِها
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ مقاسُ الصفحةِ ١٢٤٠ × ١٧٥٤ بكسل (A4 عند ١٥٠ نقطةً في البوصة)، و**كلا
+    //   البُعدَين أقلُّ من ٢٠٠٠ بكسل** عن قصد: هذا حدٌّ قائمٌ في طريقةِ عملنا،
+    //   وصفحةٌ تتجاوزه تصير ملفًّا لا يمكن فتحُه لمراجعتِه. و١٥٠ نقطةً كافيةٌ
+    //   لقراءةِ النصِّ وللطباعةِ المكتبيّة، وتُخرج صفحةً نحو ٢٠٠ كيلوبايت.
+    // =====================================================================
+    const HYG_PDF_DPI = 150;
+    const HYG_PDF_W = Math.round(PDF_PAGE_W * HYG_PDF_DPI / 72);    // 1240
+    const HYG_PDF_H = Math.round(PDF_PAGE_H * HYG_PDF_DPI / 72);    // 1754
+    const HYG_PDF_MARGIN = 58;
+    const HYG_PDF_BOTTOM = HYG_PDF_H - 72;                          // مكانُ الذيل
+    const HYG_PDF_CONTENT_W = HYG_PDF_W - HYG_PDF_MARGIN * 2;       // 1124
+    const HYG_PDF_FONT = "'Segoe UI', 'Noto Sans Arabic', 'Arial', sans-serif";
+    // ألوانٌ صريحةٌ لا متغيّراتُ نمط — انظر التعليقَ الطويلَ عند pdfFromJpegPages.
+    const HYG_PDF_INK = '#15202b';
+    const HYG_PDF_DIM = '#5a6673';
+    const HYG_PDF_RED = '#a61e1e';
+    const HYG_PDF_AMBER = '#b35309';
+    const HYG_PDF_GREEN = '#1b6e34';
+    const HYG_PDF_LINE = '#d7dde3';
+
+    function hygPdfFont(px, bold) {
+        return `${bold ? '700 ' : ''}${px}px ${HYG_PDF_FONT}`;
+    }
+
+    /**
+     * يقطع النصَّ أسطرًا تدخل في `maxW`.
+     * ⚠️ الأسطرُ المكتوبةُ في البندِ (`\n`) تُحترم أوّلًا: بنودُ المالكِ فيها نقاطٌ
+     *   فرعيّةٌ، ولصقُها في فقرةٍ واحدةٍ يُفقدها معناها.
+     * ⚠️ وكلمةٌ أطولُ من السطرِ تُقطع بالحروف، وإلّا خرجت خارجَ الورقة.
+     */
+    function hygPdfWrap(ctx, text, maxW, font) {
+        ctx.font = font;
+        const out = [];
+        String(text == null ? '' : text).split('\n').forEach(para => {
+            const words = para.trim().split(/\s+/).filter(Boolean);
+            if (!words.length) { out.push(''); return; }
+            let line = '';
+            words.forEach(w => {
+                const test = line ? line + ' ' + w : w;
+                if (ctx.measureText(test).width <= maxW) { line = test; return; }
+                if (line) { out.push(line); line = ''; }
+                if (ctx.measureText(w).width <= maxW) { line = w; return; }
+                let piece = '';
+                for (const ch of w) {
+                    if (ctx.measureText(piece + ch).width > maxW && piece) { out.push(piece); piece = ch; }
+                    else piece += ch;
+                }
+                line = piece;
+            });
+            if (line) out.push(line);
+        });
+        return out.length ? out : [''];
+    }
+
+    /** يرسم أسطرًا بدءًا من y، ويُعيد y بعد آخرِ سطر. */
+    function hygPdfLines(ctx, lines, x, y, lh, font, colour, rtl, rightX) {
+        ctx.font = font;
+        ctx.fillStyle = colour;
+        ctx.textBaseline = 'alphabetic';
+        lines.forEach(ln => {
+            y += lh;
+            if (rtl) {
+                // ⚠️ `direction` هي ما يُرتّب نصًّا مختلطًا (عربيٌّ فيه «65°C»)
+                //   ترتيبًا صحيحًا. ومتصفّحٌ قديمٌ لا يعرفها يبقى يُشكّل الحروفَ
+                //   ويوصلُها — فالخسارةُ ترتيبُ مقطعٍ لاتينيٍّ لا قراءةُ الجملة.
+                ctx.direction = 'rtl';
+                ctx.textAlign = 'right';
+                ctx.fillText(ln, rightX, y);
+                ctx.direction = 'ltr';
+                ctx.textAlign = 'left';
+            } else {
+                ctx.direction = 'ltr';
+                ctx.textAlign = 'left';
+                ctx.fillText(ln, x, y);
+            }
+        });
+        return y;
+    }
+
+    function hygPdfRoundRect(ctx, x, y, w, h, r) {
+        const rr = Math.min(r, w / 2, h / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + rr, y);
+        ctx.arcTo(x + w, y, x + w, y + h, rr);
+        ctx.arcTo(x + w, y + h, x, y + h, rr);
+        ctx.arcTo(x, y + h, x, y, rr);
+        ctx.arcTo(x, y, x + w, y, rr);
+        ctx.closePath();
+    }
+
+    /**
+     * يبني «كتلًا» لكلِّ ما يُرسم: كلُّ كتلةٍ تعرف **ارتفاعَها** قبل الرسم.
+     * ⚠️⚠️ قياسٌ أوّلًا ثمَّ رسمٌ، وليس هذا ترفًا: الذيلُ يقول «صفحة ٣ من ٧»،
+     *   وعددُ الصفحاتِ لا يُعرف إلّا بعد التوزيع. ولو رُسم أثناءَ التوزيعِ
+     *   لَوجب إمّا كذبُ الذيلِ أو رسمُ كلِّ شيءٍ مرّتَين.
+     * ⚠️ وكتلةٌ أطولُ من الصفحةِ **تُقسَّم مصدريًّا** (نصُّ البندِ كتلةٌ، وكلُّ صفِّ
+     *   صورٍ كتلةٌ)، فلا شيءَ يُقطع ولا يُكتم.
+     */
+    function hygPdfBlocks(ctx, r, imgs, missing) {
+        const X = HYG_PDF_MARGIN;
+        const W = HYG_PDF_CONTENT_W;
+        const RX = X + W;
+        const t = hygTally(r);
+        const blocks = [];
+
+        // ---- الترويسة ---------------------------------------------------
+        blocks.push({ h: 96, draw: (c, y) => {
+            c.fillStyle = HYG_PDF_INK;
+            hygPdfRoundRect(c, X, y, W, 80, 10); c.fill();
+            c.fillStyle = '#ffffff';
+            c.font = hygPdfFont(27, true);
+            c.direction = 'ltr'; c.textAlign = 'left';
+            c.fillText('HYGIENE INSPECTION REPORT', X + 20, y + 34);
+            c.font = hygPdfFont(22, true);
+            c.direction = 'rtl'; c.textAlign = 'right';
+            c.fillText('تقرير التفتيش الصحّي للمطاعم', RX - 20, y + 66);
+            c.direction = 'ltr'; c.textAlign = 'left';
+            c.font = hygPdfFont(17, false);
+            c.fillStyle = '#ffffff';
+            c.fillText('Al Sheikha Group', X + 20, y + 66);
+        } });
+
+        // ---- جدولُ الرأس: كلُّ التفاصيل بطلبِ المالك --------------------
+        const submitted = tsFieldToDate(r.serverTime)
+            ? tsFieldToDate(r.serverTime).toLocaleString()
+            : (r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '—');
+        const headRows = [
+            ['Report No. / رقم التقرير', r.reportNo || '—'],
+            ['Branch / الفرع', r.branch || '—'],
+            ['Activity / النشاط', r.activity || '—'],
+            ['Date / التاريخ', hygDateLabel(r.date)],
+            ['Start time / ساعة البداية', `${r.startTime || '—'} (Qatar)`],
+            ['End time / ساعة النهاية', `${r.endTime || '—'} (Qatar)`],
+            ['Inspector / المفتّش', `${r.inspectorName || '—'}${r.inspectorTitle ? ' — ' + r.inspectorTitle : ''}`],
+            ['Person in charge / المسؤول المتواجد', r.personInCharge || '—'],
+            ['Received by / مستلم التقرير', r.receiverName || '—'],
+            ['Received in the office / وصل اللوحة', submitted],
+            ['Items inspected / عدد البنود', String(t.count)],
+            ['Photos attached / الصور المرفقة', String(hygAllPhotoIds(r).length)]
+        ];
+        const HR = 30;
+        const headH = Math.ceil(headRows.length / 2) * HR + 18;
+        blocks.push({ h: headH + 10, draw: (c, y) => {
+            const colW = (W - 18) / 2;
+            headRows.forEach((row, i) => {
+                const col = i % 2;
+                const line = Math.floor(i / 2);
+                const bx = X + col * (colW + 18);
+                const by = y + line * HR;
+                c.strokeStyle = HYG_PDF_LINE; c.lineWidth = 1;
+                c.beginPath(); c.moveTo(bx, by + HR - 4); c.lineTo(bx + colW, by + HR - 4); c.stroke();
+                c.font = hygPdfFont(14, true); c.fillStyle = HYG_PDF_DIM;
+                c.direction = 'ltr'; c.textAlign = 'left';
+                c.fillText(row[0], bx, by + HR - 11);
+                c.font = hygPdfFont(15, true); c.fillStyle = HYG_PDF_INK;
+                c.textAlign = 'right';
+                // ⚠️ قيمةٌ أطولُ من عمودِها تُقصّ بثلاثِ نقاطٍ ولا تُكتب فوق جارتها.
+                let v = String(row[1]);
+                while (c.measureText(v).width > colW - c.measureText(row[0]).width - 14 && v.length > 4) {
+                    v = v.slice(0, -2) + '…';
+                }
+                c.fillText(v, bx + colW, by + HR - 11);
+                c.textAlign = 'left';
+            });
+        } });
+
+        // ---- شريطُ النتيجة ----------------------------------------------
+        const pct = t.pct === null ? '—' : `${t.pct.toFixed(1)}%`;
+        blocks.push({ h: 86, draw: (c, y) => {
+            const cells = [
+                ['Compliant', String(t.ok), HYG_PDF_GREEN, 'مطابق'],
+                ['Not compliant', String(t.nc), HYG_PDF_RED, 'غير مطابق'],
+                ['N/A', String(t.na), HYG_PDF_DIM, 'لا ينطبق'],
+                ['High / Med / Low', `${t.high} / ${t.medium} / ${t.low}`, HYG_PDF_AMBER, 'الخطورة'],
+                ['Compliance', pct, HYG_PDF_INK, 'نسبة المطابقة']
+            ];
+            const cw = (W - 4 * 10) / 5;
+            cells.forEach((cell, i) => {
+                const bx = X + i * (cw + 10);
+                c.fillStyle = '#f4f6f8';
+                hygPdfRoundRect(c, bx, y, cw, 72, 8); c.fill();
+                c.strokeStyle = HYG_PDF_LINE; c.lineWidth = 1; c.stroke();
+                c.direction = 'ltr'; c.textAlign = 'center';
+                c.font = hygPdfFont(13, true); c.fillStyle = HYG_PDF_DIM;
+                c.fillText(cell[0], bx + cw / 2, y + 20);
+                c.font = hygPdfFont(26, true); c.fillStyle = cell[2];
+                c.fillText(cell[1], bx + cw / 2, y + 48);
+                c.direction = 'rtl';
+                c.font = hygPdfFont(12, true); c.fillStyle = HYG_PDF_DIM;
+                c.fillText(cell[3], bx + cw / 2, y + 66);
+                c.direction = 'ltr'; c.textAlign = 'left';
+            });
+        } });
+
+        // ⚠️ بندٌ بلا إجابةٍ يُقال في الورقةِ نفسِها: ورقةٌ تُرسَل للجهاتِ تُقرأ
+        //   بلا شاشةٍ بجانبها، فتحذيرُ الشاشةِ وحدَه لا يصل.
+        if (t.blank > 0) {
+            const warnLines = hygPdfWrap(ctx,
+                `${t.blank} item(s) were sent without an answer and are shown below as "NO ANSWER". `
+                + `They are not counted as compliant.`, W - 28, hygPdfFont(15, true));
+            blocks.push({ h: warnLines.length * 22 + 30, draw: (c, y) => {
+                c.fillStyle = '#fff6e5';
+                hygPdfRoundRect(c, X, y, W, warnLines.length * 22 + 20, 8); c.fill();
+                c.strokeStyle = HYG_PDF_AMBER; c.lineWidth = 1; c.stroke();
+                hygPdfLines(c, warnLines, X + 14, y + 2, 22, hygPdfFont(15, true), HYG_PDF_AMBER, false, RX);
+            } });
+        }
+
+        // ---- البنود بأقسامها --------------------------------------------
+        const items = (Array.isArray(r.items) ? r.items : []).slice()
+            .sort((a, b) => (Number(a.n) || 0) - (Number(b.n) || 0));
+        const sections = [];
+        items.forEach(i => {
+            const key = String(i.section == null ? '?' : i.section);
+            let s = sections.find(x => x.key === key);
+            if (!s) { s = { key, en: i.sectionEn || '', ar: i.sectionAr || '', rows: [] }; sections.push(s); }
+            s.rows.push(i);
+        });
+
+        sections.forEach(sec => {
+            blocks.push({ h: 72, keepWithNext: true, draw: (c, y) => {
+                c.fillStyle = HYG_PDF_INK;
+                hygPdfRoundRect(c, X, y + 8, W, 54, 8); c.fill();
+                c.fillStyle = '#ffffff';
+                c.font = hygPdfFont(18, true);
+                c.direction = 'ltr'; c.textAlign = 'left';
+                c.fillText(`${sec.key}. ${sec.en}`, X + 16, y + 32);
+                c.font = hygPdfFont(16, true);
+                c.direction = 'rtl'; c.textAlign = 'right';
+                c.fillText(sec.ar, RX - 16, y + 54);
+                c.direction = 'ltr'; c.textAlign = 'left';
+            } });
+
+            sec.rows.forEach(i => {
+                const isNc = i.rating === 'nc';
+                const textW = W - 230;
+                const enLines = hygPdfWrap(ctx, i.en || '', textW - 24, hygPdfFont(15, true));
+                const arLines = hygPdfWrap(ctx, i.ar || '', textW - 24, hygPdfFont(15, false));
+                const noteLines = (isNc && i.note)
+                    ? hygPdfWrap(ctx, `Note / الملاحظة: ${i.note}`, W - 36, hygPdfFont(15, false)) : [];
+                const bodyH = 14 + enLines.length * 21 + arLines.length * 21 + 10
+                    + (noteLines.length ? noteLines.length * 21 + 12 : 0) + 12;
+
+                blocks.push({ h: bodyH + 8, draw: (c, y) => {
+                    const colour = isNc ? HYG_PDF_RED : (i.rating === 'ok' ? HYG_PDF_GREEN
+                        : (i.rating === 'na' ? HYG_PDF_DIM : HYG_PDF_AMBER));
+                    c.fillStyle = isNc ? '#fdf4f4' : '#ffffff';
+                    hygPdfRoundRect(c, X, y, W, bodyH, 8); c.fill();
+                    c.strokeStyle = isNc ? HYG_PDF_RED : HYG_PDF_LINE; c.lineWidth = isNc ? 1.6 : 1; c.stroke();
+                    // شارةُ رقمِ البند
+                    c.fillStyle = HYG_PDF_INK;
+                    hygPdfRoundRect(c, X + 12, y + 12, 40, 26, 6); c.fill();
+                    c.fillStyle = '#ffffff'; c.font = hygPdfFont(15, true);
+                    c.direction = 'ltr'; c.textAlign = 'center';
+                    c.fillText(String(i.n), X + 32, y + 30);
+                    c.textAlign = 'left';
+
+                    let yy = y + 14;
+                    yy = hygPdfLines(c, enLines, X + 62, yy, 21, hygPdfFont(15, true), HYG_PDF_INK, false, RX);
+                    yy = hygPdfLines(c, arLines, X + 62, yy + 4, 21, hygPdfFont(15, false), HYG_PDF_DIM, true, X + 62 + textW - 24);
+
+                    // الحكمُ والخطورةُ على اليمين
+                    c.direction = 'ltr'; c.textAlign = 'right';
+                    c.font = hygPdfFont(16, true); c.fillStyle = colour;
+                    const label = i.rating ? (HYG_RATING_EN[i.rating] || i.rating).toUpperCase() : 'NO ANSWER';
+                    c.fillText(label, RX - 16, y + 32);
+                    c.font = hygPdfFont(14, true); c.fillStyle = HYG_PDF_DIM;
+                    c.direction = 'rtl';
+                    c.fillText(i.rating ? (HYG_RATING_AR[i.rating] || '') : 'بلا تقييم', RX - 16, y + 54);
+                    if (isNc) {
+                        c.direction = 'ltr';
+                        c.font = hygPdfFont(15, true); c.fillStyle = HYG_PDF_RED;
+                        c.fillText(`${(HYG_SEV_EN[i.severity] || i.severity || '').toUpperCase()} SEVERITY`, RX - 16, y + 80);
+                        c.direction = 'rtl';
+                        c.font = hygPdfFont(13, true); c.fillStyle = HYG_PDF_DIM;
+                        c.fillText(HYG_SEV_AR[i.severity] || '', RX - 16, y + 100);
+                    }
+                    c.direction = 'ltr'; c.textAlign = 'left';
+
+                    if (noteLines.length) {
+                        const ny = yy + 10;
+                        c.strokeStyle = HYG_PDF_LINE; c.lineWidth = 1;
+                        c.beginPath(); c.moveTo(X + 16, ny); c.lineTo(RX - 16, ny); c.stroke();
+                        hygPdfLines(c, noteLines, X + 18, ny + 2, 21, hygPdfFont(15, false), HYG_PDF_INK, false, RX - 16);
+                    }
+                } });
+
+                // ---- صفوفُ الصور، ثلاثٌ في الصفّ --------------------------
+                const ids = hygPhotoIds(r, i);
+                if (isNc && ids.length) {
+                    const PER = 3, GAP = 16;
+                    const cw = (W - GAP * (PER - 1)) / PER;
+                    const chh = Math.round(cw * 0.75);
+                    for (let k = 0; k < ids.length; k += PER) {
+                        const slice = ids.slice(k, k + PER);
+                        const base = k;
+                        blocks.push({ h: chh + 34, draw: (c, y) => {
+                            slice.forEach((pid, j) => {
+                                const bx = X + j * (cw + GAP);
+                                c.fillStyle = '#eef1f4';
+                                hygPdfRoundRect(c, bx, y, cw, chh, 8); c.fill();
+                                const im = imgs.get(pid);
+                                if (im) {
+                                    // ⚠️ النسبةُ تُحفظ: صورةُ مصرفٍ مسحوبةً عرضًا دليلٌ مشوَّه.
+                                    const sc = Math.min(cw / im.width, chh / im.height);
+                                    const dw = im.width * sc, dh = im.height * sc;
+                                    c.save();
+                                    hygPdfRoundRect(c, bx, y, cw, chh, 8); c.clip();
+                                    c.drawImage(im, bx + (cw - dw) / 2, y + (chh - dh) / 2, dw, dh);
+                                    c.restore();
+                                } else {
+                                    // ⚠️⚠️ صورةٌ وُعد بها ولم تُقرأ **تُقال على الورقة**:
+                                    //   مربّعٌ رماديٌّ صامتٌ يُقرأ «لا دليل»، والحقيقةُ
+                                    //   «الدليلُ موجودٌ ولم يُحمَّل» — وهما مختلفان.
+                                    c.fillStyle = HYG_PDF_RED;
+                                    c.font = hygPdfFont(14, true);
+                                    c.direction = 'ltr'; c.textAlign = 'center';
+                                    c.fillText('photo could not be read', bx + cw / 2, y + chh / 2);
+                                    c.textAlign = 'left';
+                                }
+                                c.strokeStyle = HYG_PDF_LINE; c.lineWidth = 1;
+                                hygPdfRoundRect(c, bx, y, cw, chh, 8); c.stroke();
+                                c.font = hygPdfFont(13, true); c.fillStyle = HYG_PDF_DIM;
+                                c.direction = 'ltr'; c.textAlign = 'left';
+                                c.fillText(`Item ${i.n} — photo ${base + j + 1} of ${ids.length}`, bx + 2, y + chh + 20);
+                            });
+                        } });
+                    }
+                }
+            });
+        });
+
+        // ---- القسم ٨ ----------------------------------------------------
+        const actions = Array.isArray(r.actions) ? r.actions : [];
+        if (actions.length) {
+            blocks.push({ h: 72, keepWithNext: true, draw: (c, y) => {
+                c.fillStyle = HYG_PDF_INK;
+                hygPdfRoundRect(c, X, y + 8, W, 54, 8); c.fill();
+                c.fillStyle = '#ffffff';
+                c.font = hygPdfFont(18, true);
+                c.direction = 'ltr'; c.textAlign = 'left';
+                c.fillText('8. Corrective Action Plan', X + 16, y + 32);
+                c.font = hygPdfFont(16, true);
+                c.direction = 'rtl'; c.textAlign = 'right';
+                c.fillText('خطة الإجراءات التصحيحية', RX - 16, y + 54);
+                c.direction = 'ltr'; c.textAlign = 'left';
+            } });
+            actions.forEach(a => {
+                const actLines = hygPdfWrap(ctx, a.action || '—', W - 300, hygPdfFont(15, false));
+                const h = Math.max(58, actLines.length * 21 + 36);
+                blocks.push({ h: h + 6, draw: (c, y) => {
+                    c.fillStyle = '#ffffff';
+                    hygPdfRoundRect(c, X, y, W, h, 8); c.fill();
+                    c.strokeStyle = HYG_PDF_LINE; c.lineWidth = 1; c.stroke();
+                    c.direction = 'ltr'; c.textAlign = 'left';
+                    c.font = hygPdfFont(16, true); c.fillStyle = HYG_PDF_INK;
+                    c.fillText(`Item ${a.n}`, X + 14, y + 26);
+                    c.font = hygPdfFont(13, true); c.fillStyle = HYG_PDF_RED;
+                    c.fillText(`${(HYG_SEV_EN[a.severity] || a.severity || '').toUpperCase()}`, X + 14, y + 46);
+                    hygPdfLines(c, actLines, X + 110, y + 6, 21, hygPdfFont(15, false), HYG_PDF_INK, false, RX);
+                    c.textAlign = 'right';
+                    c.font = hygPdfFont(14, true); c.fillStyle = HYG_PDF_INK;
+                    c.fillText(a.responsible || '—', RX - 14, y + 26);
+                    c.font = hygPdfFont(13, true); c.fillStyle = HYG_PDF_DIM;
+                    c.fillText(a.dueEn || a.due || '—', RX - 14, y + 46);
+                    c.textAlign = 'left';
+                } });
+            });
+        } else if (t.nc > 0) {
+            blocks.push({ h: 50, draw: (c, y) => {
+                c.font = hygPdfFont(16, true); c.fillStyle = HYG_PDF_AMBER;
+                c.direction = 'ltr'; c.textAlign = 'left';
+                c.fillText('This report has findings but carries no corrective-action plan.', X, y + 26);
+            } });
+        }
+
+        // ---- التواقيع ---------------------------------------------------
+        blocks.push({ h: 130, draw: (c, y) => {
+            const cols = [
+                ['Inspector / المفتّش', r.inspectorName || ''],
+                ['Person in charge / المسؤول المتواجد', r.personInCharge || ''],
+                ['Received by / مستلم التقرير', r.receiverName || '']
+            ];
+            const cw = (W - 2 * 20) / 3;
+            cols.forEach((col, i) => {
+                const bx = X + i * (cw + 20);
+                c.strokeStyle = HYG_PDF_DIM; c.lineWidth = 1;
+                c.beginPath(); c.moveTo(bx, y + 74); c.lineTo(bx + cw, y + 74); c.stroke();
+                c.direction = 'ltr'; c.textAlign = 'left';
+                c.font = hygPdfFont(16, true); c.fillStyle = HYG_PDF_INK;
+                c.fillText(col[1] || ' ', bx + 2, y + 66);
+                c.font = hygPdfFont(13, true); c.fillStyle = HYG_PDF_DIM;
+                c.fillText(col[0], bx + 2, y + 94);
+                c.fillText('Signature / التوقيع', bx + 2, y + 114);
+            });
+        } });
+
+        if (missing && missing.length) {
+            const ml = hygPdfWrap(ctx,
+                `${missing.length} photo(s) could not be read from the database and are marked on their place `
+                + `in this report. They were not removed — they simply did not load.`,
+                W - 28, hygPdfFont(15, true));
+            blocks.push({ h: ml.length * 22 + 32, draw: (c, y) => {
+                c.fillStyle = '#fdf4f4';
+                hygPdfRoundRect(c, X, y, W, ml.length * 22 + 20, 8); c.fill();
+                c.strokeStyle = HYG_PDF_RED; c.lineWidth = 1; c.stroke();
+                hygPdfLines(c, ml, X + 14, y + 2, 22, hygPdfFont(15, true), HYG_PDF_RED, false, RX);
+            } });
+        }
+
+        return blocks;
+    }
+
+    /** يُوزّع الكتلَ على صفحاتٍ بلا قطعِ كتلةٍ ولا تركِ عنوانٍ وحدَه في الذيل. */
+    function hygPdfPaginate(blocks) {
+        const pages = [];
+        let cur = [];
+        let y = HYG_PDF_MARGIN;
+        const bottom = HYG_PDF_BOTTOM;
+        for (let i = 0; i < blocks.length; i++) {
+            const b = blocks[i];
+            // ⚠️ `keepWithNext` لعناوينِ الأقسام: عنوانٌ في آخرِ صفحةٍ وبنودُه في
+            //   التي بعدها يُقرأ كأنّ القسمَ فارغ.
+            const need = b.h + (b.keepWithNext && blocks[i + 1] ? Math.min(blocks[i + 1].h, 200) : 0);
+            if (cur.length && y + need > bottom) {
+                pages.push(cur); cur = []; y = HYG_PDF_MARGIN;
+            }
+            cur.push({ b, y });
+            y += b.h;
+        }
+        if (cur.length) pages.push(cur);
+        return pages.length ? pages : [[]];
+    }
+
+    function hygPdfLoadImage(url) {
+        return new Promise((resolve, reject) => {
+            const im = new Image();
+            im.onload = () => resolve(im);
+            im.onerror = () => reject(new Error('not an image the browser can open'));
+            im.src = url;
+        });
+    }
+
+    /**
+     * يقرأ كلَّ صورِ التقرير — **كلَّها**، لا عند وصولِ الشاشة.
+     * ⚠️ الورقةُ تحتاجها جميعًا في اللحظةِ نفسِها، فلا معنى للقراءةِ المتأخّرة هنا.
+     *   والنسخةُ المحفوظةُ في الجلسةِ تُستعمل فلا تُقرأ صورةٌ ظهرت على الشاشةِ ثانيةً.
+     */
+    async function hygPdfLoadPhotos(report, onProgress) {
+        const ids = hygAllPhotoIds(report);
+        const imgs = new Map();
+        const missing = [];
+        for (let i = 0; i < ids.length; i++) {
+            const { id, itemNo } = ids[i];
+            if (onProgress) onProgress(i + 1, ids.length);
+            let url = hygImageCache.get(id) || '';
+            if (!url) {
+                try {
+                    const snap = await getDoc(doc(db, HYG_IMAGES_COLL, id));
+                    const raw = snap.exists() ? String(snap.data().photo || '') : '';
+                    if (/^data:image\/(png|jpe?g|webp|gif);base64,/.test(raw)) {
+                        url = raw;
+                        hygImageCache.set(id, raw);
+                    }
+                } catch (e) { url = ''; }
+            }
+            if (!url) { missing.push(`item ${itemNo}`); continue; }
+            try { imgs.set(id, await hygPdfLoadImage(url)); }
+            catch (e) { missing.push(`item ${itemNo}`); }
+        }
+        return { imgs, missing };
+    }
+
+    /** يرسم الورقةَ ويُعيد صفحاتِ JPEG. */
+    function hygPdfPages(report, imgs, missing, onProgress) {
+        const canvas = document.createElement('canvas');
+        canvas.width = HYG_PDF_W;
+        canvas.height = HYG_PDF_H;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('This browser cannot draw the report.');
+
+        const blocks = hygPdfBlocks(ctx, report, imgs, missing);
+        const laid = hygPdfPaginate(blocks);
+        const out = [];
+        laid.forEach((page, pi) => {
+            if (onProgress) onProgress(pi + 1, laid.length);
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, HYG_PDF_W, HYG_PDF_H);
+            ctx.textBaseline = 'alphabetic';
+            page.forEach(({ b, y }) => {
+                ctx.save();
+                try { b.draw(ctx, y); } catch (e) { /* كتلةٌ تعثّرت لا تُسقط الورقة */ }
+                ctx.restore();
+            });
+            // الذيل: الصفحةُ ورقمُ التقريرِ على كلِّ ورقةٍ — ورقةٌ تُنتزع وحدَها
+            // يجب أن تُعرَف من أيِّ تقريرٍ هي.
+            ctx.direction = 'ltr'; ctx.textAlign = 'left';
+            ctx.strokeStyle = HYG_PDF_LINE; ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(HYG_PDF_MARGIN, HYG_PDF_H - 54);
+            ctx.lineTo(HYG_PDF_W - HYG_PDF_MARGIN, HYG_PDF_H - 54);
+            ctx.stroke();
+            ctx.font = hygPdfFont(13, true); ctx.fillStyle = HYG_PDF_DIM;
+            ctx.fillText(`${report.reportNo || ''}  ·  ${report.branch || ''}  ·  ${hygDateLabel(report.date)}`,
+                HYG_PDF_MARGIN, HYG_PDF_H - 32);
+            ctx.textAlign = 'right';
+            ctx.fillText(`Page ${pi + 1} of ${laid.length}`, HYG_PDF_W - HYG_PDF_MARGIN, HYG_PDF_H - 32);
+            ctx.textAlign = 'left';
+
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+            const comma = dataUrl.indexOf(',');
+            const b64 = comma >= 0 ? dataUrl.slice(comma + 1) : '';
+            const raw = atob(b64);
+            const bytes = new Uint8Array(raw.length);
+            for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i) & 0xFF;
+            out.push({ bytes, w: HYG_PDF_W, h: HYG_PDF_H });
+        });
+        // ⚠️ القماشُ الواحدُ يُعاد استعمالُه لكلِّ صفحة: ١٢٤٠×١٧٥٤ = نحو ٩ ميغابايت
+        //   في الذاكرة، وسبعُ صفحاتٍ بسبعِ قماشاتٍ تُسقط متصفّحَ هاتف.
+        canvas.width = 1; canvas.height = 1;
+        return out;
+    }
+
+    function hygPdfStatus(msg, colour) {
+        const el = document.getElementById('hygPdfStatus');
+        if (el) { el.textContent = msg || ''; el.style.color = colour || 'var(--text-dim)'; }
+    }
+
+    let hygPdfBusy = false;
+
+    /**
+     * ⭐ «أحفظ التقرير بي دي إف بصوره وأرسله متى شئت» — بنصِّ المالك.
+     * متاحةٌ لكلِّ من يقرأ التقريرَ: المالكُ والسكرتيرةُ والمدراء.
+     * ⚠️ والتسليمُ عبر `deliverFile` وحدَه: هو البابُ الذي يضمن المشاركةَ على
+     *   iOS ثمَّ التنزيلَ ثمَّ **شريطًا مرئيًّا دائمًا** — و`pdf.save()` المباشرةُ
+     *   لا تفعل شيئًا في تطبيقٍ مثبَّتٍ على iOS، بصمت.
+     */
+    window.savePdfHygieneReport = async function(reportId) {
+        if (hygPdfBusy) return;
+        const id = String(reportId || hygOpenId || '');
+        const r = allHygieneReports.find(x => x.id === id);
+        if (!r) { alert('Open an inspection first.'); return; }
+        if (!Array.isArray(r.items) || !r.items.length) {
+            alert('This report carries no items, so there is nothing to put on the page.');
+            return;
+        }
+
+        hygPdfBusy = true;
+        const btns = Array.from(document.querySelectorAll('[data-hygpdf]'));
+        btns.forEach(b => { b.disabled = true; });
+        try {
+            const total = hygAllPhotoIds(r).length;
+            hygPdfStatus(total ? `Reading ${total} photo(s)…` : 'Building the page…');
+            const { imgs, missing } = await hygPdfLoadPhotos(r, (i, n) => {
+                hygPdfStatus(`Reading photo ${i} of ${n}…`);
+            });
+
+            hygPdfStatus('Drawing the report…');
+            const pages = hygPdfPages(r, imgs, missing, (i, n) => {
+                hygPdfStatus(`Drawing page ${i} of ${n}…`);
+            });
+
+            const bytes = pdfFromJpegPages(pages, {
+                title: `Hygiene Inspection — ${r.branch || ''} — ${hygDateLabel(r.date)}`
+            });
+            const blob = new Blob([bytes], { type: 'application/pdf' });
+            const name = `Hygiene-${hygBranchSlugAdmin(r.branch)}-${r.date || 'report'}.pdf`;
+
+            const res = await deliverFile(blob, name, {
+                title: `Hygiene Inspection — ${r.branch || ''}`,
+                note: 'Press Save to keep the PDF, or Send to share it on WhatsApp.'
+            });
+
+            // ⚠️⚠️ لا يُدَّعى نجاحٌ لا دليلَ عليه: المشاركةُ وحدَها تُعطيه، وما عداها
+            //   يبقى شريطُ «ملفُّك جاهز» ظاهرًا. وهذا نصُّ v239 بالحرف.
+            const kb = Math.round(bytes.length / 1024);
+            let msg = `${pages.length} page(s), ${kb} KB`;
+            if (missing.length) msg += ` · ${missing.length} photo(s) could not be read`;
+            if (res.via === 'share') msg += ' · sent';
+            else if (res.cancelled) msg += ' · sending cancelled, the file is still in the bar below';
+            else msg += ' · use the bar at the bottom to save or send it';
+            hygPdfStatus(msg, missing.length ? 'var(--warning)' : 'var(--success)');
+        } catch (e) {
+            console.error('Hygiene PDF failed:', e);
+            hygPdfStatus(`Could not build the PDF: ${e.message}`, 'var(--danger)');
+        } finally {
+            hygPdfBusy = false;
+            btns.forEach(b => { b.disabled = false; });
+        }
+    };
+
+    /** اسمُ الفرعِ في صيغةٍ تصلح لاسمِ ملفّ. */
+    function hygBranchSlugAdmin(branch) {
+        return String(branch || 'BRANCH').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'BRANCH';
+    }
 
     window.deleteHygieneReport = async function(reportId) {
         if (!hygMayDelete()) { alert('Only the owner can delete an inspection.'); return; }
@@ -27614,6 +28296,128 @@
         }
         return new Blob([bytes], { type: mime });
     }
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ صفحاتٌ **مرسومةٌ** في PDF — وهذا ما يجعل العربيّةَ تُطبع
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️⚠️ `pdfBytes` أعلاه يكتب نصًّا بخطِّ «هلفيتيكا»، و**هلفيتيكا لا تحمل
+    //   حرفًا عربيًّا واحدًا**. وتقريرُ التفتيشِ نصفُه عربيٌّ بطلبِ المالك
+    //   («موجود عندي نسختين عربي إنجليزي»)، فطريقُ النصِّ مسدودٌ عليه من أصله.
+    //
+    // ⚠️⚠️ والطريقُ المسدودُ الثاني هو **تصويرُ الشاشة**: `html2canvas` أُزيلت من
+    //   المشروع كلِّه في v241 لأنّ مُفكِّكَ ألوانِها لا يعرف `color-mix()` — وهذه
+    //   اللوحةُ مليئةٌ بها، فأوّلُ عنصرٍ يحملها يُبطل التصويرَ كلَّه بلا ورقة.
+    //
+    // فالطريقُ الثالثُ هو المسلوك: **أرسمُ الورقةَ بنفسي على `canvas`**.
+    //     • `ctx.fillText` هو محرّكُ نصِّ المتصفّحِ نفسُه، فيُشكّل العربيّةَ
+    //       ويوصلُ حروفَها صحيحةً — وهو ما لا يفعله أيُّ خطٍّ مبنيٍّ في PDF.
+    //     • ولا CSS في الطريق إطلاقًا: كلُّ لونٍ هنا رقمٌ صريحٌ أكتبه، فلا
+    //       `color-mix()` ولا متغيّرَ نمطٍ يُفكَّك — وهو بعينُه العطلُ الذي قتل
+    //       الطريقَ الثاني.
+    //     • والصورُ تُرسم على نفسِ القماش، فتخرج **في الورقة** لا مرفقاتٍ جانبيّة.
+    //
+    // ⚠️ والثمنُ مذكورٌ ولا يُخفى: الورقةُ **صورةٌ** لا نصٌّ يُبحث فيه ويُنسخ منه.
+    //   وهذا مقبولٌ هنا لأنّ التقريرَ **دليلٌ يُقرأ ويُرسَل** لا جدولُ أرقامٍ
+    //   يُنسخ منه رقمٌ إلى حساب — بخلافِ كشفِ الراتبِ وحسابِ شانتون، وهما
+    //   يبقيان نصًّا حقيقيًّا بـ`pdfBytes`.
+    //
+    // ⚠️⚠️ ودالّةٌ مستقلّةٌ عن `pdfBytes` ولم تُعمَّم تلك: تلك ترقّم كائناتِها
+    //   على أساسِ «خطّان + كائنان لكلِّ صفحة»، وإدخالُ صورةٍ يُغيّر الترقيمَ —
+    //   فيُخاطر بكلِّ ورقةٍ تعمل اليومَ في المشروع لأجلِ ميزةٍ جديدة. وهو نفسُ
+    //   القرارِ المُقرَّ في `shrinkAbayaPhoto` مع `shrinkImageToDataUrl`.
+    // =====================================================================
+
+    /** نصٌّ بترميزِ بايتٍ لكلِّ محرفٍ ← بايتات. كلُّ محرفٍ ≤ 255 بالضرورة. */
+    function pdfLatin1Bytes(s) {
+        const b = new Uint8Array(s.length);
+        for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i) & 0xFF;
+        return b;
+    }
+
+    /**
+     * يُجمِّع PDF كلُّ صفحةٍ فيه صورةُ JPEG واحدةٌ تملأ الورقة.
+     * `pages`: [{ bytes: Uint8Array, w: px, h: px }]
+     *
+     * ⚠️⚠️⚠️ ثلاثةُ كائناتٍ لكلِّ صفحة (الصفحةُ · المحتوى · الصورة)، والترقيمُ
+     *   يبدأ من 3 لأنّ 1 الفهرسُ و2 قائمةُ الصفحات. وخطأٌ واحدٌ في إزاحةِ
+     *   `xref` = ملفٌّ لا يفتح في أيِّ قارئ، فالإزاحاتُ تُحسب من **أطوالِ
+     *   البايتات الفعليّة** لا من تقديرِ أطوالِ النصوص — والصورةُ بيانٌ ثنائيٌّ
+     *   لا نصّ، فالعدُّ بالمحارفِ كان سيكذب.
+     * ⚠️ و`/Length` للصورة = طولُ بايتاتِها بالضبط. والسطرُ الجديدُ قبل
+     *   `endstream` لا يُحسب فيه، وهو ما تقوله المواصفة.
+     */
+    function pdfFromJpegPages(pages, meta) {
+        meta = meta || {};
+        const num = (v) => {
+            const n = Math.round(Number(v) * 100) / 100;
+            return String(Object.is(n, -0) ? 0 : n);
+        };
+        const list = (pages || []).filter(p => p && p.bytes && p.bytes.length && p.w > 0 && p.h > 0);
+        if (!list.length) throw new Error('There is no page to put in the PDF.');
+
+        const objs = [];
+        objs[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+        const firstPage = 3;
+        const kids = list.map((_, i) => `${firstPage + i * 3} 0 R`);
+        objs[2] = `<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${list.length} >>`;
+
+        const W = num(PDF_PAGE_W), H = num(PDF_PAGE_H);
+        list.forEach((p, i) => {
+            const pageObj = firstPage + i * 3;
+            const contentObj = pageObj + 1;
+            const imgObj = pageObj + 2;
+            // مصفوفةُ التحويل: تُمدِّد صورةَ الوحدةِ إلى مقاسِ الورقةِ كاملةً.
+            const body = `q\n${W} 0 0 ${H} 0 0 cm\n/Im0 Do\nQ\n`;
+            objs[pageObj] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] `
+                + `/Resources << /XObject << /Im0 ${imgObj} 0 R >> >> /Contents ${contentObj} 0 R >>`;
+            objs[contentObj] = `<< /Length ${body.length} >>\nstream\n${body}endstream`;
+            objs[imgObj] = {
+                dict: `<< /Type /XObject /Subtype /Image /Width ${Math.round(p.w)} /Height ${Math.round(p.h)} `
+                    + `/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${p.bytes.length} >>`,
+                bytes: p.bytes
+            };
+        });
+
+        let infoNum = 0;
+        if (meta.title) {
+            infoNum = objs.length;
+            objs[infoNum] = `<< /Title (${pdfSafeText(meta.title).text}) /Producer (Al Sheikha Group) >>`;
+        }
+
+        const chunks = [pdfLatin1Bytes('%PDF-1.4\n')];
+        let at = chunks[0].length;
+        const offsets = [];
+        for (let i = 1; i < objs.length; i++) {
+            offsets[i] = at;
+            const o = objs[i];
+            if (o && o.bytes) {
+                const head = pdfLatin1Bytes(`${i} 0 obj\n${o.dict}\nstream\n`);
+                const tail = pdfLatin1Bytes('\nendstream\nendobj\n');
+                chunks.push(head, o.bytes, tail);
+                at += head.length + o.bytes.length + tail.length;
+            } else {
+                const c = pdfLatin1Bytes(`${i} 0 obj\n${o}\nendobj\n`);
+                chunks.push(c);
+                at += c.length;
+            }
+        }
+        const xrefAt = at;
+        let xref = `xref\n0 ${objs.length}\n0000000000 65535 f \n`;
+        for (let i = 1; i < objs.length; i++) {
+            xref += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+        }
+        xref += `trailer\n<< /Size ${objs.length} /Root 1 0 R${infoNum ? ` /Info ${infoNum} 0 R` : ''} >>\n`
+            + `startxref\n${xrefAt}\n%%EOF\n`;
+        chunks.push(pdfLatin1Bytes(xref));
+
+        let total = 0;
+        chunks.forEach(c => { total += c.length; });
+        const out = new Uint8Array(total);
+        let o = 0;
+        chunks.forEach(c => { out.set(c, o); o += c.length; });
+        return out;
+    }
+
 
     // =====================================================================
     // ⭐⭐⭐⭐ مكتبةُ الـPDF — من أكثرَ من مصدرٍ، ومع التحقّقِ بعد التحميل

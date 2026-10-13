@@ -414,9 +414,20 @@
         .hyg-s-medium.hyg-on { background: #e8590c; border-color: #e8590c; color: #fff; }
         .hyg-s-high.hyg-on { background: #a61e1e; border-color: #a61e1e; color: #fff; }
         .hyg-nc textarea { min-height: 70px; font-size: 15px; }
-        .hyg-thumb { margin-top: 8px; display: none; }
-        .hyg-thumb img { max-width: 100%; max-height: 180px; border-radius: 8px; border: 1px solid #dee2e6; display: block; }
-        .hyg-thumb button { margin-top: 6px; min-height: 38px; padding: 8px 12px; border: none; border-radius: 8px; background: #6c757d; color: #fff; font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; width: auto; }
+        /* خانتا الصور: «صوّر الآن» و«اختر صورًا» — انظر التعليق عند hygItemHtml */
+        .hyg-pic-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .hyg-pic-col { min-width: 0; }
+        .hyg-pic-cap { display: block; font-size: 11px; font-weight: 700; color: #6c757d; margin-bottom: 4px; }
+        .hyg-pic-col input[type="file"] { font-size: 11.5px; padding: 8px 9px; min-height: 40px; }
+
+        /* شبكةُ المصغّرات — صورٌ متعدّدةٌ لكلِّ ملاحظة */
+        .hyg-thumbs { margin-top: 8px; display: none; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 7px; align-items: start; }
+        .hyg-thumb-one { position: relative; }
+        .hyg-thumb-one img { width: 100%; height: 84px; object-fit: cover; border-radius: 8px; border: 1px solid #dee2e6; display: block; background: #f1f3f5; }
+        /* ⚠️ زرُّ الحذفِ **فوق** الصورةِ لا تحتها: ستُّ صورٍ بستِّ أزرارٍ تحتها
+           تُضاعف ارتفاعَ الصفِّ على الهاتف، ويصير الزرُّ بعيدًا عن صورته. */
+        .hyg-thumb-one button { position: absolute; top: 3px; inset-inline-end: 3px; min-height: 26px; padding: 2px 7px; border: none; border-radius: 6px; background: rgba(166,30,30,0.92); color: #fff; font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer; width: auto; line-height: 1.5; }
+        .hyg-thumb-count { grid-column: 1 / -1; font-size: 11px; font-weight: 700; color: #6c757d; }
 
         .hyg-tally { position: sticky; bottom: 0; z-index: 3; background: #1a252f; color: #fff; border-radius: 10px; padding: 10px 12px; margin-top: 16px; font-size: 12.5px; font-weight: 700; line-height: 1.7; }
         .hyg-tally .hyg-t-row { display: flex; justify-content: space-between; gap: 8px; }
@@ -3553,6 +3564,15 @@
      */
     const HYG_PHOTO_PX = 900;
     const HYG_PHOTO_MAX_BYTES = 180 * 1024;
+    /**
+     * ⚠️⚠️ حدٌّ لكلِّ بندٍ، وهو **ليس** تقييدًا تجميليًّا: كلُّ صورةٍ مستندٌ مستقلٌّ
+     *   في فايرستور، وتقريرٌ فيه ١٥ مخالفةً × بلا حدٍّ يصير مئةَ قراءةٍ عند كلِّ
+     *   فتحةٍ في اللوحة و١٠٠ كتابةٍ عند الإرسال من هاتفٍ في مطبخ. وستٌّ تكفي
+     *   لتوثيقِ مخالفةٍ واحدةٍ من كلِّ زاويةٍ معقولة.
+     * ⚠️ والحدُّ يُفرض في `hygPickPhoto` **ويُقال للمفتّشِ عند بلوغِه**، فلا
+     *   تُرفض صورةٌ بصمتٍ فيظنّها أُضيفت.
+     */
+    const HYG_MAX_PHOTOS_PER_ITEM = 6;
 
     let hygState = null;
     let isSubmittingHygiene = false;
@@ -3571,7 +3591,10 @@
         HYGIENE_ITEMS.forEach(it => {
             // الخطورة المقترحة تُنسخ هنا لا تُقرأ من القائمة عند الإرسال: ما
             // يُرسَل هو ما رآه المفتّش على الشاشة، بعد أي تغييرٍ أجراه.
-            hygState.answers[it.n] = { rating: '', sev: it.sev, sevTouched: false, note: '', photo: '' };
+            // ⚠️ `photos` **مصفوفةٌ** لا نصًّا واحدًا: المخالفةُ الواحدةُ قد تحتاج
+            //   ثلاثَ زوايا (المصرفُ من فوق، الملصقُ عن قرب، الرفُّ كلُّه). وصورةٌ
+            //   واحدةٌ كانت تُجبر المفتّشَ على اختيارِ أيِّ دليلٍ يُسقط.
+            hygState.answers[it.n] = { rating: '', sev: it.sev, sevTouched: false, note: '', photos: [] };
         });
     }
 
@@ -3638,9 +3661,23 @@
             +     `<div class="hyg-sev">${sev}</div>`
             +     `<label for="hygNote-${it.n}">Note / الملاحظة</label>`
             +     `<textarea id="hygNote-${it.n}" placeholder="What exactly was found? / ما الذي وُجد بالضبط؟" oninput="hygSetNote(${it.n}, this.value)"></textarea>`
-            +     `<label for="hygFile-${it.n}">Photo / الصورة</label>`
-            +     `<input type="file" accept="image/*" capture="environment" id="hygFile-${it.n}" onchange="hygPickPhoto(${it.n}, this)">`
-            +     `<div class="hyg-thumb" id="hygThumb-${it.n}"></div>`
+            +     `<label>Photos / الصور <span style="font-weight:700; color:#6c757d;">(up to ${HYG_MAX_PHOTOS_PER_ITEM} / حتى ${HYG_MAX_PHOTOS_PER_ITEM})</span></label>`
+            /**
+             * ⚠️⚠️ خانتان لا خانةٌ واحدة، والسببُ سلوكُ المتصفّحاتِ لا الذوق:
+             *   `capture="environment"` تفتح الكاميرا مباشرةً — وهي ما طلبه المالك
+             *   («يكون فيه ميزة التصوير») — لكنّها على iOS تُعطي **صورةً واحدةً** في
+             *   المرّة ولا تقبل `multiple`. و`multiple` وحدها تفتح المعرضَ. فلو
+             *   دُمجتا في خانةٍ واحدةٍ خسر المفتّشُ إحدى القدرتَين على نصفِ الأجهزة.
+             *   فصارتا خانتَين صريحتَين: «صوّر الآن» و«اختر صورًا» — وكلتاهما
+             *   **تُضيف** إلى نفسِ القائمة، والكاميرا تُضغط مرّةً بعد مرّة.
+             */
+            +     `<div class="hyg-pic-row">`
+            +       `<div class="hyg-pic-col"><span class="hyg-pic-cap">&#128247; Take a photo / صوّر الآن</span>`
+            +         `<input type="file" accept="image/*" capture="environment" id="hygCam-${it.n}" onchange="hygPickPhoto(${it.n}, this)"></div>`
+            +       `<div class="hyg-pic-col"><span class="hyg-pic-cap">&#128193; Choose photos / اختر صورًا</span>`
+            +         `<input type="file" accept="image/*" multiple id="hygFile-${it.n}" onchange="hygPickPhoto(${it.n}, this)"></div>`
+            +     `</div>`
+            +     `<div class="hyg-thumbs" id="hygThumb-${it.n}"></div>`
             +   `</div>`
             + `</div>`
             + `</div>`;
@@ -3761,36 +3798,78 @@
     function hygPaintThumb(n) {
         const box = document.getElementById(`hygThumb-${n}`);
         if (!box) return;
-        const url = hygState.answers[n].photo;
-        if (!url) { box.style.display = 'none'; box.innerHTML = ''; return; }
-        box.style.display = 'block';
-        box.innerHTML = `<img src="${url}" alt="photo of item ${n}">`
-            + `<button type="button" onclick="hygRemovePhoto(${n})">Remove photo / حذف الصورة</button>`;
+        const list = hygState.answers[n].photos || [];
+        if (!list.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+        box.style.display = 'grid';
+        // ⚠️ كلُّ صورةٍ بزرِّ حذفٍ خاصٍّ بها وبرقمِها: من صوّر ستًّا ووجد الثالثةَ
+        //   مهزوزةً يحذفها وحدَها، لا الستَّ ثم يُعيد.
+        // ⚠️⚠️ والحذفُ **بالفهرس**، ولذلك يُعاد رسمُ الشبكةِ كلِّها بعد كلِّ حذفٍ:
+        //   فهارسُ ما بعد المحذوفةِ تنزاح، وزرٌّ يحمل فهرسًا قديمًا يحذف غيرَها.
+        box.innerHTML = list.map((url, k) =>
+            `<div class="hyg-thumb-one">`
+            + `<img src="${url}" alt="photo ${k + 1} of item ${n}">`
+            + `<button type="button" title="Remove this photo" onclick="hygRemovePhoto(${n}, ${k})">&#10008; ${k + 1}</button>`
+            + `</div>`
+        ).join('')
+        + `<div class="hyg-thumb-count">${list.length} / ${HYG_MAX_PHOTOS_PER_ITEM}</div>`;
     }
 
     window.hygPickPhoto = async function(n, input) {
         if (!hygState || !hygState.answers[n]) return;
-        const file = input && input.files && input.files[0];
-        if (!file) return;
-        showStatus('Preparing the picture...', 'loading');
-        try {
-            hygState.answers[n].photo = await hygShrinkPhoto(file);
+        const files = Array.from((input && input.files) || []);
+        if (!files.length) return;
+        const a = hygState.answers[n];
+        if (!Array.isArray(a.photos)) a.photos = [];
+
+        const room = HYG_MAX_PHOTOS_PER_ITEM - a.photos.length;
+        if (room <= 0) {
+            showStatus(`Item ${n} already has ${HYG_MAX_PHOTOS_PER_ITEM} photos — remove one first. `
+                + `البند ${n} فيه ${HYG_MAX_PHOTOS_PER_ITEM} صور، احذف واحدة أولًا.`, 'error');
+            if (input) input.value = '';
+            return;
+        }
+        // ⚠️ ما زاد عن السعةِ **يُقال** ولا يُرمى بصمتٍ: من اختار ثمانيًا ووُضعت
+        //   ستٌّ يجب أن يعرف أنّ اثنتَين لم تدخلا، وإلّا ظنّ الدليلَ كاملًا.
+        const over = files.length - room;
+        const take = files.slice(0, room);
+
+        /**
+         * ⚠️⚠️ كلُّ صورةٍ في `try` خاصّةٍ بها: ملفٌّ تالفٌ من بين ستٍّ لا يجوز أن
+         *   يُسقط الخمسَ الأخرى. والفاشلاتُ تُسمّى بأسمائها في النهاية.
+         */
+        const failed = [];
+        for (let k = 0; k < take.length; k++) {
+            showStatus(`Preparing picture ${k + 1} of ${take.length}... / تحضير الصورة ${k + 1} من ${take.length}`, 'loading');
+            try {
+                a.photos.push(await hygShrinkPhoto(take[k]));
+            } catch (e) {
+                failed.push(`${take[k].name || ('#' + (k + 1))}: ${e.message}`);
+            }
             hygPaintThumb(n);
+        }
+
+        if (input) input.value = '';   // حتى يُقبل اختيارُ نفسِ الملفِّ مرّةً أخرى
+
+        const notes = [];
+        if (over > 0) notes.push(`${over} picture(s) were not added — the limit is ${HYG_MAX_PHOTOS_PER_ITEM} per item.`);
+        if (failed.length) notes.push(`Could not use: ${failed.join(' · ')}`);
+        if (notes.length) {
+            showStatus(`Item ${n}: ${notes.join(' ')}`, 'error');
+        } else {
             const s = document.getElementById('statusMsg');
             if (s) s.style.display = 'none';
-        } catch (e) {
-            hygState.answers[n].photo = '';
-            hygPaintThumb(n);
-            showStatus(`Item ${n}: ${e.message}`, 'error');
-        } finally {
-            // تفريغُ الخانة حتى يُقبل اختيارُ **نفسِ** الملف مرّةً أخرى بعد خطأ.
-            if (input) input.value = '';
         }
     };
 
-    window.hygRemovePhoto = function(n) {
+    window.hygRemovePhoto = function(n, index) {
         if (!hygState || !hygState.answers[n]) return;
-        hygState.answers[n].photo = '';
+        const a = hygState.answers[n];
+        if (!Array.isArray(a.photos)) { a.photos = []; hygPaintThumb(n); return; }
+        const k = Number(index);
+        // ⚠️ بلا وسيطٍ صحيحٍ لا يُحذف شيءٌ: `splice(undefined, 1)` تحذف **الأولى**،
+        //   فزرٌّ قديمٌ بلا فهرسٍ كان سيمحو صورةً لم يقصدها أحد.
+        if (!Number.isInteger(k) || k < 0 || k >= a.photos.length) return;
+        a.photos.splice(k, 1);
         hygPaintThumb(n);
     };
 
@@ -3887,7 +3966,11 @@
                 // بخطورةٍ «عالية» في المستند يُقرأ خطأً كأنّه مخالفة.
                 severity: isNc ? a.sev : '',
                 note: isNc ? String(a.note || '').trim() : '',
-                hasPhoto: isNc ? !!a.photo : false,
+                // ⚠️ العددُ لا علمٌ منطقيٌّ وحده: اللوحةُ تحتاج أن تعرف **كم** صورةً
+                //   تطلب (معرّفاتُها مشتقّةٌ بالترقيم)، و`hasPhoto` تبقى معه لأنّ
+                //   كلَّ ما يقرأ التقاريرَ اليومَ يسألها.
+                photoCount: isNc ? (a.photos || []).length : 0,
+                hasPhoto: isNc ? (a.photos || []).length > 0 : false,
                 suggestedSeverity: it.sev,
                 severityChanged: isNc && a.sev !== it.sev
             };
@@ -3947,8 +4030,8 @@
         const receiver = String((document.getElementById('hygReceiver') || {}).value || '').trim();
 
         const warn = [];
-        const photoless = items.filter(i => i.rating === 'nc' && !i.hasPhoto).map(i => i.n);
-        if (photoless.length) warn.push(`No photo on item(s): ${photoless.join(', ')}`);
+        const photoless = items.filter(i => i.rating === 'nc' && !i.photoCount).map(i => i.n);
+        if (photoless.length) warn.push(`No photo at all on item(s): ${photoless.join(', ')}`);
         if (!inCharge) warn.push('The person in charge present is not named.');
         if (!receiver) warn.push('The report receiver is not named.');
         if (!activity) warn.push('The activity is not written.');
@@ -4004,22 +4087,45 @@
                 { ...report, serverTime: serverTimestamp() });
 
             const failedPhotos = [];
+            let sentPhotos = 0;
+            const totalPhotos = HYGIENE_ITEMS.reduce((sum, it) => {
+                const a = hygState.answers[it.n];
+                return sum + (a.rating === 'nc' ? (a.photos || []).length : 0);
+            }, 0);
             for (const it of HYGIENE_ITEMS) {
                 const a = hygState.answers[it.n];
-                if (hygState.answers[it.n].rating !== 'nc' || !a.photo) continue;
-                try {
-                    // معرّفٌ ثابت: ضغطةٌ مزدوجةٌ لا تُخزّن الصورةَ نفسها مرّتَين.
-                    await setDoc(doc(db, 'hygiene_inspection_images', `${ref.id}_${it.n}`), {
-                        inspectionId: ref.id,
-                        reportNo: report.reportNo,
-                        itemNo: it.n,
-                        branch: report.branch,
-                        date: report.date,
-                        photo: a.photo,
-                        createdAt: serverTimestamp()
-                    });
-                } catch (e) {
-                    failedPhotos.push(it.n);
+                if (a.rating !== 'nc') continue;
+                const list = a.photos || [];
+                for (let k = 0; k < list.length; k++) {
+                    if (totalPhotos > 1) {
+                        showStatus(`Sending photo ${sentPhotos + 1} of ${totalPhotos}... `
+                            + `إرسال الصورة ${sentPhotos + 1} من ${totalPhotos}`, 'loading');
+                    }
+                    try {
+                        /**
+                         * معرّفٌ ثابتٌ مشتقٌّ من التقريرِ والبندِ **والترتيب**: ضغطةٌ
+                         * مزدوجةٌ لا تُخزّن الصورةَ نفسها مرّتَين، واللوحةُ تبني
+                         * المعرّفَ بالحساب فلا تحتاج استعلامًا لتعرف أسماءَها.
+                         * ⚠️ والترقيمُ يبدأ من ١ لا من ٠: هو ما يُعرض للمفتّشِ على
+                         *   زرِّ الحذفِ وفي ورقةِ الـPDF، فيتطابق ما يراه وما يُخزَّن.
+                         */
+                        await setDoc(doc(db, 'hygiene_inspection_images', `${ref.id}_${it.n}_${k + 1}`), {
+                            inspectionId: ref.id,
+                            reportNo: report.reportNo,
+                            itemNo: it.n,
+                            photoIndex: k + 1,
+                            photoCount: list.length,
+                            branch: report.branch,
+                            date: report.date,
+                            photo: list[k],
+                            createdAt: serverTimestamp()
+                        });
+                        sentPhotos++;
+                    } catch (e) {
+                        // ⚠️ يُسمّى البندُ **ورقمُ الصورة**: «البند ٧» وحده لا يكفي
+                        //   لمن أرفق أربعًا ويريد أن يعرف أيّها ضاع.
+                        failedPhotos.push(`${it.n}.${k + 1}`);
+                    }
                 }
             }
 
@@ -4115,8 +4221,10 @@
         if (photoNote) {
             if (r.failedPhotos && r.failedPhotos.length) {
                 photoNote.style.display = 'block';
-                photoNote.innerText = `The report was saved, but the photo of item(s) ${r.failedPhotos.join(', ')} did not upload. `
-                    + `التقرير وصل، لكن صورة البند ${r.failedPhotos.join('، ')} لم تُحمَّل. أعد التفتيش لذلك البند أو أرسل الصورة في الواتساب.`;
+                photoNote.innerText = `The report was saved, but ${r.failedPhotos.length} photo(s) did not upload `
+                    + `(item.photo: ${r.failedPhotos.join(', ')}). `
+                    + `التقرير وصل، لكن ${r.failedPhotos.length} صورة لم تُحمَّل (البند.الصورة: ${r.failedPhotos.join('، ')}). `
+                    + `أرسلها في الواتساب أو أعد التفتيش لذلك البند.`;
             } else {
                 photoNote.style.display = 'none';
             }
