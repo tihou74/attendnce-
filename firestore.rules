@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v31   (2026-09-28)  <<<
+//   >>>  RULES REVISION: v32   (2026-10-13)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,7 +12,7 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       lastArrivalAt
+//       hygiene_inspections
 //
 //   (This exact text exists nowhere in any earlier revision, which is the whole
 //    point of a marker. Every earlier marker is now useless for telling the
@@ -34,10 +34,11 @@ rules_version = '2';
 //      "isGoodsClerk"               introduced in v28, was the marker for v28
 //      "abaya_intake"               introduced in v29, was the marker for v29
 //      "sewHours"                   introduced in v30, was the marker for v30
+//      "lastArrivalAt"              introduced in v31, was the marker for v31
 //    Always search for the marker named directly above, and when publishing a
 //    new revision, change that name to something introduced by it.)
 //
-//   FOUND     -> v31 is live. Good.
+//   FOUND     -> v32 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -55,6 +56,51 @@ rules_version = '2';
 // exact mistake happened with the "(v4)" label, which never changed across
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
+//
+//  v32  2026-10-13  + hygiene_inspections / hygiene_inspection_images — the
+//                     restaurant hygiene inspection a branch manager fills in
+//                     from the managers' screen. PUBLISH v32 — it contains
+//                     v16..v31 in full.
+//
+//                     The owner: "the manager goes into the managers' panel,
+//                     picks the branch, opens the report, there are items... if
+//                     it is not compliant there is a note of three kinds — low,
+//                     medium, high severity — and a photo is attached... it is
+//                     sent to the admin panel, open to the admin, the secretary
+//                     to view, and the managers."
+//
+//                     ⚠️⚠️ TWO COLLECTIONS, NOT ONE, AND THE REASON IS THE 1 MB
+//                     DOCUMENT CEILING. There are 34 items; every one of them may
+//                     carry a photo. This project has NO Firebase Storage, so a
+//                     photo is a base64 data URL — roughly 180 KB each after
+//                     shrinking. Ten photos on one document is already past the
+//                     ceiling, and a document that exceeds it does not lose the
+//                     last photo: THE WHOLE WRITE FAILS, so the manager would
+//                     lose all 34 answers he just typed. The answers therefore
+//                     live alone in hygiene_inspections (small, always writable)
+//                     and each photo is its own document in
+//                     hygiene_inspection_images, keyed to its parent report.
+//                     Same reason as abaya_product_images and employee_offers.
+//
+//                     ⚠️ BLIND SUBMIT, like sales_reports / warning_requests: the
+//                     managers' screen signs in ANONYMOUSLY, so it may CREATE a
+//                     report and can never read one back. An inspection names the
+//                     branch, the staff on duty and every failure found — that is
+//                     not readable from a page whose link anyone may hold.
+//
+//                     ⚠️ NO DETERMINISTIC ID HERE, unlike the daily sales report.
+//                     A sales report must be one-per-branch-per-day because a
+//                     duplicate DOUBLES the revenue and the percentage rent. An
+//                     inspection carries no money, and a SECOND inspection on the
+//                     same day is a real need that the owner's own form asks for:
+//                     the corrective-action table gives a 24-hour window, so the
+//                     follow-up visit must be allowed to record its own report.
+//
+//                     ⚠️ Update is the OWNER's alone. A manager who answered
+//                     wrongly inspects again; nobody edits a finding after the
+//                     fact. And because the kiosk cannot read these documents,
+//                     refusing update also means an anonymous caller can never
+//                     overwrite a report it cannot see.
 //
 //  v31  2026-09-28  + lastArrivalAt on abaya_products, FOR MRS FATIMA ONLY.
 //                     PUBLISH v31 — it contains v16..v30 in full.
@@ -1140,6 +1186,59 @@ service cloud.firestore {
       allow update: if isAdmin() || isAccountant() || isSupervisor();
       allow delete: if isAdmin() || isAccountant();
       allow create: if isKiosk() || isAdmin();
+    }
+
+    // ---- hygiene_inspections (the restaurant hygiene inspection a branch
+    // manager fills in from the managers-only #report screen) ----------------
+    // 34 items in 7 sections, each answered Compliant / Not compliant / N/A.
+    // A failed item also carries a severity (low | medium | high) and a note.
+    //
+    // ⚠️ THE FULL TEXT OF EVERY ITEM IS STORED INSIDE THE DOCUMENT, in both
+    // languages. It is not looked up by number when the report is displayed.
+    // Two reasons, and both are about years from now rather than today:
+    //   • the dashboard would otherwise need its own copy of the 34 items, and
+    //     two copies of a checklist drift apart — the day one is edited, old
+    //     reports start showing the wrong wording against the old answers;
+    //   • when the owner changes an item's wording, every report already filed
+    //     must keep the wording the manager actually read and judged. A finding
+    //     is evidence; re-labelling it afterwards destroys it.
+    //
+    // Blind submit: the kiosk may CREATE and can never READ. See the revision
+    // note for v32 above for why, and for why there is no deterministic id.
+    //
+    // Read access is the owner, the SECRETARY and the three branch SUPERVISORS
+    // — isProfileEditor() is exactly secretary ∪ supervisor, which is the group
+    // the owner named ("open to the admin, the secretary to view, and the
+    // managers"). The accountant is NOT included: an inspection holds no money
+    // and names staff failures, which is not his file. Viewers of balances.html
+    // are not included for the same reason.
+    match /hygiene_inspections/{inspectionId} {
+      allow read: if isAdmin() || isProfileEditor();
+      allow create: if isKiosk() || isAdmin();
+      // A finding is not rewritable — a re-inspection is a NEW report.
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    // ---- hygiene_inspection_images (one photo = one document) ---------------
+    // id = `<inspectionId>_<itemNo>`, and the parent id is ALSO a field so the
+    // dashboard can fetch a report's photos with one query instead of probing
+    // 34 ids. The deterministic id is what stops a double-tap from storing the
+    // same photo twice.
+    //
+    // ⚠️ WHY THE PHOTOS ARE NOT ON THE REPORT ITSELF: a document that passes
+    // Firestore's 1 MB ceiling fails ENTIRELY, so a manager who attached one
+    // photo too many would lose all 34 answers at the moment he pressed send.
+    // Splitting them means the answers always land, and a photo that fails
+    // fails alone and is reported alone.
+    //
+    // Same audience as the report the photo belongs to. The kiosk writes and
+    // never reads: a photo of a kitchen is still a photo of our kitchen.
+    match /hygiene_inspection_images/{imageId} {
+      allow read: if isAdmin() || isProfileEditor();
+      allow create: if isKiosk() || isAdmin();
+      allow update: if false;
+      allow delete: if isAdmin();
     }
 
     // =========================================================================
