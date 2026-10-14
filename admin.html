@@ -2773,6 +2773,16 @@
         </div>
 
         <div class="card">
+            <div class="controls" style="justify-content: space-between; margin-bottom: 10px;">
+                <h3 style="margin:0;"><span data-icon="users"></span> How it splits on the staff
+                    <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">تقسيم التيبس</span></h3>
+                <button class="btn-success" onclick="exportTipsSplitExcel()"><span data-icon="download"></span> Export the split (Excel)</button>
+            </div>
+            <p class="card-sub">Each branch shares out <b>its own</b> tips on <b>its own</b> staff. A man's share is his points &times; his branch's tips &divide; the total points of his branch. Nothing here touches a salary.</p>
+            <div id="tipsSplitBody"></div>
+        </div>
+
+        <div class="card">
             <h3><span data-icon="fileText"></span> Every day received</h3>
             <div class="table-container">
                 <table>
@@ -5685,6 +5695,18 @@
                    التيبسَ وحدَه، ولا يُرسل تقريرَ المبيعات ولا يطلب بيتي كاش ولا
                    إنذارًا — ومفتاحٌ واحدٌ لقدرتَين يُعطي ما لم يُقصد.
                  ⚠️ ولا علاقةَ له بالراتب: التيبسُ منفصلٌ تمامًا عن الرواتب. -->
+            <!-- ⭐⭐⭐⭐⭐ نقاطُ التيبس — قاعدةُ المالك:
+                 «كلُّ الموظفين لهم نقط: فيه من يستاهل 2، و1.5، و1، و0.4.
+                  وحقُّ الموظف = نقاطُه × مجموعُ تيبسِ فرعِه ÷ مجموعِ نقاطِ موظفي فرعِه».
+                 ⚠️ فرعٌ واحدٌ يُقسَّم تيبسُه على موظفيه وحدَهم — لا يُخلط بفرعٍ آخر.
+                 ⚠️⚠️ ومن لم تُحدَّد نقاطُه يُعَدُّ **صفرًا ويُوسَم بالأحمر**، ولا
+                   يُعطى قيمةً افتراضيّة: افتراضُ 1 له كان يسرق من نصيبِ البقيّةِ
+                   بصمت، لأنّ المقام يزيد فينقص نصيبُ كلِّ أحد.
+                 ⚠️ ولا علاقةَ لهذا بالراتب: التيبسُ منفصلٌ تمامًا. -->
+            <div class="money-only"><label>Tips points &mdash; نقاط التيبس</label>
+                <input type="number" id="editEmpTipPoints" step="0.1" min="0" placeholder="e.g. 2 or 1.5 or 1 or 0.4">
+                <div class="lock-note">His share = his points &times; the branch's tips &divide; the total points of his branch.</div>
+            </div>
             <div><label>Daily Tips (cashier)</label>
                 <label style="display: flex; align-items: center; gap: 9px; font-weight: 500; font-size: 13px; cursor: pointer; padding: 12px 0;">
                     <input type="checkbox" id="editEmpCanSubmitTips" style="width: 18px; height: 18px; flex-shrink: 0; cursor: pointer;">
@@ -14258,6 +14280,10 @@
                     + `</td></tr>`;
             }).join('')
             : `<tr><td colspan="7" style="text-align:center;">No tips received in this period.</td></tr>`;
+
+        // ⚠️ التقسيمُ يُعاد رسمُه من هنا لا من مُنادٍ خارجيّ: كلُّ تغييرٍ في
+        //   المرشِّحات يمرُّ بهذه الدالّة، فمن نسيَ نداءَه نسيَه في موضعٍ واحد.
+        if (typeof renderTipsSplit === 'function') renderTipsSplit();
     };
 
     /**
@@ -14310,6 +14336,158 @@
         } catch (e) {
             alert('Error deleting: ' + e.message);
         }
+    };
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ تقسيمُ التيبس — قاعدةُ المالك حرفيًّا
+    // ---------------------------------------------------------------------
+    //   حقُّ الموظف = نقاطُه × مجموعُ تيبسِ فرعِه ÷ مجموعُ نقاطِ موظفي فرعِه
+    //
+    // ⚠️⚠️ وكلُّ فرعٍ بروحه: تيبسُ فرعٍ لا يُقسَّم على موظفي فرعٍ آخر بحال.
+    // ⚠️⚠️⚠️ ومنفصلٌ تمامًا عن الرواتب: لا يُقرأ هنا راتبٌ ولا يُكتب، ولا يَعلم
+    //   محرّكُ الرواتبِ بوجودِ هذا الحساب. بنصِّ المالك.
+    // =====================================================================
+
+    /** نقاطُ الموظف، و`null` معناها «لم تُحدَّد» لا صفر. */
+    function empTipPoints(emp) {
+        const v = (emp || {}).tipPoints;
+        if (v === null || v === undefined || String(v).trim() === '') return null;
+        const n = Number(v);
+        return isFinite(n) && n >= 0 ? n : null;
+    }
+
+    /**
+     * يبني التقسيمَ لكلِّ فرعٍ في الفترةِ المعروضة.
+     *
+     * ⚠️ الموظفُ السابقُ يُستثنى بتاريخِ انتهائه مقابلَ **آخرِ يومٍ في الفترة** لا
+     *   مقابلَ اليوم: تقسيمُ تيبسِ سبتمبر يجب أن يشمل من كان يعمل في سبتمبر.
+     * ⚠️ وموظفو المطاعم وحدَهم: ملفُّ الموظف هو الحقيقةُ لا اسمُ الفرع، لأنّ أسماءَ
+     *   الفروعِ تتشابه بين المطاعم والعبايات (مطعمٌ في GULF MALL ومحلُّ عبايات).
+     * ⚠️ ومن لم تُحدَّد نقاطُه يُعَدُّ صفرًا **ويُحصى ويُوسَم**: افتراضُ قيمةٍ له
+     *   يزيد المقامَ فينقص نصيبُ كلِّ أحدٍ بصمت.
+     */
+    function tipsSplit() {
+        const rows = tipsRows();
+        const to = String((document.getElementById('tipsTo') || {}).value || '') || todayISO();
+        const byBranch = new Map();
+        rows.forEach(r => {
+            const k = String(r.branch || '');
+            if (!k) return;
+            if (!byBranch.has(k)) byBranch.set(k, { tips: 0, days: 0 });
+            const b = byBranch.get(k);
+            b.tips += (Number(r.cash || 0) || 0) + (Number(r.card || 0) || 0);
+            b.days++;
+        });
+
+        const out = [];
+        byBranch.forEach((v, branch) => {
+            const staff = allEmployees.filter(e =>
+                String(e.branch || '') === branch
+                && empBiz(e) !== 'abaya'
+                && !isFormerEmployee(e, to));
+            let totalPoints = 0, unset = 0;
+            staff.forEach(e => {
+                const p = empTipPoints(e);
+                if (p === null) { unset++; return; }
+                totalPoints += p;
+            });
+            const people = staff.map(e => {
+                const p = empTipPoints(e);
+                const pts = p === null ? 0 : p;
+                // ⚠️ القسمةُ على صفرٍ تُعطي Infinity/NaN وتُعرض رقمًا بلا معنى.
+                //   فتُمنع، ويُقال السببُ على الشاشة بدلَها.
+                const share = totalPoints > 0 ? (pts * v.tips) / totalPoints : 0;
+                return { id: e.id, name: e.name || e.id, role: e.role || '', points: p, share };
+            }).sort((a, b) => (b.points || 0) - (a.points || 0) || String(a.name).localeCompare(String(b.name)));
+            out.push({ branch, tips: v.tips, days: v.days, totalPoints, unset, people });
+        });
+        return out.sort((a, b) => a.branch.localeCompare(b.branch));
+    }
+
+    window.renderTipsSplit = function() {
+        const host = document.getElementById('tipsSplitBody');
+        if (!host) return;
+        const split = tipsSplit();
+        if (!split.length) {
+            host.innerHTML = `<p style="color: var(--text-faint); font-size: 13px; margin: 0;">No tips in this period, so there is nothing to split.</p>`;
+            return;
+        }
+        host.innerHTML = split.map(b => {
+            const paid = b.people.reduce((s, p) => s + p.share, 0);
+            // ⚠️ فرقُ التقريبِ يُقال ولا يُخفى: مجموعُ الأنصبةِ المقرَّبةِ قد لا
+            //   يساوي مجموعَ التيبسِ بالقرش، والمالكُ يدفع بالقرش.
+            const diff = b.tips - paid;
+            let head = '';
+            if (!b.people.length) {
+                head = `<div style="background: var(--danger-soft); color: var(--danger); border: 1px solid rgba(220,38,38,.25); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 12.5px; font-weight: 700;">`
+                    + `&#9888; This branch collected ${money(b.tips)} QAR but has no staff on file, so nothing can be split. Check the branch on the employees' profiles.</div>`;
+            } else if (b.totalPoints <= 0) {
+                head = `<div style="background: var(--danger-soft); color: var(--danger); border: 1px solid rgba(220,38,38,.25); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 12.5px; font-weight: 700;">`
+                    + `&#9888; ${money(b.tips)} QAR cannot be split: not one of the ${b.people.length} staff has points set. Open their profiles and give each one his points.</div>`;
+            } else if (b.unset > 0) {
+                head = `<div style="background: var(--warning-soft); color: var(--warning); border: 1px solid rgba(180,83,9,.25); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 12.5px; font-weight: 700;">`
+                    + `&#9888; ${b.unset} of the ${b.people.length} staff have NO points set. They are counted as zero and get nothing &mdash; they are not given a default, because that would quietly cut everyone else's share. Set their points if they deserve any.</div>`;
+            }
+            return `<div style="border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 14px; background: var(--surface-2);">`
+                + `<div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:10px;">`
+                + `<b style="font-size:14px;">${escapeHtml(b.branch)}</b>`
+                + `<span style="font-size:12.5px; color:var(--text-dim);">`
+                + `${b.days} day(s) &nbsp;·&nbsp; pot <b style="color:var(--text);">${money(b.tips)} QAR</b>`
+                + ` &nbsp;·&nbsp; total points <b style="color:var(--text);">${b.totalPoints}</b></span></div>`
+                + head
+                + (b.people.length ? `<div class="table-container" style="margin-top:10px;"><table><thead><tr>`
+                    + `<th>Employee</th><th>Job</th><th>Points</th><th class="money-col">His share</th></tr></thead><tbody>`
+                    + b.people.map(p => `<tr>`
+                        + `<td><span class="emp-link" onclick="openProfileModal('${escapeJsAttr(p.id)}')">${escapeHtml(p.name)}</span></td>`
+                        + `<td>${escapeHtml(p.role)}</td>`
+                        + `<td>${p.points === null
+                                ? '<span style="color: var(--danger); font-weight:700;">not set</span>'
+                                : `<b>${p.points}</b>`}</td>`
+                        + `<td class="money-col"><b>${money(p.share)}</b></td></tr>`).join('')
+                    + `</tbody><tfoot><tr><th colspan="2">Total paid out</th>`
+                    + `<th>${b.totalPoints}</th>`
+                    + `<th class="money-col"><b>${money(paid)}</b>`
+                    + (Math.abs(diff) >= 0.01
+                        ? `<br><span style="font-weight:400; font-size:11px; color: var(--text-dim);">rounding leaves ${money(diff)} QAR</span>`
+                        : '')
+                    + `</th></tr></tfoot></table></div>` : '')
+                + `</div>`;
+        }).join('');
+    };
+
+    window.exportTipsSplitExcel = function() {
+        const split = tipsSplit();
+        if (!split.length) { alert('No tips in this period, so there is nothing to split.'); return; }
+        const sheet = [];
+        split.forEach(b => {
+            b.people.forEach(p => {
+                sheet.push({
+                    'Branch': b.branch,
+                    'Employee': p.name,
+                    'Job': p.role,
+                    'Points': p.points === null ? 'NOT SET' : p.points,
+                    'Branch tips (QAR)': Number(b.tips.toFixed(2)),
+                    'Branch total points': b.totalPoints,
+                    'His share (QAR)': Number(p.share.toFixed(2))
+                });
+            });
+            sheet.push({
+                'Branch': b.branch, 'Employee': 'TOTAL', 'Job': '',
+                'Points': b.totalPoints,
+                'Branch tips (QAR)': Number(b.tips.toFixed(2)),
+                'Branch total points': b.totalPoints,
+                'His share (QAR)': Number(b.people.reduce((s, p) => s + p.share, 0).toFixed(2))
+            });
+        });
+        const ws = XLSX.utils.json_to_sheet(sheet);
+        ws['!cols'] = [{ wch: 28 }, { wch: 26 }, { wch: 16 }, { wch: 9 }, { wch: 17 }, { wch: 18 }, { wch: 16 }];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Tips split');
+        const from = String((document.getElementById('tipsFrom') || {}).value || '');
+        const to = String((document.getElementById('tipsTo') || {}).value || '');
+        xlsxDeliver(wb, `Tips_split_${from || 'start'}_to_${to || 'end'}.xlsx`);
+        logAudit('Tips Split Exported',
+            split.map(b => `${b.branch}: ${money(b.tips)} QAR over ${b.totalPoints} point(s)`).join(' | '));
     };
 
     window.exportTipsExcel = function() {
@@ -25072,7 +25250,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v256';
+        const APP_BUILD = 'v257';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
@@ -29853,6 +30031,10 @@
             // الحقل غائب عن الموظفين المنشَئين قبل هذه الميزة، فالغياب = غير مفعّل.
             document.getElementById("editEmpCanSubmitSalesReport").checked = emp.canSubmitSalesReport === true;
             document.getElementById("editEmpCanSubmitTips").checked = emp.canSubmitTips === true;
+            // ⚠️ الفراغُ يبقى فراغًا لا صفرًا: «لم تُحدَّد نقاطُه» حالةٌ تُرى
+            //   وتُوسَم، و0 رقمٌ قصده المالكُ فعلًا. وخلطُهما يُخفي من نُسي.
+            document.getElementById("editEmpTipPoints").value =
+                (emp.tipPoints === 0 || Number(emp.tipPoints) > 0) ? emp.tipPoints : "";
             document.getElementById("editEmpIsSupervisor").checked = emp.isSupervisor === true;
             document.getElementById("editEmpEndType").value = emp.endType === 'termination' ? 'termination' : 'resignation';
             renderEndServicePanel(empId);
@@ -30105,6 +30287,10 @@
         const passportNumber = document.getElementById("editEmpPassport").value.trim();
         const canSubmitSalesReport = document.getElementById("editEmpCanSubmitSalesReport").checked;
         const canSubmitTips = document.getElementById("editEmpCanSubmitTips").checked;
+        // ⚠️ الخانةُ الفارغةُ تُحفظ null لا 0: الفرقُ بين «لم تُحدَّد» و«صفر» يجب
+        //   أن يبقى محفوظًا، فالجدولُ يُوسم الأولى بالأحمر ويقبل الثانيةَ كقصد.
+        const tipPointsRaw = document.getElementById("editEmpTipPoints").value;
+        const tipPoints = String(tipPointsRaw).trim() === "" ? null : (Number(tipPointsRaw) || 0);
         const isSupervisor = document.getElementById("editEmpIsSupervisor").checked;
         const business = document.getElementById("editEmpBusiness").value === BIZ_ABAYA
             ? BIZ_ABAYA : BIZ_RESTAURANTS;
@@ -30270,7 +30456,7 @@
              *   `allow update: isAdmin() || isAccountant() || (isProfileEditor() && salaryUnchanged())`
              *   — لا شرطَ فيها على وجود حقلٍ بعينه.
              */
-            const payload = { name, nameAr, nationality, role, branch, phone, shift, housingType, joinDate, qidNumber, qidExpiry, passportNumber, canSubmitSalesReport, canSubmitTips, isSupervisor, business };
+            const payload = { name, nameAr, nationality, role, branch, phone, shift, housingType, joinDate, qidNumber, qidExpiry, passportNumber, canSubmitSalesReport, canSubmitTips, tipPoints, isSupervisor, business };
             const uploadedLabels = [];
             for (const f of PROFILE_FILE_FIELDS) {
                 const el = document.getElementById(f.input);
