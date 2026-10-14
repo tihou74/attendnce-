@@ -1,0 +1,167 @@
+name: Deploy to Firebase Hosting
+
+# ⚠️⚠️ النشرُ من GitHub لا من سطرِ الأوامر — بقصدٍ تامّ.
+#   مالكُ المشروع لا يستعمل سطرَ الأوامر، وهذا مكتوبٌ في ملفِّ توجيهِ المشروع
+#   منذ بدايته. وشاشةُ Firebase تطلب `firebase login` و`firebase init`، وهما
+#   طريقٌ مسدودٌ عنده. فالنشرُ هنا: يضغط «Merge» كما يفعل اليوم، ويُنشر الموقعُ
+#   وحدَه في ثوانٍ.
+#
+# ⚠️ ولا يُنشر إلّا من `main`: فرعٌ قيدَ المراجعةِ لا يجوز أن يصير الموقعَ الحيَّ.
+
+on:
+  push:
+    branches:
+      - main
+  # زرٌّ يدويٌّ في تبويب Actions — لإعادةِ النشرِ بلا إيداعٍ جديد.
+  workflow_dispatch:
+
+# ⚠️⚠️ أقلُّ صلاحيّةٍ ممكنة: هذا العملُ لا يكتب في المستودع إطلاقًا، فلا يُعطى
+#   إلّا القراءة. ولو سُرّب الرمزُ يومًا لا يستطيع تعديلَ سطرٍ واحد.
+permissions:
+  contents: read
+
+# ⚠️ ولا يتزامن نشرانِ معًا: دمجتانِ متقاربتانِ كانتا تُلغيانِ النشرَ على
+#   GitHub Pages فيبقى الموقعُ على نسخةٍ قديمة — وهو عطلٌ أتعبَ المالكَ ثلاثَ
+#   مرّاتٍ في يومٍ واحد. هنا يُنتظر الأوّلُ ويُكمَل، ولا يُلغى.
+concurrency:
+  group: firebase-hosting-live
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      # ⚠️⚠️ حارسٌ قبل النشر: لا يُنشر ملفٌّ لا يُنفَّذ.
+      #   سببُه عطلٌ حقيقيٌّ وقع: سطرٌ واحدٌ قرأ ثابتًا قبل تصريحِه فتوقّفت
+      #   الوحدةُ عنده، فلم يُسنَد 107 معالجًا — زرُّ الـPDF والموافقاتُ
+      #   والإنذارات — بلا أيِّ رسالةٍ على الشاشة. والفحوصُ النصّيّةُ لم ترَه
+      #   لأنّ النصَّ كان موجودًا، والمفقودُ أنّ سطرَه يُنفَّذ.
+      #   فهنا يُنفَّذ جسمُ كلِّ كتلةٍ كاملًا ببدائلَ شاملة، ويُطلب أن تصل إلى
+      #   آخرِ سطرٍ بلا رمي. وإن سقطت، **لا يُنشر شيءٌ** ويبقى الموقعُ الحالي.
+      - name: Guard — every inline script must execute to its last line
+        run: |
+          node --input-type=commonjs -e '
+            const fs = require("fs"), vm = require("vm"), MARK = "__REACHED__";
+            function stub() {
+              const f = function () { return p; };
+              const t = Object.assign(f, {
+                then: (c) => { try { c && c(p); } catch (e) {} return p; },
+                catch: () => p,
+                finally: (c) => { try { c && c(); } catch (e) {} return p; }
+              });
+              const p = new Proxy(t, {
+                get(o, k) {
+                  if (k === Symbol.toPrimitive) return () => 1;
+                  if (k === "then" || k === "catch" || k === "finally") return o[k];
+                  if (k === Symbol.iterator) return function* () { yield p; };
+                  if (k === "length") return 1;
+                  return p;
+                },
+                set: () => true, has: () => true, apply: () => p, construct: () => p
+              });
+              return p;
+            }
+            function run(src) {
+              const s = stub();
+              // العلامةُ وحدَها تُستثنى من الوكيل، وإلا حُلّت عبره ولم تُكتب أبدًا.
+              const scope = new Proxy({}, {
+                has: (t, k) => k !== MARK,
+                get: (t, k) => (k === Symbol.unscopables ? undefined : s),
+                set: () => true
+              });
+              const code = src
+                .replace(/^\s*import\s[^;]*;/gm, "")
+                .replace(/^\s*import\s*\{[\s\S]*?\}\s*from\s*["\x27][^"\x27]*["\x27]\s*;?/gm, "");
+              try {
+                return { ok: !!new Function("__S",
+                  "var " + MARK + "=false; with(__S){" + code + "\n;" + MARK + "=true;} return " + MARK + ";")(scope) };
+              } catch (e) { return { ok: false, err: e }; }
+            }
+            // حارسٌ على الحارس: يجب أن يسقطَ على عطلٍ معروفٍ وأن يمرَّ على كودٍ سليم.
+            if (run("const A=B*2; const B=5;").ok) { console.error("GUARD SELF-TEST FAILED: missed a known dead zone"); process.exit(2); }
+            if (!run("const B=5; const A=B*2; unknown(A).then(x=>x);").ok) { console.error("GUARD SELF-TEST FAILED: rejected clean code"); process.exit(2); }
+            console.log("guard self-test OK");
+
+            const pages = fs.readdirSync(".").filter(f => f.endsWith(".html"));
+            let blocks = 0, bad = 0;
+            for (const file of pages) {
+              const html = fs.readFileSync(file, "utf8");
+              const re = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
+              let m;
+              while ((m = re.exec(html))) {
+                if (/\bsrc\s*=/.test(m[1] || "")) continue;
+                const body = m[2];
+                if (!body.trim()) continue;
+                blocks++;
+                const line = html.slice(0, m.index).split("\n").length;
+                const stripped = body
+                  .replace(/^\s*import\s[^;]*;/gm, "")
+                  .replace(/^\s*import\s*\{[\s\S]*?\}\s*from\s*["\x27][^"\x27]*["\x27]\s*;?/gm, "");
+                try { new vm.Script(stripped); }
+                catch (e) { bad++; console.error("SYNTAX FAIL " + file + " @" + line + ": " + e.message); continue; }
+                const r = run(body);
+                if (!r.ok) { bad++; console.error("ABORTS " + file + " @" + line + ": " + (r.err && r.err.message)); }
+              }
+            }
+            // حارسٌ يفحص صفرًا يقول «سليم» دائمًا، وهو أخطرُ من غيابِه.
+            if (!blocks) { console.error("GUARD SAW ZERO BLOCKS — refusing to deploy"); process.exit(2); }
+            console.log("executed " + blocks + " inline block(s) across " + pages.length + " page(s), failures: " + bad);
+            process.exit(bad ? 1 : 0);
+          '
+
+      # ⚠️ وحارسٌ ثانٍ: زرٌّ ينادي دالّةً لا وجودَ لها ميتٌ **صامتًا** — لا رسالةَ
+      #   ولا أثر، ولا يكتشفه إلّا المالكُ بعد أن تُهتزَّ ثقتُه. وقع فعلًا في زرِّ
+      #   تصديرِ PDF وبقي شهورًا.
+      - name: Guard — every inline on*= handler must resolve to a real function
+        run: |
+          node --input-type=commonjs -e '
+            const fs = require("fs");
+            const pages = fs.readdirSync(".").filter(f => f.endsWith(".html"));
+            const builtin = ["if","for","while","switch","return","typeof","alert","confirm","prompt","function","catch"];
+            let missing = 0, checked = 0;
+            for (const file of pages) {
+              const h = fs.readFileSync(file, "utf8");
+              const called = new Set();
+              for (const m of h.matchAll(/\son(?:click|change|input|keyup|keydown|submit|scroll|blur|focus)\s*=\s*"([^"]*)"/gi))
+                // النداءُ المسبوقُ بنقطةٍ ليس اسمًا عالميًّا: `x(1).then(f)` ليست `then` دالّتَنا.
+                for (const c of m[1].matchAll(/(^|[^.\w$])([A-Za-z_$][\w$]*)\s*\(/g)) called.add(c[2]);
+              const defined = new Set();
+              for (const d of h.matchAll(/(?:window\.([A-Za-z_$][\w$]*)\s*=|function\s+([A-Za-z_$][\w$]*)\s*\(|(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function|\())/g))
+                [d[1], d[2], d[3]].forEach(x => x && defined.add(x));
+              for (const c of called) {
+                checked++;
+                if (!defined.has(c) && !builtin.includes(c)) { missing++; console.error("DEAD HANDLER " + file + ": " + c + "() is called in the markup but never defined"); }
+              }
+            }
+            if (!checked) { console.error("GUARD SAW ZERO HANDLERS — refusing to deploy"); process.exit(2); }
+            console.log("checked " + checked + " inline handler call(s), undefined: " + missing);
+            process.exit(missing ? 1 : 0);
+          '
+
+      # ⚠️ ورقمُ النسخةِ في الصفحةِ يجب أن يساوي رقمَ العاملِ الخِدميّ: الصفحةُ
+      #   تقارنهما وتُنبّه المالكَ عند اختلافهما، فنشرُ نسختَين مختلفتَين يُظهر
+      #   تحذيرًا كاذبًا بعد كلِّ نشر.
+      - name: Guard — APP_BUILD must equal CACHE_VERSION
+        run: |
+          node --input-type=commonjs -e '
+            const fs = require("fs");
+            const a = (fs.readFileSync("admin.html", "utf8").match(/APP_BUILD = .(v\d+)./) || [])[1];
+            const c = (fs.readFileSync("sw.js", "utf8").match(/CACHE_VERSION = .(v\d+)./) || [])[1];
+            if (!a || !c) { console.error("could not read the build stamps (APP_BUILD=" + a + ", CACHE_VERSION=" + c + ")"); process.exit(2); }
+            console.log("APP_BUILD=" + a + "  CACHE_VERSION=" + c);
+            if (a !== c) { console.error("MISMATCH — the page would warn the owner after every deploy"); process.exit(1); }
+          '
+
+      - name: Deploy to Firebase Hosting (live)
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: attendance-system-f32d6
+          channelId: live
