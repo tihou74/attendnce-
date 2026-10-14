@@ -8820,6 +8820,20 @@
             if (e.role) row.r = String(e.role);
             if (e.canSubmitSalesReport === true) row.m = 1;
             if (e.isSupervisor === true) row.s = 1;
+            /**
+             * ⭐⭐⭐ مفتاحا التيبس — ويجب أن يُنقلا هنا.
+             *
+             * ⚠️⚠️ وهذا عطلٌ وقع فعلًا وأبلغ عنه المالك: فعّل «Can enter the Daily
+             *   Tips» في ملفِّ الكاشير، وبقيت شاشتُه تقول «لا كاشير مفعَّل». لأنّ
+             *   الكشكَ **لا يقرأ ملفَّ الموظف** إطلاقًا — يقرأ هذه القائمةَ
+             *   المضغوطة، وهي لا تحمل إلّا ما يُكتب فيها. فالعلامةُ كانت محفوظةً
+             *   في القاعدةِ ولا تصل إلى الشاشة.
+             * ⚠️ الدرس: أيُّ مفتاحٍ جديدٍ يحتاجه الكشكُ يُضاف في **ثلاثة** مواضع
+             *   معًا — هنا، وفي `fromCompact`، وفي `normaliseRoster`. وموضعٌ
+             *   واحدٌ منسيٌّ = خانةٌ تُحفظ ولا تعمل، ولا رسالةَ خطإٍ تقول ذلك.
+             */
+            if (e.canSubmitTips === true) row.t = 1;
+            if (e.canApproveTips === true) row.a = 1;
             // ⚠️ تاريخ الانتهاء يُنقل ولا يُطبَّق هنا: القائمة تُكتب مرّة وتُقرأ
             // أيامًا، فمن تنتهي خدمته غدًا يجب أن يُرشَّح **لحظةَ الفتح** لا
             // لحظةَ الكتابة. والترشيح في الكشك نفسه.
@@ -8848,6 +8862,10 @@
                 rosterVersion: ROSTER_FORMAT_VERSION,
                 count: list.length,
                 managers: list.filter(r => r.m).length,
+                // ⚠️ تُنشر الأعدادُ ليراها المالكُ فيتأكّد أنّ التفعيلَ وصل،
+                //   بدل أن يشكّ في الشاشة كما حدث مع الكاشير.
+                cashiers: list.filter(r => r.t).length,
+                tipsApprovers: list.filter(r => r.a).length,
                 supervisors: list.filter(r => r.s).length,
                 list
             });
@@ -8887,6 +8905,10 @@
                 updatedAt: serverTimestamp(),
                 count: list.length,
                 managers: list.filter(r => r.m).length,
+                // ⚠️ تُنشر الأعدادُ ليراها المالكُ فيتأكّد أنّ التفعيلَ وصل،
+                //   بدل أن يشكّ في الشاشة كما حدث مع الكاشير.
+                cashiers: list.filter(r => r.t).length,
+                tipsApprovers: list.filter(r => r.a).length,
                 supervisors: list.filter(r => r.s).length,
                 list
             });
@@ -25467,7 +25489,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v260';
+        const APP_BUILD = 'v261';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;

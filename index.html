@@ -1628,14 +1628,22 @@
             .filter(r => !(r.end && String(r.end) < todayStr))
             .map(r => ({
                 id: r.id, name: r.name || r.id, branch: r.branch || '', role: r.role || '',
-                canSubmitSalesReport: r.mgr === true, isSupervisor: r.sup === true
+                canSubmitSalesReport: r.mgr === true, isSupervisor: r.sup === true,
+                // ⚠️ بلا هذين السطرين تبقى شاشةُ التيبس تقول «لا كاشير مفعَّل»
+                //   مهما فعّل المالكُ الخانة — وهو العطلُ الذي أبلغ عنه.
+                canSubmitTips: r.tips === true, canApproveTips: r.tipsOk === true
             }))
             .sort((a, b) => a.name.localeCompare(b.name));
     }
     /** الصيغة المضغوطة التي تكتبها لوحة الإدارة (مفاتيح بحرف واحد). */
     const fromCompact = (list) => list.map(x => ({
         id: x.i, name: x.n, branch: x.b || '', role: x.r || '',
-        mgr: x.m === 1, sup: x.s === 1, end: x.e || ''
+        mgr: x.m === 1, sup: x.s === 1,
+        // ⭐ مفتاحا التيبس: `t` يُدخل، و`a` يؤكّد.
+        // ⚠️ غيابُهما يُقرأ false لا true: قائمةٌ نشرتها لوحةٌ قديمةٌ لا تحملهما،
+        //   وقراءتُهما true كانت ستفتح شاشةَ التيبس لكلِّ الموظفين.
+        tips: x.t === 1, tipsOk: x.a === 1,
+        end: x.e || ''
     }));
 
     function readCachedRoster() {
@@ -1823,6 +1831,12 @@
                     // في راتبه. أثرها الوحيد أن بصمته تُنسخ نسخةً صغيرة تظهر في
                     // لوحة الإدارة بنقطة خضراء أو حمراء.
                     sup: d.isSupervisor === true,
+                    // ⭐ مفتاحا التيبس في المسار الاحتياطيِّ كذلك.
+                    // ⚠️⚠️ ولو نُسيا هنا لعمل الكاشيرُ ثمّ اختفى اسمُه فجأةً يومًا
+                    //   تُقرأ فيه القائمةُ الكاملةُ بدل المضغوطة — عطلٌ متقطّعٌ لا
+                    //   يُفسَّر. فالمفاتيحُ تُنقل في **كلِّ** مسارٍ يبني القائمة.
+                    tips: d.canSubmitTips === true,
+                    tipsOk: d.canApproveTips === true,
                     end: d.endDate || ''
                 });
             });
