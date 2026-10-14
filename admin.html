@@ -2772,6 +2772,30 @@
             </div>
         </div>
 
+        <!-- ⭐⭐⭐ الأوبنينق — كاشُ تيبسٍ متراكمٌ قبل أن يبدأ النظامُ بتسجيله
+             («من بداية أكتوبر يأخذون التيبس»).
+             ⚠️⚠️ ومربوطٌ بتاريخٍ إلزامًا: مبلغٌ بلا تاريخٍ كان سيُضاف في **كلِّ**
+               شهرٍ يُفتح فيُقسَّم مرّةً بعد مرّة — وهو مالٌ يُدفع للناس. -->
+        <div class="card money-only">
+            <h3><span data-icon="dollar"></span> Cash tips opening &mdash; <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">كاش تيبس أوبنينق</span></h3>
+            <p class="card-sub">The cash tips a branch had already collected <b>before</b> this screen existed. It is added to that branch's pot in the month its date falls in &mdash; and only that month, so it can never be split twice. Leave it at 0 to clear it.</p>
+            <div class="controls">
+                <div style="flex: 1; min-width: 240px;"><label for="tipsOpenBranch">Branch</label>
+                    <select id="tipsOpenBranch" onchange="onTipsOpenBranchChange()">
+                        <option value="">-- pick a branch --</option>
+                        <option value="GAIMER W KAHI WEST WALK">GAIMER W KAHI - WEST WALK</option>
+                        <option value="GAIMER W KAHI OLD MINA PORT">GAIMER W KAHI - OLD MINA PORT</option>
+                        <option value="SHAI BU HAMAD WEST WALK">SHAI BU HAMAD - WEST WALK</option>
+                        <option value="SHAI BU HAMAD GULF MALL">SHAI BU HAMAD - GULF MALL</option>
+                    </select>
+                </div>
+                <div style="width: 170px;"><label for="tipsOpenAmount">Amount (QAR)</label><input type="number" id="tipsOpenAmount" step="0.01" min="0" placeholder="0.00"></div>
+                <div style="width: 170px;"><label for="tipsOpenDate">Correct on</label><input type="date" id="tipsOpenDate"></div>
+                <div style="align-self: flex-end;"><button class="btn-success" onclick="saveTipsOpening()"><span data-icon="save"></span> Save opening</button></div>
+            </div>
+            <span id="tipsOpenStatus" style="font-weight: 600; display: block; margin-top: 10px; font-size: 13px;"></span>
+        </div>
+
         <div class="card">
             <div class="controls" style="justify-content: space-between; margin-bottom: 10px;">
                 <h3 style="margin:0;"><span data-icon="users"></span> How it splits on the staff
@@ -14183,6 +14207,18 @@
     let allTipsReports = [];
     let tipsLoaded = false;
 
+    /** يُظهر ما هو محفوظٌ لهذا الفرعِ بدل خانتَين فارغتَين تُقرآن «لا يوجد». */
+    window.onTipsOpenBranchChange = function() {
+        const br = String((document.getElementById('tipsOpenBranch') || {}).value || '');
+        const o = (tipsOpening || {})[br] || {};
+        const a = document.getElementById('tipsOpenAmount');
+        const d = document.getElementById('tipsOpenDate');
+        if (a) a.value = Number(o.amount || 0) > 0 ? o.amount : '';
+        if (d) d.value = o.date || '';
+        const st = document.getElementById('tipsOpenStatus');
+        if (st) st.textContent = '';
+    };
+
     window.loadTipsReports = async function(force) {
         const body = document.getElementById('tipsTableBody');
         if (!canSeeMoney()) return;
@@ -14192,6 +14228,9 @@
             // ⚠️ بلا orderBy على الحقل: فايرستور يُسقط بصمتٍ كلَّ مستندٍ لا يحمل
             //   الحقلَ المرتَّبَ به — وهو العطلُ نفسُه الذي أخفى تقاريرَ البياعات.
             //   الترتيبُ محليٌّ.
+            // ⚠️ الأوبنينق يُقرأ **مع** التيبس لا بعده: الجدولُ يُرسم مرّةً، فقراءةٌ
+            //   متأخّرةٌ كانت تُظهر مبلغًا ناقصًا ثمّ يتغيّر أمام عينِ المالك.
+            await loadTipsOpening();
             const snap = await getDocs(collection(db, "tips_reports"));
             allTipsReports = [];
             snap.forEach(d => allTipsReports.push({ id: d.id, ...(d.data() || {}) }));
@@ -14348,6 +14387,72 @@
     //   محرّكُ الرواتبِ بوجودِ هذا الحساب. بنصِّ المالك.
     // =====================================================================
 
+    /**
+     * ⭐⭐⭐⭐⭐ بريكج المطعم — بأمر المالك: «من كلِّ مطعمٍ المطعمُ له 5% بريكج يأخذها».
+     *
+     * ⚠️ تُخصم **قبل** التقسيم: الذي يُقسَّم على الموظفين هو الباقي بعدها،
+     *   والنسبةُ تُحتسب على المجموعِ كلِّه (كاشٌ وكاردٌ وأوبنينق).
+     * ⚠️⚠️ وتُعرض الحصّتان صريحتَين على الشاشة: ما أخذه المطعمُ وما يُقسَّم.
+     *   رقمٌ واحدٌ فقط كان سيُخفي أين ذهبت الخمسةُ في المئة.
+     */
+    const TIPS_BREAKAGE_PCT = 5;
+
+    /** الأوبنينق: كاشُ تيبسٍ متراكمٌ قبل أن يبدأ النظامُ بتسجيله. */
+    const TIPS_OPENING_DOC = 'tips_opening';
+    let tipsOpening = {};   // اسمُ الفرع ← { amount, date }
+
+    window.loadTipsOpening = async function() {
+        try {
+            const snap = await getDoc(doc(db, 'settings', TIPS_OPENING_DOC));
+            tipsOpening = (snap.exists() && snap.data() && snap.data().branches) || {};
+        } catch (e) {
+            // ⚠️ فشلُ قراءتِه لا يُعطّل التيبس كلَّه: يُقرأ صفرًا ويُقال ذلك.
+            console.error('The opening tips were not read:', e);
+            tipsOpening = {};
+        }
+    };
+
+    /**
+     * أوبنينقُ فرعٍ إن كان تاريخُه داخلَ الفترةِ المعروضة.
+     * ⚠️⚠️ مربوطٌ بتاريخٍ لا مبلغٌ سائب: بلا تاريخٍ كان سيُضاف في **كلِّ** شهرٍ
+     *   يُفتح فيُقسَّم مرّةً بعد مرّة — وهو مالٌ يُدفع للناس. فيدخل في الشهرِ الذي
+     *   يقع فيه تاريخُه وحدَه، تمامًا كالخصومات المؤرَّخة في الرواتب.
+     */
+    function tipsOpeningInRange(branch, from, to) {
+        const o = tipsOpening[branch];
+        if (!o) return 0;
+        const amt = Number(o.amount || 0) || 0;
+        if (amt <= 0) return 0;
+        const d = String(o.date || '');
+        if (!d) return 0;                       // بلا تاريخٍ لا يُحتسب بحال
+        if (from && d < from) return 0;
+        if (to && d > to) return 0;
+        return amt;
+    }
+
+    window.saveTipsOpening = async function() {
+        if (!hasFinanceAccess()) { alert('Only the owner or the accountant can set the opening tips.'); return; }
+        const branch = String((document.getElementById('tipsOpenBranch') || {}).value || '');
+        const amount = Number((document.getElementById('tipsOpenAmount') || {}).value) || 0;
+        const date = String((document.getElementById('tipsOpenDate') || {}).value || '');
+        const statusEl = document.getElementById('tipsOpenStatus');
+        const say = (m, c) => { if (statusEl) { statusEl.textContent = m; statusEl.style.color = c; } };
+        if (!branch) { say('Pick a branch first.', 'var(--danger)'); return; }
+        if (amount > 0 && !date) { say('Give the date this amount was correct on — without it, it would be split again every month.', 'var(--danger)'); return; }
+        try {
+            const next = { ...tipsOpening };
+            if (amount > 0) next[branch] = { amount, date };
+            else delete next[branch];   // صفرٌ = يُحذف، فلا يبقى سطرٌ معلَّق
+            await setDoc(doc(db, 'settings', TIPS_OPENING_DOC), { branches: next, updatedAt: serverTimestamp() });
+            tipsOpening = next;
+            logAudit('Tips Opening Set', `${branch}: ${money(amount)} QAR as of ${date || '-'}`);
+            say(amount > 0 ? 'Saved.' : 'Cleared for that branch.', 'var(--success)');
+            renderTipsReports();
+        } catch (e) {
+            say('Error: ' + e.message, 'var(--danger)');
+        }
+    };
+
     /** نقاطُ الموظف، و`null` معناها «لم تُحدَّد» لا صفر. */
     function empTipPoints(emp) {
         const v = (emp || {}).tipPoints;
@@ -14379,6 +14484,15 @@
             b.days++;
         });
 
+        const from = String((document.getElementById('tipsFrom') || {}).value || '');
+        // ⚠️ الأوبنينق يُضاف لفرعٍ **حتى لو لم يُرسل تيبسًا** في الفترة: المالُ
+        //   متراكمٌ عنده فعلًا ويُستحقّ، وإسقاطُه كان سيُخفيه.
+        Object.keys(tipsOpening || {}).forEach(branch => {
+            if (tipsOpeningInRange(branch, from, to) > 0 && !byBranch.has(branch)) {
+                byBranch.set(branch, { tips: 0, days: 0 });
+            }
+        });
+
         const out = [];
         byBranch.forEach((v, branch) => {
             const staff = allEmployees.filter(e =>
@@ -14391,15 +14505,22 @@
                 if (p === null) { unset++; return; }
                 totalPoints += p;
             });
+            // ⭐ المجموعُ الخام = ما أرسله الكاشيرُ في الفترة + الأوبنينق إن كان
+            //   تاريخُه فيها. ثمّ يأخذ المطعمُ بريكجَه، والباقي وحدَه يُقسَّم.
+            const opening = tipsOpeningInRange(branch, from, to);
+            const gross = v.tips + opening;
+            const breakage = gross * (TIPS_BREAKAGE_PCT / 100);
+            const pot = gross - breakage;
             const people = staff.map(e => {
                 const p = empTipPoints(e);
                 const pts = p === null ? 0 : p;
                 // ⚠️ القسمةُ على صفرٍ تُعطي Infinity/NaN وتُعرض رقمًا بلا معنى.
                 //   فتُمنع، ويُقال السببُ على الشاشة بدلَها.
-                const share = totalPoints > 0 ? (pts * v.tips) / totalPoints : 0;
+                // ⚠️⚠️ ويُقسَّم **pot** لا gross: البريكجُ خُصم قبلَه بأمر المالك.
+                const share = totalPoints > 0 ? (pts * pot) / totalPoints : 0;
                 return { id: e.id, name: e.name || e.id, role: e.role || '', points: p, share };
             }).sort((a, b) => (b.points || 0) - (a.points || 0) || String(a.name).localeCompare(String(b.name)));
-            out.push({ branch, tips: v.tips, days: v.days, totalPoints, unset, people });
+            out.push({ branch, tips: v.tips, opening, gross, breakage, pot, days: v.days, totalPoints, unset, people });
         });
         return out.sort((a, b) => a.branch.localeCompare(b.branch));
     }
@@ -14415,8 +14536,9 @@
         host.innerHTML = split.map(b => {
             const paid = b.people.reduce((s, p) => s + p.share, 0);
             // ⚠️ فرقُ التقريبِ يُقال ولا يُخفى: مجموعُ الأنصبةِ المقرَّبةِ قد لا
-            //   يساوي مجموعَ التيبسِ بالقرش، والمالكُ يدفع بالقرش.
-            const diff = b.tips - paid;
+            //   يساوي الباقيَ بالقرش، والمالكُ يدفع بالقرش.
+            // ⚠️ والمقارنةُ مع **pot** لا مع الخام: الخامُ ليس ما يُقسَّم.
+            const diff = b.pot - paid;
             let head = '';
             if (!b.people.length) {
                 head = `<div style="background: var(--danger-soft); color: var(--danger); border: 1px solid rgba(220,38,38,.25); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 12.5px; font-weight: 700;">`
@@ -14431,8 +14553,14 @@
             return `<div style="border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 14px; background: var(--surface-2);">`
                 + `<div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:10px;">`
                 + `<b style="font-size:14px;">${escapeHtml(b.branch)}</b>`
+                // ⚠️⚠️ الأرقامُ الأربعةُ صريحةٌ: المُرسَلُ · الأوبنينق · بريكجُ
+                //   المطعم · والباقي الذي يُقسَّم. رقمٌ واحدٌ كان سيُخفي أين ذهبت
+                //   الخمسةُ في المئة، فيسأل الموظفُ ولا جوابَ على الشاشة.
                 + `<span style="font-size:12.5px; color:var(--text-dim);">`
-                + `${b.days} day(s) &nbsp;·&nbsp; pot <b style="color:var(--text);">${money(b.tips)} QAR</b>`
+                + `${b.days} day(s) &nbsp;·&nbsp; sent <b style="color:var(--text);">${money(b.tips)}</b>`
+                + (b.opening > 0 ? ` &nbsp;+&nbsp; opening <b style="color:var(--text);">${money(b.opening)}</b>` : '')
+                + ` &nbsp;&minus;&nbsp; breakage ${TIPS_BREAKAGE_PCT}% <b style="color:var(--warning);">${money(b.breakage)}</b>`
+                + ` &nbsp;=&nbsp; to split <b style="color:var(--success); font-size:13.5px;">${money(b.pot)} QAR</b>`
                 + ` &nbsp;·&nbsp; total points <b style="color:var(--text);">${b.totalPoints}</b></span></div>`
                 + head
                 + (b.people.length ? `<div class="table-container" style="margin-top:10px;"><table><thead><tr>`
@@ -14466,7 +14594,10 @@
                     'Employee': p.name,
                     'Job': p.role,
                     'Points': p.points === null ? 'NOT SET' : p.points,
-                    'Branch tips (QAR)': Number(b.tips.toFixed(2)),
+                    'Tips sent (QAR)': Number(b.tips.toFixed(2)),
+                    'Opening (QAR)': Number(b.opening.toFixed(2)),
+                    [`Breakage ${TIPS_BREAKAGE_PCT}% (QAR)`]: Number(b.breakage.toFixed(2)),
+                    'To split (QAR)': Number(b.pot.toFixed(2)),
                     'Branch total points': b.totalPoints,
                     'His share (QAR)': Number(p.share.toFixed(2))
                 });
@@ -14474,7 +14605,10 @@
             sheet.push({
                 'Branch': b.branch, 'Employee': 'TOTAL', 'Job': '',
                 'Points': b.totalPoints,
-                'Branch tips (QAR)': Number(b.tips.toFixed(2)),
+                'Tips sent (QAR)': Number(b.tips.toFixed(2)),
+                'Opening (QAR)': Number(b.opening.toFixed(2)),
+                [`Breakage ${TIPS_BREAKAGE_PCT}% (QAR)`]: Number(b.breakage.toFixed(2)),
+                'To split (QAR)': Number(b.pot.toFixed(2)),
                 'Branch total points': b.totalPoints,
                 'His share (QAR)': Number(b.people.reduce((s, p) => s + p.share, 0).toFixed(2))
             });
@@ -25250,7 +25384,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v257';
+        const APP_BUILD = 'v258';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
