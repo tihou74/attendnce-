@@ -3383,6 +3383,21 @@
                 <div style="width: 185px;"><label for="acFilterType">Type</label>
                     <select id="acFilterType" onchange="renderAbayaCatalog()"></select>
                 </div>
+                <!-- ⭐⭐⭐ مرشِّحُ المورّد — بطلب المالك: «فيلتر أختار إذا كان المورّد».
+                     ⚠️⚠️ ولا يُخزَّن المورّدُ على سطر الكتالوج بحال: يبقى على الشحنة
+                       وحدَها (مصدرٌ واحدٌ للحقيقة، وهو قرارُ المالك نفسُه)، وهذا
+                       المرشِّحُ يقرأ الشحناتَ ويربطها بالتصميم برقمه — فلا يُنشأ
+                       رقمٌ ثانٍ لحقيقةٍ واحدة.
+                     ⚠️⚠️⚠️ وخياراتُه تُبنى في **كلِّ رسمٍ** لا مرّةً واحدةً بـdataset.built:
+                       قائمةُ الشحنات تُقرأ **بعد** الكتالوج، فمن بناها مرّةً بناها على
+                       فراغٍ وبقيت فارغةً للأبد. وهذا بعينه العطلُ الذي ظهر ثلاثَ مرّاتٍ
+                       في زرِّ «Supplier» (v229 · v231 · والثالثة في الكتالوج).
+                     ⚠️ ويُخفى كاملًا عن دورِ البضاعة: قواعدُ فايرستور تمنعها من قراءة
+                       الشحنات (لأنّ الشحنةَ تحمل الكوست)، فقائمتُها تكون فارغةً دائمًا
+                       — ومرشِّحٌ يُفتح ولا يعمل أسوأُ من غيابه. -->
+                <div style="width: 210px;" id="acFilterSupplierWrap"><label for="acFilterSupplier">Supplier</label>
+                    <select id="acFilterSupplier" onchange="renderAbayaCatalog()"></select>
+                </div>
                 <div style="width: 190px;"><label for="acFilterState">Show</label>
                     <select id="acFilterState" onchange="renderAbayaCatalog()">
                         <option value="all">Everything</option>
@@ -3395,6 +3410,18 @@
                 <button class="btn-ghost" onclick="loadAbayaCatalog(true)"><span data-icon="refresh"></span> Refresh</button>
                 <button class="btn-ghost" onclick="clearAbayaCatalogFilters()" title="Clear the search and the filters so nothing can stay hidden">Show everything</button>
                 <button class="btn-success" onclick="exportAbayaCatalogExcel()"><span data-icon="download"></span> Export Excel</button>
+                <!-- ⭐⭐⭐ كتالوجٌ بالصور — PDF لا Excel، وهذا قرارُ المالك بعد أن
+                       عُرض عليه الأمران: مكتبةُ Excel في هذا المشروع **لا تستطيع**
+                       وضعَ صورةٍ داخل خليّة، وإضافةُ مكتبةٍ جديدةٍ تخالف اتّجاهَ
+                       المشروع (مكتبةُ تصويرِ الشاشة حُذفت كلُّها في v241).
+                     ⚠️ ويتبع المرشِّحات: تختار مورّدًا فتخرج صورُه وحدَه. والسببُ
+                       رقمٌ لا رأي — ١٠٠ تصميم × ١٦٠KB ≈ ١٦MB لو خرج الكتالوجُ كلُّه. -->
+                <button class="btn-ghost" onclick="exportAbayaCatalogPdf()" title="A PDF of exactly the rows shown now, each design with its picture">
+                    <span data-icon="download"></span> Export PDF (with pictures)</button>
+                <!-- ⚠️ سطرُ الحالةِ **خارجَ** أيِّ بطاقةٍ مخفيّة وبجانبِ الزرِّ نفسِه:
+                     زرٌّ يفشل بصمتٍ هو الشكوى التي تكرّرت، فالتقدّمُ والخطأُ يُقرآن
+                     في الموضع الذي يُضغط فيه الزرّ. -->
+                <span id="acPdfStatus" style="font-weight: 600; font-size: 12.5px; align-self: center;"></span>
             </div>
         </div>
 
@@ -16784,10 +16811,94 @@
         }
     }
 
+    /**
+     * ⭐⭐⭐ أسماءُ الموردين لكلِّ تصميم — مبنيّةٌ من الشحنات وحدَها.
+     *
+     * ⚠️ نفسُ نمطِ `abayaOwnerByProduct()` بالضبط ولم يُخترع طريقٌ ثانٍ: المِلكُ
+     *   والمورّدُ كلاهما يُشتقّ من نفس القائمة وبنفس المفتاح (`productId`).
+     * ⚠️⚠️ ومجموعةٌ لا نصٌّ واحد: التصميمُ الواحدُ قد تصله شحنتان من **مورّدَين
+     *   مختلفَين**، فنسبُه إلى آخرِ شحنةٍ وحدَها كان سيُخفيه عن مورّدِه الأوّل.
+     * ⚠️ والاسمُ يُقلَّم ويُقارَن بحالةِ أحرفٍ موحَّدة: «Shanton» و«shanton »
+     *   مورّدٌ واحدٌ لا اثنان، وإلّا انشقّ المرشِّحُ إلى خيارَين لحقيقةٍ واحدة.
+     */
+    function abayaSupplierIndex() {
+        const byProduct = new Map();   // رقمُ التصميم ← مجموعةُ مفاتيحِ موردِيه
+        const labels = new Map();      // المفتاحُ ← الاسمُ كما كُتب أوّلَ مرّة
+        abayaArrivalList().forEach(a => {
+            if (!a) return;
+            const pid = String(a.productId || '');
+            const name = String(a.supplier || '').trim();
+            if (!name) return;
+            // ⚠️⚠️ المفتاحُ بحالةِ أحرفٍ موحَّدة، وكشفَ ذلك فحصٌ: لو كُتب المورّدُ
+            //   «china silk» في شحنةٍ و«CHINA SILK» في أخرى لصارا مورّدَين، فيُخفى
+            //   تصميمٌ عن مورّدِه الحقيقيِّ **بصمت** عند الترشيح. والاسمُ المعروضُ
+            //   يبقى كما كتبه المالكُ أوّلَ مرّة، فلا تتغيّر صورتُه على الشاشة.
+            const key = name.toUpperCase();
+            if (!labels.has(key)) labels.set(key, name);
+            // ⚠️ شحنةٌ لم تُربط بتصميمٍ بعد: اسمُها يُعرف ولا يُرشَّح به — خيارٌ
+            //   في القائمة لا يُطابق صفًّا واحدًا يُقرأ عطلًا. وكشفَ ذلك فحصٌ كذلك.
+            if (!pid) return;
+            if (!byProduct.has(pid)) byProduct.set(pid, new Set());
+            byProduct.get(pid).add(key);
+        });
+        // ⚠️ الخياراتُ من المفاتيحِ **المستعملةِ فعلًا** لا من كلِّ اسمٍ معروف.
+        const used = new Set();
+        byProduct.forEach(set => set.forEach(k => used.add(k)));
+        const options = Array.from(used)
+            .map(k => ({ key: k, label: labels.get(k) || k }))
+            .sort((x, y) => x.label.localeCompare(y.label));
+        return { byProduct, labels, options };
+    }
+
+    /**
+     * نصُّ مورِّدي تصميمٍ واحدٍ للعرض — موضعٌ واحدٌ يستعمله الجدولُ وExcel وPDF.
+     * ⚠️ ومورّدانِ يُعرضان كلاهما: التصميمُ قد وصل من اثنَين فعلًا، وإظهارُ أحدِهما
+     *   وحدَه يُكذّب المرشِّحَ الذي أظهر الصفّ.
+     */
+    function abayaSupplierTextFor(idx, productId) {
+        if (!idx) return '';
+        const set = idx.byProduct.get(String(productId || ''));
+        if (!set || !set.size) return '';
+        return Array.from(set).map(k => idx.labels.get(k) || k).sort((a, b) => a.localeCompare(b)).join(' + ');
+    }
+
+    /**
+     * يبني خياراتَ مرشِّحِ المورّد — **في كلِّ رسم**.
+     *
+     * ⚠️⚠️⚠️ ولا يُستعمل `dataset.built` هنا عن قصدٍ تامّ، خلافًا لبقيّةِ القوائم:
+     *   `abayaArrivals` تُقرأ بعد الكتالوج، فبناءٌ مرّةً واحدةً يقع على قائمةٍ
+     *   فارغةٍ ويبقى فارغًا للأبد. وهذا بعينه العطلُ الذي تكرّر ثلاثَ مرّات.
+     * ⚠️ والاختيارُ الحاليُّ يُحفظ ويُعاد: إعادةُ البناءِ في كلِّ رسمٍ كانت ستُصفّر
+     *   اختيارَ المالكِ عند كلِّ بحثٍ يكتبه، فيرى المرشِّحَ يُفلت من يده.
+     * ⚠️ وإن كان المختارُ مورّدًا لم يبقَ له شحنةٌ (حُذفت) يُعاد المرشِّحُ إلى
+     *   «كلُّ الموردين» بدل أن يبقى على اسمٍ يُخفي كلَّ الصفوف بلا سبب ظاهر.
+     */
+    function buildAbayaSupplierFilter() {
+        const wrap = document.getElementById('acFilterSupplierWrap');
+        const sel = document.getElementById('acFilterSupplier');
+        if (!sel) return;
+        // دورُ البضاعة لا يقرأ الشحنات بالقواعد ⇒ لا مرشِّحَ مورّدٍ له إطلاقًا.
+        const allowed = typeof canSeeAbaya === 'function' ? canSeeAbaya() : true;
+        if (wrap) wrap.style.display = allowed ? '' : 'none';
+        if (!allowed) { sel.innerHTML = ''; return; }
+
+        const options = abayaSupplierIndex().options;
+        const want = String(sel.value || '');
+        sel.innerHTML = `<option value="">Every supplier</option>`
+            + options.map(o => `<option value="${escapeHtml(o.key)}">${escapeHtml(o.label)}</option>`).join('')
+            + `<option value="__NONE__">&mdash; no supplier recorded &mdash;</option>`;
+        sel.value = (want === '__NONE__' || options.some(o => o.key === want)) ? want : '';
+    }
+
     window.clearAbayaCatalogFilters = function() {
         const s = document.getElementById('acSearch'); if (s) s.value = '';
         const f = document.getElementById('acFilterShop'); if (f) f.value = '';
         const st = document.getElementById('acFilterState'); if (st) st.value = 'all';
+        // ⚠️ النوعُ والمورّدُ يُصفَّران كذلك: الزرُّ اسمُه «Show everything» وعنوانُه
+        //   يَعِد بأن «لا يبقى شيءٌ مخفيًّا»، وكان يترك مرشِّحَ النوعِ شغّالًا —
+        //   فيَعِد بما لا يفعل. وزرٌّ يَعِد ولا يفعل أسوأُ من زرٍّ غائب.
+        const ty = document.getElementById('acFilterType'); if (ty) ty.value = '';
+        const sp = document.getElementById('acFilterSupplier'); if (sp) sp.value = '';
         renderAbayaCatalog();
     };
 
@@ -16798,10 +16909,23 @@
         const shop = String((document.getElementById('acFilterShop') || {}).value || '');
         const state = String((document.getElementById('acFilterState') || {}).value || 'all');
         const ty = String((document.getElementById('acFilterType') || {}).value || '');
+        const sup = String((document.getElementById('acFilterSupplier') || {}).value || '');
+        // ⚠️ تُحسب **مرّةً** قبل الحلقة لا داخلَها: داخلَها تُبنى من كلِّ الشحنات
+        //   لكلِّ تصميمٍ على حدة (عملٌ من مرتبةِ العددِ × العدد) فيثقل الجدول.
+        const supIdx = sup ? abayaSupplierIndex() : null;
         return abayaProducts.filter(p => {
             // ⚠️ «غيرُ محدَّد» قيمةٌ يُرشَّح بها: هي الطريقُ لإيجاد التصاميم
             //   القديمةِ التي تحتاج ضبطَ نوعِها، وبلا ذلك تضيع في القائمة.
             if (ty === '__NONE__' ? !!p.type : (ty && p.type !== ty)) return false;
+            // ⭐⭐⭐ المورّد: «أيُّ شحنةٍ من هذا المورّد» لا آخرُ شحنةٍ وحدَها —
+            //   فالتصميمُ الذي وصل من مورّدَين يظهر عند كلٍّ منهما، وهو الصحيح.
+            // ⚠️ و«لا مورّدَ مسجَّل» حالةٌ يُرشَّح بها: سطرٌ أُضيف بيدٍ أو قبل ميزةِ
+            //   الشحنات لا شحنةَ له، وهي الطريقُ لإيجادِه وضبطِ مورّدِه.
+            if (sup) {
+                const keys = supIdx.byProduct.get(String(p.id || ''));
+                if (sup === '__NONE__') { if (keys && keys.size) return false; }
+                else if (!keys || !keys.has(sup)) return false;
+            }
             // ⭐ والبحثُ يقبل اسمَ النوع والمقاس: «دريس» أو «56» تجد ما يُطابق.
             if (q && !(String(p.code).toUpperCase().includes(q)
                 || String(p.name).toUpperCase().includes(q)
@@ -16822,8 +16946,16 @@
         //   جدولًا فارغًا بلا رسالةِ خطإٍ ولا سبب. وأسوأُ الأعطال ما لا يقول شيئًا.
         if (!canSeeAbayaGoods()) return;
         buildAbayaCatalogShopInputs();
+        // ⚠️ خارجَ `buildAbayaCatalogShopInputs` عن قصد: تلك تبني مرّةً واحدةً
+        //   بـdataset.built، وهذه **يجب** أن تُعاد في كلِّ رسمٍ لأنّ الشحناتَ
+        //   تصل متأخّرةً عن الكتالوج (انظر التعليقَ على الدالّة).
+        buildAbayaSupplierFilter();
         const shop = String((document.getElementById('acFilterShop') || {}).value || '');
         const rows = abayaCatalogRows();
+        // ⚠️ تُحسب مرّةً للجدول كلِّه لا لكلِّ صفّ: بناؤها داخل `acRow` كان
+        //   سيمشي على كلِّ الشحنات لكلِّ تصميم.
+        const acSupIdx = (typeof canSeeAbaya === 'function' && canSeeAbaya())
+            ? abayaSupplierIndex() : null;
 
         // ---- مفتاح الموسم
         const cb = document.getElementById('acSeason');
@@ -16900,6 +17032,20 @@
                         + (p.fabric ? `<br><span style="font-size:11px; color: var(--text-dim);">${escapeHtml(p.fabric)}</span>` : '')
                         + (p.tone ? `<br><span style="font-size:11px; color: var(--text-dim);">${escapeHtml(abayaToneLabel(p.tone))}</span>` : '')
                         + (p.canOrder ? `<br><span style="font-size:11px; color: var(--success); font-weight:700;">order OK</span>` : '')
+                        // ⭐⭐ اسمُ المورّد سطرًا تحت النوع — لا عمودًا جديدًا:
+                        //   الجدولُ ١٣ عمودًا وزيادتُه تجعله يُقرأ بالتمرير الأفقيِّ
+                        //   وحدَه (وهو قرارٌ مكتوبٌ في هذا الملفِّ أصلًا للونِ
+                        //   والقماشِ والدرجة)، ولأنّ كلَّ colspan هنا = ١٣ بالضبط.
+                        // ⚠️⚠️ وهو **معروضٌ فقط ومشتقٌّ من الشحنة**، لا يُحفظ على
+                        //   سطر الكتالوج بحال — مصدرُ الحقيقةِ واحدٌ، وهو قرارُ المالك.
+                        // ⚠️ ومورّدانِ يُعرضان كلاهما: التصميمُ قد وصل من اثنَين فعلًا،
+                        //   وإظهارُ أحدِهما وحدَه يُكذّب المرشِّحَ الذي أظهر الصفَّ.
+                        + (() => {
+                              const txt = abayaSupplierTextFor(acSupIdx, p.id);
+                              return txt
+                                  ? `<br><span style="font-size:11px; color: var(--text-dim);">${escapeHtml(txt)}</span>`
+                                  : '';
+                          })()
                         + `</td>`
                         + `<td style="direction: ltr; white-space: nowrap;">${escapeHtml(p.size) || '<span style="color: var(--text-dim);">&mdash;</span>'}</td>`
                         + `<td class="money-col money-only">${money(p.cost)}</td>`
@@ -17352,6 +17498,17 @@
     window.exportAbayaCatalogExcel = function() {
         const rows = abayaCatalogRows();
         if (!rows.length) { alert('Nothing to export.'); return; }
+        // ⭐ المورّدُ في الملفِّ كذلك: الورقةُ لا يحدُّها عرضُ شاشةٍ، فلا سببَ
+        //   لحجبِه هنا كما حُجب عمودٌ في الجدول.
+        // ⚠️ ويُقرأ بحارسِ الدور: دورُ البضاعة لا يقرأ الشحنات، فتبقى الخانةُ فارغةً
+        //   («لا أعرف») ولا تُكتب باسمٍ مُخمَّن.
+        const supIdx = (typeof canSeeAbaya === 'function' && canSeeAbaya())
+            ? abayaSupplierIndex() : null;
+        // ⚠️⚠️ والكوستُ يُكتب **فقط** لمن يراه. وكان يُكتب دائمًا، فيخرج لدورِ
+        //   البضاعة عمودُ «Cost» مملوءًا أصفارًا — والشاشةُ تُخفيه عنها بـmoney-only
+        //   لكنّ الملفَّ كان يكتبه. وصفرٌ يُقرأ «الكوستُ صفر» لا «لا أعرف الكوست»،
+        //   ورقمٌ غلطٌ أسوأُ من لا رقم.
+        const withCost = typeof canSeeMoney === 'function' ? canSeeMoney() : true;
         const sheet = rows.map(p => {
             const r = {
                 'Barcode': p.code,
@@ -17362,7 +17519,8 @@
                 'Gold / silver': abayaToneLabel(p.tone),
                 'Orders can be taken': p.canOrder ? 'Yes' : 'No',
                 'Sizes available': p.size,
-                'Cost': p.cost,
+                'Supplier': abayaSupplierTextFor(supIdx, p.id),
+                ...(withCost ? { 'Cost': p.cost } : {}),
                 'Selling price': p.price,
                 'Price after discount': abayaHasDiscount(p) ? p.discountPrice : '',
                 'Discount shown now': (abayaDiscountSeason && abayaHasDiscount(p)) ? 'Yes' : 'No'
@@ -17377,6 +17535,268 @@
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Products Catalogue');
         xlsxDeliver(wb, `Abaya_Catalogue_${todayISO()}.xlsx`);
+    };
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ كتالوجٌ بالصور — PDF
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ لماذا PDF لا Excel: مكتبةُ Excel في هذا المشروع (SheetJS) **لا
+    //   تستطيع** وضعَ صورةٍ داخل خليّة. وعُرض الأمرُ على المالكِ صريحًا فاختار
+    //   أن تبقى الورقةُ أرقامًا والصورُ في PDF — فلا تُضاف مكتبةٌ جديدة.
+    //   (واتّجاهُ المشروعِ نفسُه ضدَّها: مكتبةُ تصويرِ الشاشة حُذفت كلُّها في v241.)
+    //
+    // ⚠️⚠️⚠️ ولا تُستعمل مكتبةُ PDF إطلاقًا هنا: `pdfFromJpegPages` مكتوبةٌ في
+    //   هذا الملفِّ بيدٍ وتبني الملفَّ بايتًا بايتًا، فالزرُّ يعمل بلا إنترنتٍ
+    //   وبلا نطاقٍ خارجيٍّ قد يسقط. وهي تُمدِّد **صورةً واحدةً على ورقةٍ كاملة**
+    //   — فكلُّ صفحةٍ تُرسم على canvas ثمّ تُسلَّم صورةً واحدة.
+    //
+    // ⚠️ والرسمُ على canvas هو ما يجعل العربيةَ تظهر: مكتبةُ jsPDF **لا تكتب
+    //   عربيةً في هذا المشروع** (مذكورٌ في أعلى الملفّ)، والصورةُ تتجاوز ذلك.
+    // =====================================================================
+
+    /** عددُ البطاقات في الورقة: ٣ في الصفّ × ٤ صفوف. */
+    const AC_PDF_COLS = 3;
+    const AC_PDF_ROWS = 4;
+    /** مضاعفُ الدقّة: A4 بالنقاط × ٢ ≈ ١١٩١×١٦٨٤ بكسل (نحو ١٥٠ نقطة/إنش). */
+    const AC_PDF_SCALE = 2;
+
+    /** بايتاتُ data URL — `pdfFromJpegPages` تطلب بايتاتٍ لا نصًّا. */
+    function acPdfBytesFromDataUrl(dataUrl) {
+        const i = String(dataUrl || '').indexOf(',');
+        if (i < 0) return null;
+        const bin = atob(String(dataUrl).slice(i + 1));
+        const out = new Uint8Array(bin.length);
+        for (let k = 0; k < bin.length; k++) out[k] = bin.charCodeAt(k);
+        return out;
+    }
+
+    /** يُحمّل data URL صورةً جاهزةً للرسم. ⚠️ صورةٌ تفشل لا تُسقط الكتالوج. */
+    function acPdfLoadImage(dataUrl) {
+        return new Promise((resolve) => {
+            if (!dataUrl) { resolve(null); return; }
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => resolve(null);
+            img.src = dataUrl;
+        });
+    }
+
+    /**
+     * يقرأ صورةَ كلِّ تصميمٍ مطلوب. ⚠️ يُعيد استخدام `acImageCache` نفسِه الذي
+     * تملؤه الصورُ المصغَّرةُ في الجدول: الصورةُ التي ظهرت على الشاشة لا تُقرأ ثانيةً.
+     */
+    async function acPdfFetchImages(rows, onProgress) {
+        const map = new Map();
+        let done = 0;
+        for (const p of rows) {
+            if (p.hasImage) {
+                const id = String(p.id || '');
+                if (acImageCache.has(id)) {
+                    map.set(id, acImageCache.get(id));
+                } else {
+                    try {
+                        const snap = await getDoc(doc(db, ABAYA_PRODUCT_IMAGES_COLL, id));
+                        const url = snap.exists() ? String(snap.data().imageBase64 || '') : '';
+                        // ⚠️ data:image وحدها تُقبل — نفسُ شرطِ الجدول بالحرف.
+                        if (/^data:image\/(png|jpe?g|webp|gif);base64,/.test(url)) {
+                            acImageCache.set(id, url);
+                            map.set(id, url);
+                        }
+                    } catch (e) { /* صورةٌ لا تُقرأ تُرسم «no picture» */ }
+                }
+            }
+            done++;
+            if (onProgress && (done % 5 === 0 || done === rows.length)) onProgress(done, rows.length);
+        }
+        return map;
+    }
+
+    window.exportAbayaCatalogPdf = async function() {
+        const statusEl = document.getElementById('acPdfStatus');
+        const say = (msg, colour) => {
+            if (statusEl) { statusEl.textContent = msg || ''; statusEl.style.color = colour || 'var(--text-dim)'; }
+        };
+        if (!canSeeAbayaGoods()) { alert('This is not open for your login.'); return; }
+
+        const rows = abayaCatalogRows();
+        if (!rows.length) { say(''); alert('Nothing to export — no design matches the filters right now.'); return; }
+
+        // ⚠️⚠️ تنبيهٌ بالرقمِ قبل العمل لا بعده: ١٠٠ تصميم × ١٦٠KB ≈ ١٦MB تُقرأ
+        //   من قاعدةِ البيانات. والمالكُ يُسأل قبل أن ينتظر، ويُقال له إنّ
+        //   المرشِّحَ هو المخرج (مورّدٌ واحدٌ في كلِّ مرّة).
+        const withPics = rows.filter(p => p.hasImage).length;
+        if (withPics > 40) {
+            const ok = confirm(`${rows.length} design(s) are shown, ${withPics} of them have a picture.\n\n`
+                + `Their pictures are about ${Math.round(withPics * 0.16)} MB and must be read one by one, so this can take a while.\n\n`
+                + `Tip: pick one Supplier (or one Shop) first and export that on its own.\n\nCarry on?`);
+            if (!ok) { say('Cancelled.', 'var(--text-dim)'); return; }
+        }
+
+        try {
+            say('Reading the pictures…', 'var(--warning)');
+            const imgMap = await acPdfFetchImages(rows, (d, t) => say(`Reading the pictures… ${d} of ${t}`, 'var(--warning)'));
+
+            say('Drawing the pages…', 'var(--warning)');
+            const supIdx = (typeof canSeeAbaya === 'function' && canSeeAbaya())
+                ? abayaSupplierIndex() : null;
+            // ⚠️⚠️ الكوستُ لا يُكتب إلّا لمن يراه — «ليس لها الحقُّ في رؤية الكوست»
+            //   بنصّ المالك، ودورُ البضاعة يفتح هذا الزرَّ فعلًا (الكتالوجُ من حقِّها).
+            const showCost = typeof canSeeMoney === 'function' ? canSeeMoney() : true;
+
+            // ⚠️⚠️⚠️ تُقرأ **هنا داخلَ الدالّة** لا في نطاقِ الوحدة: `PDF_PAGE_W`
+            //   مُصرَّحةٌ بعد هذا الموضعِ بنحوِ ١١٠٠٠ سطر، وقراءتُها في الأعلى
+            //   ترمي ReferenceError **عند تقييمِ الوحدة** فتتوقّف الوحدةُ هناك
+            //   ويبقى كلُّ `window.X =` بعدها غيرَ مُسنَد. وهو بعينه العطلُ الذي
+            //   قتل ١٠٧ دالّةً في v253 (زرُّ PDF والموافقاتُ والإنذارات).
+            const pageW = Math.round(PDF_PAGE_W * AC_PDF_SCALE);
+            const pageH = Math.round(PDF_PAGE_H * AC_PDF_SCALE);
+
+            const perPage = AC_PDF_COLS * AC_PDF_ROWS;
+            const pageCount = Math.ceil(rows.length / perPage);
+            const shopPick = String((document.getElementById('acFilterShop') || {}).value || '');
+            const supPick = String((document.getElementById('acFilterSupplier') || {}).value || '');
+            const pages = [];
+
+            for (let pageNo = 0; pageNo < pageCount; pageNo++) {
+                const canvas = document.createElement('canvas');
+                canvas.width = pageW; canvas.height = pageH;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, pageW, pageH);
+
+                const pad = Math.round(34 * AC_PDF_SCALE);
+                // ---- رأسُ الورقة
+                ctx.fillStyle = '#1a1a1a';
+                ctx.font = `700 ${Math.round(17 * AC_PDF_SCALE)}px 'Plus Jakarta Sans', sans-serif`;
+                ctx.textBaseline = 'top';
+                ctx.fillText('AL SHEIKHA STYLE — Products Catalogue', pad, pad);
+                ctx.fillStyle = '#6b6b6b';
+                ctx.font = `400 ${Math.round(10.5 * AC_PDF_SCALE)}px 'Plus Jakarta Sans', sans-serif`;
+                const bits = [`${rows.length} design(s)`];
+                if (supPick) bits.push(`Supplier: ${supPick === '__NONE__' ? 'no supplier recorded' : supPick}`);
+                if (shopPick) bits.push(`Shop: ${shopPick}`);
+                if (abayaDiscountSeason) bits.push('discount season OPEN');
+                bits.push(todayISO());
+                ctx.fillText(bits.join('   ·   '), pad, pad + Math.round(24 * AC_PDF_SCALE));
+                ctx.fillText(`page ${pageNo + 1} of ${pageCount}`, pageW - pad - Math.round(90 * AC_PDF_SCALE), pad + Math.round(24 * AC_PDF_SCALE));
+                ctx.strokeStyle = '#d9d2c2'; ctx.lineWidth = Math.max(1, AC_PDF_SCALE);
+                const headY = pad + Math.round(46 * AC_PDF_SCALE);
+                ctx.beginPath(); ctx.moveTo(pad, headY); ctx.lineTo(pageW - pad, headY); ctx.stroke();
+
+                // ---- شبكةُ البطاقات
+                const gridTop = headY + Math.round(16 * AC_PDF_SCALE);
+                const gap = Math.round(14 * AC_PDF_SCALE);
+                const cardW = Math.floor((pageW - pad * 2 - gap * (AC_PDF_COLS - 1)) / AC_PDF_COLS);
+                const cardH = Math.floor((pageH - gridTop - pad - gap * (AC_PDF_ROWS - 1)) / AC_PDF_ROWS);
+
+                for (let k = 0; k < perPage; k++) {
+                    const p = rows[pageNo * perPage + k];
+                    if (!p) break;
+                    const cx = pad + (k % AC_PDF_COLS) * (cardW + gap);
+                    const cy = gridTop + Math.floor(k / AC_PDF_COLS) * (cardH + gap);
+
+                    ctx.strokeStyle = '#ddd2b8'; ctx.lineWidth = Math.max(1, AC_PDF_SCALE);
+                    ctx.strokeRect(cx, cy, cardW, cardH);
+
+                    // الصورة
+                    const imgH = Math.floor(cardH * 0.56);
+                    const url = imgMap.get(String(p.id || ''));
+                    const img = url ? await acPdfLoadImage(url) : null;
+                    if (img && img.width && img.height) {
+                        // ⚠️ بنسبتِها لا ممدودة: عبايةٌ ممدودةٌ تُضلّل في قرارِ شراء.
+                        const s = Math.min(cardW / img.width, imgH / img.height);
+                        const w = Math.max(1, Math.round(img.width * s));
+                        const h = Math.max(1, Math.round(img.height * s));
+                        ctx.drawImage(img, cx + Math.floor((cardW - w) / 2), cy + Math.floor((imgH - h) / 2), w, h);
+                    } else {
+                        ctx.fillStyle = '#f3ede0'; ctx.fillRect(cx + 1, cy + 1, cardW - 2, imgH);
+                        ctx.fillStyle = '#a89b7f';
+                        ctx.font = `400 ${Math.round(11 * AC_PDF_SCALE)}px 'Plus Jakarta Sans', sans-serif`;
+                        ctx.fillText('no picture', cx + Math.round(10 * AC_PDF_SCALE), cy + Math.floor(imgH / 2));
+                    }
+
+                    // النصّ
+                    let ty = cy + imgH + Math.round(7 * AC_PDF_SCALE);
+                    const tx = cx + Math.round(9 * AC_PDF_SCALE);
+                    const maxW = cardW - Math.round(18 * AC_PDF_SCALE);
+                    const line = (text, font, colour, dy) => {
+                        if (!text) return;
+                        ctx.font = font; ctx.fillStyle = colour;
+                        let t = String(text);
+                        // ⚠️ القصُّ بالقياسِ الحقيقيِّ لا بعددِ الأحرف: الحرفُ العربيُّ
+                        //   والرقمُ واللاتينيُّ أعراضُها مختلفة.
+                        while (t.length > 1 && ctx.measureText(t).width > maxW) t = t.slice(0, -1);
+                        if (t !== String(text) && t.length > 1) t = t.slice(0, -1) + '…';
+                        ctx.fillText(t, tx, ty);
+                        ty += dy;
+                    };
+
+                    line(p.code, `700 ${Math.round(12.5 * AC_PDF_SCALE)}px monospace`, '#1a1a1a', Math.round(16 * AC_PDF_SCALE));
+                    line(p.name || '—', `600 ${Math.round(11 * AC_PDF_SCALE)}px 'Plus Jakarta Sans', sans-serif`, '#3a3226', Math.round(15 * AC_PDF_SCALE));
+                    line(abayaTypeLabel(p.type) || 'type not set', `400 ${Math.round(10 * AC_PDF_SCALE)}px 'Plus Jakarta Sans', sans-serif`, '#7a6f5a', Math.round(14 * AC_PDF_SCALE));
+                    if (p.size) line(`Sizes: ${p.size}`, `400 ${Math.round(10 * AC_PDF_SCALE)}px 'Plus Jakarta Sans', sans-serif`, '#7a6f5a', Math.round(14 * AC_PDF_SCALE));
+
+                    // السعر: سعرُ الخصمِ يُقال مع الأصليِّ لا بدلًا منه.
+                    const disc = abayaHasDiscount(p);
+                    const priceTxt = (disc && abayaDiscountSeason)
+                        ? `${money(p.discountPrice)} QAR  (was ${money(p.price)})`
+                        : `${money(p.price)} QAR`;
+                    line(priceTxt, `700 ${Math.round(11.5 * AC_PDF_SCALE)}px 'Plus Jakarta Sans', sans-serif`,
+                        (disc && abayaDiscountSeason) ? '#16a34a' : '#1a1a1a', Math.round(15 * AC_PDF_SCALE));
+                    if (showCost) {
+                        line(`Cost: ${money(p.cost)}`, `400 ${Math.round(9.5 * AC_PDF_SCALE)}px 'Plus Jakarta Sans', sans-serif`, '#a89b7f', Math.round(13 * AC_PDF_SCALE));
+                    }
+
+                    // الكميّات: محلٌّ واحدٌ إن كان مُرشَّحًا، وإلّا المجموعُ وتفصيلُه.
+                    const qtyTxt = shopPick
+                        ? `${shopPick}: ${abayaQtyOf(p, shopPick)}`
+                        : `Total ${abayaQtyTotal(p)}  ·  ` + ABAYA_SHOPS.map(s => `${s} ${abayaQtyOf(p, s)}`).join('  ');
+                    line(qtyTxt, `400 ${Math.round(9.5 * AC_PDF_SCALE)}px 'Plus Jakarta Sans', sans-serif`, '#3a3226', Math.round(13 * AC_PDF_SCALE));
+
+                    const supTxt = abayaSupplierTextFor(supIdx, p.id);
+                    if (supTxt) {
+                        line(`Supplier: ${supTxt}`, `400 ${Math.round(9.5 * AC_PDF_SCALE)}px 'Plus Jakarta Sans', sans-serif`, '#7a6f5a', Math.round(13 * AC_PDF_SCALE));
+                    }
+                    if (!p.active) {
+                        line('HIDDEN from the shops', `700 ${Math.round(9.5 * AC_PDF_SCALE)}px 'Plus Jakarta Sans', sans-serif`, '#b45309', Math.round(13 * AC_PDF_SCALE));
+                    }
+                }
+
+                // ⚠️ جودةٌ تنزل بالتدريج حتى لا يصير الملفُّ أثقلَ من أن يُفتح أو يُرسل.
+                let q = 0.82, url = canvas.toDataURL('image/jpeg', q);
+                while (url.length * 0.75 > 900 * 1024 && q > 0.4) {
+                    q -= 0.08;
+                    url = canvas.toDataURL('image/jpeg', q);
+                }
+                const bytes = acPdfBytesFromDataUrl(url);
+                if (!bytes) throw new Error('a page could not be turned into a picture');
+                pages.push({ bytes, w: canvas.width, h: canvas.height });
+                say(`Drawing the pages… ${pageNo + 1} of ${pageCount}`, 'var(--warning)');
+            }
+
+            say('Building the PDF…', 'var(--warning)');
+            const out = pdfFromJpegPages(pages, { title: `Al Sheikha Style — Products Catalogue — ${todayISO()}` });
+            const blob = new Blob([out], { type: 'application/pdf' });
+            const fname = `Abaya_Catalogue_with_pictures_${todayISO()}.pdf`;
+            // ⚠️ بالطبقةِ الواحدة لا بـ`<a download>`: النقرةُ البرمجيّةُ **صامتةٌ
+            //   تمامًا** في تطبيقٍ مُثبَّتٍ على iOS، وهي شكوى «لا ينزل» بعينها.
+            const res = await deliverFile(blob, fname, { title: fname });
+            if (res && res.cancelled) say('Cancelled.', 'var(--text-dim)');
+            else if (res && res.errors && res.errors.length && !res.via) {
+                say(`Could not hand over the file: ${res.errors.join(' · ')}`, 'var(--danger)');
+            } else {
+                say(`Done — ${rows.length} design(s) on ${pageCount} page(s).`, 'var(--success)');
+            }
+            logAudit('Abaya Catalogue PDF Exported',
+                `${rows.length} design(s), ${pageCount} page(s)`
+                + (supPick ? `, supplier ${supPick}` : '')
+                + (shopPick ? `, shop ${shopPick}` : ''));
+        } catch (e) {
+            console.error('Catalogue PDF failed:', e);
+            // ⚠️ الخطأُ يُسمّى ويُعرض ويُنبَّه عليه: زرٌّ يفشل بصمتٍ هو الشكوى
+            //   التي تكرّرت، فلا يُترك المالكُ ينظر إلى زرٍّ لا يقول شيئًا.
+            say(`It did not work: ${e.message}`, 'var(--danger)');
+            alert(`The catalogue PDF did not come out.\n\n${e.message}`);
+        }
     };
 
     // =====================================================================
