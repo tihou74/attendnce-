@@ -837,6 +837,103 @@
         </div>
     </div>
 
+    <!-- Section 6: Daily TIPS — CASHIERS ONLY ---------------------------------
+         ⭐⭐⭐ بطلب المالك: «بانل جديد خاص بالكاشير، يدخل في نهاية اليوم، يختار
+         الفرع، ويُدخل كم حصل المطعم تيبس — خانتين كاش وكارد».
+
+         ⚠️⚠️ بابٌ **مستقلٌّ** عن شاشة المديرين (?tips=1) ومفتاحُ صلاحيّةٍ مستقلٌّ
+           (`canSubmitTips`). والكاشيرُ ليس مديرًا: لو وُضع هذا في قائمة المديرين
+           لاحتاج `canSubmitSalesReport` — أي لأعطيناه تقريرَ المبيعات وطلبَ
+           البيتي كاش وطلبَ الإنذار معه. ولا شيءَ من ذلك من عمله.
+
+         ⚠️ والعلامةُ في الرابط ليست حاجزًا أمنيًّا، هي تُخفي الشاشةَ فقط. الحواجزُ
+           الحقيقيّةُ ثلاثة، كما في شاشة المديرين بالحرف:
+             (١) مفتاحٌ مفعَّلٌ في ملفِّ الموظف من اللوحة،
+             (٢) رقمُه السرّيُّ هو،
+             (٣) وقواعدُ فايرستور: إنشاءٌ فقط، لا قراءةٌ ولا تعديل.
+
+         ⚠️⚠️⚠️ ولا علاقةَ لهذا بالرواتب إطلاقًا — بنصِّ المالك. مجموعةٌ مستقلّةٌ
+           (`tips_reports`) لا يقرؤها أيُّ حسابِ راتب. والتقسيمُ على الموظفين
+           يأتي بقاعدةِ المالكِ لاحقًا: **كلُّ الموظفين يستحقّونه بنسبٍ مختلفة**.
+         ============================================================== -->
+    <div id="tipsSection" style="display: none;">
+        <div id="tipsInstallHint" style="display: none; background: #fff3cd; border: 1px solid #ffe08a; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; text-align: left;">
+            <p style="margin: 0; font-size: 12.5px; color: #7a5b00; font-weight: 700; line-height: 1.7;">
+                Keep this page bookmarked. Do NOT add it to your home screen &mdash; the icon would open the staff screen.
+            </p>
+        </div>
+
+        <div id="tipsLoginStep">
+            <p style="text-align: left; color: #495057; font-size: 13px; margin-top: 0;">
+                <b style="font-size: 15px; color: #1a252f;">Daily Tips</b><br>
+                Cashiers only. Log in with your name and PIN code.
+            </p>
+            <div class="form-group">
+                <label for="tipsCashierSelect">Cashier Name:</label>
+                <!-- ⚠️ «Loading» أوّلًا لا «Choose Name»: القائمةُ لم تُقرأ بعد،
+                     ورسالةُ «لا كاشير مفعَّل» لا تُكتب إلّا بعد قراءةٍ نجحت فعلًا. -->
+                <select id="tipsCashierSelect">
+                    <option value="">-- Loading names... --</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="tipsPinInput">PIN Code:</label>
+                <input type="password" id="tipsPinInput" placeholder="Enter PIN Code" maxlength="8" inputmode="numeric">
+            </div>
+            <button class="action-btn btn-submit" onclick="tipsLogin()">Continue &#10132;</button>
+        </div>
+
+        <div id="tipsBranchStep" style="display: none;">
+            <p style="text-align: left; color: #495057; font-size: 13px; margin-top: 0;">
+                <b id="tipsWelcomeName"></b><br>
+                <span style="color: #6c757d; font-weight: 700; font-size: 12.5px;">Which branch?</span>
+            </p>
+            <div class="btn-group" style="flex-direction: column; gap: 8px;">
+                <button class="action-btn" style="background-color: #17a2b8; min-height: 48px;" onclick="selectTipsBranch('GAIMER W KAHI WEST WALK')">GAIMER W KAHI &mdash; WEST WALK</button>
+                <button class="action-btn" style="background-color: #17a2b8; min-height: 48px;" onclick="selectTipsBranch('GAIMER W KAHI OLD MINA PORT')">GAIMER W KAHI &mdash; OLD MINA PORT</button>
+                <button class="action-btn" style="background-color: #6f42c1; min-height: 48px;" onclick="selectTipsBranch('SHAI BU HAMAD WEST WALK')">SHAI BU HAMAD &mdash; WEST WALK</button>
+                <button class="action-btn" style="background-color: #6f42c1; min-height: 48px;" onclick="selectTipsBranch('SHAI BU HAMAD GULF MALL')">SHAI BU HAMAD &mdash; GULF MALL</button>
+            </div>
+            <button class="action-btn" style="background-color: #6c757d; margin-top: 14px;" onclick="tipsBackToLogin()">&#11013; Sign out</button>
+        </div>
+
+        <div id="tipsFormStep" style="display: none;">
+            <h2 style="font-size: 17px; margin-bottom: 2px;" id="tipsFormTitle">Daily Tips</h2>
+            <p style="text-align: left; color: #6c757d; font-size: 12.5px; margin: 0 0 16px; font-weight: 700;" id="tipsBranchLabel"></p>
+
+            <div class="form-group">
+                <label for="tipsDate">Date:</label>
+                <input type="date" id="tipsDate" onchange="onTipsDateChange()">
+            </div>
+            <div class="form-group">
+                <label for="tipsCash">Tips &mdash; CASH (QAR):</label>
+                <input type="number" id="tipsCash" placeholder="0.00" inputmode="decimal" step="0.01" min="0" oninput="recalcTipsTotal()">
+            </div>
+            <div class="form-group">
+                <label for="tipsCard">Tips &mdash; CARD (QAR):</label>
+                <input type="number" id="tipsCard" placeholder="0.00" inputmode="decimal" step="0.01" min="0" oninput="recalcTipsTotal()">
+            </div>
+
+            <div style="background: #e7f5ff; border: 1px solid #a5d8ff; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; text-align: left;">
+                <span style="font-size: 12.5px; color: #1864ab; font-weight: 700;">Total tips for the whole restaurant today:</span>
+                <div style="font-size: 22px; font-weight: 800; color: #1864ab; margin-top: 2px;"><span id="tipsTotal">0.00</span> QAR</div>
+            </div>
+
+            <!-- ⚠️ يُقال قبل الإرسال لا بعده: المبلغُ يُقسَّم على الموظفين، فخطؤه
+                 يُدفع لهم غلطًا. والتصحيحُ من المكتب وحدَه (القاعدةُ تمنع التعديل). -->
+            <p class="report-currency-note">Send it once. It cannot be sent twice for the same branch and the same day. If a figure is wrong, tell the office &mdash; only they can correct it.</p>
+            <button class="action-btn btn-in" id="btnSubmitTips" style="margin-top: 6px;" onclick="submitTipsReport()">Send Tips &#128228;</button>
+            <button class="action-btn" style="background-color: #6c757d; margin-top: 10px;" onclick="showTipsStep('tipsBranchStep')">&#11013; Back</button>
+        </div>
+
+        <div id="tipsSummaryStep" style="display: none;">
+            <h2 style="font-size: 17px; margin-bottom: 10px;">&#9989; Tips recorded</h2>
+            <div id="tipsSummaryBody" style="text-align: left; font-size: 14px; line-height: 2; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 10px; padding: 14px;"></div>
+            <button class="action-btn btn-submit" style="margin-top: 14px;" onclick="tipsNewEntry()">New Entry</button>
+            <button class="action-btn" style="background-color: #6c757d; margin-top: 10px;" onclick="tipsBackToLogin()">&#11013; Sign out</button>
+        </div>
+    </div>
+
     <!-- Section 5: Daily Sales Report — MANAGERS ONLY -------------------------
          Deliberately NOT part of the tab bar. It is revealed only when the page
          is opened with the #report hash (index.html#report), which managers keep
@@ -1577,6 +1674,22 @@
                 // سببها الحقيقي أنّ أحدًا لم يُفعَّل له الخيار.
                 : `<option value="">${rosterIsReal
                         ? '-- Nobody is enabled as a manager yet --'
+                        : '-- Loading names... --'}</option>`;
+        }
+        // ⭐ قائمةُ الكاشير: الموظفون المفعَّل لهم إدخالُ التيبس وحدَهم.
+        // ⚠️ مفتاحٌ مستقلٌّ عن مفتاحِ المديرين: الكاشيرُ يُدخل التيبسَ ولا يُرسل
+        //   تقريرَ المبيعاتِ ولا يطلب بيتي كاش.
+        // ⚠️ ورسالةُ «لا كاشير مفعَّل» لا تُقال إلّا بعد قراءةٍ نجحت فعلًا
+        //   (`rosterIsReal`) — وإلّا كانت دعوى عن بياناتِه لا عن القراءة، وهو
+        //   بعينه ما ظنّه المالكُ عطلًا في قائمة المديرين.
+        const tipsSelect = document.getElementById('tipsCashierSelect');
+        if (tipsSelect) {
+            const cashiers = employees.filter(e => e.canSubmitTips);
+            tipsSelect.innerHTML = cashiers.length
+                ? '<option value="">-- Choose Name --</option>' +
+                  cashiers.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.name)}</option>`).join('')
+                : `<option value="">${rosterIsReal
+                        ? '-- Nobody is enabled as a cashier yet --'
                         : '-- Loading names... --'}</option>`;
         }
     }
@@ -2831,6 +2944,234 @@
     // الشاشة الرئيسية — وiOS خاصةً — تُسقط الـ fragment (#) عند إعادة الفتح،
     // فيُفتح التطبيق على شاشة الموظفين بدل شاشة التقرير. أما query string فيبقى
     // محفوظًا في كل المنصّات.
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ شاشةُ الكاشير — تيبسُ اليوم (كاش وكارد)
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️ مبنيّةٌ على شاشةِ المديرين **بالحرف** لا بطريقٍ جديد: نفسُ قفلِ
+    //   المحاولات، ونفسُ إعادةِ التحقّقِ من الصلاحيّةِ عند الدخول، ونفسُ
+    //   المعرّفِ الثابت (الفرعُ + اليوم)، ونفسُ منعِ التكرارِ **من الخادم**.
+    //   وطريقٌ ثانٍ لنفسِ الغرضِ يتباعد عن الأوّلِ أوّلَ تعديل.
+    // ⚠️⚠️⚠️ ولا علاقةَ له بالرواتب: مجموعةٌ مستقلّةٌ لا يقرؤها أيُّ حسابِ راتب.
+    // =====================================================================
+    let tipsState = { cashierId: null, cashierName: null, branch: null };
+    let isSubmittingTips = false;
+    let lastSubmittedTips = null;
+
+    function isTipsMode() {
+        const hash = (location.hash || '').toLowerCase();
+        if (hash === '#tips') return true;
+        try {
+            return new URLSearchParams(location.search).has('tips');
+        } catch (e) {
+            return /[?&]tips(=|&|$)/i.test(location.search || '');
+        }
+    }
+
+    // يُخفي شريطَ التبويباتِ وكلَّ أقسامِ الموظفين، فلا يمكن التنقّلُ منها.
+    function enterTipsMode() {
+        document.title = 'Daily Tips — Al Sheikha Group';
+        const hint = document.getElementById('tipsInstallHint');
+        if (hint) hint.style.display = isStandaloneApp() ? 'none' : 'block';
+        const tabGroup = document.querySelector('.tab-group');
+        if (tabGroup) tabGroup.style.display = 'none';
+        Object.values(TABS).forEach(ids => {
+            const section = document.getElementById(ids.section);
+            if (section) section.style.display = 'none';
+        });
+        const rep = document.getElementById('reportSection');
+        if (rep) rep.style.display = 'none';
+        const sec = document.getElementById('tipsSection');
+        if (sec) sec.style.display = 'block';
+        const select = document.getElementById('tipsCashierSelect');
+        if (select && !select.options.length) {
+            select.innerHTML = '<option value="">-- Loading... --</option>';
+        }
+        resetTipsFlow();
+    }
+
+    function resetTipsFlow() {
+        tipsState = { cashierId: null, cashierName: null, branch: null };
+        lastSubmittedTips = null;
+        showTipsStep('tipsLoginStep');
+        const pinEl = document.getElementById('tipsPinInput');
+        if (pinEl) pinEl.value = '';
+    }
+
+    window.showTipsStep = function(stepId) {
+        ['tipsLoginStep', 'tipsBranchStep', 'tipsFormStep', 'tipsSummaryStep'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = (id === stepId) ? 'block' : 'none';
+        });
+    };
+
+    window.tipsBackToLogin = function() {
+        resetTipsFlow();
+    };
+
+    window.tipsLogin = async function() {
+        const empId = document.getElementById('tipsCashierSelect').value;
+        const pinInput = document.getElementById('tipsPinInput').value.trim();
+        if (!empId) { showStatus("Please select your name.", "error"); return; }
+        if (!pinInput) { showStatus("Please enter your PIN code.", "error"); return; }
+
+        const lockout = checkPinLockout(empId);
+        if (lockout.locked) {
+            showStatus(`Too many wrong PIN attempts. Try again in ${lockout.secondsLeft}s.`, "error");
+            return;
+        }
+
+        showStatus("Verifying PIN...", "loading");
+        const isPinValid = await verifyPin(empId, pinInput);
+        recordPinAttempt(empId, isPinValid);
+        if (!isPinValid) { showStatus("Incorrect PIN code! Access denied.", "error"); return; }
+
+        // ⚠️ إعادةُ التحقّقِ من الصلاحيّةِ **هنا** لا عند بناءِ القائمةِ فقط: صفحةٌ
+        //   قديمةٌ تُركت مفتوحةً لا يجوز أن تُرسل بعد سحبِ الصلاحيّة.
+        const emp = employees.find(e => e.id === empId);
+        if (!emp || !emp.canSubmitTips) {
+            showStatus("This account is not allowed to enter the Daily Tips.", "error");
+            return;
+        }
+
+        document.getElementById('statusMsg').style.display = 'none';
+        tipsState.cashierId = empId;
+        tipsState.cashierName = emp.name;
+        document.getElementById('tipsPinInput').value = '';
+        const nameEl = document.getElementById('tipsWelcomeName');
+        if (nameEl) nameEl.innerText = `Welcome, ${emp.name}`;
+        showTipsStep('tipsBranchStep');
+    };
+
+    window.selectTipsBranch = function(branch) {
+        tipsState.branch = branch;
+        const lab = document.getElementById('tipsBranchLabel');
+        if (lab) lab.innerText = branch;
+        // ⚠️ تاريخُ اليومِ افتراضًا: الكاشيرُ يُدخل في نهايةِ يومِه، فلا يُطلب منه
+        //   كتابةُ تاريخٍ يعرفه الجهاز. ويبقى قابلًا للتغييرِ لو تأخّر ليلةً.
+        const d = document.getElementById('tipsDate');
+        if (d && !d.value) d.value = formatDateEnglish(new Date());
+        ['tipsCash', 'tipsCard'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        recalcTipsTotal();
+        onTipsDateChange();
+        showTipsStep('tipsFormStep');
+    };
+
+    // ⚠️ السالبُ وغيرُ الرقميِّ صفرٌ — حتى لا يُرسل مجموعٌ مشوّه. نفسُ قاعدةِ
+    //   `reportFieldValue` في تقرير المبيعات.
+    function tipsFieldValue(id) {
+        const el = document.getElementById(id);
+        const n = Number(el && el.value);
+        return (isFinite(n) && n > 0) ? n : 0;
+    }
+
+    window.recalcTipsTotal = function() {
+        const total = tipsFieldValue('tipsCash') + tipsFieldValue('tipsCard');
+        const el = document.getElementById('tipsTotal');
+        if (el) el.innerText = total.toFixed(2);
+    };
+
+    window.onTipsDateChange = function() {
+        const iso = document.getElementById('tipsDate').value;
+        const el = document.getElementById('tipsFormTitle');
+        if (el) el.innerText = iso ? `Daily Tips - ${formatReportDateLabel(iso)}` : 'Daily Tips';
+    };
+
+    window.submitTipsReport = async function() {
+        if (isSubmittingTips) return;   // حمايةٌ من الضغطِ المزدوج، كالحضور
+        if (!tipsState.cashierId || !tipsState.branch) {
+            showStatus("Session expired. Please log in again.", "error");
+            resetTipsFlow();
+            return;
+        }
+        const dateISO = document.getElementById('tipsDate').value;
+        if (!dateISO) { showStatus("Please select the date.", "error"); return; }
+
+        const cash = tipsFieldValue('tipsCash');
+        const card = tipsFieldValue('tipsCard');
+        const totalTips = cash + card;
+        if (totalTips <= 0) {
+            showStatus("Please enter the cash or the card tips before sending.", "error");
+            return;
+        }
+
+        const btn = document.getElementById('btnSubmitTips');
+        isSubmittingTips = true;
+        btn.disabled = true;
+        showStatus("Sending the tips...", "loading");
+        try {
+            const entry = {
+                branch: tipsState.branch,
+                date: dateISO,
+                cash, card, totalTips,
+                cashierId: tipsState.cashierId,
+                cashierName: tipsState.cashierName,
+                submittedAt: new Date().toISOString()
+            };
+            /**
+             * ⭐⭐⭐⭐⭐ معرّفٌ ثابتٌ = الفرعُ + اليوم. فرعٌ واحدٌ ويومٌ واحدٌ = مستندٌ واحد.
+             * 🔴🔴 ومنعُ التكرارِ **من الخادم**: قاعدةُ `tips_reports` تسمح
+             *   بـ`create` وتمنع `update`. فأوّلُ إرسالٍ إنشاءٌ ✅، والثاني تعديلٌ
+             *   على مستندٍ موجودٍ ← يرفضه الخادم. ولا قراءةَ مسبقةً — وهي ممنوعةٌ
+             *   على هذه الصفحةِ أصلًا بقصد.
+             * ⚠️⚠️ والتكرارُ هنا أسوأُ منه في المبيعات: هذا مالٌ **يُقسَّم على
+             *   الموظفين**، فيومٌ مُضاعَفٌ يُدفع مرّتين.
+             */
+            const slug = String(tipsState.branch || '').toUpperCase()
+                .replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+            if (!slug) {
+                showStatus("Your branch is not set. Go back and pick it again.", "error");
+                return;
+            }
+            await setDoc(doc(db, "tips_reports", `${slug}_${dateISO}`),
+                { ...entry, timestamp: serverTimestamp() });
+
+            lastSubmittedTips = entry;
+            const body = document.getElementById('tipsSummaryBody');
+            if (body) {
+                body.innerHTML = `<b>${escapeHtml(entry.branch)}</b><br>`
+                    + `${escapeHtml(formatReportDateLabel(entry.date))}<br>`
+                    + `Cash: <b>${formatReportMoney(entry.cash)}</b> QAR<br>`
+                    + `Card: <b>${formatReportMoney(entry.card)}</b> QAR<br>`
+                    + `<span style="color:#1864ab;">Total: <b>${formatReportMoney(entry.totalTips)}</b> QAR</span><br>`
+                    + `<span style="font-size:12px; color:#6c757d;">Entered by ${escapeHtml(entry.cashierName || '')}</span>`;
+            }
+            document.getElementById('statusMsg').style.display = 'none';
+            // جهازٌ مشترك: تُفرَّغ الخاناتُ فورًا حتى لا تُرسل أرقامُ فرعٍ لفرعٍ آخر.
+            ['tipsCash', 'tipsCard'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            recalcTipsTotal();
+            showTipsStep('tipsSummaryStep');
+        } catch (e) {
+            console.error("Error sending the tips:", e);
+            /**
+             * ⚠️ رفضُ الصلاحيّةِ على هذه المجموعةِ معناه الغالبُ واحد: مستندُ هذا
+             *   اليومِ لهذا الفرعِ موجودٌ سلفًا. فتُقال الحقيقةُ المرجّحةُ ومعها
+             *   الاحتمالُ الآخر — ولا يُقطع بما لم يُتحقَّق منه، فالرسالةَ يقرؤها
+             *   كاشيرٌ لا مبرمج.
+             */
+            const msg = String((e && (e.code || e.message)) || '');
+            if (/permission|insufficient/i.test(msg)) {
+                showStatus("The tips were NOT sent: today's tips for this branch have already been "
+                    + "sent, and they cannot be sent twice. If a figure is wrong, ask the office to "
+                    + "correct it — they can. (If you did not send one today, tell the office.)", "error");
+            } else {
+                showStatus("The tips were not sent. Check your internet and try again.", "error");
+            }
+        } finally {
+            isSubmittingTips = false;
+            btn.disabled = false;
+        }
+    };
+
+    window.tipsNewEntry = function() {
+        showTipsStep('tipsBranchStep');
+    };
+
     function isReportMode() {
         const hash = (location.hash || '').toLowerCase();
         if (hash === '#report') return true;
@@ -4425,6 +4766,13 @@
     if (isStaffMarked()) {
         // تطبيق الموظفين صرّح عن نفسه — نمحو أي تذكُّر لوضع المديرين.
         writeMode('');
+    } else if (isTipsMode()) {
+        // ⭐ بابُ الكاشير. ⚠️ ويُفحص **قبل** بابِ المديرين لا بعده: لو جاء بعده
+        //   لظلّ جهازٌ يتذكّر وضعَ المديرين يفتحه على شاشتهم حتى بعد ?tips=1.
+        // ⚠️ ولا يُحفظ وضعٌ متذكَّرٌ هنا: شاشةُ الكاشير تُفتح برابطٍ محفوظٍ في
+        //   المتصفّح لا بتطبيقٍ مثبَّتٍ له ملفُّ تعريفٍ خاصّ، فتذكُّرُ الوضعِ كان
+        //   سيحجب شاشةَ الموظفين عن جهازٍ مشتركٍ بلا طريقِ رجوع.
+        enterTipsMode();
     } else if (isReportMode()) {
         if (standalone) writeMode('report');
         enterReportMode();
