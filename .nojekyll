@@ -1,0 +1,22 @@
+This empty file switches GitHub Pages OUT of Jekyll and makes it serve the
+repository as plain static files.
+
+Why it exists — a real failure, not a precaution:
+  Three deployments in a row errored with a 0ms duration (builds #330, #331,
+  #332 on 2026-10-14) while the owner kept seeing Build v257 and reported that
+  the breakage and the tips opening "did not change". The code was on main the
+  whole time; it was never published.
+
+  This project is plain HTML/JS with no Jekyll content at all, yet Jekyll was
+  parsing every file as a Liquid template — including admin.html, which is
+  2.4 MB. Successful builds already took 35 to 140 seconds for that reason
+  alone, and admin.html carries a JSDoc comment reading `@returns {{mandoob:
+  string, employee: string}}`, which Liquid reads as template syntax.
+
+  With this file present the build is a file copy: no Liquid, no template
+  parsing, far faster, and nothing in the source can break the deployment by
+  looking like a template.
+
+⚠ Do not delete it. And do not merge two pull requests within a few minutes of
+  each other: each merge starts a deployment that CANCELS the one before it, so
+  the site stays on the older version while the newest merge looks done.
