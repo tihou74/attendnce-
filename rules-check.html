@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>هل القواعد الجديدة فعّالة؟ — Rules live check</title>
+<meta name="robots" content="noindex, nofollow">
+
+<!-- =============================================================================
+     صفحةُ إثباتٍ واحدةٌ: هل قواعدُ الأمان المنشورةُ على الخادمِ هي الجديدةُ فعلًا؟
+
+     ⚠️⚠️⚠️ لماذا وُلدت هذه الصفحة: قال المالكُ «لمّا أنسخ القواعد أجده منشور».
+       ومحرّرُ Firebase يعرض النصَّ الذي لصقتَه **قبل** الضغط على Publish، فالنظرُ
+       فيه لا يُفرّق بين «مكتوب» و«منشور». والفرقُ هنا ليس شكليًّا: ما لم تُنشر
+       القواعدُ تبقى رواتبُ الموظفين وصورُ هويّاتِهم مقروءةً لكلِّ من يملك رابطَ
+       شاشةِ الموظفين.
+
+     ⚠️ ولماذا لا نكتفي بالبحث عن علامةٍ في المحرّر: العلامةُ تُثبت أنّ **النصَّ**
+       موجودٌ أمامك، لا أنّ الخادمَ يُطبّقه. وهذه الصفحةُ تسأل الخادمَ نفسَه:
+       تُسجّل دخولًا مجهولًا — كأيِّ موظفٍ يفتح شاشتَه — ثمّ تُحاول أن تقرأ ما
+       يجب أن يكون ممنوعًا. فالمنعُ هو الدليل.
+
+     ⚠️ وهي **قراءةٌ فقط**: لا تكتب حرفًا في قاعدةِ البيانات، ولا تُغيّر إعدادًا،
+       ولا تُسجّل أحدًا. فتحُها لا يُؤذي شيئًا ولو فُتحت مئةَ مرّة.
+     ============================================================================= -->
+
+<style>
+    * { box-sizing: border-box; }
+    body {
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        background: #f5f1e8; color: #3a3226;
+        margin: 0; padding: 24px 16px;
+        -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 760px; margin: 0 auto; }
+    h1 { font-size: 21px; margin: 0 0 6px; }
+    .sub { color: #7a6f5a; font-size: 13.5px; margin: 0 0 20px; line-height: 1.8; }
+    .card {
+        background: #fffdf8; border: 1px solid #ddd2b8; border-radius: 14px;
+        padding: 20px; margin-bottom: 16px;
+    }
+    button {
+        font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+        border: none; border-radius: 10px; padding: 14px 22px; color: #fff;
+        background: #6366f1; min-height: 50px; width: 100%;
+    }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    .verdict { border-radius: 12px; padding: 16px 18px; font-weight: 800; font-size: 16px; line-height: 1.7; margin-bottom: 14px; display: none; }
+    .v-ok   { background: #d1e7dd; color: #0f5132; border: 1px solid #a3cfbb; }
+    .v-bad  { background: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
+    .v-wait { background: #fff3cd; color: #664d03; border: 1px solid #ffe69c; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { text-align: start; padding: 10px 8px; font-size: 13px; border-bottom: 1px solid #e6dcc6; }
+    th { background: #f3ede0; color: #7a6f5a; font-size: 12px; }
+    .pill { font-size: 11.5px; font-weight: 800; padding: 3px 9px; border-radius: 20px; display: inline-block; white-space: nowrap; }
+    .p-ok  { background: rgba(22,163,74,.15); color: #16a34a; }
+    .p-bad { background: rgba(220,38,38,.12); color: #dc2626; }
+    .p-known { background: rgba(180,83,9,.14); color: #b45309; }
+    code { background: #f3ede0; padding: 2px 6px; border-radius: 5px; font-size: 12px; direction: ltr; display: inline-block; }
+    .note { font-size: 12.5px; color: #7a6f5a; line-height: 1.8; margin-top: 12px; }
+    ol { padding-inline-start: 22px; line-height: 2; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+    <h1>هل القواعد الجديدة فعّالة فعلاً؟</h1>
+    <p class="sub">
+        محرّر Firebase يعرض النصّ الذي لصقتَه <b>قبل</b> أن تضغط Publish — فالنظر فيه
+        لا يُفرّق بين «مكتوب» و«منشور».<br>
+        هذه الصفحة تسأل <b>الخادم نفسه</b>: تُسجّل دخولاً مجهولاً كأيّ موظف يفتح شاشته،
+        ثم تُحاول قراءة ما يجب أن يكون ممنوعاً. <b>والمنع هو الدليل.</b>
+    </p>
+
+    <div class="card">
+        <button id="runBtn">افحص الآن &mdash; Run the check</button>
+        <div class="note">قراءة فقط: لا تكتب شيئاً، ولا تُغيّر إعداداً، ولا تُسجّل أحداً.</div>
+    </div>
+
+    <div class="verdict" id="verdict"></div>
+
+    <div class="card" id="resultCard" style="display:none;">
+        <table>
+            <thead>
+                <tr><th>ما جُرِّب</th><th>المطلوب</th><th>النتيجة</th></tr>
+            </thead>
+            <tbody id="rows"></tbody>
+        </table>
+        <div class="note" id="explain"></div>
+    </div>
+
+    <div class="card" id="howto" style="display:none;">
+        <b style="font-size:15px;">كيف تنشرها (دقيقتان)</b>
+        <ol>
+            <li>افتح <b>Firebase Console</b> ← مشروعك ← <b>Firestore Database</b> ← تبويب <b>Rules</b></li>
+            <li>افتح <code>raw.githubusercontent.com/tihou74/attendnce-/main/firestore.rules</code> وانسخ الملفّ كاملاً</li>
+            <li>في Firebase: <code>Ctrl+A</code> ثم <code>Delete</code>، ثم الصق</li>
+            <li>اضغط <b>Publish</b> &mdash; وهذه الضغطة هي المقصودة</li>
+            <li>ارجع إلى هنا واضغط «افحص الآن» &mdash; يجب أن يصير الحكم أخضر</li>
+        </ol>
+    </div>
+
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, doc, getDocs, getDoc, limit, query }
+        from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCWZb0GwAeMgLtJIfq3kuRfmEQ1POBNSp0",
+      authDomain: "attendance-system-f32d6.firebaseapp.com",
+      projectId: "attendance-system-f32d6",
+      storageBucket: "attendance-system-f32d6.firebasestorage.app",
+      messagingSenderId: "302261734220",
+      appId: "1:302261734220:web:50cb9e10965ed3ddcf1de9",
+      measurementId: "G-W88XGV8E1Q"
+    };
+
+    // ⚠️ تطبيقٌ باسمٍ خاصّ: فلا تُصادم جلسةَ لوحةِ الإدارة لو كانت مفتوحةً في
+    //   تبويبٍ آخر على نفس المتصفّح.
+    const app = initializeApp(firebaseConfig, "rulesCheck");
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+
+    /**
+     * يُحاول قراءةً واحدةً ويُعيد: allowed | denied | error.
+     * ⚠️ «مُنع» يُعرف من رمزِ الخطإِ لا من نصِّه: النصُّ يتغيّر بين إصداراتِ
+     *   المكتبة، والرمزُ `permission-denied` ثابت.
+     * ⚠️ وأيُّ خطإٍ آخر (شبكةٌ مقطوعة) **لا يُعَدّ منعًا**: لو عُدَّ لأعلنّا أنّ
+     *   القواعدَ منشورةٌ ونحن لم نصل إلى الخادمِ إطلاقًا — وهو أخطرُ من غيابِ الفحص.
+     */
+    async function tryRead(fn) {
+        try { await fn(); return { state: "allowed" }; }
+        catch (e) {
+            const code = String((e && e.code) || "");
+            if (/permission-denied/i.test(code)) return { state: "denied" };
+            return { state: "error", why: code || String((e && e.message) || e) };
+        }
+    }
+
+    const CHECKS = [
+        {
+            label: "قراءة ملفّات الموظفين <code>employees</code>",
+            want: "denied",
+            why: "فيها الراتب ورقم الهوية والجواز وصور البطاقة والعقد",
+            run: () => getDocs(query(collection(db, "employees"), limit(1)))
+        },
+        {
+            label: "قراءة صرف الرواتب <code>settings/salary_payouts</code>",
+            want: "denied",
+            why: "رقم لا يجوز أن يراه أحد غيرك",
+            run: () => getDoc(doc(db, "settings", "salary_payouts"))
+        },
+        {
+            label: "قراءة حساب النقد <code>settings/cash_account</code>",
+            want: "denied",
+            why: "أرصدتك الافتتاحية",
+            run: () => getDoc(doc(db, "settings", "cash_account"))
+        },
+        {
+            label: "قراءة قائمة الأسماء <code>settings/employee_roster</code>",
+            want: "allowed",
+            why: "هذه يحتاجها الموظف ليجد اسمه — ويجب أن تبقى مسموحة",
+            run: () => getDoc(doc(db, "settings", "employee_roster"))
+        },
+        {
+            label: "قراءة الأرقام السرّية <code>employee_pins</code>",
+            want: "known-open",
+            why: "ما زالت مفتوحة بقصد: الرقم يُفحص في المتصفّح، وإغلاقها يحتاج فحصاً على الخادم (المرحلة ٢)",
+            run: () => getDocs(query(collection(db, "employee_pins"), limit(1)))
+        }
+    ];
+
+    const pill = (t, cls) => `<span class="pill ${cls}">${t}</span>`;
+
+    document.getElementById("runBtn").addEventListener("click", async () => {
+        const btn = document.getElementById("runBtn");
+        const vEl = document.getElementById("verdict");
+        const rows = document.getElementById("rows");
+        btn.disabled = true;
+        vEl.style.display = "block";
+        vEl.className = "verdict v-wait";
+        vEl.innerHTML = "جارٍ الفحص&hellip;";
+        rows.innerHTML = "";
+        document.getElementById("resultCard").style.display = "none";
+        document.getElementById("howto").style.display = "none";
+
+        // دخولٌ مجهولٌ — بالضبط كما يفتح الموظفُ شاشتَه.
+        try { await signInAnonymously(auth); }
+        catch (e) {
+            vEl.className = "verdict v-bad";
+            vEl.innerHTML = "لم أستطع الاتصال بالخادم، فلا حكم. تحقّق من الإنترنت ثم أعد الفحص."
+                + `<div style="font-weight:400; font-size:13px; margin-top:6px;">${esc((e && e.code) || e)}</div>`;
+            btn.disabled = false;
+            return;
+        }
+
+        let leaks = 0, broken = 0, errors = 0, html = "";
+        for (const c of CHECKS) {
+            const r = await tryRead(c.run);
+            let verdictCell, ok = true;
+            if (r.state === "error") {
+                errors++; ok = false;
+                verdictCell = pill("لم يُحسم", "p-known") + `<div style="font-size:11.5px; color:#7a6f5a;">${esc(r.why)}</div>`;
+            } else if (c.want === "known-open") {
+                verdictCell = r.state === "allowed"
+                    ? pill("مفتوحة — معروف", "p-known")
+                    : pill("مُغلقة ✓", "p-ok");
+            } else if (c.want === "denied") {
+                if (r.state === "denied") verdictCell = pill("ممنوعة ✓", "p-ok");
+                else { leaks++; ok = false; verdictCell = pill("مكشوفة ✗", "p-bad"); }
+            } else {
+                if (r.state === "allowed") verdictCell = pill("مسموحة ✓", "p-ok");
+                else { broken++; ok = false; verdictCell = pill("ممنوعة ✗", "p-bad"); }
+            }
+            html += `<tr><td>${c.label}<div style="font-size:11.5px; color:#7a6f5a; margin-top:3px;">${c.why}</div></td>`
+                 + `<td style="white-space:nowrap;">${c.want === "denied" ? "ممنوعة" : (c.want === "allowed" ? "مسموحة" : "—")}</td>`
+                 + `<td>${verdictCell}</td></tr>`;
+        }
+        rows.innerHTML = html;
+        document.getElementById("resultCard").style.display = "block";
+
+        // ⚠️ الحكمُ يُقال بالأرقامِ وبما يُفعل، لا بكلمةِ «تمام» أو «خطأ».
+        if (errors) {
+            vEl.className = "verdict v-wait";
+            vEl.innerHTML = `⚠️ ${errors} فحصاً لم يُحسم (الخادم لم يُجب) — لا أستطيع الحكم. أعد الفحص.`;
+        } else if (leaks) {
+            vEl.className = "verdict v-bad";
+            vEl.innerHTML = `✗ القواعد الجديدة <b>غير منشورة</b>.<br>`
+                + `<span style="font-weight:400; font-size:14px;">${leaks} من بياناتك ما زالت مقروءة لأي شخص يملك رابط شاشة الموظفين. اضغط Publish في Firebase ثم أعد الفحص.</span>`;
+            document.getElementById("howto").style.display = "block";
+        } else if (broken) {
+            vEl.className = "verdict v-bad";
+            vEl.innerHTML = `✗ القواعد منشورة لكنها <b>ضيّقة جداً</b>: ${broken} شيئاً يحتاجه الموظف صار ممنوعاً.<br>`
+                + `<span style="font-weight:400; font-size:14px;">أخبر المبرمج بهذا السطر — وقد تحتاج إعادة نشر النسخة السابقة فوراً.</span>`;
+        } else {
+            vEl.className = "verdict v-ok";
+            vEl.innerHTML = `✓ القواعد الجديدة <b>فعّالة على الخادم</b>.<br>`
+                + `<span style="font-weight:400; font-size:14px;">رواتب موظفيك وصور هويّاتهم وأرصدتك لم تبقَ مقروءةً لمن يملك الرابط. وشاشات الموظفين تعمل.</span>`;
+        }
+        document.getElementById("explain").innerHTML =
+            "هذا الفحص يسأل الخادم مباشرةً بجلسةٍ مجهولةٍ، فنتيجته هي الواقع لا ما في المحرّر. "
+            + "وأعِد فتحه بعد كل مرّة تنشر فيها قواعد.";
+        btn.disabled = false;
+    });
+</script>
+</body>
+</html>
