@@ -866,7 +866,8 @@
         <div id="tipsLoginStep">
             <p style="text-align: left; color: #495057; font-size: 13px; margin-top: 0;">
                 <b style="font-size: 15px; color: #1a252f;">Daily Tips</b><br>
-                Cashiers only. Log in with your name and PIN code.
+                Cashiers enter the day's tips here. Supervisors log in the same way to
+                confirm or reject them. Use your own name and PIN code.
             </p>
             <div class="form-group">
                 <label for="tipsCashierSelect">Cashier Name:</label>
@@ -3061,8 +3062,19 @@
         // ⚠️ إعادةُ التحقّقِ من الصلاحيّةِ **هنا** لا عند بناءِ القائمةِ فقط: صفحةٌ
         //   قديمةٌ تُركت مفتوحةً لا يجوز أن تُرسل بعد سحبِ الصلاحيّة.
         const emp = employees.find(e => e.id === empId);
-        if (!emp || !emp.canSubmitTips) {
-            showStatus("This account is not allowed to enter the Daily Tips.", "error");
+        /**
+         * ⚠️⚠️⚠️ الحارسُ يقبل **أيَّ** المفتاحَين — وهذا عطلٌ وقع فعلًا وأبلغ عنه
+         *   المالك: كان يفحص `canSubmitTips` وحدَه، فالسوبرفايزرُ يظهر اسمُه في
+         *   القائمةِ (لأنّها تجمع المفتاحَين) ثمّ يُردّ على الباب برسالة «هذا
+         *   الحسابُ غيرُ مسموحٍ له بإدخال التيبس» — وهو **لا يُدخل** أصلًا، إنّما
+         *   يؤكّد. فحارسٌ يفحص قدرةً واحدةً في شاشةٍ تخدم قدرتَين يرفض نصفَ أهلِها.
+         * ⚠️ والتوجيهُ بعده: من يملك التأكيدَ يُراجع، ومن يملك الإدخالَ يُدخل.
+         */
+        const mayEnter = !!(emp && emp.canSubmitTips);
+        const mayApprove = !!(emp && emp.canApproveTips);
+        if (!emp || (!mayEnter && !mayApprove)) {
+            showStatus("This account is not allowed to enter or confirm the Daily Tips. "
+                + "Ask the office to tick it on your profile.", "error");
             return;
         }
 
@@ -3072,7 +3084,9 @@
         document.getElementById('tipsPinInput').value = '';
         // ⭐ دوران في شاشةٍ واحدة. ⚠️ والمراجعةُ تسبق الإدخالَ لمن يملك المفتاحَين:
         //   السوبرفايزرُ يؤكّد ولا يُدخل بأمر المالك.
-        tipsState.isReviewer = emp.canApproveTips === true;
+        // ⚠️ من يملك المفتاحَين يُراجع لا يُدخل: السوبرفايزرُ يؤكّد ولا يُدخل
+        //   بأمر المالك، ولو فُتح له الإدخالُ أدخل ثمّ أكّد نفسَه.
+        tipsState.isReviewer = mayApprove;
         const nameEl = document.getElementById('tipsWelcomeName');
         if (nameEl) nameEl.innerText = `Welcome, ${emp.name}`;
 
