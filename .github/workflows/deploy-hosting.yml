@@ -158,6 +158,100 @@ jobs:
             if (a !== c) { console.error("MISMATCH — the page would warn the owner after every deploy"); process.exit(1); }
           '
 
+      # ⚠️⚠️ حارسٌ رابعٌ: المفتاحُ نفسُه يُفحَص قبل محاولةِ النشر.
+      #   سببُه عطلٌ حقيقيٌّ وقع: لُصق في السرِّ ملفُّ **صورةٍ** (`<svg xmlns`) بدلَ
+      #   نصِّ المفتاح، فقالت أداةُ Firebase: «Failed to authenticate, have you run
+      #   firebase login?» — وهي رسالةٌ **كاذبةٌ تمامًا** تدلُّ على طريقٍ مسدودٍ
+      #   (المالكُ لا يستعمل سطرَ الأوامر أصلًا)، والسببُ الحقيقيُّ لم يظهر إلّا في
+      #   سطرٍ عميقٍ داخلِ سجلِّ التنقيح.
+      #   فهنا يُقال السببُ صريحًا: **بأيِّ شيءٍ** أخطأ اللصقُ وما العملُ.
+      #
+      # ⚠️ ولا يُطبع المفتاحُ ولا جزءٌ منه: تُطبع المعرِّفاتُ غيرُ السرّيّةِ فقط
+      #   (رقمُ المشروعِ وبريدُ الحساب، وهما ظاهرانِ في شاشةِ Firebase)، وعند
+      #   الفشلِ تُوصَف **هيئةُ** الملصوقِ لا محتواه.
+      - name: Guard — the deploy key must be a real service-account key
+        env:
+          SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          EXPECTED_PROJECT: attendance-system-f32d6
+        run: |
+          node --input-type=commonjs -e '
+            // يفحص الهيئةَ ويُرجع سببًا مقروءًا — أو null إن كان المفتاحُ سليمًا.
+            function why(raw, expected) {
+              if (!raw || !raw.trim()) return "SECRET IS EMPTY — the secret FIREBASE_SERVICE_ACCOUNT is not set, or was saved blank.";
+              const t = raw.trim();
+              let k;
+              try { k = JSON.parse(t); }
+              catch (e) {
+                if (/^<\s*svg/i.test(t))            return "THIS IS A PICTURE, NOT A KEY — the secret starts with an <svg> drawing. The clipboard held an icon from the web page instead of the text of the downloaded key file.";
+                if (/^<\s*(!doctype|html)/i.test(t)) return "THIS IS A WEB PAGE, NOT A KEY — the secret starts with HTML. A page was copied instead of the downloaded key file.";
+                if (/^<\s*\?xml/i.test(t))          return "THIS IS AN XML FILE, NOT A KEY — the key file is JSON and must begin with a { character.";
+                if (/^-----BEGIN/.test(t))          return "THIS IS ONLY THE PRIVATE-KEY BLOCK — the whole JSON file is needed, not just the -----BEGIN PRIVATE KEY----- part inside it.";
+                if (/^(ya29\.|1\/\/)/.test(t))      return "THIS IS AN ACCESS TOKEN, NOT A KEY FILE — tokens expire; the service-account JSON file is required.";
+                if (/^[A-Za-z0-9+\/=\s]+$/.test(t) && t.length > 200) return "THIS LOOKS BASE64-ENCODED — paste the key file as plain text, not encoded.";
+                return "THIS IS NOT VALID JSON (" + e.message + ") — the key file must be pasted whole, from the opening { to the closing }.";
+              }
+              if (Array.isArray(k) || k === null || typeof k !== "object") return "THE JSON IS NOT AN OBJECT — the key file is a single { ... } object.";
+              if (k.type !== "service_account") return "WRONG KIND OF JSON — a service-account key has \"type\": \"service_account\"; this one has " + JSON.stringify(k.type === undefined ? "(no type field)" : k.type) + ". The google-services / firebaseConfig file is NOT the deploy key.";
+              for (const f of ["project_id", "private_key", "client_email"]) {
+                if (!k[f]) return "THE KEY IS INCOMPLETE — the field \"" + f + "\" is missing. Download a fresh key and paste the whole file.";
+              }
+              if (!/BEGIN [A-Z ]*PRIVATE KEY/.test(k.private_key)) return "THE private_key FIELD IS DAMAGED — its BEGIN PRIVATE KEY header is gone, so part of the file was lost while copying.";
+              if (k.project_id !== expected) return "KEY BELONGS TO THE WRONG PROJECT — it is for \"" + k.project_id + "\" but this site deploys to \"" + expected + "\".";
+              return null;
+            }
+
+            // ⚠️ حارسٌ على الحارس: يجب أن يسقطَ على كلِّ خطأٍ معروفٍ وأن يمرَّ على
+            //   مفتاحٍ سليمِ الهيئة. حارسٌ لا يُجرَّب قد يقول «سليم» دائمًا.
+            const P = "attendance-system-f32d6";
+            const good = JSON.stringify({ type: "service_account", project_id: P, private_key: "-----BEGIN PRIVATE KEY-----\nAAA\n-----END PRIVATE KEY-----\n", client_email: "x@" + P + ".iam.gserviceaccount.com" });
+            const bad = [
+              ["", /EMPTY/], ["   ", /EMPTY/],
+              ["<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>", /PICTURE/],
+              ["<!doctype html><html></html>", /WEB PAGE/],
+              ["<?xml version=\"1.0\"?><a/>", /XML/],
+              ["-----BEGIN PRIVATE KEY-----\nAAA\n-----END PRIVATE KEY-----", /ONLY THE PRIVATE-KEY BLOCK/],
+              ["ya29.a0AfB_byC", /ACCESS TOKEN/],
+              ["{ not json", /NOT VALID JSON/],
+              ["[1,2,3]", /NOT AN OBJECT/],
+              [JSON.stringify({ project_info: { project_id: P } }), /WRONG KIND OF JSON/],
+              [JSON.stringify({ type: "service_account", project_id: P, client_email: "a@b.c" }), /"private_key" is missing/],
+              [JSON.stringify({ type: "service_account", project_id: P, private_key: "AAA", client_email: "a@b.c" }), /private_key FIELD IS DAMAGED/],
+              [good.replace(P, "some-other-project"), /WRONG PROJECT/]
+            ];
+            let selfFails = 0;
+            for (const [sample, expect] of bad) {
+              const r = why(sample, P);
+              if (!r) { console.error("GUARD SELF-TEST FAILED: accepted a bad key matching " + expect); selfFails++; }
+              else if (!expect.test(r)) { console.error("GUARD SELF-TEST FAILED: wrong reason for " + expect + " -> " + r); selfFails++; }
+            }
+            if (why(good, P)) { console.error("GUARD SELF-TEST FAILED: rejected a well-formed key -> " + why(good, P)); selfFails++; }
+            if (!bad.length) { console.error("GUARD SELF-TEST SAW ZERO SAMPLES"); process.exit(2); }
+            if (selfFails) process.exit(2);
+            console.log("guard self-test OK (" + (bad.length + 1) + " samples)");
+
+            const reason = why(process.env.SA_KEY, process.env.EXPECTED_PROJECT);
+            if (reason) {
+              console.error("");
+              console.error("================ THE DEPLOY KEY IS NOT USABLE ================");
+              console.error(reason);
+              console.error("");
+              console.error("HOW TO FIX IT (no command line needed):");
+              console.error("  1. Firebase Console -> the gear icon -> Project settings");
+              console.error("  2. Open the \"Service accounts\" tab");
+              console.error("  3. Press \"Generate new private key\" -> a .json file downloads");
+              console.error("  4. Drag that .json file into a new browser tab, then Ctrl+A and Ctrl+C");
+              console.error("  5. GitHub -> Settings -> Secrets and variables -> Actions");
+              console.error("     -> FIREBASE_SERVICE_ACCOUNT -> Update -> paste -> Save");
+              console.error("  6. Back in the Actions tab, press \"Re-run jobs\"");
+              console.error("");
+              console.error("Nothing was published. The live site is untouched and still working.");
+              console.error("=============================================================");
+              process.exit(1);
+            }
+            const k = JSON.parse(process.env.SA_KEY);
+            console.log("deploy key OK — project: " + k.project_id + ", account: " + k.client_email);
+          '
+
       - name: Deploy to Firebase Hosting (live)
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
