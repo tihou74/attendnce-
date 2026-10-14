@@ -1452,6 +1452,7 @@
             <button class="nav-tab-btn" data-tab="tab-fixed" data-biz="rest" data-group="money"><span class="ic-slot" data-icon="inbox"></span><span class="tab-label">Fixed Payments</span></button>
             <button class="nav-tab-btn" data-tab="tab-variable" data-biz="rest" data-group="money"><span class="ic-slot" data-icon="inbox"></span><span class="tab-label">Variable Payments</span></button>
             <button class="nav-tab-btn" data-tab="tab-sales" data-biz="rest" data-group="money"><span class="ic-slot" data-icon="dollar"></span><span class="tab-label">Daily Report</span></button>
+            <button class="nav-tab-btn" data-tab="tab-tips" data-biz="rest" data-group="money"><span class="ic-slot" data-icon="dollar"></span><span class="tab-label">Tips</span></button>
             <button class="nav-tab-btn" data-tab="tab-target" data-biz="rest" data-group="money"><span class="ic-slot" data-icon="check"></span><span class="tab-label">Daily Target</span></button>
 
             <div class="rail-group" data-group="requests">Requests &amp; Discipline</div>
@@ -2718,6 +2719,74 @@
                     <tfoot id="salesReportsTableFoot"></tfoot>
                 </table>
             </div>
+        </div>
+    </div>
+
+    <!-- ==================================================================
+         ⭐⭐⭐⭐⭐ التيبس — ما حصّله المطعم في اليوم (كاش وكارد)
+         ------------------------------------------------------------------
+         يُدخله الكاشير من شاشته وحدها (index.html?tips=1) بمفتاحٍ في ملفّه.
+         ⚠️⚠️⚠️ ومنفصلٌ تمامًا عن الرواتب بنصِّ المالك: مجموعةٌ مستقلّةٌ
+           (tips_reports) لا يقرؤها أيُّ حسابِ راتبٍ بحرف.
+         ⚠️ والتقسيمُ على الموظفين لم يُبنَ بعد — قاعدةُ المالك: **كلُّ
+           الموظفين يستحقّونه بنسبٍ مختلفة**، وهي تأتي منه. والبياناتُ محفوظةٌ
+           بشكلٍ يحتملها: لكلِّ فرعٍ، ولكلِّ يوم، والكاشُ والكاردُ منفصلان.
+         ================================================================== -->
+    <div id="tab-tips" class="tab-content">
+        <div class="filter-section">
+            <h3><span data-icon="dollar"></span> Tips &mdash; what the restaurant took
+                <span dir="rtl" style="font-weight:400; font-size:13px; color:var(--text-dim);">التيبس</span></h3>
+            <p class="card-sub">Typed by the cashier at the end of the day from the cashier screen, cash and card apart. A branch can only send one entry per day &mdash; the server refuses a second one. If a figure is wrong, you correct or delete it here; the cashier cannot.</p>
+            <div class="date-group">
+                <div><label for="tipsFrom">From</label><input type="date" id="tipsFrom" onchange="renderTipsReports()"></div>
+                <div><label for="tipsTo">To</label><input type="date" id="tipsTo" onchange="renderTipsReports()"></div>
+                <div style="flex: 1; min-width: 220px;"><label for="tipsFilterBranch">Branch</label>
+                    <select id="tipsFilterBranch" onchange="renderTipsReports()">
+                        <option value="">All branches</option>
+                        <option value="GAIMER W KAHI WEST WALK">GAIMER W KAHI - WEST WALK</option>
+                        <option value="GAIMER W KAHI OLD MINA PORT">GAIMER W KAHI - OLD MINA PORT</option>
+                        <option value="SHAI BU HAMAD WEST WALK">SHAI BU HAMAD - WEST WALK</option>
+                        <option value="SHAI BU HAMAD GULF MALL">SHAI BU HAMAD - GULF MALL</option>
+                    </select>
+                </div>
+                <button class="btn-ghost" onclick="loadTipsReports(true)"><span data-icon="refresh"></span> Refresh</button>
+                <button class="btn-success" onclick="exportTipsExcel()"><span data-icon="download"></span> Export Excel</button>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box"><div class="stat-icon" data-icon="dollar"></div><div><h3>Total Tips (Filtered)</h3><p id="tipsStatTotal">0 QAR</p></div></div>
+            <div class="stat-box"><div class="stat-icon" data-icon="dollar"></div><div><h3>Cash</h3><p id="tipsStatCash">0 QAR</p></div></div>
+            <div class="stat-box"><div class="stat-icon" data-icon="dollar"></div><div><h3>Card</h3><p id="tipsStatCard">0 QAR</p></div></div>
+            <div class="stat-box"><div class="stat-icon" data-icon="calendar"></div><div><h3>Days Received</h3><p id="tipsStatDays">0</p></div></div>
+        </div>
+
+        <div class="card">
+            <h3><span data-icon="listChecks"></span> Monthly total per branch</h3>
+            <p class="card-sub">The figure each branch collected in the filtered period &mdash; this is the pot that gets shared out.</p>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Branch</th><th class="money-col">Cash</th><th class="money-col">Card</th><th class="money-col">Total</th><th>Days</th></tr></thead>
+                    <tbody id="tipsByBranchBody"><tr><td colspan="5" style="text-align:center;">-</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3><span data-icon="fileText"></span> Every day received</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th><th>Branch</th>
+                            <th class="money-col">Cash</th><th class="money-col">Card</th><th class="money-col">Total</th>
+                            <th>Entered by</th><th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tipsTableBody"><tr><td colspan="7" style="text-align:center;">Loading...</td></tr></tbody>
+                </table>
+            </div>
+            <span id="tipsStatus" style="font-weight: 600; display: block; margin-top: 10px; font-size: 13px;"></span>
         </div>
     </div>
 
@@ -5610,6 +5679,18 @@
                     Can submit the Daily Sales Report
                 </label>
             </div>
+            <!-- ⭐⭐ مفتاحُ الكاشير — يحدّد من يظهر في قائمة «Daily Tips» في صفحة
+                 الموظفين (index.html?tips=1) ومن يُسمح له بإرساله.
+                 ⚠️ مفتاحٌ **مستقلٌّ** عن مفتاح المديرين بقصد: الكاشيرُ يُدخل
+                   التيبسَ وحدَه، ولا يُرسل تقريرَ المبيعات ولا يطلب بيتي كاش ولا
+                   إنذارًا — ومفتاحٌ واحدٌ لقدرتَين يُعطي ما لم يُقصد.
+                 ⚠️ ولا علاقةَ له بالراتب: التيبسُ منفصلٌ تمامًا عن الرواتب. -->
+            <div><label>Daily Tips (cashier)</label>
+                <label style="display: flex; align-items: center; gap: 9px; font-weight: 500; font-size: 13px; cursor: pointer; padding: 12px 0;">
+                    <input type="checkbox" id="editEmpCanSubmitTips" style="width: 18px; height: 18px; flex-shrink: 0; cursor: pointer;">
+                    Can enter the Daily Tips
+                </label>
+            </div>
             <!-- ⚠️ علامةٌ للعرض لا صلاحية: لا تُغيّر شيئًا في عمل الموظف ولا في
                  راتبه ولا في بصمته. أثرها الوحيد أنه يظهر في لوحة الإدارة
                  بنقطة خضراء أو حمراء تُشتقّ من بصمته على الكشك. -->
@@ -6729,7 +6810,7 @@
         // الإدارة. المحاسب يرى ويصحّح تقريرًا، ولا يُضيف بياعة ولا يُعدّل النسب
         // ولا الجرد (canEditAbayaSetup للمالك وحده). والقواعد تُطابق ذلك.
         [ROLE_ACCOUNTANT]: ['tab-home', 'tab-employees', 'tab-payroll', 'tab-attendance', 'tab-shifts',
-                            'tab-leaves', 'tab-sales', 'tab-target', 'tab-finance', 'tab-fixed',
+                            'tab-leaves', 'tab-sales', 'tab-tips', 'tab-target', 'tab-finance', 'tab-fixed',
                             'tab-variable', 'tab-former', 'tab-abaya', 'tab-abaya-month'],
         // السكرتيرة: ملفات الموظفين (رؤية وتعديل وإضافة) + الإنذارات + طلبات
         // التسجيل + الطلبات. **بلا رواتب** بقرار الإدارة — وهذا ما أتاحه فصل
@@ -6780,7 +6861,7 @@
         // ⚠️ وهم أنفسُهم من يُرسلها من شاشة المدراء، لكنّ تلك الشاشةَ لا تقرأ
         //   شيئًا بعد الإرسال (القاعدةُ تمنعها عن قصد)، فهنا يرون ما أرسلوه.
         [ROLE_SUPERVISOR]: ['tab-home', 'tab-employees', 'tab-payroll', 'tab-attendance', 'tab-shifts',
-                            'tab-requests', 'tab-applications', 'tab-sales', 'tab-hygiene', 'tab-former'],
+                            'tab-requests', 'tab-applications', 'tab-sales', 'tab-tips', 'tab-hygiene', 'tab-former'],
         /**
          * ⭐⭐⭐⭐⭐ بياعةُ البضاعة: ثلاثُ نوافذَ فقط.
          *
@@ -7709,6 +7790,7 @@
         if (tabId === 'tab-training') { loadTrainingContentForAdmin(); loadTrainingRecords(); }
         if (tabId === 'tab-audit') loadAuditLog();
         if (tabId === 'tab-sales') loadSalesReports();
+        if (tabId === 'tab-tips') loadTipsReports();
         if (tabId === 'tab-target') loadDailyTargetData();
         // العبايات: التبويبان يتغذّيان من نفس البيانات، فتحميلها واحد.
         // ⚠️⚠️⚠️ ويُعاد التحميل في **كل** فتحة، لا يُكتفى بالمحفوظ في الذاكرة.
@@ -14065,6 +14147,197 @@
         } catch (error) {
             alert("Error deleting report: " + error.message);
         }
+    };
+
+    // =====================================================================
+    // ⭐⭐⭐⭐⭐ التيبس — القراءةُ والعرضُ والتصحيح
+    // ---------------------------------------------------------------------
+    // ⚠️⚠️⚠️ منفصلٌ تمامًا عن الرواتب بنصِّ المالك: لا `computePayroll` ولا أيُّ
+    //   دالّةِ راتبٍ تقرأ هذه المجموعةَ ولا هذه المصفوفة. وفحصٌ يحرس ذلك.
+    // ⚠️ والتقسيمُ على الموظفين لم يُبنَ: قاعدةُ المالك «كلُّ الموظفين يستحقّونه
+    //   بنسبٍ مختلفة» تأتي منه. والبياناتُ محفوظةٌ بما يحتملها (فرعٌ · يومٌ ·
+    //   كاشٌ وكاردٌ منفصلان) فلا تُعاد كتابةُ شيء.
+    // =====================================================================
+    let allTipsReports = [];
+    let tipsLoaded = false;
+
+    window.loadTipsReports = async function(force) {
+        const body = document.getElementById('tipsTableBody');
+        if (!canSeeMoney()) return;
+        if (tipsLoaded && !force) { renderTipsReports(); return; }
+        if (body) body.innerHTML = `<tr><td colspan="7" style="text-align:center;">Loading...</td></tr>`;
+        try {
+            // ⚠️ بلا orderBy على الحقل: فايرستور يُسقط بصمتٍ كلَّ مستندٍ لا يحمل
+            //   الحقلَ المرتَّبَ به — وهو العطلُ نفسُه الذي أخفى تقاريرَ البياعات.
+            //   الترتيبُ محليٌّ.
+            const snap = await getDocs(collection(db, "tips_reports"));
+            allTipsReports = [];
+            snap.forEach(d => allTipsReports.push({ id: d.id, ...(d.data() || {}) }));
+            allTipsReports.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+            tipsLoaded = true;
+            // ⚠️ المدى الافتراضيُّ هو الشهرُ الجاري، ويُضبط مرّةً فقط: ضبطُه في كلِّ
+            //   قراءةٍ كان سيمحو المدى الذي اختاره المالكُ بيده عند كلِّ تحديث.
+            const f = document.getElementById('tipsFrom'), t = document.getElementById('tipsTo');
+            if (f && !f.value) f.value = firstDayOfCurrentMonthISO();
+            if (t && !t.value) t.value = lastDayOfCurrentMonthISO();
+            renderTipsReports();
+        } catch (e) {
+            console.error('Error loading the tips:', e);
+            if (body) {
+                body.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--danger);">`
+                    + `Error loading: ${escapeHtml(e.message)}`
+                    + `<br><span style="font-weight:400; font-size:12px;">If it says "permission", the new rules (v33) have not been published yet.</span>`
+                    + `</td></tr>`;
+            }
+        }
+    };
+
+    function tipsRows() {
+        const from = String((document.getElementById('tipsFrom') || {}).value || '');
+        const to = String((document.getElementById('tipsTo') || {}).value || '');
+        const br = String((document.getElementById('tipsFilterBranch') || {}).value || '');
+        return allTipsReports.filter(r => {
+            const d = String(r.date || '');
+            if (from && d < from) return false;
+            if (to && d > to) return false;
+            if (br && String(r.branch || '') !== br) return false;
+            return true;
+        });
+    }
+
+    window.renderTipsReports = function() {
+        const rows = tipsRows();
+        const num = v => Number(v || 0) || 0;
+        const cash = rows.reduce((s, r) => s + num(r.cash), 0);
+        const card = rows.reduce((s, r) => s + num(r.card), 0);
+        // ⚠️ المجموعُ يُحسب من الكاشِ والكاردِ لا من الحقلِ المحفوظ: لو حُرِّر أحدُ
+        //   الرقمَين بيدٍ ولم يُحدَّث المجموعُ لاختلف الرقمان، والمعروضُ يجب أن
+        //   يكون ما يُجمع فعلًا.
+        const total = cash + card;
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        set('tipsStatTotal', money(total) + ' QAR');
+        set('tipsStatCash', money(cash) + ' QAR');
+        set('tipsStatCard', money(card) + ' QAR');
+        set('tipsStatDays', String(rows.length));
+
+        // ---- المجموع لكل فرع
+        const byBranch = new Map();
+        rows.forEach(r => {
+            const k = String(r.branch || '—');
+            if (!byBranch.has(k)) byBranch.set(k, { cash: 0, card: 0, days: 0 });
+            const b = byBranch.get(k);
+            b.cash += num(r.cash); b.card += num(r.card); b.days++;
+        });
+        const bb = document.getElementById('tipsByBranchBody');
+        if (bb) {
+            const list = Array.from(byBranch.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+            bb.innerHTML = list.length
+                ? list.map(([k, v]) => `<tr><td><b>${escapeHtml(k)}</b></td>`
+                    + `<td class="money-col">${money(v.cash)}</td>`
+                    + `<td class="money-col">${money(v.card)}</td>`
+                    + `<td class="money-col"><b>${money(v.cash + v.card)}</b></td>`
+                    + `<td>${v.days}</td></tr>`).join('')
+                : `<tr><td colspan="5" style="text-align:center;">Nothing in this period.</td></tr>`;
+        }
+
+        // ---- كل يوم
+        const body = document.getElementById('tipsTableBody');
+        if (!body) return;
+        body.innerHTML = rows.length
+            ? rows.map(r => {
+                const sid = escapeJsAttr(r.id);
+                return `<tr><td><b>${escapeHtml(r.date || '-')}</b></td>`
+                    + `<td>${escapeHtml(r.branch || '-')}</td>`
+                    + `<td class="money-col">${money(num(r.cash))}</td>`
+                    + `<td class="money-col">${money(num(r.card))}</td>`
+                    + `<td class="money-col"><b>${money(num(r.cash) + num(r.card))}</b></td>`
+                    + `<td>${escapeHtml(r.cashierName || r.cashierId || '-')}</td>`
+                    + `<td style="white-space:nowrap;">`
+                    + `<button class="btn-ghost btn-sm" onclick="editTipsEntry('${sid}')">Correct</button> `
+                    + `<button class="btn-danger btn-sm" onclick="deleteTipsEntry('${sid}')">Delete</button>`
+                    + `</td></tr>`;
+            }).join('')
+            : `<tr><td colspan="7" style="text-align:center;">No tips received in this period.</td></tr>`;
+    };
+
+    /**
+     * تصحيحُ رقمٍ غلط. ⚠️ الكاشيرُ لا يستطيعه بقاعدةِ الخادم، فهو هنا وحدَه.
+     * ⚠️ ويُسأل عن الرقمَين معًا ويُعرض المحفوظُ افتراضًا: تغييرُ أحدِهما بلا رؤيةِ
+     *   الآخرِ كان سيُنتج مجموعًا لا يقصده.
+     */
+    window.editTipsEntry = async function(id) {
+        const r = allTipsReports.find(x => x.id === id);
+        if (!r) return;
+        if (!hasFinanceAccess()) { alert('Only the owner or the accountant can correct the tips.'); return; }
+        const curCash = Number(r.cash || 0) || 0, curCard = Number(r.card || 0) || 0;
+        const c1 = prompt(`${r.branch} — ${r.date}\n\nTips in CASH (QAR):`, String(curCash));
+        if (c1 === null) return;
+        const c2 = prompt(`${r.branch} — ${r.date}\n\nTips on CARD (QAR):`, String(curCard));
+        if (c2 === null) return;
+        const cash = Number(c1), card = Number(c2);
+        if (!isFinite(cash) || !isFinite(card) || cash < 0 || card < 0) {
+            alert('Please type plain numbers, zero or more.'); return;
+        }
+        const statusEl = document.getElementById('tipsStatus');
+        try {
+            await updateDoc(doc(db, "tips_reports", id), {
+                cash, card, totalTips: cash + card,
+                correctedBy: (currentUser && currentUser.email) || 'admin',
+                correctedAt: serverTimestamp()
+            });
+            logAudit('Tips Corrected',
+                `${r.branch} ${r.date}: cash ${curCash}→${cash}, card ${curCard}→${card}`);
+            await loadTipsReports(true);
+            if (statusEl) { statusEl.textContent = 'Corrected.'; statusEl.style.color = 'var(--success)'; }
+        } catch (e) {
+            if (statusEl) { statusEl.textContent = 'Error: ' + e.message; statusEl.style.color = 'var(--danger)'; }
+        }
+    };
+
+    window.deleteTipsEntry = async function(id) {
+        const r = allTipsReports.find(x => x.id === id);
+        if (!r) return;
+        if (!hasFinanceAccess()) { alert('Only the owner or the accountant can delete a tips entry.'); return; }
+        // ⚠️ يُسمّى الفرعُ واليومُ والمبلغُ في السؤال: «هل تحذف هذا؟» لا يكفي على
+        //   مالٍ يُقسَّم على الناس.
+        if (!confirm(`Delete the tips of ${r.branch} on ${r.date}`
+            + ` (${money(Number(r.cash || 0) + Number(r.card || 0))} QAR)?\n\n`
+            + `The cashier will then be able to send that day again.`)) return;
+        try {
+            await deleteDoc(doc(db, "tips_reports", id));
+            logAudit('Tips Deleted', `${r.branch} ${r.date}, ${money(Number(r.cash || 0) + Number(r.card || 0))} QAR`);
+            await loadTipsReports(true);
+        } catch (e) {
+            alert('Error deleting: ' + e.message);
+        }
+    };
+
+    window.exportTipsExcel = function() {
+        const rows = tipsRows();
+        if (!rows.length) { alert('Nothing to export in this period.'); return; }
+        const num = v => Number(v || 0) || 0;
+        const sheet = rows.map(r => ({
+            'Date': r.date || '',
+            'Branch': r.branch || '',
+            'Tips Cash (QAR)': num(r.cash),
+            'Tips Card (QAR)': num(r.card),
+            'Total Tips (QAR)': num(r.cash) + num(r.card),
+            'Entered by': r.cashierName || r.cashierId || '',
+            'Sent at': r.submittedAt || ''
+        }));
+        sheet.push({
+            'Date': 'TOTAL', 'Branch': '',
+            'Tips Cash (QAR)': rows.reduce((s, r) => s + num(r.cash), 0),
+            'Tips Card (QAR)': rows.reduce((s, r) => s + num(r.card), 0),
+            'Total Tips (QAR)': rows.reduce((s, r) => s + num(r.cash) + num(r.card), 0),
+            'Entered by': '', 'Sent at': ''
+        });
+        const ws = XLSX.utils.json_to_sheet(sheet);
+        ws['!cols'] = [{ wch: 12 }, { wch: 28 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 22 }];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Tips');
+        xlsxDeliver(wb, `Tips_${todayISO()}.xlsx`);
+        logAudit('Tips Exported', `${rows.length} day(s)`);
     };
 
     window.exportSalesReportsExcel = function() {
@@ -24799,7 +25072,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v255';
+        const APP_BUILD = 'v256';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
@@ -29579,6 +29852,7 @@
             renderQidInfo(emp);
             // الحقل غائب عن الموظفين المنشَئين قبل هذه الميزة، فالغياب = غير مفعّل.
             document.getElementById("editEmpCanSubmitSalesReport").checked = emp.canSubmitSalesReport === true;
+            document.getElementById("editEmpCanSubmitTips").checked = emp.canSubmitTips === true;
             document.getElementById("editEmpIsSupervisor").checked = emp.isSupervisor === true;
             document.getElementById("editEmpEndType").value = emp.endType === 'termination' ? 'termination' : 'resignation';
             renderEndServicePanel(empId);
@@ -29830,6 +30104,7 @@
         // ⭐ رقمُ الجواز — تطلبه اتفاقيةُ السرّية بنصّ المالك
         const passportNumber = document.getElementById("editEmpPassport").value.trim();
         const canSubmitSalesReport = document.getElementById("editEmpCanSubmitSalesReport").checked;
+        const canSubmitTips = document.getElementById("editEmpCanSubmitTips").checked;
         const isSupervisor = document.getElementById("editEmpIsSupervisor").checked;
         const business = document.getElementById("editEmpBusiness").value === BIZ_ABAYA
             ? BIZ_ABAYA : BIZ_RESTAURANTS;
@@ -29995,7 +30270,7 @@
              *   `allow update: isAdmin() || isAccountant() || (isProfileEditor() && salaryUnchanged())`
              *   — لا شرطَ فيها على وجود حقلٍ بعينه.
              */
-            const payload = { name, nameAr, nationality, role, branch, phone, shift, housingType, joinDate, qidNumber, qidExpiry, passportNumber, canSubmitSalesReport, isSupervisor, business };
+            const payload = { name, nameAr, nationality, role, branch, phone, shift, housingType, joinDate, qidNumber, qidExpiry, passportNumber, canSubmitSalesReport, canSubmitTips, isSupervisor, business };
             const uploadedLabels = [];
             for (const f of PROFILE_FILE_FIELDS) {
                 const el = document.getElementById(f.input);
