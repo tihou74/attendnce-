@@ -2814,10 +2814,10 @@
                         <tr>
                             <th>Date</th><th>Branch</th>
                             <th class="money-col">Cash</th><th class="money-col">Card</th><th class="money-col">Total</th>
-                            <th>Entered by</th><th>Actions</th>
+                            <th>Entered by</th><th>Supervisor</th><th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody id="tipsTableBody"><tr><td colspan="7" style="text-align:center;">Loading...</td></tr></tbody>
+                    <tbody id="tipsTableBody"><tr><td colspan="8" style="text-align:center;">Loading...</td></tr></tbody>
                 </table>
             </div>
             <span id="tipsStatus" style="font-weight: 600; display: block; margin-top: 10px; font-size: 13px;"></span>
@@ -5735,6 +5735,16 @@
                 <label style="display: flex; align-items: center; gap: 9px; font-weight: 500; font-size: 13px; cursor: pointer; padding: 12px 0;">
                     <input type="checkbox" id="editEmpCanSubmitTips" style="width: 18px; height: 18px; flex-shrink: 0; cursor: pointer;">
                     Can enter the Daily Tips
+                </label>
+            </div>
+            <!-- ⭐⭐ مفتاحُ السوبرفايزر: يؤكّد أو يرفض، **ولا يُدخل**.
+                 ⚠️ مفتاحٌ ثانٍ لا نفسُ الأوّل: لو كان واحدًا لصار من يُدخل هو من
+                   يؤكّد نفسَه، وسقطت البوّابةُ كلُّها. ومن يملك الاثنين تُفتح له
+                   المراجعةُ لا الإدخال. -->
+            <div><label>Daily Tips (supervisor)</label>
+                <label style="display: flex; align-items: center; gap: 9px; font-weight: 500; font-size: 13px; cursor: pointer; padding: 12px 0;">
+                    <input type="checkbox" id="editEmpCanApproveTips" style="width: 18px; height: 18px; flex-shrink: 0; cursor: pointer;">
+                    Can CONFIRM or REJECT the Daily Tips
                 </label>
             </div>
             <!-- ⚠️ علامةٌ للعرض لا صلاحية: لا تُغيّر شيئًا في عمل الموظف ولا في
@@ -14223,7 +14233,7 @@
         const body = document.getElementById('tipsTableBody');
         if (!canSeeMoney()) return;
         if (tipsLoaded && !force) { renderTipsReports(); return; }
-        if (body) body.innerHTML = `<tr><td colspan="7" style="text-align:center;">Loading...</td></tr>`;
+        if (body) body.innerHTML = `<tr><td colspan="8" style="text-align:center;">Loading...</td></tr>`;
         try {
             // ⚠️ بلا orderBy على الحقل: فايرستور يُسقط بصمتٍ كلَّ مستندٍ لا يحمل
             //   الحقلَ المرتَّبَ به — وهو العطلُ نفسُه الذي أخفى تقاريرَ البياعات.
@@ -14231,9 +14241,32 @@
             // ⚠️ الأوبنينق يُقرأ **مع** التيبس لا بعده: الجدولُ يُرسم مرّةً، فقراءةٌ
             //   متأخّرةٌ كانت تُظهر مبلغًا ناقصًا ثمّ يتغيّر أمام عينِ المالك.
             await loadTipsOpening();
-            const snap = await getDocs(collection(db, "tips_reports"));
+            // ⚠ القرارات تُقرأ **مع** التيبس في نفس اللحظة: قراءةٌ متأخّرةٌ كانت
+            //   تُظهر كلَّ يومٍ «في الانتظار» ثمّ يتغيّر أمام عينِ المالك.
+            const [snap, decSnap] = await Promise.all([
+                getDocs(collection(db, "tips_reports")),
+                getDocs(collection(db, "tips_decisions"))
+            ]);
+            const decById = {};
+            decSnap.forEach(d => { decById[d.id] = d.data() || {}; });
             allTipsReports = [];
-            snap.forEach(d => allTipsReports.push({ id: d.id, ...(d.data() || {}) }));
+            snap.forEach(d => {
+                const v = d.data() || {};
+                const dec = decById[d.id] || null;
+                /**
+                 * ⭐⭐⭐⭐⭐ حالةُ اليوم. والمالُ لا يُحتسب إلّا إذا أكّده السوبرفايزر.
+                 * ⚠️⚠️ وغيابُ القرار على يومٍ أُرسل **قبل** هذه الميزة يُقرأ
+                 *   «مؤكَّدًا» لا «في الانتظار»: لو قُرئ انتظارًا لاختفى كلُّ ما
+                 *   سُجّل قبل اليوم من الحسابِ والتقسيمِ فجأةً، وظنّ المالكُ أنّ
+                 *   مالَه ضاع. والعلامةُ `needsApproval` تُكتب من شاشة الكاشير
+                 *   منذ الآن، فما حمَلها يُنتظر، وما لم يحملها قديمٌ ويُحتسب.
+                 */
+                let status = 'Confirmed';
+                if (dec && dec.decision === 'rejected') status = 'Rejected';
+                else if (dec && dec.decision === 'confirmed') status = 'Confirmed';
+                else if (v.needsApproval === true) status = 'Pending';
+                allTipsReports.push({ id: d.id, ...v, status, decision: dec });
+            });
             allTipsReports.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
             tipsLoaded = true;
             // ⚠️ المدى الافتراضيُّ هو الشهرُ الجاري، ويُضبط مرّةً فقط: ضبطُه في كلِّ
@@ -14245,7 +14278,7 @@
         } catch (e) {
             console.error('Error loading the tips:', e);
             if (body) {
-                body.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--danger);">`
+                body.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--danger);">`
                     + `Error loading: ${escapeHtml(e.message)}`
                     + `<br><span style="font-weight:400; font-size:12px;">If it says "permission", the new rules (v33) have not been published yet.</span>`
                     + `</td></tr>`;
@@ -14266,11 +14299,24 @@
         });
     }
 
+    /**
+     * الأيامُ التي تُحتسب في المالِ والتقسيم — **المؤكَّدةُ وحدَها**.
+     * ⚠️⚠️ بأمرِ المالك: «إذا رفض لا يمرّ، وإذا أكّد يمرّ». فالمرفوضُ والمنتظِرُ
+     *   لا يدخلان قرشًا في نصيبِ أحد.
+     * ⚠️ وموضعٌ واحدٌ يُقرّر ذلك، تقرؤه البطاقاتُ والتقسيمُ والتصديرُ معًا: لو
+     *   قرّر كلٌّ منها بنفسه لاختلف موضعٌ يومًا فدُفع مالٌ لم يُؤكَّد.
+     */
+    function tipsCountedRows() {
+        return tipsRows().filter(r => r.status === 'Confirmed');
+    }
+
     window.renderTipsReports = function() {
         const rows = tipsRows();
+        // ⚠️ الأرقامُ من المؤكَّدِ وحدَه، والجدولُ يُظهر الكلَّ بحالتِه.
+        const counted = tipsCountedRows();
         const num = v => Number(v || 0) || 0;
-        const cash = rows.reduce((s, r) => s + num(r.cash), 0);
-        const card = rows.reduce((s, r) => s + num(r.card), 0);
+        const cash = counted.reduce((s, r) => s + num(r.cash), 0);
+        const card = counted.reduce((s, r) => s + num(r.card), 0);
         // ⚠️ المجموعُ يُحسب من الكاشِ والكاردِ لا من الحقلِ المحفوظ: لو حُرِّر أحدُ
         //   الرقمَين بيدٍ ولم يُحدَّث المجموعُ لاختلف الرقمان، والمعروضُ يجب أن
         //   يكون ما يُجمع فعلًا.
@@ -14279,11 +14325,11 @@
         set('tipsStatTotal', money(total) + ' QAR');
         set('tipsStatCash', money(cash) + ' QAR');
         set('tipsStatCard', money(card) + ' QAR');
-        set('tipsStatDays', String(rows.length));
+        set('tipsStatDays', String(counted.length));
 
         // ---- المجموع لكل فرع
         const byBranch = new Map();
-        rows.forEach(r => {
+        counted.forEach(r => {
             const k = String(r.branch || '—');
             if (!byBranch.has(k)) byBranch.set(k, { cash: 0, card: 0, days: 0 });
             const b = byBranch.get(k);
@@ -14307,18 +14353,55 @@
         body.innerHTML = rows.length
             ? rows.map(r => {
                 const sid = escapeJsAttr(r.id);
-                return `<tr><td><b>${escapeHtml(r.date || '-')}</b></td>`
+                // ⚠️ صفٌّ لا يُحتسب يُلوَّن: رقمٌ يظهر في الجدولِ ولا يظهر في
+                //   المجموعِ كان سيُقرأ عطلًا في الحساب لا انتظارًا لقرار.
+                const tint = r.status === 'Rejected' ? ' style="background: rgba(220,38,38,0.07);"'
+                           : (r.status === 'Pending' ? ' style="background: rgba(234,179,8,0.08);"' : '');
+                return `<tr${tint}><td><b>${escapeHtml(r.date || '-')}</b></td>`
                     + `<td>${escapeHtml(r.branch || '-')}</td>`
                     + `<td class="money-col">${money(num(r.cash))}</td>`
                     + `<td class="money-col">${money(num(r.card))}</td>`
                     + `<td class="money-col"><b>${money(num(r.cash) + num(r.card))}</b></td>`
                     + `<td>${escapeHtml(r.cashierName || r.cashierId || '-')}</td>`
+                    /**
+                     * ⚠️ الحالةُ تُقال بالاسمِ ومعها **من** قرّر: «مؤكَّدة» وحدَها
+                     *   لا تكفي على مالٍ يُقسَّم، والمالكُ يريد أن يعرف بمن يسأل.
+                     * ⚠️ والمرفوضُ يُقال سببُه إن كُتب: الكاشيرُ يقرؤه على شاشته
+                     *   ليُصحّح، والمالكُ يقرؤه هنا ليعرف لماذا لم يمرّ.
+                     */
+                    + `<td>${(() => {
+                            const d = r.decision || null;
+                            const who = d && (d.byName || d.byId) ? `<br><span style="font-size:11px; color:var(--text-dim);">${escapeHtml(d.byName || d.byId)}</span>` : '';
+                            const note = d && d.note ? `<br><span style="font-size:11px; color:var(--text-dim);">${escapeHtml(d.note)}</span>` : '';
+                            if (r.status === 'Confirmed') {
+                                return `<span class="badge-status badge-done">confirmed</span>${who}`;
+                            }
+                            if (r.status === 'Rejected') {
+                                return `<span class="badge-status" style="background: var(--danger-soft); color: var(--danger);">rejected</span>${who}${note}`
+                                    + `<br><span style="font-size:11px; color: var(--danger); font-weight:700;">not counted &mdash; the cashier must correct it</span>`;
+                            }
+                            return `<span class="badge-status badge-pending">waiting</span>`
+                                + `<br><span style="font-size:11px; color: var(--warning); font-weight:700;">not counted yet</span>`;
+                        })()}</td>`
                     + `<td style="white-space:nowrap;">`
                     + `<button class="btn-ghost btn-sm" onclick="editTipsEntry('${sid}')">Correct</button> `
                     + `<button class="btn-danger btn-sm" onclick="deleteTipsEntry('${sid}')">Delete</button>`
                     + `</td></tr>`;
             }).join('')
-            : `<tr><td colspan="7" style="text-align:center;">No tips received in this period.</td></tr>`;
+            : `<tr><td colspan="8" style="text-align:center;">No tips received in this period.</td></tr>`;
+
+        const st = document.getElementById('tipsStatus');
+        if (st) {
+            const waiting = rows.filter(r => r.status === 'Pending').length;
+            const rejected = rows.filter(r => r.status === 'Rejected').length;
+            // ⚠️⚠️ يُقال بالأرقام فوق الجدول: مالٌ موجودٌ ولا يُقسَّم يجب أن
+            //   يُرى، وإلّا سأل الموظفُ عن نصيبِه ولا أحدَ يعرف أنّ يومًا معلَّق.
+            st.innerHTML = (waiting || rejected)
+                ? `<span style="color: var(--warning);">&#9888; ${waiting} day(s) still waiting for a supervisor`
+                  + (rejected ? `, and ${rejected} rejected` : '')
+                  + ` &mdash; they are NOT in the totals above and NOT in the split.</span>`
+                : '';
+        }
 
         // ⚠️ التقسيمُ يُعاد رسمُه من هنا لا من مُنادٍ خارجيّ: كلُّ تغييرٍ في
         //   المرشِّحات يمرُّ بهذه الدالّة، فمن نسيَ نداءَه نسيَه في موضعٍ واحد.
@@ -14472,7 +14555,7 @@
      *   يزيد المقامَ فينقص نصيبُ كلِّ أحدٍ بصمت.
      */
     function tipsSplit() {
-        const rows = tipsRows();
+        const rows = tipsCountedRows();
         const to = String((document.getElementById('tipsTo') || {}).value || '') || todayISO();
         const byBranch = new Map();
         rows.forEach(r => {
@@ -25384,7 +25467,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v258';
+        const APP_BUILD = 'v259';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
@@ -30165,6 +30248,7 @@
             // الحقل غائب عن الموظفين المنشَئين قبل هذه الميزة، فالغياب = غير مفعّل.
             document.getElementById("editEmpCanSubmitSalesReport").checked = emp.canSubmitSalesReport === true;
             document.getElementById("editEmpCanSubmitTips").checked = emp.canSubmitTips === true;
+            document.getElementById("editEmpCanApproveTips").checked = emp.canApproveTips === true;
             // ⚠️ الفراغُ يبقى فراغًا لا صفرًا: «لم تُحدَّد نقاطُه» حالةٌ تُرى
             //   وتُوسَم، و0 رقمٌ قصده المالكُ فعلًا. وخلطُهما يُخفي من نُسي.
             document.getElementById("editEmpTipPoints").value =
@@ -30421,6 +30505,7 @@
         const passportNumber = document.getElementById("editEmpPassport").value.trim();
         const canSubmitSalesReport = document.getElementById("editEmpCanSubmitSalesReport").checked;
         const canSubmitTips = document.getElementById("editEmpCanSubmitTips").checked;
+        const canApproveTips = document.getElementById("editEmpCanApproveTips").checked;
         // ⚠️ الخانةُ الفارغةُ تُحفظ null لا 0: الفرقُ بين «لم تُحدَّد» و«صفر» يجب
         //   أن يبقى محفوظًا، فالجدولُ يُوسم الأولى بالأحمر ويقبل الثانيةَ كقصد.
         const tipPointsRaw = document.getElementById("editEmpTipPoints").value;
@@ -30590,7 +30675,7 @@
              *   `allow update: isAdmin() || isAccountant() || (isProfileEditor() && salaryUnchanged())`
              *   — لا شرطَ فيها على وجود حقلٍ بعينه.
              */
-            const payload = { name, nameAr, nationality, role, branch, phone, shift, housingType, joinDate, qidNumber, qidExpiry, passportNumber, canSubmitSalesReport, canSubmitTips, tipPoints, isSupervisor, business };
+            const payload = { name, nameAr, nationality, role, branch, phone, shift, housingType, joinDate, qidNumber, qidExpiry, passportNumber, canSubmitSalesReport, canSubmitTips, canApproveTips, tipPoints, isSupervisor, business };
             const uploadedLabels = [];
             for (const f of PROFILE_FILE_FIELDS) {
                 const el = document.getElementById(f.input);

@@ -903,7 +903,11 @@
 
             <div class="form-group">
                 <label for="tipsDate">Date:</label>
-                <input type="date" id="tipsDate" onchange="onTipsDateChange()">
+                <input type="date" id="tipsDate" onchange="onTipsDateChangeChecked()">
+            </div>
+            <!-- ⚠️⚠️ سببُ الرفضِ يُقرأ في الشاشةِ التي يُصحّح فيها لا في غيرِها. -->
+            <div id="tipsRejectedNotice" style="display:none; background:#f8d7da; border:1px solid #f5c2c7; border-radius:10px; padding:12px 14px; margin-bottom:14px; text-align:left;">
+                <p style="margin:0; font-size:12.5px; color:#842029; font-weight:700; line-height:1.7;" id="tipsRejectedText"></p>
             </div>
             <div class="form-group">
                 <label for="tipsCash">Tips &mdash; CASH (QAR):</label>
@@ -924,6 +928,16 @@
             <p class="report-currency-note">Send it once. It cannot be sent twice for the same branch and the same day. If a figure is wrong, tell the office &mdash; only they can correct it.</p>
             <button class="action-btn btn-in" id="btnSubmitTips" style="margin-top: 6px;" onclick="submitTipsReport()">Send Tips &#128228;</button>
             <button class="action-btn" style="background-color: #6c757d; margin-top: 10px;" onclick="showTipsStep('tipsBranchStep')">&#11013; Back</button>
+        </div>
+
+        <!-- ⭐⭐⭐ خطوةُ السوبرفايزر — في نفس بانل الكاشير بطلب المالك:
+             «لا يرسل، بس يؤكّد أو يرفض. إذا رفض لا يمرّ ويجب تعديله، وإذا أكّد يمرّ».
+             ⚠️ ولا خانةَ مبلغٍ في شاشته إطلاقًا. -->
+        <div id="tipsReviewStep" style="display: none;">
+            <h2 style="font-size: 17px; margin-bottom: 2px;">Confirm the tips</h2>
+            <p style="text-align:left; color:#6c757d; font-size:12.5px; margin:0 0 14px; font-weight:700;" id="tipsReviewWho"></p>
+            <div id="tipsReviewList"></div>
+            <button class="action-btn" style="background-color:#6c757d; margin-top:12px;" onclick="tipsBackToLogin()">&#11013; Sign out</button>
         </div>
 
         <div id="tipsSummaryStep" style="display: none;">
@@ -1684,7 +1698,9 @@
         //   بعينه ما ظنّه المالكُ عطلًا في قائمة المديرين.
         const tipsSelect = document.getElementById('tipsCashierSelect');
         if (tipsSelect) {
-            const cashiers = employees.filter(e => e.canSubmitTips);
+            // ⚠️ تجمع من يُدخل ومن يؤكّد: الشاشةُ واحدةٌ بطلب المالك، والدورُ
+            //   يُحدَّد بعد الدخولِ من مفتاحِ ملفِّه.
+            const cashiers = employees.filter(e => e.canSubmitTips || e.canApproveTips);
             tipsSelect.innerHTML = cashiers.length
                 ? '<option value="">-- Choose Name --</option>' +
                   cashiers.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.name)}</option>`).join('')
@@ -2953,7 +2969,7 @@
     //   وطريقٌ ثانٍ لنفسِ الغرضِ يتباعد عن الأوّلِ أوّلَ تعديل.
     // ⚠️⚠️⚠️ ولا علاقةَ له بالرواتب: مجموعةٌ مستقلّةٌ لا يقرؤها أيُّ حسابِ راتب.
     // =====================================================================
-    let tipsState = { cashierId: null, cashierName: null, branch: null };
+    let tipsState = { cashierId: null, cashierName: null, branch: null, isReviewer: false };
     let isSubmittingTips = false;
     let lastSubmittedTips = null;
 
@@ -2990,7 +3006,7 @@
     }
 
     function resetTipsFlow() {
-        tipsState = { cashierId: null, cashierName: null, branch: null };
+        tipsState = { cashierId: null, cashierName: null, branch: null, isReviewer: false };
         lastSubmittedTips = null;
         showTipsStep('tipsLoginStep');
         const pinEl = document.getElementById('tipsPinInput');
@@ -2998,7 +3014,7 @@
     }
 
     window.showTipsStep = function(stepId) {
-        ['tipsLoginStep', 'tipsBranchStep', 'tipsFormStep', 'tipsSummaryStep'].forEach(id => {
+        ['tipsLoginStep', 'tipsBranchStep', 'tipsFormStep', 'tipsReviewStep', 'tipsSummaryStep'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = (id === stepId) ? 'block' : 'none';
         });
@@ -3037,10 +3053,111 @@
         tipsState.cashierId = empId;
         tipsState.cashierName = emp.name;
         document.getElementById('tipsPinInput').value = '';
+        // ⭐ دوران في شاشةٍ واحدة. ⚠️ والمراجعةُ تسبق الإدخالَ لمن يملك المفتاحَين:
+        //   السوبرفايزرُ يؤكّد ولا يُدخل بأمر المالك.
+        tipsState.isReviewer = emp.canApproveTips === true;
         const nameEl = document.getElementById('tipsWelcomeName');
         if (nameEl) nameEl.innerText = `Welcome, ${emp.name}`;
         showTipsStep('tipsBranchStep');
     };
+
+    /** معرّفُ مستندِ يومٍ لفرع — نفسُ المعادلةِ في الإرسالِ والمراجعة. */
+    function tipsDocId(branch, dateISO) {
+        const slug = String(branch || '').toUpperCase().replace(/[^A-Z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+        return slug ? `${slug}_${dateISO}` : '';
+    }
+
+    /**
+     * ⭐⭐⭐⭐⭐ شاشةُ السوبرفايزر: أيّامُ فرعِه المنتظِرةُ، يؤكّد أو يرفض.
+     * ⚠️⚠️ ولا يُمسُّ مستندُ الكاشير: القرارُ مستندٌ **جديدٌ** بمعرّفٍ مشتقٍّ في
+     *   `tips_decisions`، فرقمُ الكاشيرِ يبقى كما أرسله والقرارُ بجانبه — وهي
+     *   القاعدةُ نفسُها التي أنقذت إلغاءَ الورديات.
+     */
+    async function loadTipsForReview() {
+        const host = document.getElementById('tipsReviewList');
+        if (!host) return;
+        host.innerHTML = `<p style="color:#6c757d; font-size:13px;">Reading the entries...</p>`;
+        try {
+            const [snap, decSnap] = await Promise.all([
+                getDocs(query(collection(db,"tips_reports"), where("branch","==",tipsState.branch))),
+                getDocs(collection(db,"tips_decisions"))
+            ]);
+            const items=[]; snap.forEach(d=>items.push({id:d.id, ...(d.data()||{})}));
+            const dec={}; decSnap.forEach(d=>{dec[d.id]=d.data()||{};});
+            // المنتظِرُ وحدَه: المؤكَّدُ انتهى، والمرفوضُ ينتظر تصحيحَ الكاشير.
+            const waiting = items.filter(it=>!dec[it.id])
+                .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+            if (!waiting.length) {
+                host.innerHTML = `<p style="color:#198754; font-size:13.5px; font-weight:700;">&#9989; Nothing is waiting for you in ${escapeHtml(tipsState.branch)}.</p>`;
+                return;
+            }
+            host.innerHTML = waiting.map(it=>{
+                const total=(Number(it.cash||0)||0)+(Number(it.card||0)||0);
+                const sid=escapeHtml(it.id);
+                return `<div style="border:1px solid #dee2e6; border-radius:10px; padding:12px 14px; margin-bottom:12px; background:#f8f9fa; text-align:left;">`
+                 + `<div style="font-size:14px; font-weight:700; color:#1a252f;">${escapeHtml(formatReportDateLabel(it.date))}</div>`
+                 + `<div style="font-size:13px; line-height:1.9; margin-top:4px;">Cash: <b>${formatReportMoney(it.cash)}</b> QAR<br>`
+                 + `Card: <b>${formatReportMoney(it.card)}</b> QAR<br>`
+                 + `<span style="color:#1864ab;">Total: <b>${formatReportMoney(total)}</b> QAR</span><br>`
+                 + `<span style="font-size:12px; color:#6c757d;">Entered by ${escapeHtml(it.cashierName||'')}</span></div>`
+                 + `<div class="form-group" style="margin:10px 0 8px;"><input type="text" id="note_${sid}" placeholder="Why? (needed if you reject)" style="font-size:14px;"></div>`
+                 + `<button class="action-btn btn-in" style="min-height:44px;" onclick="decideTips('${sid}','confirmed')">&#9989; Confirm</button>`
+                 + `<button class="action-btn btn-out" style="min-height:44px; margin-top:8px;" onclick="decideTips('${sid}','rejected')">&#10060; Reject</button></div>`;
+            }).join('');
+        } catch(e) {
+            console.error('Could not read the tips for review:', e);
+            host.innerHTML = `<p style="color:#dc3545; font-size:13px; font-weight:700;">Could not read them. If it says permission, the new rules (v34) are not published yet.</p>`;
+        }
+    }
+
+    window.decideTips = async function(tipId, decision) {
+        if (!tipsState.cashierId) { showStatus("Session expired. Log in again.","error"); return; }
+        const noteEl=document.getElementById('note_'+tipId);
+        const note=noteEl?String(noteEl.value||'').trim():'';
+        // ⚠️ الرفضُ بلا سببٍ مرفوض: الكاشيرُ لا يعرف ما يُصحّح بلا سبب.
+        if (decision==='rejected' && !note) {
+            showStatus("Please write why you are rejecting it — the cashier needs to know what to fix.","error");
+            return;
+        }
+        showStatus(decision==='confirmed'?"Confirming...":"Rejecting...","loading");
+        try {
+            await setDoc(doc(db,"tips_decisions",tipId), {
+                decision, note: note||'',
+                byId: tipsState.cashierId, byName: tipsState.cashierName,
+                branch: tipsState.branch,
+                decidedAt: new Date().toISOString(),
+                timestamp: serverTimestamp()
+            });
+            showStatus(decision==='confirmed'?"Confirmed. It now counts."
+                :"Rejected. The cashier can correct it and send it again.","success");
+            await loadTipsForReview();
+        } catch(e) {
+            console.error('Could not save the decision:', e);
+            showStatus("It did not save. Check your internet and try again.","error");
+        }
+    };
+
+    /** يُظهر سببَ الرفضِ إن كان يومُ الفرعِ المختارِ مرفوضًا. */
+    async function checkTipsRejection() {
+        const box=document.getElementById('tipsRejectedNotice');
+        const txt=document.getElementById('tipsRejectedText');
+        if (box) box.style.display='none';
+        const dateISO=(document.getElementById('tipsDate')||{}).value||'';
+        const id=tipsDocId(tipsState.branch,dateISO);
+        if (!id) return;
+        try {
+            const snap=await getDoc(doc(db,"tips_decisions",id));
+            if (snap.exists() && snap.data().decision==='rejected') {
+                const d=snap.data();
+                if (txt) txt.innerText = `The supervisor rejected this day`
+                    + (d.byName?` (${d.byName})`:'') + `: ${d.note||'no reason given'}.`
+                    + ` Correct the figures and send it again.`;
+                if (box) box.style.display='block';
+            }
+        } catch(e) { /* قراءةٌ لا تنجح لا تمنع الإدخال */ }
+    }
+
+    window.onTipsDateChangeChecked = function() { onTipsDateChange(); checkTipsRejection(); };
 
     window.selectTipsBranch = function(branch) {
         tipsState.branch = branch;
@@ -3056,7 +3173,16 @@
         });
         recalcTipsTotal();
         onTipsDateChange();
+        if (tipsState.isReviewer) {
+            const who = document.getElementById('tipsReviewWho');
+            if (who) who.innerText = `${tipsState.cashierName} — ${branch}`;
+            showTipsStep('tipsReviewStep');
+            loadTipsForReview();
+            return;
+        }
         showTipsStep('tipsFormStep');
+        // ⚠️ يُسأل عن قرارِ اليومِ قبل أن يكتب: لو كان مرفوضًا قرأ السببَ أوّلًا.
+        checkTipsRejection();
     };
 
     // ⚠️ السالبُ وغيرُ الرقميِّ صفرٌ — حتى لا يُرسل مجموعٌ مشوّه. نفسُ قاعدةِ
@@ -3108,7 +3234,12 @@
                 cash, card, totalTips,
                 cashierId: tipsState.cashierId,
                 cashierName: tipsState.cashierName,
-                submittedAt: new Date().toISOString()
+                submittedAt: new Date().toISOString(),
+                // ⭐⭐ العلامةُ التي تجعل اليومَ ينتظر قرارَ السوبرفايزر.
+                // ⚠️⚠️ ووجودُها يُفرّق الجديدَ عمّا سُجّل قبل هذه الميزة: ذاك بلا
+                //   علامةٍ فيُقرأ مؤكَّدًا ويبقى في الحساب، ولو قُرئ انتظارًا
+                //   لاختفى مالٌ مسجَّلٌ من التقسيمِ فجأةً.
+                needsApproval: true
             };
             /**
              * ⭐⭐⭐⭐⭐ معرّفٌ ثابتٌ = الفرعُ + اليوم. فرعٌ واحدٌ ويومٌ واحدٌ = مستندٌ واحد.
