@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v33   (2026-10-14)  <<<
+//   >>>  RULES REVISION: v34   (2026-10-14)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,7 +12,7 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       tips_reports
+//       tips_decisions
 //
 //   (This exact text exists nowhere in any earlier revision, which is the whole
 //    point of a marker. Every earlier marker is now useless for telling the
@@ -38,7 +38,7 @@ rules_version = '2';
 //    Always search for the marker named directly above, and when publishing a
 //    new revision, change that name to something introduced by it.)
 //
-//   FOUND     -> v33 is live. Good.
+//   FOUND     -> v34 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -57,6 +57,17 @@ rules_version = '2';
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
 //
+//  v34  2026-10-14  + tips_decisions, and the supervisor's gate on the tips.
+//                     The cashier sends; nothing counts until a supervisor
+//                     CONFIRMS it. A rejected day is the ONE case the kiosk may
+//                     overwrite, so it can be corrected and sent again, while a
+//                     waiting or confirmed day stays untouchable.
+//                     The decision is its own document with the same id — the
+//                     cashier's figure is never altered.
+//                     ⚠ tips_reports is now kiosk-READABLE: the supervisor
+//                     cannot judge what he cannot see, and a rule cannot limit
+//                     an anonymous read to one branch.
+//                     PUBLISH v34 — it contains v16..v33 in full.
 //  v33  2026-10-14  + tips_reports — THE TIPS THE RESTAURANT TOOK IN A DAY,
 //                     typed by the cashier at closing from the cashier-only
 //                     screen (index.html?tips=1), cash and card apart.
@@ -1228,10 +1239,45 @@ service cloud.firestore {
     // ⚠⚠⚠ This has NOTHING to do with payroll, by the owner's explicit
     // instruction: it is its own collection and no salary calculation reads it.
     match /tips_reports/{tipId} {
-      allow read: if isAdmin() || isAccountant() || isViewer() || isSupervisor();
-      allow update: if isAdmin() || isAccountant();
-      allow delete: if isAdmin() || isAccountant();
+      // ⚠ READ is open to the kiosk now, and it has to be: the supervisor
+      // confirms or rejects from that same screen, and he cannot judge what he
+      // cannot see. The screen shows him his own branch only, but a rule
+      // cannot restrict an anonymous read by field — so treat the daily tips
+      // figure as visible to anyone who has the cashier link. The owner was
+      // told this plainly. The money itself is still protected: who may send,
+      // confirm or reject is gated by the PIN and by a flag on the employee.
+      allow read: if isAdmin() || isAccountant() || isViewer() || isSupervisor() || isKiosk();
       allow create: if isKiosk() || isAdmin();
+      // ⚠⚠ The kiosk may overwrite ONE case only: an entry the supervisor has
+      // REJECTED. That is what lets the cashier correct it and send again,
+      // while an entry that is still waiting — or already confirmed — stays
+      // untouchable, so the duplicate guard is not lost.
+      allow update: if isAdmin() || isAccountant()
+                    || (isKiosk()
+                        && exists(/databases/$(database)/documents/tips_decisions/$(tipId))
+                        && get(/databases/$(database)/documents/tips_decisions/$(tipId)).data.decision == 'rejected');
+      allow delete: if isAdmin() || isAccountant();
+    }
+
+    // ---- tips_decisions (the supervisor's confirm / reject on one day of one
+    // branch — doc id is the SAME id as the tips_reports doc) ----------------
+    //
+    // ⚠⚠⚠ A SEPARATE DOCUMENT on purpose, never a field written onto the
+    // cashier's entry. This is the house rule that already saved the shift
+    // cancellations: a decision is a NEW document with a derived id, and the
+    // original record is not touched. So the figure the cashier sent stays
+    // exactly as he sent it, and what the supervisor decided is beside it, and
+    // both can be read side by side afterwards.
+    //
+    // ⚠ The kiosk may update it because a rejected day gets corrected and must
+    // then be judged AGAIN. Rules cannot tell the cashier's anonymous session
+    // from the supervisor's, so the gate is the PIN plus the canApproveTips
+    // flag on the employee, and every decision carries the name and the id of
+    // whoever made it for the dashboard to show.
+    match /tips_decisions/{tipId} {
+      allow read: if isAdmin() || isAccountant() || isViewer() || isSupervisor() || isKiosk();
+      allow create, update: if isKiosk() || isAdmin();
+      allow delete: if isAdmin() || isAccountant();
     }
 
     // ---- hygiene_inspections (the restaurant hygiene inspection a branch
