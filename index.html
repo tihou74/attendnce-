@@ -937,6 +937,9 @@
             <h2 style="font-size: 17px; margin-bottom: 2px;">Confirm the tips</h2>
             <p style="text-align:left; color:#6c757d; font-size:12.5px; margin:0 0 14px; font-weight:700;" id="tipsReviewWho"></p>
             <div id="tipsReviewList"></div>
+            <!-- ⚠️ يُقال له إنّه يرى فرعَه وحدَه، فلا يظنّ أنّ بقيّةَ الفروعِ
+                 خاليةٌ من الانتظار. -->
+            <p style="text-align:left; color:#6c757d; font-size:11.5px; margin:10px 0 0;">You confirm your own branch only.</p>
             <button class="action-btn" style="background-color:#6c757d; margin-top:12px;" onclick="tipsBackToLogin()">&#11013; Sign out</button>
         </div>
 
@@ -3058,6 +3061,30 @@
         tipsState.isReviewer = emp.canApproveTips === true;
         const nameEl = document.getElementById('tipsWelcomeName');
         if (nameEl) nameEl.innerText = `Welcome, ${emp.name}`;
+
+        /**
+         * ⭐⭐⭐⭐⭐ السوبرفايزرُ يؤكّد **فرعَه وحدَه** — بأمر المالك.
+         *
+         * ⚠️⚠️ فلا تُعرض له أزرارُ الفروعِ إطلاقًا: لو عُرضت لاختار فرعًا غيرَ
+         *   فرعِه فأكّد مالًا لا يخصّه، ولا شيءَ على الشاشةِ يمنعه. والفرعُ يُقرأ
+         *   من **ملفِّه** لا من اختيارِه، فهو حقيقةٌ تضبطها أنت من اللوحة.
+         * ⚠️ وفرعٌ فارغٌ في ملفِّه يُقال صريحًا ولا يُفتح له شيء: لو مرّ بفرعٍ
+         *   فارغٍ لبُني معرّفٌ ناقصٌ واختلط فرعان.
+         */
+        if (tipsState.isReviewer) {
+            const myBranch = String(emp.branch || '').trim();
+            if (!myBranch) {
+                showStatus("Your branch is not set on your file, so there is nothing for you to confirm. "
+                    + "Ask the office to set your branch.", "error");
+                return;
+            }
+            tipsState.branch = myBranch;
+            const who = document.getElementById('tipsReviewWho');
+            if (who) who.innerText = `${emp.name} — ${myBranch}`;
+            showTipsStep('tipsReviewStep');
+            loadTipsForReview();
+            return;
+        }
         showTipsStep('tipsBranchStep');
     };
 
@@ -3173,13 +3200,9 @@
         });
         recalcTipsTotal();
         onTipsDateChange();
-        if (tipsState.isReviewer) {
-            const who = document.getElementById('tipsReviewWho');
-            if (who) who.innerText = `${tipsState.cashierName} — ${branch}`;
-            showTipsStep('tipsReviewStep');
-            loadTipsForReview();
-            return;
-        }
+        // ⚠️ هذه الخطوةُ للكاشيرِ وحدَه الآن: السوبرفايزرُ لا يصلها بحال، فُتح له
+        //   فرعُه من ملفِّه عند الدخول. وحارسٌ هنا كذلك فلا يُعتمد على مسارٍ واحد.
+        if (tipsState.isReviewer) { showTipsStep('tipsReviewStep'); loadTipsForReview(); return; }
         showTipsStep('tipsFormStep');
         // ⚠️ يُسأل عن قرارِ اليومِ قبل أن يكتب: لو كان مرفوضًا قرأ السببَ أوّلًا.
         checkTipsRejection();
