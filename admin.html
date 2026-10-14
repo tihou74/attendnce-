@@ -14283,10 +14283,21 @@
                  *   مالَه ضاع. والعلامةُ `needsApproval` تُكتب من شاشة الكاشير
                  *   منذ الآن، فما حمَلها يُنتظر، وما لم يحملها قديمٌ ويُحتسب.
                  */
+                /**
+                 * ⚠️⚠️ قرارٌ قديم = اليومُ صُحّح بعده، فيعود للانتظار. ونفسُ
+                 *   القاعدةِ بالحرف في شاشة الكاشير (`tipsDecisionIsStale`) —
+                 *   ولو اختلفتا لظهر يومٌ للسوبرفايزرِ ولم يُحتسب هنا.
+                 * ⚠️ وتقريرٌ بلا `submissionId` (قبل الإصلاح) قرارُه قائمٌ لا قديم.
+                 */
+                const sid = String(v.submissionId || '');
+                const decStale = !!(dec && dec.decision && sid
+                                    && String(dec.forSubmission || '') !== sid);
                 let status = 'Confirmed';
-                if (dec && dec.decision === 'rejected') status = 'Rejected';
+                if (decStale) status = 'Pending';
+                else if (dec && dec.decision === 'rejected') status = 'Rejected';
                 else if (dec && dec.decision === 'confirmed') status = 'Confirmed';
                 else if (v.needsApproval === true) status = 'Pending';
+                if (decStale) v.correctedAfter = String(dec.decision || '');
                 allTipsReports.push({ id: d.id, ...v, status, decision: dec });
             });
             allTipsReports.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
@@ -14403,6 +14414,10 @@
                                     + `<br><span style="font-size:11px; color: var(--danger); font-weight:700;">not counted &mdash; the cashier must correct it</span>`;
                             }
                             return `<span class="badge-status badge-pending">waiting</span>`
+                                // ⚠️ يُقال إنّه صُحّح بعد رفضٍ: «ينتظر» وحدَها
+                                //   تجعل المالكَ يظنّ أنّ السوبرفايزرَ لم ينظر فيه قطّ.
+                                + (r.correctedAfter === 'rejected'
+                                    ? `<br><span style="font-size:11px; color: var(--text-dim);">corrected after a rejection &mdash; waiting again</span>` : '')
                                 + `<br><span style="font-size:11px; color: var(--warning); font-weight:700;">not counted yet</span>`;
                         })()}</td>`
                     + `<td style="white-space:nowrap;">`
@@ -25489,7 +25504,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v262';
+        const APP_BUILD = 'v263';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;
