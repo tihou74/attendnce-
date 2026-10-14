@@ -3116,6 +3116,23 @@
         showTipsStep('tipsBranchStep');
     };
 
+    /** الإرسالاتُ المعروضةُ للسوبرفايزرِ الآن — ليُعرف ما حكم عليه بالضبط. */
+    let tipsReviewById = {};
+
+    /**
+     * ⭐⭐⭐⭐⭐ هل يحتاج هذا اليومُ قرارًا؟ (لا قرارَ له، أو قرارُه قديم)
+     * ⚠️⚠️ **نفسُ القاعدةِ بالحرف** في لوحة الإدارة — ولو اختلفتا لظهر يومٌ
+     *   للسوبرفايزرِ ولم يُحتسب عند المالك، أو عُدَّ مؤكَّدًا وهو ينتظر.
+     * ⚠️ وتقريرٌ قديمٌ بلا `submissionId` قرارُه **قائمٌ** لا قديم: وإلّا عادت
+     *   كلُّ الأيّامِ المؤكَّدةِ إلى الانتظارِ فجأةً واختفى مالٌ من التقسيم.
+     */
+    function tipsDecisionIsStale(report, dec) {
+        if (!dec || !dec.decision) return true;
+        const sid = String((report || {}).submissionId || '');
+        if (!sid) return false;
+        return String(dec.forSubmission || '') !== sid;
+    }
+
     /** معرّفُ مستندِ يومٍ لفرع — نفسُ المعادلةِ في الإرسالِ والمراجعة. */
     function tipsDocId(branch, dateISO) {
         const slug = String(branch || '').toUpperCase().replace(/[^A-Z0-9]+/g,'-').replace(/^-+|-+$/g,'');
@@ -3140,8 +3157,13 @@
             const items=[]; snap.forEach(d=>items.push({id:d.id, ...(d.data()||{})}));
             const dec={}; decSnap.forEach(d=>{dec[d.id]=d.data()||{};});
             // المنتظِرُ وحدَه: المؤكَّدُ انتهى، والمرفوضُ ينتظر تصحيحَ الكاشير.
-            const waiting = items.filter(it=>!dec[it.id])
+            // ⚠️⚠️ يُعرض ما لا قرارَ له **وما صُحّح بعد قرارِه** — والثانيةُ هي الإصلاح:
+            //   يومٌ رُفض ثمّ صحّحه الكاشيرُ كان يختفي عن السوبرفايزرِ فيبقى
+            //   مرفوضًا إلى الأبد ولا يُحتسب قرشًا.
+            const waiting = items.filter(it => tipsDecisionIsStale(it, dec[it.id]))
                 .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+            tipsReviewById = {};
+            waiting.forEach(it => { tipsReviewById[it.id] = it; });
             if (!waiting.length) {
                 host.innerHTML = `<p style="color:#198754; font-size:13.5px; font-weight:700;">&#9989; Nothing is waiting for you in ${escapeHtml(tipsState.branch)}.</p>`;
                 return;
@@ -3178,6 +3200,10 @@
         try {
             await setDoc(doc(db,"tips_decisions",tipId), {
                 decision, note: note||'',
+                // ⚠️ أيُّ **إرسالةٍ** حُكم عليها. وبلا هذا الحقلِ يُقرأ القرارُ على
+                //   أيِّ رقمٍ يأتي بعده — وهو العطلُ الذي أبلغ عنه المالك: صحّح
+                //   الكاشيرُ فبقي اليومُ مرفوضًا تلقائيًّا ولم يَرَه السوبرفايزر.
+                forSubmission: String((tipsReviewById[tipId] || {}).submissionId || ''),
                 byId: tipsState.cashierId, byName: tipsState.cashierName,
                 branch: tipsState.branch,
                 decidedAt: new Date().toISOString(),
@@ -3201,8 +3227,15 @@
         const id=tipsDocId(tipsState.branch,dateISO);
         if (!id) return;
         try {
-            const snap=await getDoc(doc(db,"tips_decisions",id));
-            if (snap.exists() && snap.data().decision==='rejected') {
+            const [snap, repSnap] = await Promise.all([
+                getDoc(doc(db,"tips_decisions",id)),
+                getDoc(doc(db,"tips_reports",id))
+            ]);
+            const rep = repSnap.exists() ? repSnap.data() : null;
+            // ⚠️ لا يُعاد عرضُ سببِ الرفضِ بعد أن صحّح وأرسل: صار اليومُ ينتظر
+            //   قرارًا جديدًا، وإظهارُ الرفضِ القديمِ يُفهم أنّ تصحيحَه رُفض كذلك.
+            if (snap.exists() && snap.data().decision==='rejected'
+                && !tipsDecisionIsStale(rep, snap.data())) {
                 const d=snap.data();
                 if (txt) txt.innerText = `The supervisor rejected this day`
                     + (d.byName?` (${d.byName})`:'') + `: ${d.note||'no reason given'}.`
@@ -3286,6 +3319,20 @@
                 cashierId: tipsState.cashierId,
                 cashierName: tipsState.cashierName,
                 submittedAt: new Date().toISOString(),
+                /**
+                 * ⭐⭐⭐⭐⭐ معرّفُ هذه **الإرسالة** بعينها — لا معرّفُ اليوم.
+                 *
+                 * ⚠️⚠️⚠️ وسببُه عطلٌ وقع فعلًا وأبلغ عنه المالك: رفض السوبرفايزرُ
+                 *   يومًا، فصحّحه الكاشيرُ وأرسله، فبقي **مرفوضًا تلقائيًّا** ولم
+                 *   يظهر للسوبرفايزرِ إطلاقًا. لأنّ قرارَ الرفضِ كان معلَّقًا على
+                 *   **اليوم**، والتصحيحُ لا يُزيله — فيُقرأ القرارُ القديمُ على
+                 *   الرقمِ الجديد. أي أنّ التصحيحَ كان يُولد مرفوضًا.
+                 * ⚠️ والقرارُ يحفظ الإرسالةَ التي حكم عليها. فإن اختلفت صار
+                 *   القرارُ **قديمًا** ويعود اليومُ للانتظار — بلا حذفِ شيء، فسلسلةُ
+                 *   «أُرسل ← رُفض ← صُحّح ← أُكّد» تبقى كلُّها مقروءة.
+                 * ⚠️ والعشوائيُّ مع الوقت: إرسالتان في نفس المللي ثانية لا تتشابهان.
+                 */
+                submissionId: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
                 // ⭐⭐ العلامةُ التي تجعل اليومَ ينتظر قرارَ السوبرفايزر.
                 // ⚠️⚠️ ووجودُها يُفرّق الجديدَ عمّا سُجّل قبل هذه الميزة: ذاك بلا
                 //   علامةٍ فيُقرأ مؤكَّدًا ويبقى في الحساب، ولو قُرئ انتظارًا
