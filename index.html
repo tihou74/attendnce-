@@ -1801,61 +1801,32 @@
             console.error('Could not read the light name list:', e);
         }
 
-        // ---- 3) القراءة الكاملة: احتياطٌ إن لم تُكتب القائمة الخفيفة بعد ---
-        // ⚠️ بطيئة جدًّا على الهاتف (مستندات الموظفين تحمل الصور)، فلا تُستخدم
-        // إلا عند غياب القائمة الخفيفة.
-        try {
-            const querySnapshot = await getDocs(collection(db, "employees"));
-            const rows = [];
-            // من انتهت خدمته يُستبعد من هذه الصفحة كلها: لا يسجّل حضورًا، ولا
-            // يطلب إجازة، ولا يظهر في قائمة المديرين، ولا في قائمة الإنذارات.
-            // الشرط `endDate < اليوم` وليس مجرد وجود التاريخ، فمن قدّم استقالته
-            // بإشعار مسبق يبقى يعمل عادةً حتى آخر يوم عمله.
-            querySnapshot.forEach(docSnap => {
-                const d = docSnap.data();
-                // ⚠️⚠️ البياعات تُستبعد من هذه الشاشة كلها: لا تسجّل حضورها هنا،
-                // ولا تطلب إجازة، ولا تظهر في قائمةٍ واحدة. قال المالك: «البياعات
-                // ليس لهم أي علاقة بالمطاعم والبصمات». وشاشتهنّ abaya-seller.html
-                // بمفاتيحها المستقلة، وبصمتها تُكتب بلا تحديد موقع.
-                if (isAbayaEmployee(d)) return;
-                // canSubmitSalesReport يُفعّله المشرف من ملف الموظف في لوحة
-                // الإدارة، وهو ما يحدّد من يظهر في قائمة مديري التقرير اليومي.
-                rows.push({
-                    id: docSnap.id,
-                    name: d.name || docSnap.id,
-                    branch: d.branch || "",
-                    // المسمّى الوظيفي — يُنسخ على حدث حالة الدوام ليظهر للسيدة
-                    // فاطمة، فهي لا تستطيع قراءة مستند الموظف نفسه.
-                    role: d.role || "",
-                    mgr: d.canSubmitSalesReport === true,
-                    // علامةٌ للعرض لا صلاحية: لا تُغيّر شيئًا في بصمة الموظف ولا
-                    // في راتبه. أثرها الوحيد أن بصمته تُنسخ نسخةً صغيرة تظهر في
-                    // لوحة الإدارة بنقطة خضراء أو حمراء.
-                    sup: d.isSupervisor === true,
-                    // ⭐ مفتاحا التيبس في المسار الاحتياطيِّ كذلك.
-                    // ⚠️⚠️ ولو نُسيا هنا لعمل الكاشيرُ ثمّ اختفى اسمُه فجأةً يومًا
-                    //   تُقرأ فيه القائمةُ الكاملةُ بدل المضغوطة — عطلٌ متقطّعٌ لا
-                    //   يُفسَّر. فالمفاتيحُ تُنقل في **كلِّ** مسارٍ يبني القائمة.
-                    tips: d.canSubmitTips === true,
-                    tipsOk: d.canApproveTips === true,
-                    end: d.endDate || ''
-                });
-            });
-            // ⚠️ قراءةٌ نجحت وعادت فارغة ليست معلومة: قد تكون خللًا. فلا تُمحى
-            // بها قائمةٌ معروضة، ولا تُحدَّث نسخة الجهاز بالفراغ.
-            if (!rows.length) {
-                scheduleRosterRetry(new Error('The employee list came back empty.'));
-                return;
-            }
+        /**
+         * ⭐⭐⭐⭐⭐ لا قراءةَ كاملةً لمجموعة `employees` من هذه الصفحة — إطلاقًا.
+         *
+         * ⚠️⚠️⚠️ وكان هنا احتياطٌ يقرؤها كلَّها، وهو **ثقبٌ حقيقيٌّ** أُغلق في
+         *   قواعد v35: مستندُ الموظف يحمل الراتبَ ورقمَ الهويّةِ ورقمَ الجوازِ
+         *   و**صورَ** البطاقةِ والعقدِ والشهادةِ الصحيّة. وهذه صفحةٌ يفتحها كلُّ
+         *   موظفٍ بجلسةٍ مجهولة، فمن ملك الرابطَ كان يستطيع تنزيلَ ذلك كلِّه
+         *   لكلِّ موظفٍ في الشركة.
+         * ⚠️ والبديلُ هو القائمةُ الخفيفةُ (`settings/employee_roster`): فيها
+         *   الاسمُ والفرعُ والمسمّى والمفاتيحُ، ولا مالَ ولا مستندات.
+         * ⚠️⚠️ ويفشل **صريحًا** لا صامتًا: شاشةٌ بلا أسماءٍ وبلا سببٍ تُقرأ عطلًا
+         *   في الشبكة، فيبقى الموظفُ يُحدّث الصفحةَ ولا أحدَ يعرف أنّ المطلوبَ
+         *   ضغطةُ «Sync Database» في اللوحة.
+         */
+        const cached = readCachedRoster();
+        if (cached && cached.length) {
+            // نسخةٌ محفوظةٌ على الجهاز تُنقذ الموقف حتى تُنشر القائمة من جديد.
             rosterIsReal = true;
-            rosterAttempt = 0;
-            paintEmployeeLists(normaliseRoster(rows));
-            writeCachedRoster(rows);
+            paintEmployeeLists(normaliseRoster(cached));
             try { await loadGeofences(); }
             catch (ge) { console.error('Could not load the branch locations:', ge); }
-        } catch (e) {
-            scheduleRosterRetry(e);
+            return;
         }
+        showStatus("The name list has not been published yet. Please ask the office to open the "
+            + "dashboard and press \u201cSync Database\u201d once \u2014 then refresh this page.", "error");
+        rosterIsReal = true;   // لا تُعاد المحاولةُ بلا نهاية: السببُ معروفٌ ومكتوب
     }
 
     // Verifies PIN against employee_pins/{empId}. No more "1234 works for

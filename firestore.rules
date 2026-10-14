@@ -3,7 +3,7 @@ rules_version = '2';
 // =============================================================================
 // Al Sheikha Group — Attendance & Payroll — Firestore Security Rules
 //
-//   >>>  RULES REVISION: v34   (2026-10-14)  <<<
+//   >>>  RULES REVISION: v35   (2026-10-14)  <<<
 //
 // -----------------------------------------------------------------------------
 // HOW TO TELL WHICH REVISION IS ACTUALLY LIVE ON THE SERVER
@@ -12,7 +12,7 @@ rules_version = '2';
 // (Firestore Database -> Rules), click inside the editor, press Ctrl+F and
 // search for:
 //
-//       tips_decisions
+//       settings/employee_roster
 //
 //   (This exact text exists nowhere in any earlier revision, which is the whole
 //    point of a marker. Every earlier marker is now useless for telling the
@@ -38,7 +38,7 @@ rules_version = '2';
 //    Always search for the marker named directly above, and when publishing a
 //    new revision, change that name to something introduced by it.)
 //
-//   FOUND     -> v34 is live. Good.
+//   FOUND     -> v35 is live. Good.
 //   NOT FOUND -> an OLDER revision is live. Select all (Ctrl+A), Delete,
 //                paste this ENTIRE file, then click "Publish".
 //                (Searching for an older marker such as financial_payments is
@@ -57,6 +57,19 @@ rules_version = '2';
 // three different rule sets and caused a real "insufficient permissions"
 // failure to go undiagnosed. Bump it every single time.
 //
+//  v35  2026-10-14  SECURITY — the anonymous pages lose two blanket reads.
+//                     `employees` read: isKiosk() REMOVED. That document holds
+//                     the salary, the QID and passport numbers and the base64
+//                     images of the ID, contract and health certificate, and
+//                     anyone with a staff link could read all of it for every
+//                     employee. The staff screens use settings/employee_roster
+//                     instead, which has no money and no documents in it.
+//                     `settings` read: isKiosk() REMOVED from the collection
+//                     and granted to the FOUR documents the anonymous pages
+//                     actually read, by name. The collection also holds
+//                     salary_payouts, cash_account and financial_rates.
+//                     ⚠ Every call site was enumerated before this was written,
+//                     so nothing the staff use breaks. PUBLISH v35.
 //  v34  2026-10-14  + tips_decisions, and the supervisor's gate on the tips.
 //                     The cashier sends; nothing counts until a supervisor
 //                     CONFIRMS it. A rejected day is the ONE case the kiosk may
@@ -979,8 +992,20 @@ service cloud.firestore {
     // may create — but only at salary 0, which the owner or accountant then
     // sets. Updating: they may edit the profile as long as the salary is
     // untouched. Deleting is the owner's alone, since it removes the record.
+    // ⚠⚠⚠ isKiosk() REMOVED from read. An employee document carries the
+    // salary, the QID number, the passport number and the base64 images of the
+    // Qatar ID, the contract and the health certificate. With the kiosk in this
+    // list, anyone holding a staff link could sign in anonymously and download
+    // all of it for every employee in the company.
+    // The staff screens do not need it: they read settings/employee_roster,
+    // which carries names, branches and capability flags and no money and no
+    // documents. index.html had a slow full-read fallback for the case where
+    // the roster was missing; that fallback now fails closed with a clear
+    // message telling the office to press Sync Database, which is both safer
+    // and more honest than silently handing a phone every salary in the
+    // company because one settings document was absent.
     match /employees/{empId} {
-      allow read: if isAdmin() || isStaff() || isKiosk();
+      allow read: if isAdmin() || isStaff();
       allow create: if isAdmin()
                     || (isProfileEditor() && request.resource.data.get('salary', 0) == 0);
       allow update: if isAdmin() || isAccountant()
@@ -1058,8 +1083,40 @@ service cloud.firestore {
     // Holds financial_rates, cash_account (opening balances), salary_payouts and
     // cash_movements, plus the legacy single geofence doc if still present.
     // Viewers may READ (balances.html needs these four docs) but never write.
+    // ⚠⚠⚠ THE KIOSK IS NO LONGER IN THIS RULE. It used to be, and that was a
+    // live leak: this collection also holds salary_payouts, cash_account and
+    // financial_rates, so ANY visitor holding a staff link could sign in
+    // anonymously and read what the company pays out. The note below this rule
+    // even says widening it would "hand her the payroll payouts — the exact
+    // figure she must never see", while isKiosk() sat in the read list all
+    // along.
+    // The anonymous pages read exactly FOUR documents, each granted by name
+    // further down: employee_roster, abaya_discount, abaya_workshop and
+    // abaya_shanton_payments. Nothing broke by removing the blanket grant —
+    // every call site was enumerated first.
     match /settings/{docId} {
-      allow read: if isAdmin() || isStaff() || isKiosk() || isViewer();
+      allow read: if isAdmin() || isStaff() || isViewer();
+      allow write: if isAdmin() || isAccountant();
+    }
+
+    // ---- settings/employee_roster — the compact name list the staff screens
+    // read instead of the employees collection -------------------------------
+    // ⚠ It carries ONLY: id, name, branch, job title, the four capability
+    // flags and an end date. No salary, no QID, no passport, no phone. That is
+    // exactly why the kiosk can be allowed this and refused `employees`.
+    match /settings/employee_roster {
+      allow read: if isAdmin() || isStaff() || isViewer() || isKiosk();
+      allow write: if isAdmin() || isAccountant();
+    }
+
+    // ---- settings/abaya_workshop + settings/abaya_shanton_payments — read by
+    // Mrs Fatima's screen, which is an anonymous page ------------------------
+    match /settings/abaya_workshop {
+      allow read: if isAdmin() || isStaff() || isViewer() || isKiosk();
+      allow write: if isAdmin() || isAccountant();
+    }
+    match /settings/abaya_shanton_payments {
+      allow read: if isAdmin() || isStaff() || isViewer() || isKiosk();
       allow write: if isAdmin() || isAccountant();
     }
 
