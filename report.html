@@ -1,183 +1,107 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Daily Sales Report — Al Sheikha Group</title>
-
-<!-- =============================================================================
-     صفحة المديرين — نقطة الدخول والتثبيت لتقرير المبيعات اليومي
-     -----------------------------------------------------------------------------
-     ⚠️ لا تُعِد إضافة تحويل تلقائي غير مشروط إلى هذه الصفحة.
-
-     كانت الصفحة تحوّل فورًا إلى index.html?report=1، وهذا هو ما جعل تثبيت
-     التطبيق على iPhone ينتج تطبيق **الموظفين**: نظام iOS يقرأ ملف التعريف
-     (manifest) وأيقونة apple-touch-icon من الصفحة المفتوحة **لحظة** الضغط على
-     "Add to Home Screen"، وبعد التحويل تكون الصفحة المفتوحة هي index.html
-     المرتبطة بـ manifest.json الخاص بالموظفين. فكان التحويل يُبطل الغرض.
-
-     السلوك الصحيح المطبَّق هنا:
-       • في المتصفح العادي  → تبقى الصفحة ظاهرة (فيبقى manifest-report.json هو
-         المرتبط بها) وتُعرض تعليمات التثبيت وزر للفتح اليدوي.
-       • عند فتحها كتطبيق مثبَّت (standalone) → تحوّل فورًا إلى شاشة التقرير،
-         فلا يحتاج المدير ضغطة إضافية.
-
-     هكذا يعمل التثبيت سواء حفظ iOS رابط هذه الصفحة أو حفظ start_url من ملف
-     التعريف — وكلا المسارين ينتهي بشاشة التقرير.
-     ============================================================================= -->
-
-<link rel="manifest" href="./manifest-report.json">
-<meta name="theme-color" content="#0B1226">
-<link rel="icon" type="image/png" sizes="192x192" href="./icons/report-192.png">
-
-<!-- iOS لا يقرأ manifest للتثبيت في كل الإصدارات، بل يعتمد على هذه الوسوم -->
-<link rel="apple-touch-icon" href="./icons/report-touch.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Sales Report">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>We have moved &mdash; Al Sheikha Group</title>
 <meta name="robots" content="noindex, nofollow">
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./brand/design-tokens.css">
+<!-- ============================================================================
+     صفحةُ تحويلٍ — لا كودَ ولا بيانات.
+     -----------------------------------------------------------------------------
+     ⚠️⚠️ هذا الملفُّ موجودٌ لسببٍ واحد: أيقوناتُ الموظفين المثبَّتةُ على هواتفهم
+     تشير إلى هذا العنوانِ القديم. ولو حُذف لتعطّلت أيقونةُ كلِّ موظفٍ ومديرٍ
+     وبياعةٍ في اللحظةِ نفسِها — وتثبيتُ أيقونةِ المدراء على iPhone وحدَه كان
+     متعبًا (انظر تاريخَ manager.html في المستودعِ الخاصّ).
+     فيبقى العنوانُ القديمُ يُجيب، ويُحوّل من يطرقه إلى العنوانِ الجديد.
+
+     ⚠️ ويُحفظ الـquery والـhash: بابُ المدراء هو `index.html?report=1`، فتحويلٌ
+     يُسقط `?report=1` يُنزلهم على شاشةِ الموظفين — وهو عطلٌ صامتٌ يُربك.
+
+     ⚠️ ولا يُحذف ملفُّ `.nojekyll`: بدونه يُعالج GitHub هذه الصفحاتَ كقوالبَ.
+     ============================================================================ -->
 
 <style>
-    /* =========================================================================
-       نفس شاشة manager.html بالضبط: سطح كحلي داكن وعنوان وزر ذهبيان.
-       الصفحتان مدخلان لنفس التطبيق، فاختلافهما بصريًّا كان سيبدو خطأً.
-
-       ⚠️ كل var() لها قيمة احتياطية بعدها: هذه شاشة دخول، ولو تعذّر تحميل ورقة
-       الهوية وجب أن تبقى مقروءة لا بيضاء فارغة.
-       ========================================================================= */
+    :root { --ink: #0B1226; --gold: #CAAD73; --dim: #9FB0CA; }
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; min-height: 100%; }
     body {
-        font-family: var(--font-sans, 'Segoe UI', Tahoma, sans-serif);
-        background: var(--ink-900, #0B1226);
-        color: #E8EDF6;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        background: var(--ink); color: #E8EDF6;
+        display: flex; align-items: center; justify-content: center;
+        min-height: 100vh; text-align: center; padding: 28px 20px;
         -webkit-font-smoothing: antialiased;
-        padding: var(--space-8, 32px) var(--space-5, 20px) calc(var(--space-8, 32px) + env(safe-area-inset-bottom));
-        padding-top: calc(var(--space-8, 32px) + env(safe-area-inset-top));
     }
-    .card { width: 100%; max-width: 380px; }
-    img.logo {
-        width: 88px; height: 88px; border-radius: var(--radius-lg, 10px);
-        display: block; margin: 0 auto var(--space-5, 20px);
+    .card { max-width: 440px; width: 100%; }
+    h1 { font-size: 21px; margin: 0 0 10px; color: var(--gold); font-weight: 700; }
+    p { font-size: 14.5px; line-height: 1.75; color: #C7D2E4; margin: 0 0 18px; }
+    .addr {
+        display: block; font-size: 15px; font-weight: 700; color: #fff;
+        background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
+        border-radius: 6px; padding: 12px 14px; margin: 0 0 20px; word-break: break-all;
     }
-    h1 {
-        font-size: var(--text-xl, 22px); font-weight: 700; margin: 0 0 6px;
-        letter-spacing: -.01em; color: var(--gold-400, #CAAD73);
-    }
-    .sub {
-        font-size: var(--text-xs, 12px); color: #9FB0CA; margin: 0 0 var(--space-6, 24px);
-        line-height: 1.7; text-transform: uppercase; letter-spacing: .14em; font-weight: 600;
-    }
-    /* ذهبي بنصّ كحلي — الاتجاه الوحيد الذي يمرّ التباين مع الذهب */
     a.btn {
-        display: flex; align-items: center; justify-content: center; gap: 8px;
-        min-height: 48px;
-        padding: 0 var(--space-6, 24px);
-        background: var(--gold-600, #A89060);
-        color: var(--ink-800, #0F172A);
-        text-decoration: none;
-        border-radius: var(--radius-md, 6px);
-        font-size: var(--text-base, 16px);
-        font-weight: 700;
-        transition: background var(--dur-fast, 120ms) var(--ease, ease);
+        display: flex; align-items: center; justify-content: center;
+        min-height: 48px; padding: 0 24px; background: #A89060; color: #0F172A;
+        text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 700;
     }
-    a.btn:hover { background: var(--gold-500, #B99E6A); }
-    a.btn:focus-visible { outline: 2px solid var(--gold-300, #DABB7D); outline-offset: 3px; }
-    a.btn:active { transform: scale(0.985); }
-    .install {
-        margin-top: var(--space-8, 32px);
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-inline-start: 3px solid var(--gold-600, #A89060);
-        border-radius: var(--radius-md, 6px);
-        padding: var(--space-4, 16px) var(--space-5, 20px);
-        text-align: start;
+    a.btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+    .note {
+        margin-top: 24px; font-size: 12.5px; color: var(--dim); line-height: 1.8;
+        border-top: 1px solid rgba(255,255,255,.12); padding-top: 16px; text-align: start;
     }
-    .install h2 {
-        font-size: var(--text-sm, 13.5px); margin: 0 0 var(--space-3, 12px);
-        color: var(--gold-400, #CAAD73); font-weight: 700;
-    }
-    .install ol {
-        margin: 0; padding-inline-start: 20px; font-size: var(--text-sm, 13.5px);
-        color: #C7D2E4; line-height: 1.9;
-    }
-    .install .note {
-        font-size: var(--text-xs, 12px); color: #8B99B3;
-        margin: var(--space-3, 12px) 0 0; line-height: 1.7;
-    }
-    .hidden { display: none !important; }
+    .ar { direction: rtl; text-align: right; }
 </style>
 </head>
 <body>
-
 <div class="card">
-    <img class="logo" src="./icons/report-192.png" alt="Al Sheikha Group">
-    <h1>Daily Sales Report</h1>
-    <p class="sub">Managers only &mdash; Al Sheikha Group</p>
+    <h1>This address has moved</h1>
+    <p>The system now lives at its own address:</p>
+    <span class="addr" id="addr">hr.alsheikhagroup.com</span>
+    <a class="btn" id="go" href="https://hr.alsheikhagroup.com">Open it now &#10132;</a>
 
-    <a class="btn" id="openBtn" href="./index.html?report=1">Open Report</a>
-
-    <div class="install" id="installBox">
-        <h2 id="installTitle">Add to your home screen</h2>
-        <ol id="installSteps"></ol>
-        <p class="note">Install from <b>this</b> page so you get the Sales Report app. Installing from the staff attendance page gives the wrong app.</p>
+    <div class="note">
+        <b>Taking you there automatically&hellip;</b><br>
+        If you added an icon to your home screen, please add it again from the
+        new address when you have a moment &mdash; then it will open directly.
+        <div class="ar" style="margin-top:12px;">
+            <b>سيتمّ تحويلك تلقائياً.</b><br>
+            وإن كانت لديك أيقونة على الشاشة الرئيسية، أضِفها من العنوان الجديد
+            عند أول فرصة — فتفتح مباشرةً بعدها.
+        </div>
     </div>
 </div>
 
 <script>
-    // هل فُتحت الصفحة كتطبيق مثبَّت؟ navigator.standalone خاص بـ iOS،
-    // و display-mode: standalone يغطي أندرويد وسطح المكتب.
-    function isStandalone() {
-        if (navigator.standalone === true) return true;
+    // ⚠️ يُؤخذ اسمُ الملفِّ من آخرِ المسار، فيعمل هذا الملفُّ نفسُه على كلِّ
+    //   الصفحاتِ بلا تخصيصٍ لكلِّ واحدة — وما يُكتب مرّةً لا يتباعد نسخُه.
+    (function () {
+        var NEW = 'https://hr.alsheikhagroup.com';
+        var file = location.pathname.split('/').pop() || '';
+        var target = NEW + '/' + file + location.search + location.hash;
+        var go = document.getElementById('go');
+        if (go) go.href = target;
+        var addr = document.getElementById('addr');
+        if (addr) addr.textContent = target.replace(/^https?:\/\//, '');
+
+        // ⚠️⚠️ ويُنظَّف هذا الأصلُ من نفسِه: العاملُ الخِدميُّ القديمُ وذاكرتُه
+        //   يبقيان على الجهازِ لو لم يُلغَ تسجيلُه، فيُسجّل نفسَه على عنوانٍ
+        //   لم يبقَ فيه تطبيق. ولا يُنتظر فراغُه قبل التحويل.
         try {
-            return window.matchMedia('(display-mode: standalone)').matches ||
-                   window.matchMedia('(display-mode: fullscreen)').matches ||
-                   window.matchMedia('(display-mode: minimal-ui)').matches;
-        } catch (e) {
-            return false;
-        }
-    }
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function (rs) {
+                    rs.forEach(function (r) { r.unregister(); });
+                });
+            }
+            if (window.caches && caches.keys) {
+                caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); });
+            }
+        } catch (e) { /* لا يمنع التحويلَ بحال */ }
 
-    var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
-                // iPadOS يُعرّف نفسه كـ Mac لكن بشاشة لمس
-                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-    if (isStandalone()) {
-        // تطبيق مثبَّت: لا حاجة لتعليمات ولا لضغطة إضافية.
-        // replace لا يضيف مدخلًا في السجل فلا يعود المدير إلى هنا بزر الرجوع.
-        location.replace('./index.html?report=1');
-    } else {
-        // متصفح عادي: نبقى هنا حتى يبقى manifest-report.json مرتبطًا بالصفحة
-        // لحظة التثبيت، ونعرض التعليمات المناسبة للجهاز.
-        var steps = isIOS
-            ? ['Tap the Share button at the bottom of Safari.',
-               'Scroll down and tap <b>Add to Home Screen</b>.',
-               'Tap <b>Add</b>. The Sales Report icon appears on your home screen.']
-            : ['Open the browser menu (\u22EE).',
-               'Tap <b>Add to Home screen</b> or <b>Install app</b>.',
-               'Confirm. The Sales Report icon appears on your home screen.'];
-        document.getElementById('installSteps').innerHTML =
-            steps.map(function (s) { return '<li>' + s + '</li>'; }).join('');
-    }
+        // ⚠️ مهلةٌ قصيرةٌ ليُقرأ العنوانُ الجديدُ ورسالةُ إعادةِ التثبيت، ثم يُنتقل.
+        //   و`replace` لا `href`: فلا يعود زرُّ الرجوع إلى هذه الصفحةِ فيدور.
+        setTimeout(function () { location.replace(target); }, 2200);
+    })();
 </script>
-
-<script>
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js').catch(function () { /* غير حرج */ });
-    }
-</script>
-
 </body>
 </html>

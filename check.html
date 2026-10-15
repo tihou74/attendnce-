@@ -1,134 +1,107 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Diagnostics — Al Sheikha Group</title>
-
-<!-- =============================================================================
-     صفحة تشخيص — تُقرأ وتُصوَّر، ولا تُعدّل شيئًا.
-     -----------------------------------------------------------------------------
-     سببها: مشكلة «تطبيق المديرين يفتح شاشة الموظفين» لم تُحلّ بعد أربع محاولات،
-     وكل محاولة كانت مبنية على فرضية عن سلوك الهاتف لا على قياس. هذه الصفحة
-     تُظهر الحقائق مباشرة من الجهاز نفسه — الرابط الذي فُتح به التطبيق، وهل هو
-     مثبَّت، وما الوضع المحفوظ، وأي إصدار من الكود يُقدَّم له فعلًا.
-
-     ⚠️ لا تُسجّل Service Worker ولا تكتب أي شيء — قراءة فقط.
-     ============================================================================= -->
-
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>We have moved &mdash; Al Sheikha Group</title>
 <meta name="robots" content="noindex, nofollow">
+
+<!-- ============================================================================
+     صفحةُ تحويلٍ — لا كودَ ولا بيانات.
+     -----------------------------------------------------------------------------
+     ⚠️⚠️ هذا الملفُّ موجودٌ لسببٍ واحد: أيقوناتُ الموظفين المثبَّتةُ على هواتفهم
+     تشير إلى هذا العنوانِ القديم. ولو حُذف لتعطّلت أيقونةُ كلِّ موظفٍ ومديرٍ
+     وبياعةٍ في اللحظةِ نفسِها — وتثبيتُ أيقونةِ المدراء على iPhone وحدَه كان
+     متعبًا (انظر تاريخَ manager.html في المستودعِ الخاصّ).
+     فيبقى العنوانُ القديمُ يُجيب، ويُحوّل من يطرقه إلى العنوانِ الجديد.
+
+     ⚠️ ويُحفظ الـquery والـhash: بابُ المدراء هو `index.html?report=1`، فتحويلٌ
+     يُسقط `?report=1` يُنزلهم على شاشةِ الموظفين — وهو عطلٌ صامتٌ يُربك.
+
+     ⚠️ ولا يُحذف ملفُّ `.nojekyll`: بدونه يُعالج GitHub هذه الصفحاتَ كقوالبَ.
+     ============================================================================ -->
+
 <style>
+    :root { --ink: #0B1226; --gold: #CAAD73; --dim: #9FB0CA; }
     * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; min-height: 100%; }
     body {
-        font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0;
-        background: #f5f1e8; color: #3a3226;
-        padding: 18px 14px calc(24px + env(safe-area-inset-bottom));
-        padding-top: calc(18px + env(safe-area-inset-top));
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        background: var(--ink); color: #E8EDF6;
+        display: flex; align-items: center; justify-content: center;
+        min-height: 100vh; text-align: center; padding: 28px 20px;
+        -webkit-font-smoothing: antialiased;
     }
-    .wrap { max-width: 620px; margin: 0 auto; }
-    h1 { font-size: 17px; margin: 0 0 4px; }
-    .sub { font-size: 12.5px; color: #7a6f5a; margin: 0 0 18px; line-height: 1.7; }
-    .row {
-        background: #fffdf8; border: 1px solid #ddd2b8; border-radius: 10px;
-        padding: 12px 14px; margin-bottom: 10px;
+    .card { max-width: 440px; width: 100%; }
+    h1 { font-size: 21px; margin: 0 0 10px; color: var(--gold); font-weight: 700; }
+    p { font-size: 14.5px; line-height: 1.75; color: #C7D2E4; margin: 0 0 18px; }
+    .addr {
+        display: block; font-size: 15px; font-weight: 700; color: #fff;
+        background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
+        border-radius: 6px; padding: 12px 14px; margin: 0 0 20px; word-break: break-all;
     }
-    .k { font-size: 11px; font-weight: 800; color: #7a6f5a; text-transform: uppercase; letter-spacing: .5px; }
-    .v { font-size: 14px; font-weight: 700; margin-top: 5px; word-break: break-all; line-height: 1.6; }
-    .ok { color: #16a34a; } .bad { color: #dc2626; } .warn { color: #b45309; }
-    .verdict { border-width: 2px; }
-    .hint { font-size: 12px; color: #7a6f5a; margin-top: 6px; line-height: 1.7; }
+    a.btn {
+        display: flex; align-items: center; justify-content: center;
+        min-height: 48px; padding: 0 24px; background: #A89060; color: #0F172A;
+        text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 700;
+    }
+    a.btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+    .note {
+        margin-top: 24px; font-size: 12.5px; color: var(--dim); line-height: 1.8;
+        border-top: 1px solid rgba(255,255,255,.12); padding-top: 16px; text-align: start;
+    }
+    .ar { direction: rtl; text-align: right; }
 </style>
 </head>
 <body>
-<div class="wrap">
-    <h1>Diagnostics</h1>
-    <p class="sub">Screenshot this whole page and send it. Nothing here changes any setting.</p>
-    <div id="out"></div>
+<div class="card">
+    <h1>This address has moved</h1>
+    <p>The system now lives at its own address:</p>
+    <span class="addr" id="addr">hr.alsheikhagroup.com</span>
+    <a class="btn" id="go" href="https://hr.alsheikhagroup.com">Open it now &#10132;</a>
+
+    <div class="note">
+        <b>Taking you there automatically&hellip;</b><br>
+        If you added an icon to your home screen, please add it again from the
+        new address when you have a moment &mdash; then it will open directly.
+        <div class="ar" style="margin-top:12px;">
+            <b>سيتمّ تحويلك تلقائياً.</b><br>
+            وإن كانت لديك أيقونة على الشاشة الرئيسية، أضِفها من العنوان الجديد
+            عند أول فرصة — فتفتح مباشرةً بعدها.
+        </div>
+    </div>
 </div>
 
 <script>
-(function () {
-    var out = document.getElementById('out');
-    function row(k, v, cls, hint, verdict) {
-        var d = document.createElement('div');
-        d.className = 'row' + (verdict ? ' verdict' : '');
-        d.innerHTML = '<div class="k">' + k + '</div><div class="v ' + (cls || '') + '">' + v + '</div>'
-                    + (hint ? '<div class="hint">' + hint + '</div>' : '');
-        out.appendChild(d);
-        return d;
-    }
-    function esc(s) {
-        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
+    // ⚠️ يُؤخذ اسمُ الملفِّ من آخرِ المسار، فيعمل هذا الملفُّ نفسُه على كلِّ
+    //   الصفحاتِ بلا تخصيصٍ لكلِّ واحدة — وما يُكتب مرّةً لا يتباعد نسخُه.
+    (function () {
+        var NEW = 'https://hr.alsheikhagroup.com';
+        var file = location.pathname.split('/').pop() || '';
+        var target = NEW + '/' + file + location.search + location.hash;
+        var go = document.getElementById('go');
+        if (go) go.href = target;
+        var addr = document.getElementById('addr');
+        if (addr) addr.textContent = target.replace(/^https?:\/\//, '');
 
-    // 1) كيف فُتحت الصفحة
-    var standalone = (navigator.standalone === true);
-    try {
-        standalone = standalone
-            || window.matchMedia('(display-mode: standalone)').matches
-            || window.matchMedia('(display-mode: fullscreen)').matches
-            || window.matchMedia('(display-mode: minimal-ui)').matches;
-    } catch (e) {}
-    row('1 — Opened as', standalone ? 'INSTALLED APP' : 'BROWSER',
-        standalone ? 'ok' : 'warn',
-        standalone ? '' : 'If you tapped an icon on the home screen and this says BROWSER, the icon is a plain bookmark, not an installed app.');
+        // ⚠️⚠️ ويُنظَّف هذا الأصلُ من نفسِه: العاملُ الخِدميُّ القديمُ وذاكرتُه
+        //   يبقيان على الجهازِ لو لم يُلغَ تسجيلُه، فيُسجّل نفسَه على عنوانٍ
+        //   لم يبقَ فيه تطبيق. ولا يُنتظر فراغُه قبل التحويل.
+        try {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function (rs) {
+                    rs.forEach(function (r) { r.unregister(); });
+                });
+            }
+            if (window.caches && caches.keys) {
+                caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); });
+            }
+        } catch (e) { /* لا يمنع التحويلَ بحال */ }
 
-    // 2) الرابط الكامل
-    row('2 — Launch address', esc(location.href), '',
-        'This is what the icon actually stored. If it ends in index.html with no ?report=1, that is the whole problem.');
-
-    // 3) الوضع المحفوظ
-    var mode = '(cannot read)';
-    try { mode = localStorage.getItem('alsheikha_pwa_mode') || '(empty)'; } catch (e) {}
-    row('3 — Remembered mode', esc(mode), mode === 'report' ? 'ok' : 'warn',
-        'Should say "report" for the managers\' app. "(empty)" means it has never opened the report screen in this app.');
-
-    // 4) Service worker المسيطر
-    var swTxt = 'not supported';
-    if ('serviceWorker' in navigator) {
-        swTxt = navigator.serviceWorker.controller
-            ? esc(navigator.serviceWorker.controller.scriptURL)
-            : 'NONE controlling this page';
-    }
-    row('4 — Service worker', swTxt, '', 'Which cached copy of the site is serving this app.');
-
-    // 5) إصدار الكود المُقدَّم فعلًا للتطبيق
-    row('5 — Code version served', 'checking...', '', '', true);
-    var vRow = out.lastChild;
-    function setRow(el, k, v, cls, hint) {
-        el.innerHTML = '<div class="k">' + k + '</div><div class="v ' + (cls || '') + '">' + v + '</div>'
-                     + (hint ? '<div class="hint">' + hint + '</div>' : '');
-    }
-    fetch('./sw.js', { cache: 'no-store' })
-        .then(function (r) { return r.text(); })
-        .then(function (t) {
-            var m = t.match(/CACHE_VERSION\s*=\s*'([^']+)'/);
-            setRow(vRow, '5 — Code version on the server', m ? esc(m[1]) : '(not found)', 'ok');
-        })
-        .catch(function (e) { setRow(vRow, '5 — Code version on the server', 'FAILED: ' + esc(e.message), 'bad'); });
-
-    // 6) هل النسخة التي يراها التطبيق تحتوي الإصلاح؟
-    row('6 — Fix present in the page the app receives', 'checking...', '', '', true);
-    var fRow = out.lastChild;
-    fetch('./index.html', { cache: 'no-store' })
-        .then(function (r) { return r.text(); })
-        .then(function (t) {
-            var hasHatch = t.indexOf('managerHatch') !== -1;
-            var hasMemory = t.indexOf('alsheikha_pwa_mode') !== -1;
-            setRow(fRow, '6 — Fix present in the page the app receives',
-                (hasHatch ? 'button: YES' : 'button: NO') + ' &middot; ' + (hasMemory ? 'memory: YES' : 'memory: NO'),
-                (hasHatch && hasMemory) ? 'ok' : 'bad',
-                (hasHatch && hasMemory)
-                    ? 'The app is receiving the corrected page.'
-                    : 'The app is being served an OLD copy of the page — that is why the fixes appear to do nothing.');
-        })
-        .catch(function (e) {
-            setRow(fRow, '6 — Fix present in the page the app receives', 'FAILED: ' + esc(e.message), 'bad');
-        });
-
-    // 7) بيانات الجهاز
-    row('7 — Device', esc(navigator.userAgent), '', '');
-})();
+        // ⚠️ مهلةٌ قصيرةٌ ليُقرأ العنوانُ الجديدُ ورسالةُ إعادةِ التثبيت، ثم يُنتقل.
+        //   و`replace` لا `href`: فلا يعود زرُّ الرجوع إلى هذه الصفحةِ فيدور.
+        setTimeout(function () { location.replace(target); }, 2200);
+    })();
 </script>
 </body>
 </html>

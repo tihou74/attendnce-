@@ -1,112 +1,37 @@
-# نظام الحضور والرواتب والتدريب — مجموعة الشيخة
+# This repository no longer holds the application
 
-مطعم **قيمر وكاهي** و**شاي بوحمد** — دولة قطر
+The Al Sheikha Group HR, payroll, tips and abaya sales system now lives at:
 
-نظام يعمل بالكامل من المتصفح (Firebase + Firestore) بدون أي تثبيت أو خادم خلفي.
+**https://hr.alsheikhagroup.com**
 
----
+The source code moved to a private repository. What remains here is a set of
+redirect pages and nothing else — no code, no configuration, no security rules.
 
-## الملفات
+## Why these files still exist
 
-| الملف | الوصف |
-|---|---|
-| **`index.html`** | بوابة الموظفين (الكيوسك): تسجيل الحضور والانصراف، طلبات الإجازة والسلفة والشهادات، تسجيل الموظف الجديد، وتبويب التدريب. |
-| **`admin.html`** | لوحة تحكم الإدارة: الموظفون والرواتب، سجلات الحضور، الورديات، الطلبات، طلبات التوظيف، الإنذارات، الإجازات السنوية، محرر محتوى التدريب، سجل التدقيق، والإعدادات. |
-| **`firestore.rules`** | قواعد أمان Firestore. **مكانها Firebase Console** وليس مجلد المشروع. |
-| **`import-training.html`** | أداة لمرة واحدة ترفع محتوى التدريب من مجلد `training-content/` إلى Firestore بضغطة زر. |
-| **`training-content/*.js`** | محتوى التدريب المعتمد (عربي + إنجليزي). المصدر الدائم للمحتوى. |
+Employees, managers and saleswomen added the app to the home screens of their
+phones while it was served from this address. Each of those icons points at a
+file in this repository. Deleting them would break every icon at once, for
+everyone, with no warning — and installing the managers' icon on iPhone was
+difficult enough the first time.
 
-الصور والشعارات تُحمَّل من مستودع منفصل (`tihou74/alsheikha-attendance-admin`) عبر روابط مباشرة داخل الصفحات — لا حاجة لنسخها.
+So this address keeps answering, and sends whoever knocks to the new one.
 
----
+Three details that matter, in case anyone edits these files:
 
-## نشر قواعد الأمان (مطلوب مرة واحدة)
+- **The query string and hash are preserved.** The managers' door is
+  `index.html?report=1`; a redirect that dropped `?report=1` would quietly
+  land them on the staff screen instead.
+- **`404.html` carries the same redirect**, so an old path nobody remembered
+  still arrives in the right place.
+- **`.nojekyll` must stay.** Without it GitHub treats these pages as templates.
 
-1. افتح [Firebase Console](https://console.firebase.google.com) → المشروع `attendance-system-f32d6`
-2. **Firestore Database** → تبويب **Rules**
-3. الصق محتوى `firestore.rules` بالكامل (استبدل الموجود)
-4. اضغط **Publish**
+`sw.js` is a service worker whose only job is to delete itself, clear the
+caches it left on employees' devices, and reload any open window so it reaches
+the redirect. Devices that still hold the old app stop serving it.
 
-### كيف تعمل الصلاحيات
+## Nothing here is secret
 
-- **لوحة الإدارة** تسجّل الدخول ببريد وكلمة مرور (Email/Password). أي حساب تنشئه في Firebase Console → Authentication → Users يحصل على صلاحية كاملة. **لا يوجد نظام أدوار** (Accountant/Secretary) — أُلغي بالكامل.
-- **الكيوسك** (`index.html`) يسجّل دخولاً **مجهولاً** (Anonymous) وصلاحياته ضيقة: يُنشئ سجلات حضور وطلبات، ويقرأ قوائم الموظفين والـ PIN والنطاقات الجغرافية ومحتوى التدريب — لكنه لا يعدّل ولا يحذف شيئًا.
-- سجلا `audit_log` و`training_acknowledgments` **غير قابلين للتعديل أو الحذف** من أي جهة (سجل دائم).
-
-> للحماية القوية، فعّل **Firebase App Check** حتى لا يستطيع أحد استخدام مفاتيح المشروع من صفحة خارجية.
-
----
-
-## محتوى التدريب
-
-كل تركيبة «مطعم + قسم» تُخزَّن كمستند واحد في مجموعة `training_content`، ومعرّفه يُبنى تلقائيًا:
-
-```
-{RESTAURANT}__{DEPARTMENT}   ← المسافات تُستبدل بـ _
-```
-
-### المستندات الجاهزة حاليًا
-
-| المستند | الأقسام | الملف المصدر |
-|---|---|---|
-| `GAIMER_W_KAHI__HOSPITALITY` | 29 | `gaimer-w-kahi-hospitality.js` |
-| `GAIMER_W_KAHI__CASHIER` | 13 | `cashier-shared.js` |
-| `SHAI_BU_HAMAD__CASHIER` | 13 | `cashier-shared.js` |
-| `GAIMER_W_KAHI__BARISTA` | 11 | `gaimer-w-kahi-barista.js` |
-| `GAIMER_W_KAHI__CLEANER` | 13 | `gaimer-w-kahi-cleaner.js` |
-| `SHAI_BU_HAMAD__CLEANER` | 13 | `gaimer-w-kahi-cleaner.js` |
-
-الأقسام المتبقية: المطبخ الساخن (`HOT_KITCHEN`)، الحلويات (`PASTRY`)، وأقسام شاي بوحمد الأخرى.
-
-### بنية كل قسم
-
-```js
-{
-  heading: "العنوان — Heading",
-  text: "النص العربي\n\n———————————————\n\nEnglish text",
-  imageBase64: ""   // صورة اختيارية
-}
-```
-
-**قاعدتان مهمتان:**
-1. النص يُعرض كنص خام آمن — **لا تضع وسوم HTML** فيه.
-2. **الأسطر الفارغة** هي ما يفصل الفقرات، وكل فقرة تأخذ اتجاهها تلقائيًا (`dir="auto"`) — فالعربية تُعرض من اليمين والإنجليزية من اليسار داخل القسم نفسه.
-
----
-
-## رفع محتوى التدريب
-
-### الطريقة الأولى: أداة الاستيراد (موصى بها)
-
-`import-training.html` ترفع كل المستندات دفعة واحدة.
-
-**مهم:** لن تعمل بالنقر المزدوج (`file://`) لأنها تستدعي ملفات `.js`؛ يجب فتحها عبر خادم:
-
-```bash
-# داخل مجلد المشروع
-python -m http.server 8000
-```
-ثم افتح `http://localhost:8000/import-training.html`
-
-الخطوات: سجّل الدخول بحساب الإدارة → اضغط **معاينة** للتأكد من الشكل → اضغط **رفع كل المحتوى**.
-
-الأداة تتحقق من حجم كل مستند مقابل حد Firestore (1 ميغابايت) قبل الرفع، وتكتب سجلاً في `audit_log`.
-
-### الطريقة الثانية: يدويًا من لوحة الإدارة
-
-`admin.html` → تبويب **Employee Training** → اختر المطعم والقسم → **Add Section** → الصق النص → **Save Training Content**.
-
-### لإضافة قسم جديد
-
-1. أنشئ ملف `.js` جديدًا في `training-content/` على نمط الملفات الموجودة.
-2. أضف له وسم `script` في `import-training.html`.
-3. لا شيء آخر — الأداة تكتشفه تلقائيًا.
-
----
-
-## ملاحظات تشغيلية
-
-- **حد حجم المستند:** الصور تُخزَّن داخل مستند Firestore نفسه بترميز base64 (لا يوجد Storage bucket). الحد 1 ميغابايت للمستند، لذا اضغط الصور (أقل من 150KB للصورة). محرر لوحة الإدارة يرفض الحفظ برسالة واضحة إن تجاوزت الحد.
-- **النطاق الجغرافي (Geofence):** يُضبط لكل فرع من `admin.html` → Settings، ويُطبَّق على الموظف حسب فرعه المسجّل.
-- **قفل PIN:** 5 محاولات خاطئة تقفل الموظف 5 دقائق (على مستوى المتصفح فقط — الحماية الحقيقية هي قواعد Firestore و App Check).
-- **النسخة الاحتياطية:** `admin.html` → Settings → Export Full Backup ينتج ملف JSON بكل المجموعات.
+These pages contain a public address and a timer. There is no key, no rule and
+no record in this repository, which is exactly why it can stay public while the
+application itself does not.
