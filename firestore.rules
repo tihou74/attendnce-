@@ -1134,8 +1134,27 @@ service cloud.firestore {
     // label, stuck to a garment, argued over at the counter.
     //
     // READ ONLY. Opening and closing the season stays the owner's.
+    //
+    // ⚠️⚠️⚠️ isKiosk() IS HERE BECAUSE REMOVING IT STOPPED EVERY SALESWOMAN
+    //   FROM SELLING. v35 closed the anonymous read on match /settings/{docId}
+    //   to hide salary_payouts and cash_account — correct in itself. But the
+    //   SHOP screen (abaya-seller.html) signs in anonymously and reads this one
+    //   switch **in the same Promise as the catalogue**. One denied read made
+    //   Promise.all reject, so the whole abaya list vanished and the screen
+    //   said "The abaya list could not be read just now" — naming the wrong
+    //   document. Nobody could sell anything.
+    //   The sibling abaya switches (abaya_workshop, abaya_shanton_payments) were
+    //   given isKiosk() for exactly this reason; this one was simply forgotten.
+    //
+    // ⚠️ And it is safe to grant: this document holds one boolean — whether a
+    //   discount season is open. The shop is told that by the price tags in its
+    //   own window. It carries no money, no cost, no name. Write stays owner-only.
+    //
+    // ⚠️ DO NOT "simplify" this by widening match /settings/{docId} back to
+    //   isKiosk(): that collection also holds salary_payouts, cash_account and
+    //   financial_rates. The narrow per-document match is the whole point.
     match /settings/abaya_discount {
-      allow read: if isGoodsClerk();
+      allow read: if isGoodsClerk() || isKiosk();
     }
 
     // ---- employee_warnings (Warning Letters tab) ----------------------------

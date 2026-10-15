@@ -8903,6 +8903,16 @@
             const list = buildRosterList();
             await setDoc(doc(db, "settings", EMPLOYEE_ROSTER_DOC), {
                 updatedAt: serverTimestamp(),
+                // ⚠️⚠️⚠️ هذا السطرُ كان **ناقصًا هنا**، وغيابُه عطلٌ صامتٌ كامل.
+                //   الكشكُ يرفض أيَّ قائمةٍ لا تحمل الرقمَ (index.html: rosterUsable)،
+                //   و`setDoc` بلا merge تستبدل المستندَ كلَّه — فكانت هذه الضغطةُ
+                //   **تمحو** الرقمَ الذي كتبه النشرُ التلقائيُّ، ثم تقول
+                //   «✔ Published 42 names» وهي قد أعمت كلَّ شاشةِ موظف.
+                //   والأجهزةُ القديمةُ تبقى سليمةً بنسختها المحفوظة، فلا يظهر
+                //   العطلُ إلّا على جهازٍ جديدٍ أو عنوانٍ جديد — أي بعد أسابيع.
+                // ⚠️ وأيُّ كاتبٍ جديدٍ لهذا المستند يلزمه هذا السطر. والكاتبان
+                //   اليوم اثنان: publishEmployeeRoster و publishRosterNow.
+                rosterVersion: ROSTER_FORMAT_VERSION,
                 count: list.length,
                 managers: list.filter(r => r.m).length,
                 // ⚠️ تُنشر الأعدادُ ليراها المالكُ فيتأكّد أنّ التفعيلَ وصل،
@@ -25504,7 +25514,7 @@
         //   وهو الشيءُ الذي بُني ليُخبرنا أنّ شيئًا تعطّل. وداخلَ الدالّةِ لا منطقةَ
         //   ميتةَ إطلاقًا: يُقيَّم عند النداء.
         // ⚠️ ويجب أن يساوي `CACHE_VERSION` في sw.js — وهناك تذكيرٌ بذلك أيضًا.
-        const APP_BUILD = 'v264';
+        const APP_BUILD = 'v265';
         const el = document.getElementById('footVersion');
         if (!el) return;
         el.textContent = `Build ${APP_BUILD}`;

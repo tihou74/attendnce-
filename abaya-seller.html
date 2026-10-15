@@ -3410,13 +3410,35 @@
      * ⚠️ وبلا صور: هذه قائمةُ أسماءٍ وأسعارٍ وأعداد — بضعةُ كيلوبايت. وصورةُ كل
      * عباية تُقرأ عند النظر إليها وحدها، فهاتف البياعة لا يُنزّل ١٦MB.
      */
+    /**
+     * ⚠️⚠️⚠️ allSettled لا Promise.all — وهذا سببٌ حقيقيٌّ أوقف البيعَ كلَّه.
+     *   كان السطرُ `Promise.all([الكتالوج, مفتاحُ الخصم])`، و`Promise.all` تسقط
+     *   كلُّها إن سقطت واحدة. فلمّا مُنع **مفتاحُ الخصم** وحدَه في قواعد v35،
+     *   اختفى **الكتالوجُ كلُّه** — والكتالوجُ كان مسموحًا ومقروءًا تمامًا.
+     *   والرسالةُ قالت «تعذّر قراءة قائمة العبايات»، وهي تُسمّي المستندَ الخطأ،
+     *   فأرسلت البحثَ في الاتجاه الخطأ.
+     *   القاعدة: القراءةُ **الجوهريّة** (القطع) تُفصل عن القراءةِ **المكمّلة**
+     *   (مفتاح الخصم)، فلا تُسقط الثانيةُ الأولى أبدًا.
+     */
     async function loadSellerCatalog(force) {
         if (cpLoaded && !force) return;
         try {
-            const [prodSnap, seasonSnap] = await Promise.all([
+            const [prodRes, seasonRes] = await Promise.allSettled([
                 getDocs(collection(db, 'abaya_products')),
                 getDoc(doc(db, 'settings', 'abaya_discount'))
             ]);
+
+            // ⚠️ القطعُ هي الجوهر: بلا هذه لا شيءَ يُعرض، فهي وحدَها تُسقط الشاشة.
+            if (prodRes.status !== 'fulfilled') {
+                console.error('Could not read the abaya catalogue:', prodRes.reason);
+                // ⚠️ ويُسمّى الدليلُ الذي سقط: «القطع» لا «الخصم». ورسالةٌ تُسمّي
+                //   المستندَ الخطأ تُضيّع ساعاتٍ في البحث في المكان الخطأ.
+                setMsg('cpMsg', 'The list of pieces could not be read just now (not the discount switch — the '
+                    + 'pieces themselves). Your daily report still works normally.', 'warn');
+                if (saTasks.length) renderShelfTasks();
+                return;
+            }
+            const prodSnap = prodRes.value;
             cpProducts = [];
             prodSnap.forEach(d => {
                 const v = d.data() || {};
@@ -3450,8 +3472,21 @@
                 });
             });
             cpProducts.sort((a, b) => String(a.code).localeCompare(String(b.code)));
-            cpSeasonOn = !!(seasonSnap.exists() && seasonSnap.data().on === true);
             cpLoaded = true;
+
+            // ⚠️⚠️ مفتاحُ الخصمِ مكمّلٌ: سقوطُه يُغيّر **السعرَ المعروض** ولا يُخفي
+            //   القطع. ولا يُسكَت عنه: لو كان الموسمُ مفتوحًا وقرأناه مغلقًا
+            //   لقبضت البياعةُ السعرَ الكامل في موسمِ خصم — فيُقال لها صريحًا.
+            if (seasonRes.status === 'fulfilled') {
+                const s = seasonRes.value;
+                cpSeasonOn = !!(s.exists() && s.data().on === true);
+                setMsg('cpMsg', '', '');
+            } else {
+                console.error('Could not read the discount switch:', seasonRes.reason);
+                cpSeasonOn = false;
+                setMsg('cpMsg', 'The pieces are shown, but the discount switch could not be read, so these are '
+                    + 'the NORMAL prices. If a discount season is open, ask the office before you take the money.', 'warn');
+            }
         } catch (e) {
             console.error('Could not read the abaya catalogue:', e);
             // ⚠️ ولا يُعطَّل التقرير بحال: قسمٌ لا يُقرأ لا يمنعها من إرسال يومها.
