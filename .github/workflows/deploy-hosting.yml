@@ -168,6 +168,15 @@ jobs:
       - name: Guard — every anonymous-screen read must be allowed by the rules
         run: node .github/scripts/check-kiosk-reads.js .
 
+      # ⚠️⚠️ وحارسٌ على إعدادِ الاستضافةِ نفسِه: لا يُحوَّل مسارٌ يحمّله التطبيقُ
+      #   باسمِه. سببُه عطلٌ حقيقيٌّ عطّل لوحةَ المدراء تعطيلًا كاملًا
+      #   (ERR_TOO_MANY_REDIRECTS) لأنّ `cleanUrls` أُضيفت بحجّةِ «روابطَ أنظف»،
+      #   وهذا التطبيقُ مبنيٌّ على .html في العاملِ الخِدميِّ وفي كلِّ أيقونةٍ
+      #   مثبَّتةٍ على هواتفِ الموظفين. وتحويلُ 301 يُحفظ في المتصفّحِ طويلًا،
+      #   فالعطلُ يُؤذي بعد إصلاحِه — فيُمنع قبل النشرِ لا بعده.
+      - name: Guard — hosting must not redirect the app's own paths
+        run: node .github/scripts/check-hosting-paths.js .
+
       # ⚠️⚠️ حارسٌ رابعٌ: المفتاحُ نفسُه يُفحَص قبل محاولةِ النشر.
       #   سببُه عطلٌ حقيقيٌّ وقع: لُصق في السرِّ ملفُّ **صورةٍ** (`<svg xmlns`) بدلَ
       #   نصِّ المفتاح، فقالت أداةُ Firebase: «Failed to authenticate, have you run
