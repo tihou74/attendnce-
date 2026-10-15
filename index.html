@@ -1813,7 +1813,9 @@
          *   الاسمُ والفرعُ والمسمّى والمفاتيحُ، ولا مالَ ولا مستندات.
          * ⚠️⚠️ ويفشل **صريحًا** لا صامتًا: شاشةٌ بلا أسماءٍ وبلا سببٍ تُقرأ عطلًا
          *   في الشبكة، فيبقى الموظفُ يُحدّث الصفحةَ ولا أحدَ يعرف أنّ المطلوبَ
-         *   ضغطةُ «Sync Database» في اللوحة.
+         *   ضغطةُ «Publish the name list now» في اللوحة.
+         *   (وكان مكتوبًا هنا «Sync Database» — وهو الزرُّ الخطأ والخطير، انظر
+         *    التعليقَ عند رسالةِ showStatus في آخرِ هذه الدالّة.)
          */
         const cached = readCachedRoster();
         if (cached && cached.length) {
@@ -1824,8 +1826,20 @@
             catch (ge) { console.error('Could not load the branch locations:', ge); }
             return;
         }
-        showStatus("The name list has not been published yet. Please ask the office to open the "
-            + "dashboard and press \u201cSync Database\u201d once \u2014 then refresh this page.", "error");
+        // ⚠️⚠️⚠️ كانت هذه الرسالةُ تطلب ضغطَ «Sync Database» — وهو زرٌّ **خطير**
+        //   يُنشئ قائمةَ موظفين افتراضيّةً جديدة، وقد وقع فعلًا أن «اختفى
+        //   الموظفون والنظامُ يُنشئ غيرهم» (التحذيرُ مكتوبٌ في admin.html عند
+        //   allEmployees.length === 0). فكانت شاشةُ الموظفِ تدلُّ المالكَ على
+        //   الزرِّ الذي يُخرّب بياناتَه، في اللحظةِ التي يكون فيها قلقًا ومستعجلًا.
+        //   والزرُّ الصحيحُ اسمُه «Publish the name list now».
+        // ⚠️ ولا يُقال «لم تُنشر» على وجهِ القطع: المنعُ بالقواعدِ أو انقطاعُ
+        //   الشبكةِ يصلان إلى هذا السطرِ نفسِه، فيُذكر الاحتمالانِ معًا لا واحدٌ
+        //   يُقسَم عليه — فجزمٌ خاطئٌ يُرسل البحثَ في الاتجاه الخطأ.
+        showStatus("The names could not be loaded. Either the name list has not been published yet, or this "
+            + "device was refused by the server. Ask the office to open the dashboard and press "
+            + "\u201cPublish the name list now\u201d \u2014 then refresh this page. "
+            + "\u26A0 Do NOT press \u201cSync Database\u201d: that one creates a fresh default list and "
+            + "will not bring anything back.", "error");
         rosterIsReal = true;   // لا تُعاد المحاولةُ بلا نهاية: السببُ معروفٌ ومكتوب
     }
 
