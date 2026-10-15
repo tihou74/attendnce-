@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>We have moved &mdash; Al Sheikha Group</title>
+<meta name="robots" content="noindex, nofollow">
+
+<!-- ============================================================================
+     صفحةُ تحويلٍ — لا كودَ ولا بيانات.
+     -----------------------------------------------------------------------------
+     ⚠️⚠️ هذا الملفُّ موجودٌ لسببٍ واحد: أيقوناتُ الموظفين المثبَّتةُ على هواتفهم
+     تشير إلى هذا العنوانِ القديم. ولو حُذف لتعطّلت أيقونةُ كلِّ موظفٍ ومديرٍ
+     وبياعةٍ في اللحظةِ نفسِها — وتثبيتُ أيقونةِ المدراء على iPhone وحدَه كان
+     متعبًا (انظر تاريخَ manager.html في المستودعِ الخاصّ).
+     فيبقى العنوانُ القديمُ يُجيب، ويُحوّل من يطرقه إلى العنوانِ الجديد.
+
+     ⚠️ ويُحفظ الـquery والـhash: بابُ المدراء هو `index.html?report=1`، فتحويلٌ
+     يُسقط `?report=1` يُنزلهم على شاشةِ الموظفين — وهو عطلٌ صامتٌ يُربك.
+
+     ⚠️ ولا يُحذف ملفُّ `.nojekyll`: بدونه يُعالج GitHub هذه الصفحاتَ كقوالبَ.
+     ============================================================================ -->
+
+<style>
+    :root { --ink: #0B1226; --gold: #CAAD73; --dim: #9FB0CA; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; min-height: 100%; }
+    body {
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        background: var(--ink); color: #E8EDF6;
+        display: flex; align-items: center; justify-content: center;
+        min-height: 100vh; text-align: center; padding: 28px 20px;
+        -webkit-font-smoothing: antialiased;
+    }
+    .card { max-width: 440px; width: 100%; }
+    h1 { font-size: 21px; margin: 0 0 10px; color: var(--gold); font-weight: 700; }
+    p { font-size: 14.5px; line-height: 1.75; color: #C7D2E4; margin: 0 0 18px; }
+    .addr {
+        display: block; font-size: 15px; font-weight: 700; color: #fff;
+        background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
+        border-radius: 6px; padding: 12px 14px; margin: 0 0 20px; word-break: break-all;
+    }
+    a.btn {
+        display: flex; align-items: center; justify-content: center;
+        min-height: 48px; padding: 0 24px; background: #A89060; color: #0F172A;
+        text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 700;
+    }
+    a.btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+    .note {
+        margin-top: 24px; font-size: 12.5px; color: var(--dim); line-height: 1.8;
+        border-top: 1px solid rgba(255,255,255,.12); padding-top: 16px; text-align: start;
+    }
+    .ar { direction: rtl; text-align: right; }
+</style>
+</head>
+<body>
+<div class="card">
+    <h1>This address has moved</h1>
+    <p>The system now lives at its own address:</p>
+    <span class="addr" id="addr">hr.alsheikhagroup.com</span>
+    <a class="btn" id="go" href="https://hr.alsheikhagroup.com">Open it now &#10132;</a>
+
+    <div class="note">
+        <b>Taking you there automatically&hellip;</b><br>
+        If you added an icon to your home screen, please add it again from the
+        new address when you have a moment &mdash; then it will open directly.
+        <div class="ar" style="margin-top:12px;">
+            <b>سيتمّ تحويلك تلقائياً.</b><br>
+            وإن كانت لديك أيقونة على الشاشة الرئيسية، أضِفها من العنوان الجديد
+            عند أول فرصة — فتفتح مباشرةً بعدها.
+        </div>
+    </div>
+</div>
+
+<script>
+    // ⚠️ يُؤخذ اسمُ الملفِّ من آخرِ المسار، فيعمل هذا الملفُّ نفسُه على كلِّ
+    //   الصفحاتِ بلا تخصيصٍ لكلِّ واحدة — وما يُكتب مرّةً لا يتباعد نسخُه.
+    (function () {
+        var NEW = 'https://hr.alsheikhagroup.com';
+        var file = location.pathname.split('/').pop() || '';
+        var target = NEW + '/' + file + location.search + location.hash;
+        var go = document.getElementById('go');
+        if (go) go.href = target;
+        var addr = document.getElementById('addr');
+        if (addr) addr.textContent = target.replace(/^https?:\/\//, '');
+
+        // ⚠️⚠️ ويُنظَّف هذا الأصلُ من نفسِه: العاملُ الخِدميُّ القديمُ وذاكرتُه
+        //   يبقيان على الجهازِ لو لم يُلغَ تسجيلُه، فيُسجّل نفسَه على عنوانٍ
+        //   لم يبقَ فيه تطبيق. ولا يُنتظر فراغُه قبل التحويل.
+        try {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function (rs) {
+                    rs.forEach(function (r) { r.unregister(); });
+                });
+            }
+            if (window.caches && caches.keys) {
+                caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); });
+            }
+        } catch (e) { /* لا يمنع التحويلَ بحال */ }
+
+        // ⚠️ مهلةٌ قصيرةٌ ليُقرأ العنوانُ الجديدُ ورسالةُ إعادةِ التثبيت، ثم يُنتقل.
+        //   و`replace` لا `href`: فلا يعود زرُّ الرجوع إلى هذه الصفحةِ فيدور.
+        setTimeout(function () { location.replace(target); }, 2200);
+    })();
+</script>
+</body>
+</html>
